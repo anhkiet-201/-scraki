@@ -1,14 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../../core/di/injection.dart';
-import '../../../core/utils/android_key_codes.dart';
 import '../../../domain/entities/device_entity.dart';
 import '../atoms/protocol_icon.dart';
 import '../atoms/status_badge.dart';
-import '../../stores/device_store.dart';
-import '../../widgets/native_video_decoder.dart';
+import '../../widgets/phone_view.dart';
 
 class DeviceCard extends StatefulWidget {
   final DeviceEntity device;
@@ -26,51 +20,14 @@ class DeviceCard extends StatefulWidget {
 
 class _DeviceCardState extends State<DeviceCard> {
   bool _isMirroring = false;
-  bool _isLoading = false;
-  String? _streamUrl;
 
-  Future<void> _startMirroring() async {
-    if (_isMirroring) return;
-
+  void _toggleMirroring() {
     setState(() {
-      _isLoading = true;
+      _isMirroring = !_isMirroring;
     });
-
-    try {
-      print('[DeviceCard] Starting mirroring via store...');
-      final store = getIt<DeviceStore>();
-      final url = await store.startMirroring(widget.device.serial);
-      print('[DeviceCard] Received stream URL: $url');
-
-      if (!mounted) return;
-
-      setState(() {
-        _streamUrl = url;
-        _isMirroring = true;
-        _isLoading = false;
-      });
-
-      print('[DeviceCard] Mirroring state active with native decoder');
-    } catch (e) {
-      print('[DeviceCard] ERROR starting mirroring: $e');
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Mirror failed: $e')));
+    if (!_isMirroring) {
+        // Optional: Notify parent if needed when stopped
     }
-  }
-
-  void _stopMirroring() {
-    if (mounted) {
-      setState(() {
-        _isMirroring = false;
-        _streamUrl = null;
-      });
-    }
-    widget.onDisconnect();
   }
 
   @override
@@ -102,61 +59,23 @@ class _DeviceCardState extends State<DeviceCard> {
             ),
           ),
 
-          // Video Area
+          // Video Area (PhoneView)
           Expanded(
             child: Container(
               color: Colors.black,
               child: ClipRect(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (_isMirroring && _streamUrl != null)
-                      NativeVideoDecoder(
-                        key: Key('decoder_${widget.device.serial}'),
-                        streamUrl: _streamUrl!,
+                child: _isMirroring
+                    ? PhoneView(
+                        serial: widget.device.serial,
                         fit: BoxFit.contain,
-                        onError: (error) {
-                          print('[DeviceCard] Decoder error: $error');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Decoder error: $error')),
-                          );
-                          _stopMirroring();
-                        },
-                        onInput: (action, x, y, width, height) {
-                          getIt<DeviceStore>().sendTouch(
-                            widget.device.serial,
-                            x,
-                            y,
-                            action,
-                            width,
-                            height,
-                          );
-                        },
-                        onKey: (keyId, action) {
-                           // Find logical key from ID (optimization: pass object directly later?)
-                           final key = LogicalKeyboardKey.findKeyByKeyId(keyId);
-                           if (key != null) {
-                             final androidCode = AndroidKeyCodes.getKeyCode(key);
-                             if (androidCode != AndroidKeyCodes.kUnknown) {
-                               getIt<DeviceStore>().sendKey(
-                                 widget.device.serial,
-                                 androidCode,
-                                 action,
-                               );
-                             }
-                           }
-                        },
                       )
-                    else if (_isLoading)
-                      const CircularProgressIndicator()
-                    else
-                      const Icon(
-                        Icons.phonelink_setup,
-                        size: 64,
-                        color: Colors.white24,
+                    : const Center(
+                        child: Icon(
+                          Icons.phonelink_setup,
+                          size: 64,
+                          color: Colors.white24,
+                        ),
                       ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -170,13 +89,15 @@ class _DeviceCardState extends State<DeviceCard> {
                 if (_isMirroring)
                   IconButton(
                     icon: const Icon(Icons.link_off),
-                    onPressed: _stopMirroring,
+                    onPressed: _toggleMirroring,
+                    tooltip: 'Stop Mirroring',
                   ),
                 const SizedBox(width: 8),
+                if (!_isMirroring)
                 ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _startMirroring,
-                  icon: Icon(_isMirroring ? Icons.refresh : Icons.screen_share),
-                  label: Text(_isMirroring ? 'Restart' : 'Mirror'),
+                  onPressed: _toggleMirroring,
+                  icon: const Icon(Icons.screen_share),
+                  label: const Text('Mirror'),
                 ),
               ],
             ),
@@ -186,4 +107,5 @@ class _DeviceCardState extends State<DeviceCard> {
     );
   }
 }
+
 
