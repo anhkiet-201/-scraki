@@ -1,0 +1,16 @@
+# Custom build settings for VideoDecoderPlugin with FFmpeg
+
+# FFmpeg library and header paths (Homebrew installation)
+FFMPEG_PREFIX = /opt/homebrew/Cellar/ffmpeg/8.0.1
+
+# Header search paths
+HEADER_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/include
+
+# Library search paths  
+LIBRARY_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/lib
+
+# Link against FFmpeg libraries
+OTHER_LDFLAGS = $(inherited) -lavcodec -lavformat -lavutil -lswscale
+
+# Runtime library search paths
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks $(FFMPEG_PREFIX)/lib

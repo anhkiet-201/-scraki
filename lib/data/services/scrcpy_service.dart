@@ -123,7 +123,7 @@ class ScrcpyService {
       });
 
       // Wait for server to be ready to accept connections
-      await Future.delayed(const Duration(milliseconds: 1500));
+      await Future.delayed(const Duration(milliseconds: 500));
 
       return localPort;
     } catch (e) {

@@ -12,3 +12,12 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.scraki
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+
+// Bridging header for Objective-C++ to Swift
+SWIFT_OBJC_BRIDGING_HEADER = $(SRCROOT)/Runner/Runner-Bridging-Header.h
+
+// FFmpeg library paths (Homebrew installation)
+HEADER_SEARCH_PATHS = $(inherited) /opt/homebrew/Cellar/ffmpeg/8.0.1/include
+LIBRARY_SEARCH_PATHS = $(inherited) /opt/homebrew/Cellar/ffmpeg/8.0.1/lib
+OTHER_LDFLAGS = $(inherited) -lavcodec -lavformat -lavutil -lswscale
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks /opt/homebrew/Cellar/ffmpeg/8.0.1/lib

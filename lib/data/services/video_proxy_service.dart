@@ -133,6 +133,7 @@ class VideoProxyService {
     int neededBytes = 12;
     int currentPayloadSize = 0;
     bool isConfigPacket = false;
+    Uint8List? currentHeader; // Store header to forward with payload
 
     // Process incoming data (both buffered and live)
     void processData(List<int> data) {
@@ -145,8 +146,10 @@ class VideoProxyService {
         while (buffer.length >= neededBytes) {
           if (readingPacketHeader) {
             // Parse 12-byte packet header (8 bytes PTS + 4 bytes size)
-            final packetHeader = Uint8List.fromList(buffer.sublist(0, 12));
-            final ptsData = ByteData.sublistView(packetHeader);
+            final headerData = Uint8List.fromList(buffer.sublist(0, 12));
+            currentHeader = headerData; // Preserve header
+
+            final ptsData = ByteData.sublistView(headerData);
             final pts = ptsData.getInt64(0);
 
             // Config flag is bit 63 (MSB) - negative value in signed int64
@@ -160,7 +163,7 @@ class VideoProxyService {
               );
             }
 
-            // Remove header from buffer
+            // Remove header from buffer to proceed to payload
             buffer.removeRange(0, 12);
             currentPayloadSize = payloadSize;
             neededBytes = currentPayloadSize;
@@ -171,18 +174,28 @@ class VideoProxyService {
               buffer.sublist(0, currentPayloadSize),
             );
 
+            // Construct full packet (Header + Payload) to send to native decoder
+            final fullPacket = BytesBuilder();
+            if (currentHeader != null) {
+              fullPacket.add(currentHeader!);
+            }
+            fullPacket.add(payload);
+            final packetData = fullPacket.toBytes();
+
             if (isConfigPacket) {
               // Buffer config (SPS/PPS) to merge with next frame
-              pendingConfig = payload;
+              // Native decoder parses headers, so we send the full packet
+              pendingConfig = packetData;
               print(
-                'VideoProxy: Config packet buffered (SPS/PPS). Length: ${payload.length}',
+                'VideoProxy: Config packet buffered (SPS/PPS). Length: ${packetData.length}',
               );
             } else {
               // Normal frame - send to player
               if (pendingConfig != null) {
+                // Prepend pending config
                 final merged = BytesBuilder();
                 merged.add(pendingConfig!);
-                merged.add(payload);
+                merged.add(packetData);
                 final mergedData = merged.toBytes();
 
                 try {
@@ -199,7 +212,7 @@ class VideoProxyService {
                 pendingConfig = null;
               } else {
                 try {
-                  playerSocket.add(payload);
+                  playerSocket.add(packetData);
                 } catch (e) {
                   print(
                     'VideoProxy: Error writing payload to player socket: $e',
@@ -217,6 +230,7 @@ class VideoProxyService {
             neededBytes = 12;
             readingPacketHeader = true;
             isConfigPacket = false;
+            currentHeader = null;
           }
         }
       } catch (e) {

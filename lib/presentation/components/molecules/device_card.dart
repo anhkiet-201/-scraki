@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import '../../../core/di/injection.dart';
 import '../../../domain/entities/device_entity.dart';
 import '../atoms/protocol_icon.dart';
 import '../atoms/status_badge.dart';
 import '../../stores/device_store.dart';
+import '../../widgets/native_video_decoder.dart';
 
 class DeviceCard extends StatefulWidget {
   final DeviceEntity device;
@@ -24,16 +23,9 @@ class DeviceCard extends StatefulWidget {
 }
 
 class _DeviceCardState extends State<DeviceCard> {
-  Player? _player;
-  VideoController? _videoController;
   bool _isMirroring = false;
   bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _player?.dispose();
-    super.dispose();
-  }
+  String? _streamUrl;
 
   Future<void> _startMirroring() async {
     if (_isMirroring) return;
@@ -50,49 +42,13 @@ class _DeviceCardState extends State<DeviceCard> {
 
       if (!mounted) return;
 
-      print('[DeviceCard] Initializing media_kit player for H.265 mirror...');
-      _player = Player();
-
-      _player!.stream.log.listen((event) {
-        print('[MPV] ${event.prefix}: ${event.text}');
-      });
-
-      _videoController = VideoController(_player!);
-
-      // Low latency settings for mpv
-      if (_player!.platform is NativePlayer) {
-        final native = _player!.platform as NativePlayer;
-        await native.setProperty('cache', 'no');
-        await native.setProperty('demuxer-max-bytes', '128000');
-        await native.setProperty('demuxer-max-back-bytes', '0');
-        await native.setProperty('profile', 'low-latency');
-        await native.setProperty('hwdec', 'auto');
-        await native.setProperty('load-unsafe-playlists', 'yes');
-        // Hint for HEVC format
-        await native.setProperty('demuxer-lavf-format', 'hevc');
-        await native.setProperty('demuxer-lavf-probesize', '4096');
-
-        // Ultra-low latency tuning
-        await native.setProperty('vd-lavc-threads', '1');
-        await native.setProperty('videotoolbox-max-out-frames', '1');
-        await native.setProperty('video-sync', 'audio');
-        await native.setProperty('framedrop', 'vo');
-      }
-
-      // Reduced delay for faster start
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      final ffmpegUrl = 'ffmpeg://$url';
-      print('[DeviceCard] Opening media: $ffmpegUrl');
-      await _player!.open(Media(ffmpegUrl));
-      print('[DeviceCard] Media opened successfully');
-
-      print('[DeviceCard] Mirroring state active');
-
       setState(() {
+        _streamUrl = url;
         _isMirroring = true;
         _isLoading = false;
       });
+
+      print('[DeviceCard] Mirroring state active with native decoder');
     } catch (e) {
       print('[DeviceCard] ERROR starting mirroring: $e');
       if (!mounted) return;
@@ -103,6 +59,16 @@ class _DeviceCardState extends State<DeviceCard> {
         context,
       ).showSnackBar(SnackBar(content: Text('Mirror failed: $e')));
     }
+  }
+
+  void _stopMirroring() {
+    if (mounted) {
+      setState(() {
+        _isMirroring = false;
+        _streamUrl = null;
+      });
+    }
+    widget.onDisconnect();
   }
 
   @override
@@ -142,13 +108,18 @@ class _DeviceCardState extends State<DeviceCard> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (_isMirroring && _videoController != null)
-                      Video(
-                        key: Key('video_${widget.device.serial}'),
-                        controller: _videoController!,
+                    if (_isMirroring && _streamUrl != null)
+                      NativeVideoDecoder(
+                        key: Key('decoder_${widget.device.serial}'),
+                        streamUrl: _streamUrl!,
                         fit: BoxFit.contain,
-                        controls: (state) =>
-                            const SizedBox.shrink(), // Remove controls to fix overflow and because it's a mirror
+                        onError: (error) {
+                          print('[DeviceCard] Decoder error: $error');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Decoder error: $error')),
+                          );
+                          _stopMirroring();
+                        },
                       )
                     else if (_isLoading)
                       const CircularProgressIndicator()
@@ -173,15 +144,7 @@ class _DeviceCardState extends State<DeviceCard> {
                 if (_isMirroring)
                   IconButton(
                     icon: const Icon(Icons.link_off),
-                    onPressed: () async {
-                      await _player?.dispose();
-                      _player = null;
-                      _videoController = null;
-                      if (mounted) {
-                        setState(() => _isMirroring = false);
-                      }
-                      widget.onDisconnect();
-                    },
+                    onPressed: _stopMirroring,
                   ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
