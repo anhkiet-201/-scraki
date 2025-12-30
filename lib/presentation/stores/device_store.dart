@@ -118,25 +118,15 @@ abstract class _DeviceStore with Store {
           // --- VIDEO SOCKET ---
           try {
              final scrcpyClient = getIt<ScrcpyClient>();
+             
+             // 4. Parse Header & Get Session (Stream)
+             final session = await scrcpyClient.parseHeaderFromSocket(socket);
 
-             // 4. Start Video Proxy
+             // 5. Start Video Proxy with the specific stream for this device
              final proxyPort = await _videoProxyService.startProxyFromStream(
-               scrcpyClient.videoStream,
+               serial,
+               session.videoStream,
              );
-
-             // 5. Parse header (Blocking, so we should allow next connection to proceed if async? 
-             // actually parseHeader consumes data from socket, so it's fine)
-             // We await here to ensure we don't return URL before header is parsed? 
-             // Yes, but we must not block the event loop preventing the second connection if they happen rapidly.
-             // parseHeaderFromSocket reads from socket stream.
-             
-             // We can fire and forget the header parsing if it manages the stream piping?
-             // No, parseHeaderFromSocket likely pipes the socket to the parser/proxy.
-             
-             // Let's look at what parseHeaderFromSocket does. 
-             // It probably pipes socket -> parser -> videoStream.
-             // So we should await it? 
-             await scrcpyClient.parseHeaderFromSocket(socket);
 
              // 6. Return Proxy URL
              final url = 'tcp://127.0.0.1:$proxyPort';
@@ -195,7 +185,6 @@ abstract class _DeviceStore with Store {
     );
   }
 
-  @action
   void sendTouch(
     String serial,
     int x,

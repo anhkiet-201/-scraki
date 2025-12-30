@@ -79,7 +79,7 @@ class ScrcpyService {
       final args = [
         _serverVersion,
         'scid=$scid',
-        'log_level=debug', // Changed to debug for more verbose logs
+        'log_level=info', // Reduced from debug to info to prevent lag
         'audio=false',
         'video_codec=h265', // Switched from h264 to h265
         if (options.maxSize > 0) 'max_size=${options.maxSize}',

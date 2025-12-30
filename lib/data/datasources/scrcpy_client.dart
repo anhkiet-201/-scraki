@@ -7,30 +7,23 @@ import '../../core/error/exceptions.dart';
 import '../../core/protocol/scrcpy_header.dart';
 import '../../core/protocol/scrcpy_protocol_parser.dart';
 
+class ScrcpySession {
+  final ScrcpyHeader header;
+  final Stream<List<int>> videoStream;
+  final Socket socket;
+  
+  ScrcpySession({
+    required this.header, 
+    required this.videoStream,
+    required this.socket,
+  });
+}
+
 @lazySingleton
 class ScrcpyClient {
   final Shell _shell;
-  Socket? _socket;
-  StreamSubscription<List<int>>? _subscription;
-
-  // StreamController needs to be recreatable since singleton may be reused
-  StreamController<List<int>>? _streamController;
-
-  StreamController<List<int>> get _controller {
-    if (_streamController == null || _streamController!.isClosed) {
-      _streamController = StreamController<List<int>>.broadcast();
-    }
-    return _streamController!;
-  }
 
   ScrcpyClient() : _shell = Shell();
-
-  Stream<List<int>> get videoStream {
-    print(
-      '[ScrcpyClient] videoStream getter called. Controller isClosed: ${_streamController?.isClosed}',
-    );
-    return _controller.stream;
-  }
 
   /// Sets up ADB reverse tunnel: adb reverse localabstract:scrcpy_$scid tcp:localPort
   Future<void> setupTunnel(String serial, int localPort, String scid) async {
@@ -60,118 +53,29 @@ class ScrcpyClient {
     }
   }
 
-  /// Connects to the forwarded local port and authenticates (reads header)
-  Future<ScrcpyHeader> connect(int localPort) async {
+  /// Parse header from an already-connected socket and return a session with stream
+  Future<ScrcpySession> parseHeaderFromSocket(Socket socket) async {
     try {
-      // Cleanup previous session if any
-      await disconnect();
-
-      print('[ScrcpyClient] Connecting to 127.0.0.1:$localPort...');
-      _socket = await Socket.connect('127.0.0.1', localPort);
-      _socket!.setOption(SocketOption.tcpNoDelay, true);
-      print('[ScrcpyClient] Socket connected, waiting for header...');
-
-      final completer = Completer<ScrcpyHeader>();
-      final buffer = <int>[];
-      bool headerParsed = false;
-
-      _subscription = _socket!.listen(
-        (data) {
-          // print(
-          //   '[ScrcpyClient] Received ${data.length} bytes. Buffer size: ${buffer.length}',
-          // );
-          if (!headerParsed) {
-            buffer.addAll(data);
-            print(
-              '[ScrcpyClient] Buffer now has ${buffer.length} bytes (need ${ScrcpyProtocolParser.headerSize})',
-            );
-            if (buffer.length >= ScrcpyProtocolParser.headerSize) {
-              try {
-                print('[ScrcpyClient] Parsing header...');
-                final headerData = Uint8List.fromList(buffer);
-                final header = ScrcpyProtocolParser.parseHeader(headerData);
-                headerParsed = true;
-                print(
-                  '[ScrcpyClient] Header parsed successfully: ${header.deviceName} ${header.width}x${header.height}',
-                );
-                completer.complete(header);
-
-                // Forward any remaining bytes (video data) to the stream
-                if (buffer.length > ScrcpyProtocolParser.headerSize) {
-                  print(
-                    '[ScrcpyClient] Forwarding ${buffer.length - ScrcpyProtocolParser.headerSize} bytes of video data',
-                  );
-                  _controller.add(
-                    buffer.sublist(ScrcpyProtocolParser.headerSize),
-                  );
-                }
-              } catch (e) {
-                print('[ScrcpyClient] Error parsing header: $e');
-                if (!completer.isCompleted) completer.completeError(e);
-                disconnect();
-              }
-            }
-          } else {
-            // Forward directly to stream
-            _controller.add(data);
-          }
-        },
-        onError: (Object e) {
-          print('[ScrcpyClient] Socket error: $e');
-          if (!completer.isCompleted) completer.completeError(e);
-          _controller.addError(e);
-        },
-        onDone: () {
-          print('[ScrcpyClient] Socket closed');
-          _controller.close();
-        },
-      );
-
-      // Add timeout
-      return completer.future.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          print(
-            '[ScrcpyClient] Timeout waiting for header. Buffer size: ${buffer.length}',
-          );
-          disconnect();
-          throw ServerException('Timeout waiting for Scrcpy header');
-        },
-      );
-    } catch (e) {
-      print('[ScrcpyClient] Connection failed: $e');
-      throw ServerException('Failed to connect to Scrcpy server: $e');
-    }
-  }
-
-  /// Parse header from an already-connected socket
-  Future<ScrcpyHeader> parseHeaderFromSocket(Socket socket) async {
-    try {
-      // Cleanup previous session if any (except the socket we just got)
-      await _subscription?.cancel();
-      _subscription = null;
-      if (_socket != null && _socket != socket) {
-        await _socket!.close();
-      }
-
-      _socket = socket;
-      _socket!.setOption(SocketOption.tcpNoDelay, true);
+      socket.setOption(SocketOption.tcpNoDelay, true);
       print('[ScrcpyClient] Parsing header from connected socket...');
 
-      final completer = Completer<ScrcpyHeader>();
+      final completer = Completer<ScrcpySession>();
       final buffer = <int>[];
       bool headerParsed = false;
+      
+      // Use a single-subscription controller so it buffers events until listened to.
+      // This is crucial because we might receive the Config Packet immediately after the header,
+      // before the caller (DeviceStore -> VideoProxyService) has a chance to subscribe.
+      final controller = StreamController<List<int>>();
 
-      _subscription = _socket!.listen(
+      // We need to keep subscription alive, so we don't cancel it inside the function.
+      // The controller's stream is what the UI/Proxy will listen to.
+      // We'll hook the socket to the controller.
+      
+      socket.listen(
         (data) {
-          // print(
-          //   '[ScrcpyClient] Received ${data.length} bytes. Buffer size: ${buffer.length}',
-          // );
           if (!headerParsed) {
             buffer.addAll(data);
-            print(
-              '[ScrcpyClient] Buffer now has ${buffer.length} bytes (need ${ScrcpyProtocolParser.headerSize})',
-            );
             if (buffer.length >= ScrcpyProtocolParser.headerSize) {
               try {
                 print('[ScrcpyClient] Parsing header...');
@@ -181,47 +85,57 @@ class ScrcpyClient {
                 print(
                   '[ScrcpyClient] Header parsed successfully: ${header.deviceName} ${header.width}x${header.height}',
                 );
-                completer.complete(header);
+                
+                // Create session object
+                final session = ScrcpySession(
+                  header: header,
+                  videoStream: controller.stream,
+                  socket: socket
+                );
+                
+                completer.complete(session);
 
                 // Forward any remaining bytes (video data) to the stream
                 if (buffer.length > ScrcpyProtocolParser.headerSize) {
                   print(
                     '[ScrcpyClient] Forwarding ${buffer.length - ScrcpyProtocolParser.headerSize} bytes of video data',
                   );
-                  _controller.add(
+                  controller.add(
                     buffer.sublist(ScrcpyProtocolParser.headerSize),
                   );
                 }
               } catch (e) {
                 print('[ScrcpyClient] Error parsing header: $e');
                 if (!completer.isCompleted) completer.completeError(e);
-                disconnect();
+                socket.destroy();
+                controller.close();
               }
             }
           } else {
             // Forward directly to stream
-            _controller.add(data);
+            controller.add(data);
           }
         },
         onError: (Object e) {
           print('[ScrcpyClient] Socket error: $e');
           if (!completer.isCompleted) completer.completeError(e);
-          _controller.addError(e);
+          controller.addError(e);
         },
         onDone: () {
           print('[ScrcpyClient] Socket closed');
-          _controller.close();
+          controller.close();
         },
       );
 
-      // Add timeout
+      // Add timeout for header only
       return completer.future.timeout(
         const Duration(seconds: 5),
         onTimeout: () {
           print(
             '[ScrcpyClient] Timeout waiting for header. Buffer size: ${buffer.length}',
           );
-          disconnect();
+          socket.destroy();
+          controller.close();
           throw ServerException('Timeout waiting for Scrcpy header');
         },
       );
@@ -229,11 +143,5 @@ class ScrcpyClient {
       print('[ScrcpyClient] Failed to parse header: $e');
       throw ServerException('Failed to parse Scrcpy header: $e');
     }
-  }
-
-  Future<void> disconnect() async {
-    await _subscription?.cancel();
-    await _socket?.close();
-    await _controller.close();
   }
 }

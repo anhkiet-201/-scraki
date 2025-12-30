@@ -52,7 +52,7 @@ class DeviceControlService {
     try {
       final data = message.serialize();
       socket.add(data);
-      socket.flush(); // Ensure immediate transmission
+      // socket.flush() is not needed with tcpNoDelay and causes overhead
     } catch (e) {
       print('Error sending touch event to $serial: $e');
       dispose(serial);

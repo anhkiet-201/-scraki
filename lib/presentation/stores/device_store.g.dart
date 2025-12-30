@@ -177,25 +177,6 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   @override
-  void sendTouch(
-    String serial,
-    int x,
-    int y,
-    int action,
-    int width,
-    int height,
-  ) {
-    final _$actionInfo = _$_DeviceStoreActionController.startAction(
-      name: '_DeviceStore.sendTouch',
-    );
-    try {
-      return super.sendTouch(serial, x, y, action, width, height);
-    } finally {
-      _$_DeviceStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
   String toString() {
     return '''
 devices: ${devices},
