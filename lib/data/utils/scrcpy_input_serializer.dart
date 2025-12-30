@@ -77,3 +77,47 @@ class TouchControlMessage extends ControlMessage {
     return buffer.toBytes();
   }
 }
+
+class KeyControlMessage extends ControlMessage {
+  static const int typeInjectKeyEvent = 0; // 0x00
+
+  final int action; // 0=Down, 1=Up
+  final int keyCode;
+  final int repeat;
+  final int metaState;
+
+  KeyControlMessage({
+    required this.action,
+    required this.keyCode,
+    this.repeat = 0,
+    this.metaState = 0,
+  });
+
+  @override
+  Uint8List serialize() {
+    final buffer = BytesBuilder();
+    
+    // 1. Type (1 byte)
+    buffer.addByte(typeInjectKeyEvent);
+    
+    // 2. Action (1 byte)
+    buffer.addByte(action);
+    
+    // 3. KeyCode (4 bytes)
+    final keyData = ByteData(4);
+    keyData.setInt32(0, keyCode, Endian.big);
+    buffer.add(keyData.buffer.asUint8List());
+    
+    // 4. Repeat (4 bytes)
+    final repeatData = ByteData(4);
+    repeatData.setInt32(0, repeat, Endian.big);
+    buffer.add(repeatData.buffer.asUint8List());
+    
+    // 5. MetaState (4 bytes)
+    final metaData = ByteData(4);
+    metaData.setInt32(0, metaState, Endian.big);
+    buffer.add(metaData.buffer.asUint8List());
+    
+    return buffer.toBytes();
+  }
+}

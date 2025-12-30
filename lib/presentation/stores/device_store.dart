@@ -203,6 +203,18 @@ abstract class _DeviceStore with Store {
       height: height,
     );
 
-    _controlService.sendTouch(serial, message);
+    _controlService.sendControlMessage(serial, message);
+  }
+  
+  void sendKey(String serial, int keyCode, int action, {int metaState = 0}) {
+    if (keyCode == 0) return;
+    
+    final message = KeyControlMessage(
+      action: action, // 0=Down, 1=Up
+      keyCode: keyCode,
+      metaState: metaState,
+    );
+    
+    _controlService.sendControlMessage(serial, message); 
   }
 }

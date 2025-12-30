@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/di/injection.dart';
+import '../../../core/utils/android_key_codes.dart';
 import '../../../domain/entities/device_entity.dart';
 import '../atoms/protocol_icon.dart';
 import '../atoms/status_badge.dart';
@@ -130,6 +132,20 @@ class _DeviceCardState extends State<DeviceCard> {
                             height,
                           );
                         },
+                        onKey: (keyId, action) {
+                           // Find logical key from ID (optimization: pass object directly later?)
+                           final key = LogicalKeyboardKey.findKeyByKeyId(keyId);
+                           if (key != null) {
+                             final androidCode = AndroidKeyCodes.getKeyCode(key);
+                             if (androidCode != AndroidKeyCodes.kUnknown) {
+                               getIt<DeviceStore>().sendKey(
+                                 widget.device.serial,
+                                 androidCode,
+                                 action,
+                               );
+                             }
+                           }
+                        },
                       )
                     else if (_isLoading)
                       const CircularProgressIndicator()
@@ -170,3 +186,4 @@ class _DeviceCardState extends State<DeviceCard> {
     );
   }
 }
+

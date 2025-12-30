@@ -39,8 +39,8 @@ class DeviceControlService {
     );
   }
 
-  /// Sends a serialized touch message to the device
-  void sendTouch(String serial, TouchControlMessage message) {
+  /// Sends a serialized control message (Touch, Key, etc.) to the device
+  void sendControlMessage(String serial, ControlMessage message) {
     final socket = _activeSockets[serial];
     if (socket == null) {
       print('Warning: No active control socket for $serial');
@@ -54,7 +54,7 @@ class DeviceControlService {
       socket.add(data);
       // socket.flush() is not needed with tcpNoDelay and causes overhead
     } catch (e) {
-      print('Error sending touch event to $serial: $e');
+      print('Error sending control message to $serial: $e');
       dispose(serial);
     }
   }

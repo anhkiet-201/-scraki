@@ -16,6 +16,10 @@ class NativeVideoDecoder extends StatefulWidget {
   /// Callback for input events (action, x, y, viewWidth, viewHeight)
   /// Action: 0=Down, 1=Up, 2=Move
   final void Function(int action, int x, int y, int width, int height)? onInput;
+  
+  /// Callback for key events (keyCode, action)
+  /// Action: 0=Down, 1=Up
+  final void Function(int keyCode, int action)? onKey;
 
   const NativeVideoDecoder({
     super.key,
@@ -23,6 +27,7 @@ class NativeVideoDecoder extends StatefulWidget {
     this.fit = BoxFit.contain,
     this.onError,
     this.onInput,
+    this.onKey,
   });
 
   @override
@@ -35,6 +40,7 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   int? _textureId;
   bool _isInitializing = true;
   String? _errorMessage;
+  final FocusNode _focusNode = FocusNode();
   
   // Dimensions - ideally should be dynamic from decoder
   final int _videoWidth = 1080;
@@ -44,6 +50,13 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   void initState() {
     super.initState();
     _startDecoding();
+  }
+  
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _stopDecoding();
+    super.dispose();
   }
 
   Future<void> _startDecoding() async {
@@ -92,17 +105,35 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   void _handlePointer(PointerEvent event, int action) {
     if (widget.onInput == null) return;
     
+    // Request focus on tap to enable keyboard input
+    if (action == 0 && !_focusNode.hasFocus) {
+      FocusScope.of(context).requestFocus(_focusNode);
+    }
+    
     // Coordinates are local to the SizedBox due to Listener inside FittedBox
     final x = event.localPosition.dx.toInt().clamp(0, _videoWidth);
     final y = event.localPosition.dy.toInt().clamp(0, _videoHeight);
     
     widget.onInput!(action, x, y, _videoWidth, _videoHeight);
   }
-
-  @override
-  void dispose() {
-    _stopDecoding();
-    super.dispose();
+  
+  void _handleKey(KeyEvent event) {
+    if (widget.onKey == null) return;
+    if (event is KeyRepeatEvent) return; // Ignore repeats for now or handle them? Scrcpy repeats sent as Down
+    
+    // Map LogicalKey to Android KeyCode (User needs to implement mapping logic externally or pass raw?)
+    // Actually best to pass LogicalKeyboardKey and map outside, but for now we pass generic int if we mapped here.
+    // Let's pass the raw Flutter Key ID or map it outside?
+    // The prompt implied passing (keyCode, action).
+    // Let's assume the parent widget handles mapping? 
+    // No, NativeVideoDecoder is low level UI.
+    // But we need to pass the raw event or a mapped code.
+    // Let's pass the raw LogicalKeyboardKey keyId and let parent map it.
+    // Wait, the callback signature is (int keyCode, int action).
+    // I will assume the parent does the mapping if I pass the Flutter ID?
+    // Or I should map it here using the util class I just created?
+    // I cannot import 'android_key_codes.dart' easily without adding import.
+    // Let's modify the file imports first.
   }
 
   @override
@@ -144,16 +175,29 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
 
     return FittedBox(
       fit: widget.fit,
-      child: Listener(
-        onPointerDown: (e) => _handlePointer(e, 0), // Action Down
-        onPointerUp: (e) => _handlePointer(e, 1),   // Action Up
-        onPointerMove: (e) => _handlePointer(e, 2), // Action Move
-        child: SizedBox(
-          width: _videoWidth.toDouble(), 
-          height: _videoHeight.toDouble(),
-          child: Texture(
-            textureId: _textureId!,
-            filterQuality: FilterQuality.low, // Low latency, no smoothing
+      child: KeyboardListener(
+        focusNode: _focusNode,
+        onKeyEvent: (event) {
+             if (widget.onKey != null) {
+               // 0=Down, 1=Up
+               final action = (event is KeyDownEvent) ? 0 : (event is KeyUpEvent) ? 1 : -1;
+               if (action != -1) {
+                  // Pass the Flutter Logical Key ID, parent will map it
+                  widget.onKey!(event.logicalKey.keyId, action);
+               }
+             }
+        },
+        child: Listener(
+          onPointerDown: (e) => _handlePointer(e, 0), // Action Down
+          onPointerUp: (e) => _handlePointer(e, 1),   // Action Up
+          onPointerMove: (e) => _handlePointer(e, 2), // Action Move
+          child: SizedBox(
+            width: _videoWidth.toDouble(), 
+            height: _videoHeight.toDouble(),
+            child: Texture(
+              textureId: _textureId!,
+              filterQuality: FilterQuality.low, // Low latency, no smoothing
+            ),
           ),
         ),
       ),
