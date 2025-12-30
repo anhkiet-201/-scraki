@@ -86,7 +86,7 @@ class ScrcpyService {
         'video_bit_rate=4000000', // Reduced from 8Mbps to 4Mbps for lower latency
         if (options.maxFps > 0) 'max_fps=${options.maxFps}',
         'tunnel_forward=false',
-        'control=false',
+        'control=true',
         'cleanup=true',
         // Essential meta options
         'send_device_meta=true',

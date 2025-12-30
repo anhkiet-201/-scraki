@@ -120,6 +120,16 @@ class _DeviceCardState extends State<DeviceCard> {
                           );
                           _stopMirroring();
                         },
+                        onInput: (action, x, y, width, height) {
+                          getIt<DeviceStore>().sendTouch(
+                            widget.device.serial,
+                            x,
+                            y,
+                            action,
+                            width,
+                            height,
+                          );
+                        },
                       )
                     else if (_isLoading)
                       const CircularProgressIndicator()

@@ -52,6 +52,21 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# FFmpeg Configuration
+set(FFMPEG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg")
+set(FFMPEG_INCLUDE_DIRS "${FFMPEG_ROOT}/include")
+set(FFMPEG_LIBRARY_DIRS "${FFMPEG_ROOT}/lib")
+set(FFMPEG_BINARY_DIRS "${FFMPEG_ROOT}/bin")
+
+include_directories(${FFMPEG_INCLUDE_DIRS})
+link_directories(${FFMPEG_LIBRARY_DIRS})
+
+# Add FFmpeg DLLs to the install step
+file(GLOB FFMPEG_DLLS "${FFMPEG_BINARY_DIRS}/*.dll")
+install(FILES ${FFMPEG_DLLS}
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.

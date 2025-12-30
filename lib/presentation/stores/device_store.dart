@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import '../../core/di/injection.dart';
@@ -104,31 +105,68 @@ abstract class _DeviceStore with Store {
       // 2. Initialize Scrcpy Server
       await _scrcpyService.initServer(serial, options, localPort);
 
-      // 3. Wait for server to connect
-      final clientSocket = await serverSocket.first.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
+      // 3. Handle connections (Video first, then Control)
+      final completer = Completer<String>();
+      int connectionCount = 0;
+      
+      // We expect 2 connections: Video and Control (Audio is disabled)
+      serverSocket.listen((socket) async {
+        connectionCount++;
+        print('[DeviceStore] Connection $connectionCount received from ${socket.remoteAddress.address}');
+
+        if (connectionCount == 1) {
+          // --- VIDEO SOCKET ---
+          try {
+             final scrcpyClient = getIt<ScrcpyClient>();
+
+             // 4. Start Video Proxy
+             final proxyPort = await _videoProxyService.startProxyFromStream(
+               scrcpyClient.videoStream,
+             );
+
+             // 5. Parse header (Blocking, so we should allow next connection to proceed if async? 
+             // actually parseHeader consumes data from socket, so it's fine)
+             // We await here to ensure we don't return URL before header is parsed? 
+             // Yes, but we must not block the event loop preventing the second connection if they happen rapidly.
+             // parseHeaderFromSocket reads from socket stream.
+             
+             // We can fire and forget the header parsing if it manages the stream piping?
+             // No, parseHeaderFromSocket likely pipes the socket to the parser/proxy.
+             
+             // Let's look at what parseHeaderFromSocket does. 
+             // It probably pipes socket -> parser -> videoStream.
+             // So we should await it? 
+             await scrcpyClient.parseHeaderFromSocket(socket);
+
+             // 6. Return Proxy URL
+             final url = 'tcp://127.0.0.1:$proxyPort';
+             print('Stream available at $url');
+             if (!completer.isCompleted) {
+                completer.complete(url);
+             }
+          } catch (e) {
+             print('[DeviceStore] Error setting up video: $e');
+             if (!completer.isCompleted) completer.completeError(e);
+             serverSocket.close();
+          }
+        } else if (connectionCount == 2) {
+          // --- CONTROL SOCKET ---
+          print('[DeviceStore] Setting up Control Socket');
+          _controlService.setControlSocket(serial, socket);
+          
+          // We have both, close listener
+          print('[DeviceStore] All channels connected. Closing server listener.');
           serverSocket.close();
-          throw Exception('Timeout waiting for scrcpy server connection');
-        },
-      );
-      serverSocket.close();
+        }
+      }, onError: (Object e) {
+        print('[DeviceStore] Server socket error: $e');
+        if (!completer.isCompleted) completer.completeError(e);
+      });
 
-      // Get scrcpy client instance
-      final scrcpyClient = getIt<ScrcpyClient>();
-
-      // 4. Start Video Proxy
-      final proxyPort = await _videoProxyService.startProxyFromStream(
-        scrcpyClient.videoStream,
-      );
-
-      // 5. Parse header
-      await scrcpyClient.parseHeaderFromSocket(clientSocket);
-
-      // 6. Return Proxy URL
-      final url = 'tcp://127.0.0.1:$proxyPort';
-      print('Stream available at $url');
-      return url;
+      return completer.future.timeout(const Duration(seconds: 10), onTimeout: () {
+         serverSocket.close();
+         throw Exception('Timeout waiting for connections');
+      });
     } catch (e, stackTrace) {
       print('[DeviceStore] ERROR: $e');
       print('[DeviceStore] Stack trace: $stackTrace');

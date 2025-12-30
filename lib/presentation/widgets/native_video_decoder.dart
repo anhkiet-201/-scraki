@@ -13,11 +13,16 @@ class NativeVideoDecoder extends StatefulWidget {
   /// Callback when decoder encounters an error
   final void Function(String error)? onError;
 
+  /// Callback for input events (action, x, y, viewWidth, viewHeight)
+  /// Action: 0=Down, 1=Up, 2=Move
+  final void Function(int action, int x, int y, int width, int height)? onInput;
+
   const NativeVideoDecoder({
     super.key,
     required this.streamUrl,
     this.fit = BoxFit.contain,
     this.onError,
+    this.onInput,
   });
 
   @override
@@ -30,6 +35,10 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   int? _textureId;
   bool _isInitializing = true;
   String? _errorMessage;
+  
+  // Dimensions - ideally should be dynamic from decoder
+  final int _videoWidth = 1080;
+  final int _videoHeight = 2336;
 
   @override
   void initState() {
@@ -80,6 +89,16 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
     }
   }
 
+  void _handlePointer(PointerEvent event, int action) {
+    if (widget.onInput == null) return;
+    
+    // Coordinates are local to the SizedBox due to Listener inside FittedBox
+    final x = event.localPosition.dx.toInt().clamp(0, _videoWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, _videoHeight);
+    
+    widget.onInput!(action, x, y, _videoWidth, _videoHeight);
+  }
+
   @override
   void dispose() {
     _stopDecoding();
@@ -125,12 +144,17 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
 
     return FittedBox(
       fit: widget.fit,
-      child: SizedBox(
-        width: 1080, // Default size, will be scaled by FittedBox
-        height: 2336,
-        child: Texture(
-          textureId: _textureId!,
-          filterQuality: FilterQuality.low, // Low latency, no smoothing
+      child: Listener(
+        onPointerDown: (e) => _handlePointer(e, 0), // Action Down
+        onPointerUp: (e) => _handlePointer(e, 1),   // Action Up
+        onPointerMove: (e) => _handlePointer(e, 2), // Action Move
+        child: SizedBox(
+          width: _videoWidth.toDouble(), 
+          height: _videoHeight.toDouble(),
+          child: Texture(
+            textureId: _textureId!,
+            filterQuality: FilterQuality.low, // Low latency, no smoothing
+          ),
         ),
       ),
     );

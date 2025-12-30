@@ -39,32 +39,36 @@ class TouchControlMessage extends ControlMessage {
     buffer.addByte(action);
 
     // 3. Pointer ID (8 bytes)
-    // We send an 8-byte long. Converting pointerId to bytes.
-    // Assuming pointerId fits in standard int, we pad to 64-bit.
     final pointerData = ByteData(8);
     pointerData.setInt64(0, pointerId, Endian.big);
     buffer.add(pointerData.buffer.asUint8List());
 
-    // 4. Position (4 bytes x 2)
-    // X and Y are int32
-    final posData = ByteData(8);
+    // 4. Position (12 bytes total)
+    // X (4), Y (4), Width (2), Height (2)
+    final posData = ByteData(12);
     posData.setInt32(0, x, Endian.big);
     posData.setInt32(4, y, Endian.big);
+    posData.setUint16(8, width, Endian.big);
+    posData.setUint16(10, height, Endian.big);
     buffer.add(posData.buffer.asUint8List());
 
     // 5. Pressure (2 bytes)
-    // int16. 0xFFFF for max (most touches), 0 for up?
-    // Protocol usually sends pressure. Normalized 0..1 in float? No, usually int16.
-    // 0xFFFF is safe default for "pressed".
     final pressureData = ByteData(2);
     int pressure = (action == actionUp) ? 0 : 0xFFFF;
     pressureData.setUint16(0, pressure, Endian.big);
     buffer.add(pressureData.buffer.asUint8List());
 
-    // 6. Buttons (4 bytes)
-    // int32. Secondary click etc.
-    // 1: Primary (Left)
-    // 0: None
+    // 6. Action Button (4 bytes)
+    // For touch, usually 0 or same as buttons?
+    // Scrcpy v2+ adds this. Default to 0 or 1?
+    // Usually 0 for pure touch, but 1 for "primary" like mouse?
+    // Let's use 1 if pressed, 0 if up, same as buttons.
+    final actionButtonData = ByteData(4);
+    int actionButton = (action == actionUp) ? 0 : 1;
+    actionButtonData.setInt32(0, actionButton, Endian.big);
+    buffer.add(actionButtonData.buffer.asUint8List());
+
+    // 7. Buttons (4 bytes)
     final buttonsData = ByteData(4);
     int buttons = (action == actionUp) ? 0 : 1;
     buttonsData.setInt32(0, buttons, Endian.big);
