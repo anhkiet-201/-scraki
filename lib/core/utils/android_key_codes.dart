@@ -106,6 +106,7 @@ class AndroidKeyCodes {
   static const int kForward = 125;
   static const int kMediaPlay = 126;
   static const int kMediaPause = 127;
+  static const int kAppSwitch = 187;
 
   // Meta States (from Android KeyEvent.java)
   static const int kMetaAltOn = 0x02;

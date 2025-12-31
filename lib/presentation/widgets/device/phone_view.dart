@@ -270,15 +270,81 @@ class _PhoneViewState extends State<PhoneView> {
           child: SizedBox(
             width: (session?.width ?? _nativeWidth).toDouble(),
             height: (session?.height ?? _nativeHeight).toDouble(),
-            child: NativeVideoDecoder(
-              key: Key('decoder_${widget.serial}'),
-              streamUrl: displayUrl!,
-              nativeWidth: session?.width ?? _nativeWidth,
-              nativeHeight: session?.height ?? _nativeHeight,
-              service: session!.decoderService,
-              fit: widget.fit,
-              onError: _onDecoderError,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: NativeVideoDecoder(
+                    key: Key('decoder_${widget.serial}'),
+                    streamUrl: displayUrl!,
+                    nativeWidth: session?.width ?? _nativeWidth,
+                    nativeHeight: session?.height ?? _nativeHeight,
+                    service: session!.decoderService,
+                    fit: widget.fit,
+                    onError: _onDecoderError,
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildNavigationBar(),
+                ),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationBar() {
+    return Container(
+      height: 120, // Relative to native resolution (e.g. 1080x2336)
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.0),
+            Colors.black.withOpacity(0.4),
+          ],
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavButton(
+            Icons.arrow_back_ios_new_rounded,
+            AndroidKeyCodes.kBack,
+          ),
+          _buildNavButton(Icons.circle_outlined, AndroidKeyCodes.kHome),
+          _buildNavButton(
+            Icons.crop_square_rounded,
+            AndroidKeyCodes.kAppSwitch,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton(IconData icon, int keyCode) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          // Send Down then Up for a full click
+          getIt<PhoneViewStore>().sendKey(widget.serial, keyCode, 0);
+          Future.delayed(const Duration(milliseconds: 50), () {
+            getIt<PhoneViewStore>().sendKey(widget.serial, keyCode, 1);
+          });
+        },
+        customBorder: const CircleBorder(),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 48, // Large icons for native resolution
           ),
         ),
       ),
