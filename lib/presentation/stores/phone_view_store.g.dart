@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'device_store.dart';
+part of 'phone_view_store.dart';
 
 // **************************************************************************
 // StoreGenerator
@@ -8,17 +8,24 @@ part of 'device_store.dart';
 
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
-mixin _$DeviceStore on _DeviceStore, Store {
+mixin _$PhoneViewStore on _PhoneViewStore, Store {
   Computed<bool>? _$isLoadingComputed;
 
   @override
   bool get isLoading => (_$isLoadingComputed ??= Computed<bool>(
     () => super.isLoading,
-    name: '_DeviceStore.isLoading',
+    name: '_PhoneViewStore.isLoading',
+  )).value;
+  Computed<bool>? _$isFloatingVisibleComputed;
+
+  @override
+  bool get isFloatingVisible => (_$isFloatingVisibleComputed ??= Computed<bool>(
+    () => super.isFloatingVisible,
+    name: '_PhoneViewStore.isFloatingVisible',
   )).value;
 
   late final _$devicesAtom = Atom(
-    name: '_DeviceStore.devices',
+    name: '_PhoneViewStore.devices',
     context: context,
   );
 
@@ -36,7 +43,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$selectedSerialsAtom = Atom(
-    name: '_DeviceStore.selectedSerials',
+    name: '_PhoneViewStore.selectedSerials',
     context: context,
   );
 
@@ -54,7 +61,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$isBroadcastingModeAtom = Atom(
-    name: '_DeviceStore.isBroadcastingMode',
+    name: '_PhoneViewStore.isBroadcastingMode',
     context: context,
   );
 
@@ -72,7 +79,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$loadDevicesFutureAtom = Atom(
-    name: '_DeviceStore.loadDevicesFuture',
+    name: '_PhoneViewStore.loadDevicesFuture',
     context: context,
   );
 
@@ -90,7 +97,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$errorMessageAtom = Atom(
-    name: '_DeviceStore.errorMessage',
+    name: '_PhoneViewStore.errorMessage',
     context: context,
   );
 
@@ -107,8 +114,44 @@ mixin _$DeviceStore on _DeviceStore, Store {
     });
   }
 
+  late final _$floatingSerialAtom = Atom(
+    name: '_PhoneViewStore.floatingSerial',
+    context: context,
+  );
+
+  @override
+  String? get floatingSerial {
+    _$floatingSerialAtom.reportRead();
+    return super.floatingSerial;
+  }
+
+  @override
+  set floatingSerial(String? value) {
+    _$floatingSerialAtom.reportWrite(value, super.floatingSerial, () {
+      super.floatingSerial = value;
+    });
+  }
+
+  late final _$activeSessionsAtom = Atom(
+    name: '_PhoneViewStore.activeSessions',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, MirrorSession> get activeSessions {
+    _$activeSessionsAtom.reportRead();
+    return super.activeSessions;
+  }
+
+  @override
+  set activeSessions(ObservableMap<String, MirrorSession> value) {
+    _$activeSessionsAtom.reportWrite(value, super.activeSessions, () {
+      super.activeSessions = value;
+    });
+  }
+
   late final _$loadDevicesAsyncAction = AsyncAction(
-    '_DeviceStore.loadDevices',
+    '_PhoneViewStore.loadDevices',
     context: context,
   );
 
@@ -118,7 +161,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$startMirroringAsyncAction = AsyncAction(
-    '_DeviceStore.startMirroring',
+    '_PhoneViewStore.startMirroring',
     context: context,
   );
 
@@ -128,7 +171,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$stopMirroringAsyncAction = AsyncAction(
-    '_DeviceStore.stopMirroring',
+    '_PhoneViewStore.stopMirroring',
     context: context,
   );
 
@@ -138,7 +181,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$connectTcpAsyncAction = AsyncAction(
-    '_DeviceStore.connectTcp',
+    '_PhoneViewStore.connectTcp',
     context: context,
   );
 
@@ -148,7 +191,7 @@ mixin _$DeviceStore on _DeviceStore, Store {
   }
 
   late final _$disconnectAsyncAction = AsyncAction(
-    '_DeviceStore.disconnect',
+    '_PhoneViewStore.disconnect',
     context: context,
   );
 
@@ -157,32 +200,44 @@ mixin _$DeviceStore on _DeviceStore, Store {
     return _$disconnectAsyncAction.run(() => super.disconnect(serial));
   }
 
-  late final _$_DeviceStoreActionController = ActionController(
-    name: '_DeviceStore',
+  late final _$_PhoneViewStoreActionController = ActionController(
+    name: '_PhoneViewStore',
     context: context,
   );
 
   @override
+  void toggleFloating(String? serial) {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.toggleFloating',
+    );
+    try {
+      return super.toggleFloating(serial);
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void toggleBroadcasting() {
-    final _$actionInfo = _$_DeviceStoreActionController.startAction(
-      name: '_DeviceStore.toggleBroadcasting',
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.toggleBroadcasting',
     );
     try {
       return super.toggleBroadcasting();
     } finally {
-      _$_DeviceStoreActionController.endAction(_$actionInfo);
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
     }
   }
 
   @override
   void toggleDeviceSelection(String serial) {
-    final _$actionInfo = _$_DeviceStoreActionController.startAction(
-      name: '_DeviceStore.toggleDeviceSelection',
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.toggleDeviceSelection',
     );
     try {
       return super.toggleDeviceSelection(serial);
     } finally {
-      _$_DeviceStoreActionController.endAction(_$actionInfo);
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
     }
   }
 
@@ -194,7 +249,10 @@ selectedSerials: ${selectedSerials},
 isBroadcastingMode: ${isBroadcastingMode},
 loadDevicesFuture: ${loadDevicesFuture},
 errorMessage: ${errorMessage},
-isLoading: ${isLoading}
+floatingSerial: ${floatingSerial},
+activeSessions: ${activeSessions},
+isLoading: ${isLoading},
+isFloatingVisible: ${isFloatingVisible}
     ''';
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import '../../core/di/injection.dart';
@@ -13,23 +14,24 @@ import '../../data/services/video_proxy_service.dart';
 import '../../data/utils/scrcpy_input_serializer.dart';
 import '../../domain/entities/mirror_session.dart';
 import '../../core/utils/logger.dart';
+import '../widgets/device/native_video_decoder_service.dart';
 
-part 'device_store.g.dart';
+part 'phone_view_store.g.dart';
 
 @lazySingleton
-class DeviceStore = _DeviceStore with _$DeviceStore;
+class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 
 /// Store responsible for managing device-related state and mirroring sessions.
 ///
 /// It orchestrates the process of loading devices, starting mirroring,
 /// and handling input events.
-abstract class _DeviceStore with Store {
+abstract class _PhoneViewStore with Store {
   final DeviceRepository _repository;
   final ScrcpyService _scrcpyService;
   final DeviceControlService _controlService;
   final VideoProxyService _videoProxyService;
 
-  _DeviceStore(
+  _PhoneViewStore(
     this._repository,
     this._scrcpyService,
     this._controlService,
@@ -51,8 +53,27 @@ abstract class _DeviceStore with Store {
   @observable
   String? errorMessage;
 
+  @observable
+  String? floatingSerial;
+
+  @observable
+  ObservableMap<String, MirrorSession> activeSessions =
+      ObservableMap<String, MirrorSession>();
+
   @computed
   bool get isLoading => loadDevicesFuture?.status == FutureStatus.pending;
+
+  @computed
+  bool get isFloatingVisible => floatingSerial != null;
+
+  @action
+  void toggleFloating(String? serial) {
+    if (floatingSerial == serial) {
+      floatingSerial = null;
+    } else {
+      floatingSerial = serial;
+    }
+  }
 
   @action
   void toggleBroadcasting() {
@@ -97,14 +118,14 @@ abstract class _DeviceStore with Store {
   Future<MirrorSession> startMirroring(String serial) async {
     errorMessage = null;
 
-    // Force stop previous session if any to ensure cleanup
-    await stopMirroring(serial);
-
-    // Wait for Scrcpy Server on device to release resources (Camera/Encoder)
-    // await Future.delayed(const Duration(milliseconds: 1000));
+    // Return existing session if available
+    if (activeSessions.containsKey(serial)) {
+      logger.i('[DeviceStore] Using existing mirroring session for $serial');
+      return activeSessions[serial]!;
+    }
 
     try {
-      logger.i('[DeviceStore] Starting mirroring for $serial');
+      logger.i('[DeviceStore] Starting new mirroring session for $serial');
 
       // 1. Create a server socket FIRST (before starting scrcpy server)
       const options = ScrcpyOptions();
@@ -149,14 +170,23 @@ abstract class _DeviceStore with Store {
               logger.i(
                 '[DeviceStore] Stream available at $url (${session.header.width}x${session.header.height})',
               );
+
+              final mirrorSession = MirrorSession(
+                videoUrl: url,
+                width: session.header.width,
+                height: session.header.height,
+                decoderService: NativeVideoDecoderService(),
+              );
+
+              // 2. Pre-warm and keep-alive decoder for the entire session
+              await mirrorSession.decoderService.start(url);
+
+              runInAction(() {
+                activeSessions[serial] = mirrorSession;
+              });
+
               if (!completer.isCompleted) {
-                completer.complete(
-                  MirrorSession(
-                    videoUrl: url,
-                    width: session.header.width,
-                    height: session.header.height,
-                  ),
-                );
+                completer.complete(mirrorSession);
               }
             } catch (e) {
               logger.e('[DeviceStore] Error setting up video', error: e);
@@ -203,6 +233,12 @@ abstract class _DeviceStore with Store {
   @action
   Future<void> stopMirroring(String serial) async {
     logger.i('[DeviceStore] Stopping mirroring for $serial');
+    final session = activeSessions[serial];
+    if (session != null) {
+      // Actually stop the decoder session
+      await session.decoderService.stop(session.videoUrl);
+    }
+    activeSessions.remove(serial);
     await _videoProxyService.stopProxy(serial);
     await _controlService.dispose(serial);
     _scrcpyService.cleanup(serial);
@@ -292,5 +328,44 @@ abstract class _DeviceStore with Store {
     );
 
     _controlService.sendControlMessage(serial, message);
+  }
+
+  void handlePointerEvent(
+    String serial,
+    PointerEvent event,
+    int action,
+    int nativeWidth,
+    int nativeHeight,
+  ) {
+    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
+    final buttons = event.buttons;
+
+    sendTouch(
+      serial,
+      x,
+      y,
+      action,
+      nativeWidth,
+      nativeHeight,
+      buttons: buttons,
+    );
+  }
+
+  void handleScrollEvent(
+    String serial,
+    PointerScrollEvent event,
+    int nativeWidth,
+    int nativeHeight,
+  ) {
+    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
+
+    final hScroll = -(event.scrollDelta.dx / 20).round();
+    final vScroll = -(event.scrollDelta.dy / 20).round();
+
+    if (hScroll == 0 && vScroll == 0) return;
+
+    sendScroll(serial, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
   }
 }

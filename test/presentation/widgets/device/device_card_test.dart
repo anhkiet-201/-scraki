@@ -4,24 +4,19 @@ import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
 import 'package:scraki/presentation/widgets/device/device_card.dart';
-import 'package:scraki/presentation/stores/device_store.dart';
+import 'package:scraki/presentation/stores/phone_view_store.dart';
 import 'package:scraki/presentation/widgets/common/status_badge.dart';
 import 'package:scraki/presentation/widgets/common/protocol_icon.dart';
-import 'package:media_kit/media_kit.dart';
 
-class MockDeviceStore extends Mock implements DeviceStore {}
-
-class FakePlayer extends Fake implements Player {}
+class MockPhoneViewStore extends Mock implements PhoneViewStore {}
 
 void main() {
-  late MockDeviceStore mockStore;
+  late MockPhoneViewStore mockStore;
 
   setUp(() async {
     await GetIt.I.reset();
-    mockStore = MockDeviceStore();
-    GetIt.I.registerSingleton<DeviceStore>(mockStore);
-
-    registerFallbackValue(FakePlayer());
+    mockStore = MockPhoneViewStore();
+    GetIt.I.registerSingleton<PhoneViewStore>(mockStore);
 
     // Default Stubs
     when(() => mockStore.startMirroring(any())).thenAnswer(

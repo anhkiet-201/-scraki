@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobx/mobx.dart';
 import '../../core/di/injection.dart';
 import '../widgets/device/device_grid.dart';
-import '../stores/device_store.dart';
+import '../widgets/device/floating_phone_view.dart';
+import '../stores/phone_view_store.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,12 +15,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late final DeviceStore _store;
+  late final PhoneViewStore _store;
 
   @override
   void initState() {
     super.initState();
-    _store = getIt<DeviceStore>();
+    _store = getIt<PhoneViewStore>();
     _store.loadDevices();
   }
 
@@ -78,14 +79,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: _store.loadDevices,
-            child: DeviceGrid(
-              devices: _store.devices.toList(),
-              onDisconnect: (device) {
-                _store.disconnect(device.serial);
-              },
-            ),
+          return Stack(
+            children: [
+              RefreshIndicator(
+                onRefresh: _store.loadDevices,
+                child: DeviceGrid(
+                  devices: _store.devices.toList(),
+                  onDisconnect: (device) {
+                    _store.disconnect(device.serial);
+                  },
+                ),
+              ),
+              // Floating Windows Overlay
+              if (_store.isFloatingVisible)
+                FloatingPhoneView(
+                  key: ValueKey('floating_${_store.floatingSerial}'),
+                  serial: _store.floatingSerial!,
+                  onClose: () => _store.toggleFloating(null),
+                ),
+            ],
           );
         },
       ),

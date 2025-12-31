@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
 import '../../core/utils/logger.dart';
 
@@ -12,28 +13,20 @@ class VideoProxySession {
   ServerSocket? serverSocket;
   StreamSubscription<List<int>>? _streamSubscription;
   Socket? _playerSocket;
-
-  // Buffer to hold initial packets (Config SPS/PPS) before player connects
-  final List<List<int>> _buffer = [];
   bool _isPlayerConnected = false;
+
+  // Buffer to hold configuration packets (SPS/PPS) permanently
+  final List<int> _configHeader = [];
+  bool _isFirstFrameReceived = false;
+  final List<int> _parseBuffer = [];
 
   VideoProxySession(this.scrcpyStream);
 
   Future<int> start() async {
-    // 1. Start listening to Scrcpy stream immediately to capture Config
+    // 1. Start listening to Scrcpy stream immediately
     _streamSubscription = scrcpyStream.listen(
       (data) {
-        if (_isPlayerConnected && _playerSocket != null) {
-          try {
-            _playerSocket!.add(data);
-          } catch (e) {
-            logger.e('[VideoProxySession] Error writing to player', error: e);
-            stop();
-          }
-        } else {
-          // Buffer until player connects
-          _buffer.add(data);
-        }
+        _processData(data);
       },
       onDone: () {
         logger.i('[VideoProxySession] Scrcpy stream done');
@@ -51,44 +44,92 @@ class VideoProxySession {
     logger.i('[VideoProxySession] Listening on port $port');
 
     serverSocket!.listen((socket) {
-      logger.i('[VideoProxySession] Player connected');
-      if (_playerSocket != null) {
-        _playerSocket!.destroy(); // Only 1 player allowed per session
-      }
+      logger.i('[VideoProxySession] Player connected to port $port');
 
+      _playerSocket?.destroy();
       _playerSocket = socket;
       _playerSocket!.setOption(SocketOption.tcpNoDelay, true);
       _isPlayerConnected = true;
 
-      // Flush buffer
-      if (_buffer.isNotEmpty) {
-        logger.d(
-          '[VideoProxySession] Flushing ${_buffer.length} buffered chunks',
+      // 3. IMMEDIATELY send cached configuration headers to the new player
+      if (_configHeader.isNotEmpty) {
+        logger.i(
+          '[VideoProxySession] Replaying cached config headers (${_configHeader.length} bytes) to new player',
         );
-        for (final chunk in _buffer) {
-          _playerSocket!.add(chunk);
-        }
-        _buffer.clear();
-        // Note: We clear buffer to save memory.
-        // If decoder reconnects, it might miss Config if Scrcpy doesn't resend.
-        // But typically reconnect means full restart of Scrcpy session in this architecture.
+        _playerSocket!.add(_configHeader);
       }
 
       _playerSocket!.done.then((_) {
-        logger.i('[VideoProxySession] Player disconnected');
-        _isPlayerConnected = false;
-        _playerSocket = null;
+        // Only mark disconnected if this is still the active socket
+        if (_playerSocket == socket) {
+          logger.i('[VideoProxySession] Player disconnected');
+          _isPlayerConnected = false;
+          _playerSocket = null;
+        }
       });
     });
 
     return port;
   }
 
+  void _processData(List<int> data) {
+    // Collect config headers if not already done
+    if (!_isFirstFrameReceived) {
+      _parseBuffer.addAll(data);
+      _extractConfigHeaders();
+    }
+
+    // Forward to current player
+    if (_isPlayerConnected && _playerSocket != null) {
+      try {
+        _playerSocket!.add(data);
+      } catch (e) {
+        logger.w('[VideoProxySession] Failed to push data to player', error: e);
+      }
+    }
+  }
+
+  /// Non-destructive parsing of scrcpy packets to capture config headers
+  void _extractConfigHeaders() {
+    while (_parseBuffer.length >= 12) {
+      // Use ByteData to safely parse headers from the sublist
+      final headerBytes = Uint8List.fromList(_parseBuffer.sublist(0, 12));
+      final view = ByteData.sublistView(headerBytes);
+      final pts = view.getInt64(0, Endian.big);
+      final size = view.getUint32(8, Endian.big);
+
+      if (pts == -1) {
+        // Metadata / Config packet (SPS/PPS/VPS)
+        final totalSize = 12 + size;
+        if (_parseBuffer.length >= totalSize) {
+          final configPacket = _parseBuffer.sublist(0, totalSize);
+          _configHeader.addAll(configPacket);
+          _parseBuffer.removeRange(0, totalSize);
+          logger.d(
+            '[VideoProxySession] Captured Scrcpy Config Packet: $size bytes',
+          );
+        } else {
+          break; // Need more payload bytes
+        }
+      } else {
+        // First real video frame encountered
+        logger.i(
+          '[VideoProxySession] First video frame detected (PTS: $pts). Stopping header search.',
+        );
+        _isFirstFrameReceived = true;
+        _parseBuffer
+            .clear(); // Free memory as we no longer need to parse headers
+        break;
+      }
+    }
+  }
+
   void stop() {
     _streamSubscription?.cancel();
     _playerSocket?.destroy();
     serverSocket?.close();
-    _buffer.clear();
+    _configHeader.clear();
+    _parseBuffer.clear();
   }
 }
 

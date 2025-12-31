@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:scraki/presentation/stores/device_store.dart';
+import 'package:scraki/presentation/stores/phone_view_store.dart';
 import 'package:scraki/domain/repositories/device_repository.dart';
 import 'package:scraki/data/services/scrcpy_service.dart';
 import 'package:scraki/data/services/device_control_service.dart';
@@ -9,7 +9,6 @@ import 'package:scraki/domain/entities/device_entity.dart';
 import 'package:scraki/domain/entities/scrcpy_options.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:media_kit/media_kit.dart';
 
 // Mocks
 class MockDeviceRepository extends Mock implements DeviceRepository {}
@@ -20,21 +19,19 @@ class MockDeviceControlService extends Mock implements DeviceControlService {}
 
 class MockVideoProxyService extends Mock implements VideoProxyService {}
 
-class MockPlayer extends Mock implements Player {}
-
 void main() {
   late MockDeviceRepository repository;
   late MockScrcpyService scrcpyService;
   late MockDeviceControlService controlService;
   late MockVideoProxyService videoProxyService;
-  late DeviceStore store;
+  late PhoneViewStore store;
 
   setUp(() {
     repository = MockDeviceRepository();
     scrcpyService = MockScrcpyService();
     controlService = MockDeviceControlService();
     videoProxyService = MockVideoProxyService();
-    store = DeviceStore(
+    store = PhoneViewStore(
       repository,
       scrcpyService,
       controlService,
@@ -42,10 +39,9 @@ void main() {
     );
 
     registerFallbackValue(const ScrcpyOptions());
-    registerFallbackValue(Media(''));
   });
 
-  group('DeviceStore', () {
+  group('PhoneViewStore', () {
     test('Initial State', () {
       expect(store.devices, isEmpty);
       expect(store.isLoading, false);
@@ -95,8 +91,5 @@ void main() {
       expect(store.devices, isEmpty);
       expect(store.errorMessage, 'ADB not found');
     });
-
-    // test('startMirroring orchestrates service calls', ...)
-    // Skip for now due to complex ServerSocket orchestration
   });
 }
