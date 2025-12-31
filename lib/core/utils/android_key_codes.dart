@@ -106,13 +106,29 @@ class AndroidKeyCodes {
   static const int kForward = 125;
   static const int kMediaPlay = 126;
   static const int kMediaPause = 127;
-  
+
+  // Meta States (from Android KeyEvent.java)
+  static const int kMetaAltOn = 0x02;
+  static const int kMetaAltLeftOn = 0x10;
+  static const int kMetaAltRightOn = 0x20;
+  static const int kMetaShiftOn = 0x01;
+  static const int kMetaShiftLeftOn = 0x40;
+  static const int kMetaShiftRightOn = 0x80;
+  static const int kMetaCtrlOn = 0x1000;
+  static const int kMetaCtrlLeftOn = 0x2000;
+  static const int kMetaCtrlRightOn = 0x4000;
+  static const int kMetaMetaOn = 0x10000;
+  static const int kMetaMetaLeftOn = 0x20000;
+  static const int kMetaMetaRightOn = 0x40000;
+
   static int getKeyCode(LogicalKeyboardKey key) {
     // Map basic alphanumerics
-    if (key.keyId >= LogicalKeyboardKey.keyA.keyId && key.keyId <= LogicalKeyboardKey.keyZ.keyId) {
+    if (key.keyId >= LogicalKeyboardKey.keyA.keyId &&
+        key.keyId <= LogicalKeyboardKey.keyZ.keyId) {
       return kA + (key.keyId - LogicalKeyboardKey.keyA.keyId).toInt();
     }
-    if (key.keyId >= LogicalKeyboardKey.digit1.keyId && key.keyId <= LogicalKeyboardKey.digit9.keyId) {
+    if (key.keyId >= LogicalKeyboardKey.digit1.keyId &&
+        key.keyId <= LogicalKeyboardKey.digit9.keyId) {
       return k1 + (key.keyId - LogicalKeyboardKey.digit1.keyId).toInt();
     }
     if (key == LogicalKeyboardKey.digit0) return k0;
@@ -124,7 +140,7 @@ class AndroidKeyCodes {
     if (key == LogicalKeyboardKey.delete) return kForwardDel;
     if (key == LogicalKeyboardKey.escape) return kEscape;
     if (key == LogicalKeyboardKey.tab) return kTab;
-    
+
     // Navigation
     if (key == LogicalKeyboardKey.arrowUp) return kDpadUp;
     if (key == LogicalKeyboardKey.arrowDown) return kDpadDown;
@@ -144,7 +160,7 @@ class AndroidKeyCodes {
     if (key == LogicalKeyboardKey.altRight) return kAltRight;
     if (key == LogicalKeyboardKey.metaLeft) return kMetaLeft;
     if (key == LogicalKeyboardKey.metaRight) return kMetaRight;
-    
+
     // Symbols
     if (key == LogicalKeyboardKey.minus) return kMinus;
     if (key == LogicalKeyboardKey.equal) return kEquals;

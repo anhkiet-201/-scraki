@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -84,8 +85,17 @@ class VideoWorkerManager {
         completer.complete(event.data);
         _pendingSessions.remove('${event.serial}_${event.type}');
       }
+    } else if (event.type == 'clipboard_update') {
+      _handleClipboardUpdate(event.serial, event.data as String);
     }
     _listeners[event.serial]?.call(event);
+  }
+
+  void _handleClipboardUpdate(String serial, String text) {
+    logger.i(
+      '[VideoWorkerManager] Clipboard update from device $serial: $text',
+    );
+    Clipboard.setData(ClipboardData(text: text));
   }
 
   final Map<String, Completer<dynamic>> _pendingSessions = {};
@@ -308,10 +318,13 @@ class _IsolateVideoSession {
             '[Isolate-Video] Accepted CONTROL socket (Count: $_connectionCount)',
           );
           _controlSocket = socket;
-          _controlSocket!.done.then((_) {
-            print('[Isolate-Video] CONTROL socket closed');
-            _controlSocket = null;
-          });
+          _controlSocket!.listen(
+            _handleControlData,
+            onDone: () {
+              print('[Isolate-Video] CONTROL socket closed');
+              _controlSocket = null;
+            },
+          );
         }
       });
 
@@ -438,6 +451,44 @@ class _IsolateVideoSession {
     try {
       _controlSocket?.add(data);
     } catch (_) {}
+  }
+
+  final List<int> _controlBuffer = [];
+
+  void _handleControlData(List<int> data) {
+    _controlBuffer.addAll(data);
+
+    // Scrcpy Control Message from Device to Client
+    // Type 0: Clipboard (Device set its clipboard)
+    while (_controlBuffer.isNotEmpty) {
+      final type = _controlBuffer[0];
+      if (type == 0) {
+        // [1 byte Type][4 bytes length][N bytes Text]
+        if (_controlBuffer.length < 5) break;
+
+        final view = ByteData.sublistView(Uint8List.fromList(_controlBuffer));
+        final length = view.getUint32(1, Endian.big);
+
+        if (_controlBuffer.length < 5 + length) break;
+
+        final textBytes = _controlBuffer.sublist(5, 5 + length);
+        final text = utf8.decode(textBytes, allowMalformed: true);
+
+        print('[Isolate-Video] Received clipboard update from device: $text');
+        eventPort?.send(
+          VideoWorkerEvent(
+            serial: serial,
+            type: 'clipboard_update',
+            data: text,
+          ),
+        );
+
+        _controlBuffer.removeRange(0, 5 + length);
+      } else {
+        // Unknown or unhandled message type, skip 1 byte
+        _controlBuffer.removeAt(0);
+      }
+    }
   }
 
   void pause() {

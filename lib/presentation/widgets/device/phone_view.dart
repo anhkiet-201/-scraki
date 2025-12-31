@@ -246,18 +246,20 @@ class _PhoneViewState extends State<PhoneView> {
               ? 1
               : -1;
           if (action != -1) {
-            // Handle Paste Shortcut (Cmd+V on macOS, Ctrl+V on others)
-            final isPaste =
-                (event.logicalKey == LogicalKeyboardKey.keyV) &&
-                (HardwareKeyboard.instance.isMetaPressed ||
-                    HardwareKeyboard.instance.isControlPressed);
+            final isModified =
+                HardwareKeyboard.instance.isMetaPressed ||
+                HardwareKeyboard.instance.isControlPressed;
 
-            if (isPaste && action == 0) {
-              // Paste on KeyDown
-              _handlePaste();
-            } else {
-              _onKey(event.logicalKey.keyId, action);
+            // Handle Key Combinations
+            if (isModified && action == 0) {
+              if (event.logicalKey == LogicalKeyboardKey.keyV) {
+                _handlePaste();
+                return;
+              }
+              // Other shortcuts (A, C, X, Z) will be handled by regular _onKey with metaState
             }
+
+            _onKey(event.logicalKey.keyId, action, _getAndroidMetaState());
           }
         },
         child: Listener(
@@ -283,14 +285,37 @@ class _PhoneViewState extends State<PhoneView> {
     );
   }
 
-  void _onKey(int keyId, int action) {
+  void _onKey(int keyId, int action, int metaState) {
     final key = LogicalKeyboardKey.findKeyByKeyId(keyId);
     if (key != null) {
       final androidCode = AndroidKeyCodes.getKeyCode(key);
       if (androidCode != AndroidKeyCodes.kUnknown) {
-        getIt<PhoneViewStore>().sendKey(widget.serial, androidCode, action);
+        getIt<PhoneViewStore>().sendKey(
+          widget.serial,
+          androidCode,
+          action,
+          metaState: metaState,
+        );
       }
     }
+  }
+
+  int _getAndroidMetaState() {
+    int meta = 0;
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      meta |= AndroidKeyCodes.kMetaShiftOn;
+    }
+    if (HardwareKeyboard.instance.isControlPressed) {
+      meta |= AndroidKeyCodes.kMetaCtrlOn;
+    }
+    if (HardwareKeyboard.instance.isAltPressed) {
+      meta |= AndroidKeyCodes.kMetaAltOn;
+    }
+    if (HardwareKeyboard.instance.isMetaPressed) {
+      meta |=
+          AndroidKeyCodes.kMetaCtrlOn; // Map Cmd to Ctrl for Android shortcuts
+    }
+    return meta;
   }
 
   void _onScroll(PointerScrollEvent event, int width, int height) {
