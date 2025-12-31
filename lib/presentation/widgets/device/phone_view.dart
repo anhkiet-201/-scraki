@@ -24,11 +24,15 @@ class PhoneView extends StatefulWidget {
   /// Whether this view is specifically for a floating window.
   final bool isFloating;
 
+  /// Optional callback when the view is tapped (for requesting focus).
+  final VoidCallback? onTap;
+
   const PhoneView({
     super.key,
     required this.serial,
     this.fit = BoxFit.contain,
     this.isFloating = false,
+    this.onTap,
   });
 
   @override
@@ -113,9 +117,11 @@ class _PhoneViewState extends State<PhoneView> {
   }
 
   void _handlePointer(PointerEvent event, int action) {
-    // Request focus on tap to enable keyboard input
-    if (action == 0 && !_focusNode.hasFocus) {
+    // Request focus on any pointer event to enable keyboard input
+    if (!_focusNode.hasFocus) {
       FocusScope.of(context).requestFocus(_focusNode);
+      // Notify parent that this view was tapped
+      widget.onTap?.call();
     }
     _onInput(event, action, _nativeWidth, _nativeHeight);
   }
@@ -315,8 +321,8 @@ class _PhoneViewState extends State<PhoneView> {
           }
         },
         child: SizedBox(
-          width: (session?.width ?? _nativeWidth).toDouble(),
-          height: (session?.height ?? _nativeHeight).toDouble() + 140,
+          width: (session.width).toDouble(),
+          height: (session.height).toDouble() + 140,
           child: DropTarget(
             onDragEntered: (details) {
               store.setDragging(widget.serial, true);
@@ -341,7 +347,7 @@ class _PhoneViewState extends State<PhoneView> {
                         onPointerSignal: _handleScroll,
                         child: NativeVideoDecoder(
                           key: Key('decoder_${widget.serial}'),
-                          streamUrl: displayUrl!,
+                          streamUrl: displayUrl,
                           nativeWidth: session.width,
                           nativeHeight: session.height,
                           service: session.decoderService,
