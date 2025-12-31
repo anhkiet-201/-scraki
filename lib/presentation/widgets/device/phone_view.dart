@@ -36,7 +36,6 @@ class PhoneView extends StatefulWidget {
 }
 
 class _PhoneViewState extends State<PhoneView> {
-  String? _streamUrl;
   int _nativeWidth = 1080;
   int _nativeHeight = 2336;
   bool _isLoading = true;
@@ -84,7 +83,6 @@ class _PhoneViewState extends State<PhoneView> {
       if (!mounted) return;
 
       setState(() {
-        _streamUrl = session.videoUrl;
         _nativeWidth = session.width;
         _nativeHeight = session.height;
         _isLoading = false;
@@ -164,7 +162,8 @@ class _PhoneViewState extends State<PhoneView> {
     bool isFloating,
   ) {
     final theme = Theme.of(context);
-    // If this is the grid view AND the device is currently floating, show a placeholder
+
+    // 1. Check for Placeholder (Grid view but device is floating)
     if (!widget.isFloating && isFloating) {
       return Center(
         child: Column(
@@ -189,6 +188,44 @@ class _PhoneViewState extends State<PhoneView> {
       );
     }
 
+    // 2. Check for Connection Loss (MobX State)
+    final isDisconnected = store.lostConnectionSerials[widget.serial] ?? false;
+    if (isDisconnected) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.signal_wifi_off_rounded,
+              size: 48,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Connection Lost',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The device connection was interrupted.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _startMirroring,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reconnect Now'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3. Check for Initial Errors (Local State)
     if (_errorMessage != null) {
       return Center(
         child: Column(
@@ -196,14 +233,11 @@ class _PhoneViewState extends State<PhoneView> {
           children: [
             const Icon(Icons.error_outline, size: 32, color: Colors.red),
             const SizedBox(height: 8),
-            Text(
-              'Mirroring Failed',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Mirroring Failed', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
               _errorMessage!,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -216,25 +250,35 @@ class _PhoneViewState extends State<PhoneView> {
       );
     }
 
+    // 4. Check for Loading States
     if (_isLoading && session == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Connecting to device...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Connecting to device...', style: theme.textTheme.bodyMedium),
           ],
         ),
       );
     }
 
-    if (session == null && _errorMessage == null) {
-      return const Center(child: Text('Initializing session...'));
+    if (session == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Initializing session...', style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      );
     }
 
-    final displayUrl = session?.videoUrl ?? _streamUrl;
-    if (displayUrl == null && _errorMessage == null) {
+    final displayUrl = session.videoUrl;
+    if (displayUrl == null) {
       return const Center(child: Text('Waiting for stream URL...'));
     }
 

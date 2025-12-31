@@ -312,6 +312,9 @@ class _IsolateVideoSession {
             print('[Isolate-Video] VIDEO socket closed');
             _adbSocket = null;
             _adbSubscription?.cancel();
+            eventPort?.send(
+              VideoWorkerEvent(serial: serial, type: 'connection_lost'),
+            );
           });
         } else if (_controlSocket == null) {
           print(
@@ -323,6 +326,9 @@ class _IsolateVideoSession {
             onDone: () {
               print('[Isolate-Video] CONTROL socket closed');
               _controlSocket = null;
+              eventPort?.send(
+                VideoWorkerEvent(serial: serial, type: 'connection_lost'),
+              );
             },
           );
         }

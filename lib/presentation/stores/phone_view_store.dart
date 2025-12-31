@@ -68,6 +68,10 @@ abstract class _PhoneViewStore with Store {
   @observable
   ObservableMap<String, bool> isDraggingFile = ObservableMap<String, bool>();
 
+  @observable
+  ObservableMap<String, bool> lostConnectionSerials =
+      ObservableMap<String, bool>();
+
   @computed
   double get deviceAspectRatio {
     if (activeSessions.isEmpty) return 0.5625; // Default 9:16
@@ -161,12 +165,14 @@ abstract class _PhoneViewStore with Store {
     }
   }
 
-  @action
   Future<MirrorSession> startMirroring(
     String serial, [
     ScrcpyOptions? options,
   ]) async {
-    errorMessage = null;
+    runInAction(() {
+      errorMessage = null;
+      lostConnectionSerials.remove(serial);
+    });
 
     // Return existing session if available
     if (activeSessions.containsKey(serial)) {
@@ -184,7 +190,18 @@ abstract class _PhoneViewStore with Store {
         'resolution_ready',
       );
 
-      final portsData = await _workerManager.startMirroring(serial);
+      final portsData = await _workerManager.startMirroring(
+        serial,
+        listener: (event) {
+          if (event.type == 'connection_lost') {
+            logger.w('[DeviceStore] Connection lost for $serial');
+            runInAction(() {
+              activeSessions.remove(serial);
+              lostConnectionSerials[serial] = true;
+            });
+          }
+        },
+      );
       final adbPort = portsData['adbPort'] as int;
       final proxyPort = portsData['proxyPort'] as int;
 
