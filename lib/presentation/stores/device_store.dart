@@ -11,6 +11,7 @@ import '../../data/services/scrcpy_service.dart';
 import '../../data/services/device_control_service.dart';
 import '../../data/services/video_proxy_service.dart';
 import '../../data/utils/scrcpy_input_serializer.dart';
+import '../../domain/entities/mirror_session.dart';
 
 part 'device_store.g.dart';
 
@@ -82,15 +83,21 @@ abstract class _DeviceStore with Store {
         runInAction(() {
           devices.clear();
           devices.addAll(list);
-          // Auto-select broadcast targets if needed? No, user manual selection.
         });
       },
     );
   }
 
   @action
-  Future<String> startMirroring(String serial) async {
+  Future<MirrorSession> startMirroring(String serial) async {
     errorMessage = null;
+    
+    // Force stop previous session if any to ensure cleanup
+    await stopMirroring(serial);
+    
+    // Wait for Scrcpy Server on device to release resources (Camera/Encoder)
+    await Future.delayed(const Duration(milliseconds: 1000));
+
     try {
       print('[DeviceStore] Starting mirroring for $serial');
 
@@ -105,11 +112,11 @@ abstract class _DeviceStore with Store {
       // 2. Initialize Scrcpy Server
       await _scrcpyService.initServer(serial, options, localPort);
 
-      // 3. Handle connections (Video first, then Control)
-      final completer = Completer<String>();
+      // 3. Handle connections (Video, then Control)
+      final completer = Completer<MirrorSession>();
       int connectionCount = 0;
       
-      // We expect 2 connections: Video and Control (Audio is disabled)
+      // We expect 2 connections: Video and Control (Audio disabled)
       serverSocket.listen((socket) async {
         connectionCount++;
         print('[DeviceStore] Connection $connectionCount received from ${socket.remoteAddress.address}');
@@ -128,14 +135,19 @@ abstract class _DeviceStore with Store {
                session.videoStream,
              );
 
-             // 6. Return Proxy URL
+             // 6. Return Session info
              final url = 'tcp://127.0.0.1:$proxyPort';
-             print('Stream available at $url');
+             print('Stream available at $url (${session.header.width}x${session.header.height})');
              if (!completer.isCompleted) {
-                completer.complete(url);
+                completer.complete(MirrorSession(
+                  videoUrl: url,
+                  width: session.header.width,
+                  height: session.header.height,
+                ));
              }
           } catch (e) {
              print('[DeviceStore] Error setting up video: $e');
+             socket.destroy(); // Ensure accepted socket is closed on error
              if (!completer.isCompleted) completer.completeError(e);
              serverSocket.close();
           }
@@ -162,6 +174,21 @@ abstract class _DeviceStore with Store {
       print('[DeviceStore] Stack trace: $stackTrace');
       runInAction(() => errorMessage = 'Mirror failed: $e');
       rethrow;
+    }
+  }
+
+  @action
+  Future<void> stopMirroring(String serial) async {
+    print('[DeviceStore] Stopping mirroring for $serial');
+    await _videoProxyService.stopProxy(serial);
+    await _controlService.dispose(serial);
+    _scrcpyService.cleanup(serial);
+    
+    try {
+      await getIt<ScrcpyClient>().removeTunnel(serial, 0); 
+      await _scrcpyService.killServer(serial); 
+    } catch (e) {
+      print('[DeviceStore] Error cleaning up: $e');
     }
   }
 

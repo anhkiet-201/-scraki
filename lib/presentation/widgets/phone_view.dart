@@ -22,6 +22,8 @@ class PhoneView extends StatefulWidget {
 
 class _PhoneViewState extends State<PhoneView> {
   String? _streamUrl;
+  int _nativeWidth = 1080;
+  int _nativeHeight = 2336;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -29,6 +31,13 @@ class _PhoneViewState extends State<PhoneView> {
   void initState() {
     super.initState();
     _startMirroring();
+  }
+
+  @override
+  void dispose() {
+    // Stop mirroring session (close sockets, cleanup proxy)
+    getIt<DeviceStore>().stopMirroring(widget.serial);
+    super.dispose();
   }
 
   Future<void> _startMirroring() async {
@@ -40,13 +49,15 @@ class _PhoneViewState extends State<PhoneView> {
     try {
       print('[PhoneView] Starting mirroring for ${widget.serial}...');
       final store = getIt<DeviceStore>();
-      final url = await store.startMirroring(widget.serial);
-      print('[PhoneView] Received stream URL: $url');
+      final session = await store.startMirroring(widget.serial);
+      print('[PhoneView] Received session URL: ${session.videoUrl} (${session.width}x${session.height})');
 
       if (!mounted) return;
 
       setState(() {
-        _streamUrl = url;
+        _streamUrl = session.videoUrl;
+        _nativeWidth = session.width;
+        _nativeHeight = session.height;
         _isLoading = false;
       });
     } catch (e) {
@@ -116,6 +127,8 @@ class _PhoneViewState extends State<PhoneView> {
     return NativeVideoDecoder(
       key: Key('decoder_${widget.serial}'),
       streamUrl: _streamUrl!,
+      nativeWidth: _nativeWidth,
+      nativeHeight: _nativeHeight,
       fit: widget.fit,
       onError: _onDecoderError,
       onInput: (action, x, y, width, height) {

@@ -123,8 +123,18 @@ mixin _$DeviceStore on _DeviceStore, Store {
   );
 
   @override
-  Future<String> startMirroring(String serial) {
+  Future<MirrorSession> startMirroring(String serial) {
     return _$startMirroringAsyncAction.run(() => super.startMirroring(serial));
+  }
+
+  late final _$stopMirroringAsyncAction = AsyncAction(
+    '_DeviceStore.stopMirroring',
+    context: context,
+  );
+
+  @override
+  Future<void> stopMirroring(String serial) {
+    return _$stopMirroringAsyncAction.run(() => super.stopMirroring(serial));
   }
 
   late final _$connectTcpAsyncAction = AsyncAction(

@@ -13,11 +13,10 @@ import '../datasources/scrcpy_client.dart';
 class ScrcpyService {
   final Shell _shell;
   final Map<String, int> _devicePorts = {};
-  // Port is now passed dynamically
+  final Set<String> _pushedDevices = {};
 
   ScrcpyService() : _shell = Shell();
 
-  /// Constants
   static const _serverAssetPath = 'assets/server/scrcpy-server.jar';
   static const _remoteServerPath = '/data/local/tmp/scrcpy-server.jar';
   static const _serverVersion = '3.3.4';
@@ -26,11 +25,10 @@ class ScrcpyService {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/scrcpy-server.jar');
-
-      // Always copy from assets to ensure latest version (no caching)
-      final byteData = await rootBundle.load(_serverAssetPath);
-      await file.writeAsBytes(byteData.buffer.asUint8List());
-
+      if (!await file.exists()) {
+          final byteData = await rootBundle.load(_serverAssetPath);
+          await file.writeAsBytes(byteData.buffer.asUint8List());
+      }
       return file.path;
     } catch (e) {
       throw ServerException('Failed to copy scrcpy-server.jar: $e');
@@ -38,98 +36,67 @@ class ScrcpyService {
   }
 
   Future<void> pushServer(String deviceSerial) async {
+    if (_pushedDevices.contains(deviceSerial)) return;
     try {
       final localPath = await _getServerPath();
-      await _shell.run(
-        'adb -s $deviceSerial push $localPath $_remoteServerPath',
-      );
+      await _shell.run('adb -s $deviceSerial push $localPath $_remoteServerPath');
+      _pushedDevices.add(deviceSerial);
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
     }
   }
 
-  /// Initializes the server process and tunnel, returning the local port.
-  /// Does NOT connect the socket yet.
-  Future<int> initServer(
-    String deviceSerial,
-    ScrcpyOptions options,
-    int localPort,
-  ) async {
-    if (_devicePorts.containsKey(deviceSerial)) {
-      return _devicePorts[deviceSerial]!;
-    }
-
+  Future<int> initServer(String deviceSerial, ScrcpyOptions options, int localPort) async {
     _devicePorts[deviceSerial] = localPort;
-
     final client = getIt<ScrcpyClient>();
 
     try {
-      // 0. Push Server
       await pushServer(deviceSerial);
-
-      // 1. Build arguments and setup tunnel (Key=Value for v2.0+)
-      // Note: scrcpy-server.jar expects the client version first, then options.
-      final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF)
-          .toRadixString(16)
-          .padLeft(8, '0');
-
-      // Setup Tunnel with SCID and localPort
+      final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF).toRadixString(16).padLeft(8, '0');
       await client.setupTunnel(deviceSerial, localPort, scid);
 
       final args = [
         _serverVersion,
         'scid=$scid',
-        'log_level=info', // Reduced from debug to info to prevent lag
-        'audio=false',
-        'video_codec=h265', // Switched from h264 to h265
+        'log_level=info',
+        'audio=false', // DISABLED
+        'video_codec=h265',
         if (options.maxSize > 0) 'max_size=${options.maxSize}',
-        'video_bit_rate=4000000', // Reduced from 8Mbps to 4Mbps for lower latency
+        'video_bit_rate=2000000',
         if (options.maxFps > 0) 'max_fps=${options.maxFps}',
         'tunnel_forward=false',
         'control=true',
         'cleanup=true',
-        // Essential meta options
         'send_device_meta=true',
         'send_frame_meta=true',
         'send_codec_meta=true',
       ];
 
-      final command =
-          'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
-
-      print('[ANTIGRAVITY-DEBUG] Scrcpy options: ${args.join(' ')}');
-      print('[ANTIGRAVITY] Starting Scrcpy Server: $command');
-
-      // 3. Start Server Process
+      final command = 'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
       final parts = command.split(' ');
       Process.start(parts.first, parts.sublist(1)).then((p) {
-        // Use utf8.decoder to properly decode logs
-        p.stdout.transform(utf8.decoder).listen((data) {
-          print('[Scrcpy-OUT] $data');
-        });
-        p.stderr.transform(utf8.decoder).listen((data) {
-          print('[Scrcpy-ERR] $data');
-          if (data.contains('Aborted') ||
-              data.contains('Exception') ||
-              data.contains('Error')) {
-            print('Critical error from scrcpy-server. Capturing logcat...');
-            _shell.run('adb -s $deviceSerial logcat -d -t 100').then((results) {
-              for (final res in results) {
-                print('[LOGCAT] ${res.stdout}');
-              }
-            });
-          }
-        });
+        p.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((data) => print('[Scrcpy-OUT] $data'));
+        p.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((data) => print('[Scrcpy-ERR] $data'));
       });
 
-      // Wait for server to be ready to accept connections
       await Future.delayed(const Duration(milliseconds: 500));
-
       return localPort;
     } catch (e) {
       client.removeTunnel(deviceSerial, localPort);
       _devicePorts.remove(deviceSerial);
       throw ServerException('Failed to init server on $deviceSerial: $e');
+    }
+  }
+
+  void cleanup(String serial) {
+    _devicePorts.remove(serial);
+  }
+
+  Future<void> killServer(String serial) async {
+    try {
+      await _shell.run('adb -s $serial shell pkill -f scrcpy');
+    } catch (e) {
+      print('[ScrcpyService] Warning: Failed to kill server on $serial: $e');
     }
   }
 

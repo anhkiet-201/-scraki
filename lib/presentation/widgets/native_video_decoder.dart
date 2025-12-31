@@ -10,6 +10,10 @@ class NativeVideoDecoder extends StatefulWidget {
   /// How to inscribe the video into the space allocated during layout
   final BoxFit fit;
 
+  /// Native resolution of the video
+  final int nativeWidth;
+  final int nativeHeight;
+
   /// Callback when decoder encounters an error
   final void Function(String error)? onError;
 
@@ -24,6 +28,8 @@ class NativeVideoDecoder extends StatefulWidget {
   const NativeVideoDecoder({
     super.key,
     required this.streamUrl,
+    required this.nativeWidth,
+    required this.nativeHeight,
     this.fit = BoxFit.contain,
     this.onError,
     this.onInput,
@@ -41,10 +47,6 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   bool _isInitializing = true;
   String? _errorMessage;
   final FocusNode _focusNode = FocusNode();
-  
-  // Dimensions - ideally should be dynamic from decoder
-  final int _videoWidth = 1080;
-  final int _videoHeight = 2336;
 
   @override
   void initState() {
@@ -111,10 +113,10 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
     }
     
     // Coordinates are local to the SizedBox due to Listener inside FittedBox
-    final x = event.localPosition.dx.toInt().clamp(0, _videoWidth);
-    final y = event.localPosition.dy.toInt().clamp(0, _videoHeight);
+    final x = event.localPosition.dx.toInt().clamp(0, widget.nativeWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, widget.nativeHeight);
     
-    widget.onInput!(action, x, y, _videoWidth, _videoHeight);
+    widget.onInput!(action, x, y, widget.nativeWidth, widget.nativeHeight);
   }
   
   void _handleKey(KeyEvent event) {
@@ -192,8 +194,8 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
           onPointerUp: (e) => _handlePointer(e, 1),   // Action Up
           onPointerMove: (e) => _handlePointer(e, 2), // Action Move
           child: SizedBox(
-            width: _videoWidth.toDouble(), 
-            height: _videoHeight.toDouble(),
+            width: widget.nativeWidth.toDouble(), 
+            height: widget.nativeHeight.toDouble(),
             child: Texture(
               textureId: _textureId!,
               filterQuality: FilterQuality.low, // Low latency, no smoothing
