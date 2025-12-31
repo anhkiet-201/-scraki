@@ -132,8 +132,7 @@ class _DeviceCardState extends State<DeviceCard> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: _isMirroring
-                        ? PhoneView(
+                    child: PhoneView(
                             serial: widget.device.serial,
                             fit: BoxFit.contain,
                             onTap: () {
@@ -145,40 +144,6 @@ class _DeviceCardState extends State<DeviceCard> {
                               ).requestFocus(_cardFocusNode);
                             },
                           )
-                        : Center(
-                            child: Icon(
-                              Icons.phonelink_setup,
-                              size: 40,
-                              color: colorScheme.primary.withOpacity(0.15),
-                            ),
-                          ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (_isMirroring)
-                        TextButton.icon(
-                          onPressed: _toggleMirroring,
-                          icon: const Icon(Icons.link_off, size: 18),
-                          label: const Text('Stop'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: colorScheme.error,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                        )
-                      else
-                        FilledButton.tonalIcon(
-                          onPressed: _toggleMirroring,
-                          icon: const Icon(Icons.screen_share, size: 18),
-                          label: const Text('Mirror'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                        ),
-                    ],
                   ),
                 ),
               ],
