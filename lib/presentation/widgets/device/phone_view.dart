@@ -262,17 +262,17 @@ class _PhoneViewState extends State<PhoneView> {
             _onKey(event.logicalKey.keyId, action, _getAndroidMetaState());
           }
         },
-        child: Listener(
-          onPointerDown: (e) => _handlePointer(e, 0),
-          onPointerUp: (e) => _handlePointer(e, 1),
-          onPointerMove: (e) => _handlePointer(e, 2),
-          onPointerSignal: _handleScroll,
-          child: SizedBox(
-            width: (session?.width ?? _nativeWidth).toDouble(),
-            height: (session?.height ?? _nativeHeight).toDouble(),
-            child: Stack(
-              children: [
-                Positioned.fill(
+        child: SizedBox(
+          width: (session?.width ?? _nativeWidth).toDouble(),
+          height: (session?.height ?? _nativeHeight).toDouble() + 140,
+          child: Column(
+            children: [
+              Expanded(
+                child: Listener(
+                  onPointerDown: (e) => _handlePointer(e, 0),
+                  onPointerUp: (e) => _handlePointer(e, 1),
+                  onPointerMove: (e) => _handlePointer(e, 2),
+                  onPointerSignal: _handleScroll,
                   child: NativeVideoDecoder(
                     key: Key('decoder_${widget.serial}'),
                     streamUrl: displayUrl!,
@@ -283,14 +283,9 @@ class _PhoneViewState extends State<PhoneView> {
                     onError: _onDecoderError,
                   ),
                 ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: _buildNavigationBar(),
-                ),
-              ],
-            ),
+              ),
+              _buildNavigationBar(),
+            ],
           ),
         ),
       ),
@@ -298,36 +293,44 @@ class _PhoneViewState extends State<PhoneView> {
   }
 
   Widget _buildNavigationBar() {
+    final theme = Theme.of(context);
     return Container(
-      height: 120, // Relative to native resolution (e.g. 1080x2336)
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withOpacity(0.0),
-            Colors.black.withOpacity(0.4),
-          ],
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      height: 140,
+      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerLow),
+      child: Column(
         children: [
-          _buildNavButton(
-            Icons.arrow_back_ios_new_rounded,
-            AndroidKeyCodes.kBack,
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
           ),
-          _buildNavButton(Icons.circle_outlined, AndroidKeyCodes.kHome),
-          _buildNavButton(
-            Icons.crop_square_rounded,
-            AndroidKeyCodes.kAppSwitch,
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavButton(
+                  Icons.arrow_back_ios_new_rounded,
+                  AndroidKeyCodes.kBack,
+                ),
+                _buildNavButton(
+                  Icons.circle_outlined,
+                  AndroidKeyCodes.kHome,
+                  isPrimary: true,
+                ),
+                _buildNavButton(
+                  Icons.crop_square_rounded,
+                  AndroidKeyCodes.kAppSwitch,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavButton(IconData icon, int keyCode) {
+  Widget _buildNavButton(IconData icon, int keyCode, {bool isPrimary = false}) {
+    final theme = Theme.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -338,13 +341,22 @@ class _PhoneViewState extends State<PhoneView> {
             getIt<PhoneViewStore>().sendKey(widget.serial, keyCode, 1);
           });
         },
-        customBorder: const CircleBorder(),
-        child: Container(
-          padding: const EdgeInsets.all(24),
+        borderRadius: BorderRadius.circular(40),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            color: isPrimary
+                ? theme.colorScheme.primaryContainer.withOpacity(0.4)
+                : Colors.transparent,
+          ),
           child: Icon(
             icon,
-            color: Colors.white,
-            size: 48, // Large icons for native resolution
+            color: isPrimary
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurfaceVariant,
+            size: isPrimary ? 54 : 48,
           ),
         ),
       ),
