@@ -17,8 +17,8 @@ class FloatingPhoneView extends StatefulWidget {
 
 class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   Offset _position = const Offset(100, 100);
-  double _width = 300;
-  double _height = 650;
+  double _width = 480;
+  double _height = 1000;
 
   @override
   Widget build(BuildContext context) {
@@ -93,8 +93,8 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
               GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    _width = (_width + details.delta.dx).clamp(200.0, 800.0);
-                    _height = (_height + details.delta.dy).clamp(400.0, 1200.0);
+                    _width = (_width + details.delta.dx).clamp(200.0, 1200.0);
+                    _height = (_height + details.delta.dy).clamp(400.0, 1600.0);
                   });
                 },
                 child: Container(
