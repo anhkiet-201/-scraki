@@ -80,6 +80,38 @@ class DeviceGrid extends StatelessWidget {
             return CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                    child: Row(
+                      children: [
+                        FilterChip(
+                          label: const Text('All'),
+                          selected: true,
+                          onSelected: (_) {},
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Online'),
+                          selected: false,
+                          onSelected: (_) {},
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('USB'),
+                          selected: false,
+                          onSelected: (_) {},
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('TCP'),
+                          selected: false,
+                          onSelected: (_) {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(vertical: spacing),
                   sliver: SliverGrid(
@@ -99,6 +131,7 @@ class DeviceGrid extends StatelessWidget {
                     }, childCount: devices.length),
                   ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             );
           },
