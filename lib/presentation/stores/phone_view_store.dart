@@ -65,6 +65,9 @@ abstract class _PhoneViewStore with Store {
   @observable
   ObservableMap<String, bool> isPushingFile = ObservableMap<String, bool>();
 
+  @observable
+  ObservableMap<String, bool> isDraggingFile = ObservableMap<String, bool>();
+
   @computed
   double get deviceAspectRatio {
     if (activeSessions.isEmpty) return 0.5625; // Default 9:16
@@ -367,6 +370,15 @@ abstract class _PhoneViewStore with Store {
     if (hScroll == 0 && vScroll == 0) return;
 
     sendScroll(serial, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
+  }
+
+  @action
+  void setDragging(String serial, bool isDragging) {
+    if (isDragging) {
+      isDraggingFile[serial] = true;
+    } else {
+      isDraggingFile.remove(serial);
+    }
   }
 
   @action

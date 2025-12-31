@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -41,7 +42,6 @@ class _PhoneViewState extends State<PhoneView> {
   bool _isLoading = true;
   String? _errorMessage;
   final FocusNode _focusNode = FocusNode();
-  bool _isDraggingFile = false;
 
   // Double tap detection
   DateTime? _lastTapTime;
@@ -163,6 +163,7 @@ class _PhoneViewState extends State<PhoneView> {
     MirrorSession? session,
     bool isFloating,
   ) {
+    final theme = Theme.of(context);
     // If this is the grid view AND the device is currently floating, show a placeholder
     if (!widget.isFloating && isFloating) {
       return Center(
@@ -269,13 +270,13 @@ class _PhoneViewState extends State<PhoneView> {
           height: (session?.height ?? _nativeHeight).toDouble() + 140,
           child: DropTarget(
             onDragEntered: (details) {
-              setState(() => _isDraggingFile = true);
+              store.setDragging(widget.serial, true);
             },
             onDragExited: (details) {
-              setState(() => _isDraggingFile = false);
+              store.setDragging(widget.serial, false);
             },
             onDragDone: (details) async {
-              setState(() => _isDraggingFile = false);
+              store.setDragging(widget.serial, false);
               final paths = details.files.map((f) => f.path).toList();
               await store.uploadFiles(widget.serial, paths);
             },
@@ -303,66 +304,126 @@ class _PhoneViewState extends State<PhoneView> {
                     _buildNavigationBar(),
                   ],
                 ),
-                if (_isDraggingFile)
-                  Positioned.fill(
-                    child: Container(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.2),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.file_upload_outlined,
-                              size: 80,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Drop to push files',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                Observer(
+                  builder: (_) {
+                    final isDragging =
+                        store.isDraggingFile[widget.serial] ?? false;
+                    if (!isDragging) return const SizedBox.shrink();
+
+                    return Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: Container(
+                            color: theme.colorScheme.primaryContainer
+                                .withOpacity(0.7),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                      48,
+                                    ), // Increased padding
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: theme.colorScheme.primary
+                                              .withOpacity(0.3),
+                                          blurRadius: 40,
+                                          spreadRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.file_copy_rounded,
+                                      size: 180, // Massive icon
+                                      color: theme.colorScheme.onPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 48),
+                                  Text(
+                                    'Drop Files to Sync',
+                                    style: theme.textTheme.displayMedium
+                                        ?.copyWith(
+                                          color: theme
+                                              .colorScheme
+                                              .onPrimaryContainer,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 80, // Forced large font
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Files will be copied to /sdcard/Download',
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(
+                                          color: theme
+                                              .colorScheme
+                                              .onPrimaryContainer
+                                              .withOpacity(0.7),
+                                          fontSize: 40, // Forced large font
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
+                ),
                 Observer(
                   builder: (_) {
                     final isPushing =
                         store.isPushingFile[widget.serial] ?? false;
                     if (!isPushing) return const SizedBox.shrink();
-                    final theme = Theme.of(context);
                     return Positioned(
-                      top: 20,
-                      right: 20,
-                      child: Card(
-                        color: theme.colorScheme.secondaryContainer,
-                        elevation: 4,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                      top: 40, // More margin
+                      left: 40,
+                      right: 40,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 48,
+                            vertical: 24,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(100),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               SizedBox(
-                                width: 16,
-                                height: 16,
+                                width: 40,
+                                height: 40,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 6,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    theme.colorScheme.primary,
+                                  ),
                                 ),
                               ),
-                              SizedBox(width: 12),
+                              const SizedBox(width: 32),
                               Text(
-                                'Pushing files...',
-                                style: TextStyle(fontSize: 12),
+                                'Pushing files to phone...',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 32,
+                                ),
                               ),
                             ],
                           ),
