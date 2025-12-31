@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import '../../../core/utils/logger.dart';
 
 class _DecoderSession {
   final int textureId;
   int refCount;
+  Timer? stopTimer;
   _DecoderSession(this.textureId, {required this.refCount});
 }
 
@@ -18,6 +20,8 @@ class NativeVideoDecoderService {
       // 1. If session exists for this URL, just increment refCount and return textureId
       if (_sessions.containsKey(url)) {
         final session = _sessions[url]!;
+        session.stopTimer?.cancel();
+        session.stopTimer = null;
         session.refCount++;
         logger.i(
           '[NativeVideoDecoderService] Reusing texture ${session.textureId} for $url (RefCount: ${session.refCount})',
@@ -49,20 +53,28 @@ class NativeVideoDecoderService {
     );
 
     if (session.refCount <= 0) {
-      try {
-        logger.i(
-          '[NativeVideoDecoderService] Requesting native stopDecoding for texture ${session.textureId}',
-        );
-        await _channel.invokeMethod('stopDecoding', {
-          'textureId': session.textureId,
-        });
-        _sessions.remove(url);
-      } catch (e) {
-        logger.e(
-          '[NativeVideoDecoderService] Error stopping decoder',
-          error: e,
-        );
-      }
+      // Graceful Release: Delay stopping the native decoder by 500ms
+      // This allows switches between Grid and Floating view to happen without restart.
+      session.stopTimer?.cancel();
+      session.stopTimer = Timer(const Duration(milliseconds: 500), () async {
+        try {
+          logger.i(
+            '[NativeVideoDecoderService] Delayed release: stopping native decoder for texture ${session.textureId}',
+          );
+          await _channel.invokeMethod('stopDecoding', {
+            'textureId': session.textureId,
+          });
+          _sessions.remove(url);
+        } catch (e) {
+          logger.e(
+            '[NativeVideoDecoderService] Error stopping decoder',
+            error: e,
+          );
+        }
+      });
+      logger.i(
+        '[NativeVideoDecoderService] Scheduled release for $url in 500ms',
+      );
     }
   }
 }

@@ -54,7 +54,7 @@ class _PhoneViewState extends State<PhoneView> {
   @override
   void dispose() {
     final store = getIt<PhoneViewStore>();
-    store.setVisibility(widget.serial, false);
+    store.setVisibility(widget.serial, false, isFloating: widget.isFloating);
 
     // Only stop mirroring if:
     // 1. This is NOT a floating view (don't kill mirroring from floating overlay)
@@ -138,11 +138,16 @@ class _PhoneViewState extends State<PhoneView> {
         final isFloating = store.floatingSerial == widget.serial;
 
         return VisibilityDetector(
-          key: Key('visibility_${widget.serial}'),
+          key: Key(
+            'visibility_${widget.isFloating ? 'float' : 'grid'}_${widget.serial}',
+          ),
           onVisibilityChanged: (info) {
-            final isVisible =
-                info.visibleFraction > 0.05; // visible if more than 5%
-            store.setVisibility(widget.serial, isVisible);
+            final isVisible = info.visibleFraction > 0.05;
+            store.setVisibility(
+              widget.serial,
+              isVisible,
+              isFloating: widget.isFloating,
+            );
           },
           child: _buildContent(context, store, session, isFloating),
         );

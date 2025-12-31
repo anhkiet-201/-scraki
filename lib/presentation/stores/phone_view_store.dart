@@ -46,7 +46,14 @@ abstract class _PhoneViewStore with Store {
   String? errorMessage;
 
   @observable
-  ObservableSet<String> visibleSerials = ObservableSet<String>();
+  ObservableSet<String> visibleGridSerials = ObservableSet<String>();
+
+  @observable
+  ObservableSet<String> visibleFloatingSerials = ObservableSet<String>();
+
+  bool isDeviceVisible(String serial) =>
+      visibleGridSerials.contains(serial) ||
+      visibleFloatingSerials.contains(serial);
 
   @observable
   String? floatingSerial;
@@ -54,6 +61,18 @@ abstract class _PhoneViewStore with Store {
   @observable
   ObservableMap<String, MirrorSession> activeSessions =
       ObservableMap<String, MirrorSession>();
+
+  @computed
+  double get deviceAspectRatio {
+    if (activeSessions.isEmpty) return 0.5625; // Default 9:16
+
+    // Use the aspect ratio of the first active session for the whole grid
+    final firstSession = activeSessions.values.first;
+    if (firstSession.width > 0 && firstSession.height > 0) {
+      return firstSession.width / firstSession.height;
+    }
+    return 0.5625;
+  }
 
   @computed
   bool get isLoading => loadDevicesFuture?.status == FutureStatus.pending;
@@ -110,13 +129,27 @@ abstract class _PhoneViewStore with Store {
   }
 
   @action
-  void setVisibility(String serial, bool isVisible) {
-    if (isVisible) {
-      if (visibleSerials.add(serial)) {
-        _workerManager.resumeMirroring(serial);
-      }
+  void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
+    final wasVisible = isDeviceVisible(serial);
+
+    if (isFloating) {
+      if (isVisible)
+        visibleFloatingSerials.add(serial);
+      else
+        visibleFloatingSerials.remove(serial);
     } else {
-      if (visibleSerials.remove(serial)) {
+      if (isVisible)
+        visibleGridSerials.add(serial);
+      else
+        visibleGridSerials.remove(serial);
+    }
+
+    final isNowVisible = isDeviceVisible(serial);
+
+    if (wasVisible != isNowVisible) {
+      if (isNowVisible) {
+        _workerManager.resumeMirroring(serial);
+      } else {
         _workerManager.pauseMirroring(serial);
       }
     }

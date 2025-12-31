@@ -114,22 +114,44 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     });
   }
 
-  late final _$visibleSerialsAtom = Atom(
-    name: '_PhoneViewStore.visibleSerials',
+  late final _$visibleGridSerialsAtom = Atom(
+    name: '_PhoneViewStore.visibleGridSerials',
     context: context,
   );
 
   @override
-  ObservableSet<String> get visibleSerials {
-    _$visibleSerialsAtom.reportRead();
-    return super.visibleSerials;
+  ObservableSet<String> get visibleGridSerials {
+    _$visibleGridSerialsAtom.reportRead();
+    return super.visibleGridSerials;
   }
 
   @override
-  set visibleSerials(ObservableSet<String> value) {
-    _$visibleSerialsAtom.reportWrite(value, super.visibleSerials, () {
-      super.visibleSerials = value;
+  set visibleGridSerials(ObservableSet<String> value) {
+    _$visibleGridSerialsAtom.reportWrite(value, super.visibleGridSerials, () {
+      super.visibleGridSerials = value;
     });
+  }
+
+  late final _$visibleFloatingSerialsAtom = Atom(
+    name: '_PhoneViewStore.visibleFloatingSerials',
+    context: context,
+  );
+
+  @override
+  ObservableSet<String> get visibleFloatingSerials {
+    _$visibleFloatingSerialsAtom.reportRead();
+    return super.visibleFloatingSerials;
+  }
+
+  @override
+  set visibleFloatingSerials(ObservableSet<String> value) {
+    _$visibleFloatingSerialsAtom.reportWrite(
+      value,
+      super.visibleFloatingSerials,
+      () {
+        super.visibleFloatingSerials = value;
+      },
+    );
   }
 
   late final _$floatingSerialAtom = Atom(
@@ -265,12 +287,12 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
-  void setVisibility(String serial, bool isVisible) {
+  void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
     final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
       name: '_PhoneViewStore.setVisibility',
     );
     try {
-      return super.setVisibility(serial, isVisible);
+      return super.setVisibility(serial, isVisible, isFloating: isFloating);
     } finally {
       _$_PhoneViewStoreActionController.endAction(_$actionInfo);
     }
@@ -284,7 +306,8 @@ selectedSerials: ${selectedSerials},
 isBroadcastingMode: ${isBroadcastingMode},
 loadDevicesFuture: ${loadDevicesFuture},
 errorMessage: ${errorMessage},
-visibleSerials: ${visibleSerials},
+visibleGridSerials: ${visibleGridSerials},
+visibleFloatingSerials: ${visibleFloatingSerials},
 floatingSerial: ${floatingSerial},
 activeSessions: ${activeSessions},
 isLoading: ${isLoading},
