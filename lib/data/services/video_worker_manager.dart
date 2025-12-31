@@ -8,7 +8,7 @@ import '../../../core/utils/logger.dart';
 
 /// Tin nhắn gửi tới Worker Isolate
 class VideoWorkerCommand {
-  final String type; // 'start', 'stop', 'control'
+  final String type; // 'start', 'stop', 'control', 'pause', 'resume'
   final String serial;
   final String url;
   final RootIsolateToken? token;
@@ -150,6 +150,22 @@ class VideoWorkerManager {
     }
   }
 
+  void pauseMirroring(String serial) {
+    for (final worker in _workers) {
+      worker.sendPort.send(
+        VideoWorkerCommand(type: 'pause', serial: serial, url: ''),
+      );
+    }
+  }
+
+  void resumeMirroring(String serial) {
+    for (final worker in _workers) {
+      worker.sendPort.send(
+        VideoWorkerCommand(type: 'resume', serial: serial, url: ''),
+      );
+    }
+  }
+
   void dispose() {
     for (final worker in _workers) {
       worker.isolate.kill();
@@ -202,6 +218,12 @@ void _workerEntryPoint(SendPort managerPort) async {
             sessions[message.serial]?.sendControl(message.controlData!);
           }
           break;
+        case 'pause':
+          sessions[message.serial]?.pause();
+          break;
+        case 'resume':
+          sessions[message.serial]?.resume();
+          break;
       }
     }
   }
@@ -226,6 +248,7 @@ class _IsolateVideoSession {
   bool _isFirstFrameReceived = false;
   final List<int> _parseBuffer = [];
   bool _headerParsed = false;
+  bool _isPaused = false;
 
   // Stream buffering for first connect
   final List<List<int>> _initialBuffer = [];
@@ -360,18 +383,21 @@ class _IsolateVideoSession {
       _extractConfigHeaders();
     }
 
-    if (!_anyPlayerConnected) {
-      _initialBuffer.add(data);
-      // Limit to ~5MB or 500 packets to prevent memory leak if player never joins
-      if (_initialBuffer.length > 500) _initialBuffer.removeAt(0);
-    } else {
-      // Forward to current player
-      try {
-        _playerSocket?.add(data);
-      } catch (_) {
-        _anyPlayerConnected = false;
-        _playerSocket = null;
+    if (!_anyPlayerConnected || _isPaused) {
+      // Still buffering key info but not forwarding to player when paused
+      if (!_anyPlayerConnected) {
+        _initialBuffer.add(data);
+        if (_initialBuffer.length > 500) _initialBuffer.removeAt(0);
       }
+      return;
+    }
+
+    // Forward to current player
+    try {
+      _playerSocket?.add(data);
+    } catch (_) {
+      _anyPlayerConnected = false;
+      _playerSocket = null;
     }
   }
 
@@ -412,6 +438,20 @@ class _IsolateVideoSession {
     try {
       _controlSocket?.add(data);
     } catch (_) {}
+  }
+
+  void pause() {
+    _isPaused = true;
+    print('[Isolate-Video] Session $serial paused decoding');
+  }
+
+  void resume() {
+    _isPaused = false;
+    print('[Isolate-Video] Session $serial resumed decoding');
+    // Ensure meta is sent on resume just in case
+    if (_configHeader.isNotEmpty && _playerSocket != null) {
+      _playerSocket!.add(_configHeader);
+    }
   }
 
   void stop() {

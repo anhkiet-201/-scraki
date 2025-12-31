@@ -114,6 +114,24 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     });
   }
 
+  late final _$visibleSerialsAtom = Atom(
+    name: '_PhoneViewStore.visibleSerials',
+    context: context,
+  );
+
+  @override
+  ObservableSet<String> get visibleSerials {
+    _$visibleSerialsAtom.reportRead();
+    return super.visibleSerials;
+  }
+
+  @override
+  set visibleSerials(ObservableSet<String> value) {
+    _$visibleSerialsAtom.reportWrite(value, super.visibleSerials, () {
+      super.visibleSerials = value;
+    });
+  }
+
   late final _$floatingSerialAtom = Atom(
     name: '_PhoneViewStore.floatingSerial',
     context: context,
@@ -166,8 +184,13 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   );
 
   @override
-  Future<MirrorSession> startMirroring(String serial) {
-    return _$startMirroringAsyncAction.run(() => super.startMirroring(serial));
+  Future<MirrorSession> startMirroring(
+    String serial, [
+    ScrcpyOptions? options,
+  ]) {
+    return _$startMirroringAsyncAction.run(
+      () => super.startMirroring(serial, options),
+    );
   }
 
   late final _$stopMirroringAsyncAction = AsyncAction(
@@ -242,6 +265,18 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
+  void setVisibility(String serial, bool isVisible) {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.setVisibility',
+    );
+    try {
+      return super.setVisibility(serial, isVisible);
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 devices: ${devices},
@@ -249,6 +284,7 @@ selectedSerials: ${selectedSerials},
 isBroadcastingMode: ${isBroadcastingMode},
 loadDevicesFuture: ${loadDevicesFuture},
 errorMessage: ${errorMessage},
+visibleSerials: ${visibleSerials},
 floatingSerial: ${floatingSerial},
 activeSessions: ${activeSessions},
 isLoading: ${isLoading},

@@ -46,6 +46,9 @@ abstract class _PhoneViewStore with Store {
   String? errorMessage;
 
   @observable
+  ObservableSet<String> visibleSerials = ObservableSet<String>();
+
+  @observable
   String? floatingSerial;
 
   @observable
@@ -107,7 +110,23 @@ abstract class _PhoneViewStore with Store {
   }
 
   @action
-  Future<MirrorSession> startMirroring(String serial) async {
+  void setVisibility(String serial, bool isVisible) {
+    if (isVisible) {
+      if (visibleSerials.add(serial)) {
+        _workerManager.resumeMirroring(serial);
+      }
+    } else {
+      if (visibleSerials.remove(serial)) {
+        _workerManager.pauseMirroring(serial);
+      }
+    }
+  }
+
+  @action
+  Future<MirrorSession> startMirroring(
+    String serial, [
+    ScrcpyOptions? options,
+  ]) async {
     errorMessage = null;
 
     // Return existing session if available

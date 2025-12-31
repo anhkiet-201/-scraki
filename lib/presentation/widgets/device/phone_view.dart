@@ -3,8 +3,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/utils/android_key_codes.dart';
+import 'package:scraki/domain/entities/mirror_session.dart';
 import 'package:scraki/presentation/stores/phone_view_store.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'native_video_decoder.dart';
@@ -52,6 +54,8 @@ class _PhoneViewState extends State<PhoneView> {
   @override
   void dispose() {
     final store = getIt<PhoneViewStore>();
+    store.setVisibility(widget.serial, false);
+
     // Only stop mirroring if:
     // 1. This is NOT a floating view (don't kill mirroring from floating overlay)
     // 2. AND the serial is not currently floating (keep session alive for floating window)
@@ -133,116 +137,133 @@ class _PhoneViewState extends State<PhoneView> {
         // Accessing these ensures the Observer is always active
         final isFloating = store.floatingSerial == widget.serial;
 
-        // If this is the grid view AND the device is currently floating, show a placeholder
-        if (!widget.isFloating && isFloating) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.picture_in_picture,
-                  size: 48,
-                  color: Colors.white24,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Floating Mode',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-                TextButton(
-                  onPressed: _handleDoubleTap,
-                  child: const Text('Bring Back'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (_errorMessage != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 32, color: Colors.red),
-                const SizedBox(height: 8),
-                Text(
-                  'Mirroring Failed',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _errorMessage!,
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _startMirroring,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (_isLoading && session == null) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Connecting to device...'),
-              ],
-            ),
-          );
-        }
-
-        if (session == null && _errorMessage == null) {
-          return const Center(child: Text('Initializing session...'));
-        }
-
-        final displayUrl = session?.videoUrl ?? _streamUrl;
-        if (displayUrl == null && _errorMessage == null) {
-          return const Center(child: Text('Waiting for stream URL...'));
-        }
-
-        return FittedBox(
-          fit: widget.fit,
-          child: KeyboardListener(
-            focusNode: _focusNode,
-            onKeyEvent: (event) {
-              final action = (event is KeyDownEvent)
-                  ? 0
-                  : (event is KeyUpEvent)
-                  ? 1
-                  : -1;
-              if (action != -1) {
-                _onKey(event.logicalKey.keyId, action);
-              }
-            },
-            child: Listener(
-              onPointerDown: (e) => _handlePointer(e, 0),
-              onPointerUp: (e) => _handlePointer(e, 1),
-              onPointerMove: (e) => _handlePointer(e, 2),
-              onPointerSignal: _handleScroll,
-              child: SizedBox(
-                width: (session?.width ?? _nativeWidth).toDouble(),
-                height: (session?.height ?? _nativeHeight).toDouble(),
-                child: NativeVideoDecoder(
-                  key: Key('decoder_${widget.serial}'),
-                  streamUrl: displayUrl!,
-                  nativeWidth: session?.width ?? _nativeWidth,
-                  nativeHeight: session?.height ?? _nativeHeight,
-                  service: session!.decoderService,
-                  fit: widget.fit,
-                  onError: _onDecoderError,
-                ),
-              ),
-            ),
-          ),
+        return VisibilityDetector(
+          key: Key('visibility_${widget.serial}'),
+          onVisibilityChanged: (info) {
+            final isVisible =
+                info.visibleFraction > 0.05; // visible if more than 5%
+            store.setVisibility(widget.serial, isVisible);
+          },
+          child: _buildContent(context, store, session, isFloating),
         );
       },
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    PhoneViewStore store,
+    MirrorSession? session,
+    bool isFloating,
+  ) {
+    // If this is the grid view AND the device is currently floating, show a placeholder
+    if (!widget.isFloating && isFloating) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.picture_in_picture,
+              size: 48,
+              color: Colors.white24,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Floating Mode',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+            TextButton(
+              onPressed: _handleDoubleTap,
+              child: const Text('Bring Back'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 32, color: Colors.red),
+            const SizedBox(height: 8),
+            Text(
+              'Mirroring Failed',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _errorMessage!,
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _startMirroring,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isLoading && session == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Connecting to device...'),
+          ],
+        ),
+      );
+    }
+
+    if (session == null && _errorMessage == null) {
+      return const Center(child: Text('Initializing session...'));
+    }
+
+    final displayUrl = session?.videoUrl ?? _streamUrl;
+    if (displayUrl == null && _errorMessage == null) {
+      return const Center(child: Text('Waiting for stream URL...'));
+    }
+
+    return FittedBox(
+      fit: widget.fit,
+      child: KeyboardListener(
+        focusNode: _focusNode,
+        onKeyEvent: (event) {
+          final action = (event is KeyDownEvent)
+              ? 0
+              : (event is KeyUpEvent)
+              ? 1
+              : -1;
+          if (action != -1) {
+            _onKey(event.logicalKey.keyId, action);
+          }
+        },
+        child: Listener(
+          onPointerDown: (e) => _handlePointer(e, 0),
+          onPointerUp: (e) => _handlePointer(e, 1),
+          onPointerMove: (e) => _handlePointer(e, 2),
+          onPointerSignal: _handleScroll,
+          child: SizedBox(
+            width: (session?.width ?? _nativeWidth).toDouble(),
+            height: (session?.height ?? _nativeHeight).toDouble(),
+            child: NativeVideoDecoder(
+              key: Key('decoder_${widget.serial}'),
+              streamUrl: displayUrl!,
+              nativeWidth: session?.width ?? _nativeWidth,
+              nativeHeight: session?.height ?? _nativeHeight,
+              service: session!.decoderService,
+              fit: widget.fit,
+              onError: _onDecoderError,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
