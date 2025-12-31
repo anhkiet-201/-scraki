@@ -20,9 +20,6 @@ class ScrcpyService {
   /// Maps device serial to the local port used for the server connection.
   final Map<String, int> _devicePorts = {};
 
-  /// Tracks devices that have already had the server JAR pushed to them.
-  final Set<String> _pushedDevices = {};
-
   ScrcpyService() : _shell = Shell();
 
   static const _serverAssetPath = 'assets/server/scrcpy-server.jar';
@@ -44,13 +41,11 @@ class ScrcpyService {
   }
 
   Future<void> pushServer(String deviceSerial) async {
-    if (_pushedDevices.contains(deviceSerial)) return;
     try {
       final localPath = await _getServerPath();
       await _shell.run(
         'adb -s $deviceSerial push $localPath $_remoteServerPath',
       );
-      _pushedDevices.add(deviceSerial);
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
     }
@@ -115,7 +110,7 @@ class ScrcpyService {
 
   Future<void> killServer(String serial) async {
     try {
-      await _shell.run('adb -s $serial shell pkill -f scrcpy');
+      await _shell.run('adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"');
     } catch (e) {
       logger.w(
         '[ScrcpyService] Warning: Failed to kill server on $serial',
