@@ -24,15 +24,15 @@ class PhoneView extends StatefulWidget {
   /// Whether this view is specifically for a floating window.
   final bool isFloating;
 
-  /// Optional callback when the view is tapped (for requesting focus).
-  final VoidCallback? onTap;
+  /// Optional external FocusNode for keyboard input.
+  final FocusNode? focusNode;
 
   const PhoneView({
     super.key,
     required this.serial,
     this.fit = BoxFit.contain,
     this.isFloating = false,
-    this.onTap,
+    this.focusNode,
   });
 
   @override
@@ -44,7 +44,7 @@ class _PhoneViewState extends State<PhoneView> {
   int _nativeHeight = 2336;
   bool _isLoading = true;
   String? _errorMessage;
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode;
 
   // Double tap detection
   DateTime? _lastTapTime;
@@ -53,6 +53,8 @@ class _PhoneViewState extends State<PhoneView> {
   @override
   void initState() {
     super.initState();
+    // Use external FocusNode if provided, otherwise create internal one
+    _focusNode = widget.focusNode ?? FocusNode();
     _startMirroring();
   }
 
@@ -67,6 +69,12 @@ class _PhoneViewState extends State<PhoneView> {
     if (!widget.isFloating && store.floatingSerial != widget.serial) {
       store.stopMirroring(widget.serial);
     }
+
+    // Only dispose FocusNode if we created it internally
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
+
     super.dispose();
   }
 
@@ -117,11 +125,12 @@ class _PhoneViewState extends State<PhoneView> {
   }
 
   void _handlePointer(PointerEvent event, int action) {
+    // Ignore events if widget is unmounted
+    if (!mounted) return;
+
     // Request focus on any pointer event to enable keyboard input
     if (!_focusNode.hasFocus) {
       FocusScope.of(context).requestFocus(_focusNode);
-      // Notify parent that this view was tapped
-      widget.onTap?.call();
     }
     _onInput(event, action, _nativeWidth, _nativeHeight);
   }
@@ -296,202 +305,204 @@ class _PhoneViewState extends State<PhoneView> {
     return FittedBox(
       fit: widget.fit,
       child: KeyboardListener(
-        focusNode: _focusNode,
-        onKeyEvent: (event) {
-          final action = (event is KeyDownEvent)
-              ? 0
-              : (event is KeyUpEvent)
-              ? 1
-              : -1;
-          if (action != -1) {
-            final isModified =
-                HardwareKeyboard.instance.isMetaPressed ||
-                HardwareKeyboard.instance.isControlPressed;
+          focusNode: _focusNode,
+          onKeyEvent: (event) {
+            final action = (event is KeyDownEvent)
+                ? 0
+                : (event is KeyUpEvent)
+                ? 1
+                : -1;
+            if (action != -1) {
+              final isModified =
+                  HardwareKeyboard.instance.isMetaPressed ||
+                  HardwareKeyboard.instance.isControlPressed;
 
-            // Handle Key Combinations
-            if (isModified && action == 0) {
-              if (event.logicalKey == LogicalKeyboardKey.keyV) {
-                _handlePaste();
-                return;
+              // Handle Key Combinations
+              if (isModified && action == 0) {
+                if (event.logicalKey == LogicalKeyboardKey.keyV) {
+                  _handlePaste();
+                  return;
+                }
+                // Other shortcuts (A, C, X, Z) will be handled by regular _onKey with metaState
               }
-              // Other shortcuts (A, C, X, Z) will be handled by regular _onKey with metaState
-            }
 
-            _onKey(event.logicalKey.keyId, action, _getAndroidMetaState());
-          }
-        },
-        child: SizedBox(
-          width: (session.width).toDouble(),
-          height: (session.height).toDouble() + 140,
-          child: DropTarget(
-            onDragEntered: (details) {
-              store.setDragging(widget.serial, true);
-            },
-            onDragExited: (details) {
-              store.setDragging(widget.serial, false);
-            },
-            onDragDone: (details) async {
-              store.setDragging(widget.serial, false);
-              final paths = details.files.map((f) => f.path).toList();
-              await store.uploadFiles(widget.serial, paths);
-            },
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    Expanded(
-                      child: Listener(
-                        onPointerDown: (e) => _handlePointer(e, 0),
-                        onPointerUp: (e) => _handlePointer(e, 1),
-                        onPointerMove: (e) => _handlePointer(e, 2),
-                        onPointerSignal: _handleScroll,
-                        child: NativeVideoDecoder(
-                          key: Key('decoder_${widget.serial}'),
-                          streamUrl: displayUrl,
-                          nativeWidth: session.width,
-                          nativeHeight: session.height,
-                          service: session.decoderService,
-                          fit: widget.fit,
-                          onError: _onDecoderError,
+              _onKey(event.logicalKey.keyId, action, _getAndroidMetaState());
+            }
+          },
+          child: SizedBox(
+            width: (session.width).toDouble(),
+            height: (session.height).toDouble() + 140,
+            child: DropTarget(
+              onDragEntered: (details) {
+                store.setDragging(widget.serial, true);
+              },
+              onDragExited: (details) {
+                store.setDragging(widget.serial, false);
+              },
+              onDragDone: (details) async {
+                store.setDragging(widget.serial, false);
+                final paths = details.files.map((f) => f.path).toList();
+                await store.uploadFiles(widget.serial, paths);
+              },
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      Expanded(
+                        child: Listener(
+                          onPointerDown: (e) => _handlePointer(e, 0),
+                          onPointerUp: (e) => _handlePointer(e, 1),
+                          onPointerMove: (e) => _handlePointer(e, 2),
+                          onPointerSignal: _handleScroll,
+                          child: NativeVideoDecoder(
+                            key: Key('decoder_${widget.serial}'),
+                            streamUrl: displayUrl,
+                            nativeWidth: session.width,
+                            nativeHeight: session.height,
+                            service: session.decoderService,
+                            fit: widget.fit,
+                            onError: _onDecoderError,
+                          ),
                         ),
                       ),
-                    ),
-                    _buildNavigationBar(),
-                  ],
-                ),
-                Observer(
-                  builder: (_) {
-                    final isDragging =
-                        store.isDraggingFile[widget.serial] ?? false;
-                    if (!isDragging) return const SizedBox.shrink();
+                      _buildNavigationBar(),
+                    ],
+                  ),
+                  Observer(
+                    builder: (_) {
+                      final isDragging =
+                          store.isDraggingFile[widget.serial] ?? false;
+                      if (!isDragging) return const SizedBox.shrink();
 
-                    return Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                          child: Container(
-                            color: theme.colorScheme.primaryContainer
-                                .withOpacity(0.7),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      48,
-                                    ), // Increased padding
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: theme.colorScheme.primary
-                                              .withOpacity(0.3),
-                                          blurRadius: 40,
-                                          spreadRadius: 10,
-                                        ),
-                                      ],
+                      return Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                            child: Container(
+                              color: theme.colorScheme.primaryContainer
+                                  .withOpacity(0.7),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        48,
+                                      ), // Increased padding
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: theme.colorScheme.primary
+                                                .withOpacity(0.3),
+                                            blurRadius: 40,
+                                            spreadRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.file_copy_rounded,
+                                        size: 180, // Massive icon
+                                        color: theme.colorScheme.onPrimary,
+                                      ),
                                     ),
-                                    child: Icon(
-                                      Icons.file_copy_rounded,
-                                      size: 180, // Massive icon
-                                      color: theme.colorScheme.onPrimary,
+                                    const SizedBox(height: 48),
+                                    Text(
+                                      'Drop Files to Sync',
+                                      style: theme.textTheme.displayMedium
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 80, // Forced large font
+                                          ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 48),
-                                  Text(
-                                    'Drop Files to Sync',
-                                    style: theme.textTheme.displayMedium
-                                        ?.copyWith(
-                                          color: theme
-                                              .colorScheme
-                                              .onPrimaryContainer,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 80, // Forced large font
-                                        ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Files will be copied to /sdcard/Download',
-                                    style: theme.textTheme.headlineSmall
-                                        ?.copyWith(
-                                          color: theme
-                                              .colorScheme
-                                              .onPrimaryContainer
-                                              .withOpacity(0.7),
-                                          fontSize: 40, // Forced large font
-                                        ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Files will be copied to /sdcard/Download',
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onPrimaryContainer
+                                                .withOpacity(0.7),
+                                            fontSize: 40, // Forced large font
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                Observer(
-                  builder: (_) {
-                    final isPushing =
-                        store.isPushingFile[widget.serial] ?? false;
-                    if (!isPushing) return const SizedBox.shrink();
-                    return Positioned(
-                      top: 40, // More margin
-                      left: 40,
-                      right: 40,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 48,
-                            vertical: 24,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 6,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    theme.colorScheme.primary,
+                      );
+                    },
+                  ),
+                  Observer(
+                    builder: (_) {
+                      final isPushing =
+                          store.isPushingFile[widget.serial] ?? false;
+                      if (!isPushing) return const SizedBox.shrink();
+                      return Positioned(
+                        top: 40, // More margin
+                        left: 40,
+                        right: 40,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 48,
+                              vertical: 24,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  height: 40,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 6,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 32),
-                              Text(
-                                'Pushing files to phone...',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 32,
+                                const SizedBox(width: 32),
+                                Text(
+                                  'Pushing files to phone...',
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 32,
+                                      ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
     );
   }
 

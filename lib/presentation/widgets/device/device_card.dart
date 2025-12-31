@@ -21,14 +21,21 @@ class DeviceCard extends StatefulWidget {
 class _DeviceCardState extends State<DeviceCard> {
   bool _isMirroring = false;
   bool _isHovered = false;
-  bool _isFocused = false;
+  bool _hasFocus = false;
   final FocusNode _cardFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    // Listen to focus changes to update visual state
     _cardFocusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) {
+      setState(() {
+        _hasFocus = _cardFocusNode.hasFocus;
+      });
+    }
   }
 
   @override
@@ -38,15 +45,6 @@ class _DeviceCardState extends State<DeviceCard> {
     super.dispose();
   }
 
-  void _onFocusChange() {
-    // Clear focused state when losing focus
-    if (!_cardFocusNode.hasFocus && mounted) {
-      setState(() {
-        _isFocused = false;
-      });
-    }
-  }
-
   void _toggleMirroring() {
     setState(() {
       _isMirroring = !_isMirroring;
@@ -54,14 +52,8 @@ class _DeviceCardState extends State<DeviceCard> {
   }
 
   void _handleCardTap() {
-    // Only set focused state if mirroring is active
-    if (_isMirroring) {
-      setState(() {
-        _isFocused = true;
-      });
-      // Request focus for this card
-      FocusScope.of(context).requestFocus(_cardFocusNode);
-    }
+    // Request focus when card is tapped
+    FocusScope.of(context).requestFocus(_cardFocusNode);
   }
 
   @override
@@ -83,12 +75,12 @@ class _DeviceCardState extends State<DeviceCard> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: _isFocused
+                color: _hasFocus
                     ? colorScheme.primary
                     : (_isHovered || _isMirroring
                           ? colorScheme.primary.withOpacity(0.5)
                           : colorScheme.outlineVariant),
-                width: _isFocused ? 5 : (_isHovered || _isMirroring ? 2 : 1),
+                width: _hasFocus ? 3 : (_isHovered || _isMirroring ? 2 : 1),
               ),
             ),
             child: Column(
@@ -133,17 +125,10 @@ class _DeviceCardState extends State<DeviceCard> {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: PhoneView(
-                            serial: widget.device.serial,
-                            fit: BoxFit.contain,
-                            onTap: () {
-                              setState(() {
-                                _isFocused = true;
-                              });
-                              FocusScope.of(
-                                context,
-                              ).requestFocus(_cardFocusNode);
-                            },
-                          )
+                      serial: widget.device.serial,
+                      fit: BoxFit.contain,
+                      focusNode: _cardFocusNode,
+                    ),
                   ),
                 ),
               ],
