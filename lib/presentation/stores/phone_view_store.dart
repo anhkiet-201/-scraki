@@ -62,6 +62,9 @@ abstract class _PhoneViewStore with Store {
   ObservableMap<String, MirrorSession> activeSessions =
       ObservableMap<String, MirrorSession>();
 
+  @observable
+  ObservableMap<String, bool> isPushingFile = ObservableMap<String, bool>();
+
   @computed
   double get deviceAspectRatio {
     if (activeSessions.isEmpty) return 0.5625; // Default 9:16
@@ -364,5 +367,23 @@ abstract class _PhoneViewStore with Store {
     if (hScroll == 0 && vScroll == 0) return;
 
     sendScroll(serial, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
+  }
+
+  @action
+  Future<void> uploadFiles(String serial, List<String> paths) async {
+    if (paths.isEmpty) return;
+
+    runInAction(() => isPushingFile[serial] = true);
+    try {
+      await _scrcpyService.pushFiles(serial, paths);
+      logger.i(
+        '[PhoneViewStore] Successfully pushed ${paths.length} files to $serial',
+      );
+    } catch (e) {
+      logger.e('[PhoneViewStore] Failed to push files to $serial', error: e);
+      runInAction(() => errorMessage = 'Failed to push files: $e');
+    } finally {
+      runInAction(() => isPushingFile[serial] = false);
+    }
   }
 }

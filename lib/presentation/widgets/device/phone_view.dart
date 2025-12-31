@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/utils/android_key_codes.dart';
 import 'package:scraki/domain/entities/mirror_session.dart';
@@ -40,6 +41,7 @@ class _PhoneViewState extends State<PhoneView> {
   bool _isLoading = true;
   String? _errorMessage;
   final FocusNode _focusNode = FocusNode();
+  bool _isDraggingFile = false;
 
   // Double tap detection
   DateTime? _lastTapTime;
@@ -265,27 +267,112 @@ class _PhoneViewState extends State<PhoneView> {
         child: SizedBox(
           width: (session?.width ?? _nativeWidth).toDouble(),
           height: (session?.height ?? _nativeHeight).toDouble() + 140,
-          child: Column(
-            children: [
-              Expanded(
-                child: Listener(
-                  onPointerDown: (e) => _handlePointer(e, 0),
-                  onPointerUp: (e) => _handlePointer(e, 1),
-                  onPointerMove: (e) => _handlePointer(e, 2),
-                  onPointerSignal: _handleScroll,
-                  child: NativeVideoDecoder(
-                    key: Key('decoder_${widget.serial}'),
-                    streamUrl: displayUrl!,
-                    nativeWidth: session?.width ?? _nativeWidth,
-                    nativeHeight: session?.height ?? _nativeHeight,
-                    service: session!.decoderService,
-                    fit: widget.fit,
-                    onError: _onDecoderError,
-                  ),
+          child: DropTarget(
+            onDragEntered: (details) {
+              setState(() => _isDraggingFile = true);
+            },
+            onDragExited: (details) {
+              setState(() => _isDraggingFile = false);
+            },
+            onDragDone: (details) async {
+              setState(() => _isDraggingFile = false);
+              final paths = details.files.map((f) => f.path).toList();
+              await store.uploadFiles(widget.serial, paths);
+            },
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    Expanded(
+                      child: Listener(
+                        onPointerDown: (e) => _handlePointer(e, 0),
+                        onPointerUp: (e) => _handlePointer(e, 1),
+                        onPointerMove: (e) => _handlePointer(e, 2),
+                        onPointerSignal: _handleScroll,
+                        child: NativeVideoDecoder(
+                          key: Key('decoder_${widget.serial}'),
+                          streamUrl: displayUrl!,
+                          nativeWidth: session?.width ?? _nativeWidth,
+                          nativeHeight: session?.height ?? _nativeHeight,
+                          service: session!.decoderService,
+                          fit: widget.fit,
+                          onError: _onDecoderError,
+                        ),
+                      ),
+                    ),
+                    _buildNavigationBar(),
+                  ],
                 ),
-              ),
-              _buildNavigationBar(),
-            ],
+                if (_isDraggingFile)
+                  Positioned.fill(
+                    child: Container(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.2),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.file_upload_outlined,
+                              size: 80,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Drop to push files',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                Observer(
+                  builder: (_) {
+                    final isPushing =
+                        store.isPushingFile[widget.serial] ?? false;
+                    if (!isPushing) return const SizedBox.shrink();
+                    final theme = Theme.of(context);
+                    return Positioned(
+                      top: 20,
+                      right: 20,
+                      child: Card(
+                        color: theme.colorScheme.secondaryContainer,
+                        elevation: 4,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Pushing files...',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

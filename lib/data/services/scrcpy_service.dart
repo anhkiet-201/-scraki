@@ -122,4 +122,17 @@ class ScrcpyService {
   }
 
   int? getForwardPort(String serial) => _devicePorts[serial];
+
+  Future<void> pushFiles(String serial, List<String> filePaths) async {
+    try {
+      for (final path in filePaths) {
+        logger.i('[ScrcpyService] Pushing file to $serial: $path');
+        // Push to /sdcard/Download/ which is a standard location
+        await _shell.run('adb -s $serial push "$path" /sdcard/Download/');
+      }
+    } catch (e) {
+      logger.e('[ScrcpyService] Failed to push files to $serial', error: e);
+      rethrow;
+    }
+  }
 }
