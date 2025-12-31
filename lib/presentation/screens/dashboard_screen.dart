@@ -27,7 +27,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       body: Row(
         children: [
@@ -51,27 +50,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (errorMessage != null && _store.devices.isEmpty) {
                         return _buildErrorView(errorMessage);
                       }
-
-                      return Stack(
-                        children: [
-                          RefreshIndicator(
-                            onRefresh: _store.loadDevices,
-                            child: DeviceGrid(
-                              devices: _store.devices.toList(),
-                              onDisconnect: (device) {
-                                _store.disconnect(device.serial);
-                              },
-                            ),
-                          ),
-                          if (_store.isFloatingVisible)
-                            FloatingPhoneView(
-                              key: ValueKey(
-                                'floating_${_store.floatingSerial}',
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Stack(
+                            fit: StackFit.expand,
+                            clipBehavior: Clip.none,
+                            children: [
+                              RefreshIndicator(
+                                onRefresh: _store.loadDevices,
+                                child: DeviceGrid(
+                                  devices: _store.devices.toList(),
+                                  onDisconnect: (device) {
+                                    _store.disconnect(device.serial);
+                                  },
+                                ),
                               ),
-                              serial: _store.floatingSerial!,
-                              onClose: () => _store.toggleFloating(null),
-                            ),
-                        ],
+                              Observer(
+                                builder: (_) {
+                                  final isVisible = _store.isFloatingVisible;
+                                  final serial = _store.floatingSerial;
+
+                                  if (!isVisible)
+                                    return const SizedBox.shrink();
+
+                                  return FloatingPhoneView(
+                                    key: ValueKey('floating_$serial'),
+                                    serial: serial!,
+                                    parentSize: constraints.biggest,
+                                    onClose: () => _store.toggleFloating(null),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),

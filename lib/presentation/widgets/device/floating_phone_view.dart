@@ -4,11 +4,13 @@ import 'phone_view.dart';
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
   final VoidCallback onClose;
+  final Size parentSize;
 
   const FloatingPhoneView({
     super.key,
     required this.serial,
     required this.onClose,
+    required this.parentSize,
   });
 
   @override
@@ -19,6 +21,32 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   Offset _position = const Offset(100, 100);
   double _width = 480;
   double _height = 1000;
+
+  @override
+  void initState() {
+    super.initState();
+    // Don't clamp initially - constraints only apply during drag
+  }
+
+  @override
+  void didUpdateWidget(FloatingPhoneView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Parent size changes are handled automatically by constraints during drag
+  }
+
+  Offset _getClampedPosition(Offset target) {
+    if (widget.parentSize.isEmpty) {
+      return target;
+    }
+
+    final maxX = widget.parentSize.width - _width;
+    final maxY = widget.parentSize.height - _height;
+
+    return Offset(
+      target.dx.clamp(0.0, maxX > 0 ? maxX : 0.0),
+      target.dy.clamp(0.0, maxY > 0 ? maxY : 0.0),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +67,18 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
           ),
           child: Column(
             children: [
-              GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _position += details.delta;
-                  });
-                },
-                child: Container(
-                  height: 40,
-                  color: Colors.grey[900],
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+              Container(
+                height: 40,
+                color: Colors.grey[900],
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: GestureDetector(
+                   onPanUpdate: (details) {
+                          setState(() {
+                            _position = _getClampedPosition(
+                              _position + details.delta,
+                            );
+                          });
+                        },
                   child: Row(
                     children: [
                       const Icon(
@@ -93,8 +123,35 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
               GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    _width = (_width + details.delta.dx).clamp(200.0, 1200.0);
-                    _height = (_height + details.delta.dy).clamp(400.0, 1600.0);
+                    final newWidth = (_width + details.delta.dx).clamp(
+                      200.0,
+                      1200.0,
+                    );
+                    final newHeight = (_height + details.delta.dy).clamp(
+                      400.0,
+                      1600.0,
+                    );
+
+                    // Update size
+                    _width = newWidth;
+                    _height = newHeight;
+
+                    // Constraint: Ensure window doesn't extend beyond parent bounds
+                    // But maintain minimum size
+                    if (!widget.parentSize.isEmpty) {
+                      final maxAllowedWidth =
+                          widget.parentSize.width - _position.dx;
+                      final maxAllowedHeight =
+                          widget.parentSize.height - _position.dy;
+
+                      if (maxAllowedWidth > 200) {
+                        _width = _width.clamp(200.0, maxAllowedWidth);
+                      }
+
+                      if (maxAllowedHeight > 400) {
+                        _height = _height.clamp(400.0, maxAllowedHeight);
+                      }
+                    }
                   });
                 },
                 child: Container(
