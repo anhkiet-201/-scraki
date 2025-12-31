@@ -16,7 +16,8 @@ class TouchControlMessage extends ControlMessage {
   final int y;
   final int width;
   final int height;
-  final int pointerId; // Default 0 for mouse/finger 1
+  final int pointerId;
+  final int buttons; // Add buttons support
 
   TouchControlMessage({
     required this.action,
@@ -24,7 +25,8 @@ class TouchControlMessage extends ControlMessage {
     required this.y,
     required this.width,
     required this.height,
-    this.pointerId = 0, // Default to 0 (Mouse or first finger)
+    this.pointerId = 0,
+    this.buttons = 0, // 0 for touch, or encoded mouse buttons
   });
 
   @override
@@ -59,18 +61,74 @@ class TouchControlMessage extends ControlMessage {
     buffer.add(pressureData.buffer.asUint8List());
 
     // 6. Action Button (4 bytes)
-    // For touch, usually 0 or same as buttons?
-    // Scrcpy v2+ adds this. Default to 0 or 1?
-    // Usually 0 for pure touch, but 1 for "primary" like mouse?
-    // Let's use 1 if pressed, 0 if up, same as buttons.
+    // For Mouse: which button triggered the event (Primary=1, Secondary=2, Middle=4, etc.)
+    // For Touch: 0 or 1?
+    // Let's use buttons value for simplicity or pass separately if needed.
+    // Scrcpy logic: action_button is the button that CHANGED state.
+    // buttons is the state of ALL buttons.
+    // For simplicity, we assume single button press logic for now.
     final actionButtonData = ByteData(4);
-    int actionButton = (action == actionUp) ? 0 : 1;
-    actionButtonData.setInt32(0, actionButton, Endian.big);
+    // If it's a move event, actionButton is usually 0 unless dragging?
+    // Let's use 'buttons' as the action button for Down/Up events.
+    actionButtonData.setInt32(0, buttons, Endian.big);
     buffer.add(actionButtonData.buffer.asUint8List());
 
-    // 7. Buttons (4 bytes)
+    // 7. Buttons (4 bytes) - State of all buttons
     final buttonsData = ByteData(4);
-    int buttons = (action == actionUp) ? 0 : 1;
+    // If Up, button is released so state might be 0? 
+    // Or Scrcpy expects the state BEFORE release? 
+    // Usually Up event means button is no longer pressed.
+    // But protocol field is 'buttons state'.
+    // Let's keep it simple: Pass what we get.
+    buttonsData.setInt32(0, buttons, Endian.big);
+    buffer.add(buttonsData.buffer.asUint8List());
+
+    return buffer.toBytes();
+  }
+}
+
+class ScrollControlMessage extends ControlMessage {
+  static const int typeInjectScrollEvent = 3; // 0x03
+
+  final int x;
+  final int y;
+  final int width;
+  final int height;
+  final int hScroll; // horizontal
+  final int vScroll; // vertical
+  final int buttons;
+
+  ScrollControlMessage({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.hScroll,
+    required this.vScroll,
+    this.buttons = 0,
+  });
+
+  @override
+  Uint8List serialize() {
+    final buffer = BytesBuilder();
+    buffer.addByte(typeInjectScrollEvent);
+
+    // Position (12 bytes: X, Y, W, H)
+    final posData = ByteData(12);
+    posData.setInt32(0, x, Endian.big);
+    posData.setInt32(4, y, Endian.big);
+    posData.setUint16(8, width, Endian.big);
+    posData.setUint16(10, height, Endian.big);
+    buffer.add(posData.buffer.asUint8List());
+
+    // Scroll (4 bytes: H, V - signed 16)
+    final scrollData = ByteData(4);
+    scrollData.setInt16(0, hScroll, Endian.big);
+    scrollData.setInt16(2, vScroll, Endian.big);
+    buffer.add(scrollData.buffer.asUint8List());
+    
+    // Buttons (4 bytes)
+    final buttonsData = ByteData(4);
     buttonsData.setInt32(0, buttons, Endian.big);
     buffer.add(buttonsData.buffer.asUint8List());
 

@@ -218,8 +218,9 @@ abstract class _DeviceStore with Store {
     int y,
     int action,
     int width,
-    int height,
-  ) {
+    int height, {
+    int buttons = 0,
+  }) {
     if (x < 0 || y < 0) return;
 
     final message = TouchControlMessage(
@@ -228,8 +229,33 @@ abstract class _DeviceStore with Store {
       y: y,
       width: width,
       height: height,
+      buttons: buttons,
+      pointerId: 0, // Mouse always 0
     );
 
+    _controlService.sendControlMessage(serial, message);
+  }
+  
+  void sendScroll(
+    String serial,
+    int x,
+    int y,
+    int width,
+    int height,
+    int hScroll,
+    int vScroll,
+  ) {
+    if (x < 0 || y < 0) return;
+    
+    final message = ScrollControlMessage(
+      x: x, 
+      y: y, 
+      width: width, 
+      height: height, 
+      hScroll: hScroll, 
+      vScroll: vScroll,
+    );
+    
     _controlService.sendControlMessage(serial, message);
   }
   

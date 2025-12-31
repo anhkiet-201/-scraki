@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,9 +18,12 @@ class NativeVideoDecoder extends StatefulWidget {
   /// Callback when decoder encounters an error
   final void Function(String error)? onError;
 
-  /// Callback for input events (action, x, y, viewWidth, viewHeight)
+  /// Callback for input events (action, x, y, viewWidth, viewHeight, buttons)
   /// Action: 0=Down, 1=Up, 2=Move
-  final void Function(int action, int x, int y, int width, int height)? onInput;
+  final void Function(int action, int x, int y, int width, int height, int buttons)? onInput;
+  
+  /// Callback for scroll events (x, y, w, h, hScroll, vScroll)
+  final void Function(int x, int y, int width, int height, int hScroll, int vScroll)? onScroll;
   
   /// Callback for key events (keyCode, action)
   /// Action: 0=Down, 1=Up
@@ -33,6 +37,7 @@ class NativeVideoDecoder extends StatefulWidget {
     this.fit = BoxFit.contain,
     this.onError,
     this.onInput,
+    this.onScroll,
     this.onKey,
   });
 
@@ -112,66 +117,49 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
       FocusScope.of(context).requestFocus(_focusNode);
     }
     
-    // Coordinates are local to the SizedBox due to Listener inside FittedBox
     final x = event.localPosition.dx.toInt().clamp(0, widget.nativeWidth);
     final y = event.localPosition.dy.toInt().clamp(0, widget.nativeHeight);
+    int buttons = event.buttons;
     
-    widget.onInput!(action, x, y, widget.nativeWidth, widget.nativeHeight);
+    widget.onInput!(action, x, y, widget.nativeWidth, widget.nativeHeight, buttons);
   }
   
-  void _handleKey(KeyEvent event) {
-    if (widget.onKey == null) return;
-    if (event is KeyRepeatEvent) return; // Ignore repeats for now or handle them? Scrcpy repeats sent as Down
-    
-    // Map LogicalKey to Android KeyCode (User needs to implement mapping logic externally or pass raw?)
-    // Actually best to pass LogicalKeyboardKey and map outside, but for now we pass generic int if we mapped here.
-    // Let's pass the raw Flutter Key ID or map it outside?
-    // The prompt implied passing (keyCode, action).
-    // Let's assume the parent widget handles mapping? 
-    // No, NativeVideoDecoder is low level UI.
-    // But we need to pass the raw event or a mapped code.
-    // Let's pass the raw LogicalKeyboardKey keyId and let parent map it.
-    // Wait, the callback signature is (int keyCode, int action).
-    // I will assume the parent does the mapping if I pass the Flutter ID?
-    // Or I should map it here using the util class I just created?
-    // I cannot import 'android_key_codes.dart' easily without adding import.
-    // Let's modify the file imports first.
+  void _handleScroll(PointerSignalEvent event) {
+    if (widget.onScroll == null) return;
+    if (event is PointerScrollEvent) {
+       final x = event.localPosition.dx.toInt().clamp(0, widget.nativeWidth);
+       final y = event.localPosition.dy.toInt().clamp(0, widget.nativeHeight);
+       
+       int hScroll = -(event.scrollDelta.dx / 20).round();
+       int vScroll = -(event.scrollDelta.dy / 20).round();
+       
+       if (hScroll == 0 && vScroll == 0) return;
+       
+       widget.onScroll!(x, y, widget.nativeWidth, widget.nativeHeight, hScroll, vScroll);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              'Decoder Error',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage!,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Text('Decoder Error', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(_errorMessage!, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+        ]),
       );
     }
 
     if (_isInitializing || _textureId == null) {
       return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Initializing decoder...'),
-          ],
-        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Initializing decoder...'),
+        ]),
       );
     }
 
@@ -180,25 +168,24 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
       child: KeyboardListener(
         focusNode: _focusNode,
         onKeyEvent: (event) {
-             if (widget.onKey != null) {
-               // 0=Down, 1=Up
-               final action = (event is KeyDownEvent) ? 0 : (event is KeyUpEvent) ? 1 : -1;
-               if (action != -1) {
-                  // Pass the Flutter Logical Key ID, parent will map it
-                  widget.onKey!(event.logicalKey.keyId, action);
-               }
-             }
+          if (widget.onKey != null) {
+            final action = (event is KeyDownEvent) ? 0 : (event is KeyUpEvent) ? 1 : -1;
+            if (action != -1) {
+              widget.onKey!(event.logicalKey.keyId, action);
+            }
+          }
         },
         child: Listener(
-          onPointerDown: (e) => _handlePointer(e, 0), // Action Down
-          onPointerUp: (e) => _handlePointer(e, 1),   // Action Up
-          onPointerMove: (e) => _handlePointer(e, 2), // Action Move
+          onPointerDown: (e) => _handlePointer(e, 0),
+          onPointerUp: (e) => _handlePointer(e, 1),
+          onPointerMove: (e) => _handlePointer(e, 2),
+          onPointerSignal: _handleScroll,
           child: SizedBox(
-            width: widget.nativeWidth.toDouble(), 
+            width: widget.nativeWidth.toDouble(),
             height: widget.nativeHeight.toDouble(),
             child: Texture(
               textureId: _textureId!,
-              filterQuality: FilterQuality.low, // Low latency, no smoothing
+              filterQuality: FilterQuality.low,
             ),
           ),
         ),

@@ -131,7 +131,7 @@ class _PhoneViewState extends State<PhoneView> {
       nativeHeight: _nativeHeight,
       fit: widget.fit,
       onError: _onDecoderError,
-      onInput: (action, x, y, width, height) {
+      onInput: (action, x, y, width, height, buttons) {
         getIt<DeviceStore>().sendTouch(
           widget.serial,
           x,
@@ -139,6 +139,18 @@ class _PhoneViewState extends State<PhoneView> {
           action,
           width,
           height,
+          buttons: buttons,
+        );
+      },
+      onScroll: (x, y, width, height, hScroll, vScroll) {
+        getIt<DeviceStore>().sendScroll(
+          widget.serial,
+          x,
+          y,
+          width,
+          height,
+          hScroll,
+          vScroll,
         );
       },
       onKey: (keyId, action) {
