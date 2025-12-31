@@ -246,7 +246,18 @@ class _PhoneViewState extends State<PhoneView> {
               ? 1
               : -1;
           if (action != -1) {
-            _onKey(event.logicalKey.keyId, action);
+            // Handle Paste Shortcut (Cmd+V on macOS, Ctrl+V on others)
+            final isPaste =
+                (event.logicalKey == LogicalKeyboardKey.keyV) &&
+                (HardwareKeyboard.instance.isMetaPressed ||
+                    HardwareKeyboard.instance.isControlPressed);
+
+            if (isPaste && action == 0) {
+              // Paste on KeyDown
+              _handlePaste();
+            } else {
+              _onKey(event.logicalKey.keyId, action);
+            }
           }
         },
         child: Listener(
@@ -312,5 +323,20 @@ class _PhoneViewState extends State<PhoneView> {
       width,
       height,
     );
+  }
+
+  Future<void> _handlePaste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text != null && text.isNotEmpty) {
+      logger.i(
+        '[PhoneView] Pasting text to ${widget.serial}: ${text.length} chars',
+      );
+      // Option 1: Set clipboard and paste (Best for large text)
+      getIt<PhoneViewStore>().setClipboard(widget.serial, text, paste: true);
+
+      // Option 2: Inject text directly (Alternative)
+      // getIt<PhoneViewStore>().sendText(widget.serial, text);
+    }
   }
 }

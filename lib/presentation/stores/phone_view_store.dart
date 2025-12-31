@@ -316,6 +316,17 @@ abstract class _PhoneViewStore with Store {
     _workerManager.sendControl(serial, message.serialize());
   }
 
+  void sendText(String serial, String text) {
+    if (text.isEmpty) return;
+    final message = InjectTextControlMessage(text);
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  void setClipboard(String serial, String text, {bool paste = false}) {
+    final message = SetClipboardControlMessage(text, paste: paste);
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
   void handlePointerEvent(
     String serial,
     PointerEvent event,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 abstract class ControlMessage {
@@ -75,8 +76,8 @@ class TouchControlMessage extends ControlMessage {
 
     // 7. Buttons (4 bytes) - State of all buttons
     final buttonsData = ByteData(4);
-    // If Up, button is released so state might be 0? 
-    // Or Scrcpy expects the state BEFORE release? 
+    // If Up, button is released so state might be 0?
+    // Or Scrcpy expects the state BEFORE release?
     // Usually Up event means button is no longer pressed.
     // But protocol field is 'buttons state'.
     // Let's keep it simple: Pass what we get.
@@ -126,7 +127,7 @@ class ScrollControlMessage extends ControlMessage {
     scrollData.setInt16(0, hScroll, Endian.big);
     scrollData.setInt16(2, vScroll, Endian.big);
     buffer.add(scrollData.buffer.asUint8List());
-    
+
     // Buttons (4 bytes)
     final buttonsData = ByteData(4);
     buttonsData.setInt32(0, buttons, Endian.big);
@@ -154,28 +155,80 @@ class KeyControlMessage extends ControlMessage {
   @override
   Uint8List serialize() {
     final buffer = BytesBuilder();
-    
+
     // 1. Type (1 byte)
     buffer.addByte(typeInjectKeyEvent);
-    
+
     // 2. Action (1 byte)
     buffer.addByte(action);
-    
+
     // 3. KeyCode (4 bytes)
     final keyData = ByteData(4);
     keyData.setInt32(0, keyCode, Endian.big);
     buffer.add(keyData.buffer.asUint8List());
-    
+
     // 4. Repeat (4 bytes)
     final repeatData = ByteData(4);
     repeatData.setInt32(0, repeat, Endian.big);
     buffer.add(repeatData.buffer.asUint8List());
-    
+
     // 5. MetaState (4 bytes)
     final metaData = ByteData(4);
     metaData.setInt32(0, metaState, Endian.big);
     buffer.add(metaData.buffer.asUint8List());
-    
+
+    return buffer.toBytes();
+  }
+}
+
+class InjectTextControlMessage extends ControlMessage {
+  static const int typeInjectTextEvent = 1; // 0x01
+
+  final String text;
+
+  InjectTextControlMessage(this.text);
+
+  @override
+  Uint8List serialize() {
+    final buffer = BytesBuilder();
+    buffer.addByte(typeInjectTextEvent);
+
+    final textBytes = utf8.encode(text);
+    final textData = ByteData(4);
+    textData.setUint32(0, textBytes.length, Endian.big);
+    buffer.add(textData.buffer.asUint8List());
+    buffer.add(textBytes);
+
+    return buffer.toBytes();
+  }
+}
+
+class SetClipboardControlMessage extends ControlMessage {
+  static const int typeSetClipboard = 9; // 0x09
+
+  final String text;
+  final bool paste;
+
+  SetClipboardControlMessage(this.text, {this.paste = false});
+
+  @override
+  Uint8List serialize() {
+    final buffer = BytesBuilder();
+    buffer.addByte(typeSetClipboard);
+
+    // Sequence number (defaulting to 0/automatic for now)
+    final seqData = ByteData(8);
+    seqData.setUint64(0, 0, Endian.big);
+    buffer.add(seqData.buffer.asUint8List());
+
+    buffer.addByte(paste ? 1 : 0);
+
+    final textBytes = utf8.encode(text);
+    final textLengthData = ByteData(4);
+    textLengthData.setUint32(0, textBytes.length, Endian.big);
+    buffer.add(textLengthData.buffer.asUint8List());
+    buffer.add(textBytes);
+
     return buffer.toBytes();
   }
 }
