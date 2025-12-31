@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:scraki/core/utils/logger.dart';
 
 const serial = '192.168.1.20:5555'; // Using the active device from previous log
 const serverRemote = '/data/local/tmp/scrcpy-server.jar';
 
 void main() async {
-  print('--- Debugging Scrcpy Server Launch v3.3.4 (Key-Value Mode) ---');
+  logger.i('--- Debugging Scrcpy Server Launch v3.3.4 (Key-Value Mode) ---');
 
   // Verify server version string is correct for 3.3.4
   // Server args: [version] [k=v] [k=v] ...
@@ -41,30 +42,30 @@ void main() async {
 
   final cmd =
       'CLASSPATH=$serverRemote app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
-  print('Running: $cmd');
+  logger.i('Running: $cmd');
 
   final process = await Process.start('adb', ['-s', serial, 'shell', cmd]);
 
   process.stderr.transform(utf8.decoder).listen((data) {
-    print('STDERR: $data');
+    logger.e('STDERR: $data');
   });
 
   int byteCount = 0;
   process.stdout.listen((data) {
     byteCount += data.length;
     if (byteCount < 100) {
-      print(
+      logger.d(
         'STDOUT (Hex): ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}',
       );
     }
     if (byteCount > 1000) {
-      print('Stream is flowing! Received > 1000 bytes.');
+      logger.i('Stream is flowing! Received > 1000 bytes.');
       process.kill();
       exit(0);
     }
   });
 
-  await Future.delayed(Duration(seconds: 5));
-  print('Timeout. Total bytes received: $byteCount');
+  await Future<void>.delayed(Duration(seconds: 5));
+  logger.w('Timeout. Total bytes received: $byteCount');
   process.kill();
 }

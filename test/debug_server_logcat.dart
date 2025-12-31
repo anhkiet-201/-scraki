@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:scraki/core/utils/logger.dart';
 
 const serial = '192.168.1.20:5555';
 const serverLocal = 'assets/server/scrcpy-server.jar';
 const serverRemote = '/data/local/tmp/scrcpy-server.jar';
 
 void main() async {
-  print('--- Debugging Scrcpy Server Crash (Logcat) ---');
+  logger.i('--- Debugging Scrcpy Server Crash (Logcat) ---');
 
   // 1. Push
-  print('1. Pushing server...');
+  logger.i('1. Pushing server...');
   await Process.run('adb', ['-s', serial, 'push', serverLocal, serverRemote]);
 
   // 2. Clear Logcat
@@ -44,16 +45,16 @@ void main() async {
 
   final cmd =
       'CLASSPATH=$serverRemote app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
-  print('Running: $cmd');
+  logger.i('Running: $cmd');
 
   final process = await Process.start('adb', ['-s', serial, 'shell', cmd]);
 
-  process.stderr.transform(utf8.decoder).listen((d) => print('STDERR: $d'));
+  process.stderr.transform(utf8.decoder).listen((d) => logger.e('STDERR: $d'));
 
   // Wait for it to die
-  await Future.delayed(Duration(seconds: 2));
+  await Future<void>.delayed(Duration(seconds: 2));
 
-  print('--- Fetching Logcat (App Crash) ---');
+  logger.i('--- Fetching Logcat (App Crash) ---');
   final logcat = await Process.run('adb', [
     '-s',
     serial,
@@ -64,7 +65,7 @@ void main() async {
     'AndroidRuntime',
     'DEBUG',
   ]);
-  print(logcat.stdout);
+  logger.i(logcat.stdout);
 
   process.kill();
   exit(0);

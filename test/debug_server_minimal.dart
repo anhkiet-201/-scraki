@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:scraki/core/utils/logger.dart';
 
 const serial = '192.168.1.20:5555';
 const serverRemote = '/data/local/tmp/scrcpy-server.jar';
 
 void main() async {
-  print('--- Debugging Scrcpy Server (Minimal Args) ---');
+  logger.i('--- Debugging Scrcpy Server (Minimal Args) ---');
 
   final args = [
     '3.3.4',
@@ -23,17 +24,17 @@ void main() async {
 
   final cmd =
       'CLASSPATH=$serverRemote app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
-  print('Cmd: $cmd');
+  logger.i('Cmd: $cmd');
 
   final process = await Process.start('adb', ['-s', serial, 'shell', cmd]);
 
   process.stdout
       .transform(utf8.decoder)
-      .listen((data) => print('STDOUT: $data'));
+      .listen((data) => logger.i('STDOUT: $data'));
   process.stderr
       .transform(utf8.decoder)
-      .listen((data) => print('STDERR: $data'));
+      .listen((data) => logger.e('STDERR: $data'));
 
-  await Future.delayed(Duration(seconds: 4));
+  await Future<void>.delayed(Duration(seconds: 4));
   process.kill();
 }

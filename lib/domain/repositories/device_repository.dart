@@ -2,7 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../core/error/failures.dart';
 import '../entities/device_entity.dart';
 
-abstract class IDeviceRepository {
+abstract class DeviceRepository {
   /// Retrieves a list of connected devices.
   Future<Either<Failure, List<DeviceEntity>>> getConnectedDevices();
 

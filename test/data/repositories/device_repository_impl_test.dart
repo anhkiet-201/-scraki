@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:scraki/data/repositories/device_repository_impl.dart';
 import 'package:scraki/data/datasources/adb_remote_data_source.dart';
 import 'package:scraki/core/error/exceptions.dart';
 import 'package:scraki/core/error/failures.dart';
-import 'package:scraki/domain/entities/device_entity.dart';
 
 class MockAdbRemoteDataSource extends Mock implements IAdbRemoteDataSource {}
 

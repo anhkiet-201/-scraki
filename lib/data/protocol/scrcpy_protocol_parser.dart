@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'scrcpy_header.dart';
+import '../../core/utils/logger.dart';
 
 class ScrcpyProtocolParser {
   static const int headerSize = 76; // 64 (Name) + 12 (Codec Meta)
@@ -27,7 +28,7 @@ class ScrcpyProtocolParser {
     final width = view.getUint32(4); // Offset 4 in view = offset 68 in data
     final height = view.getUint32(8); // Offset 8 in view = offset 72 in data
 
-    print(
+    logger.d(
       '[ScrcpyProtocolParser] Codec ID: $codecId, Resolution: ${width}x$height',
     );
 

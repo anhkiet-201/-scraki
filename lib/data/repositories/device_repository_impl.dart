@@ -4,11 +4,11 @@ import '../../core/error/exceptions.dart';
 import '../../core/error/failures.dart';
 import '../../core/utils/adb_output_parser.dart';
 import '../../domain/entities/device_entity.dart';
-import '../../domain/repositories/i_device_repository.dart';
+import '../../domain/repositories/device_repository.dart';
 import '../datasources/adb_remote_data_source.dart';
 
-@LazySingleton(as: IDeviceRepository)
-class DeviceRepositoryImpl implements IDeviceRepository {
+@LazySingleton(as: DeviceRepository)
+class DeviceRepositoryImpl implements DeviceRepository {
   final IAdbRemoteDataSource _remoteDataSource;
 
   DeviceRepositoryImpl(this._remoteDataSource);

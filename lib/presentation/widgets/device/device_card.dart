@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../domain/entities/device_entity.dart';
-import '../atoms/protocol_icon.dart';
-import '../atoms/status_badge.dart';
-import '../../widgets/phone_view.dart';
+import 'package:scraki/domain/entities/device_entity.dart';
+import 'package:scraki/presentation/widgets/common/protocol_icon.dart';
+import 'package:scraki/presentation/widgets/common/status_badge.dart';
+import 'phone_view.dart';
 
+/// A card widget that displays information about a device and provides a mirror action.
 class DeviceCard extends StatefulWidget {
   final DeviceEntity device;
   final VoidCallback onDisconnect;
@@ -26,7 +27,7 @@ class _DeviceCardState extends State<DeviceCard> {
       _isMirroring = !_isMirroring;
     });
     if (!_isMirroring) {
-        // Optional: Notify parent if needed when stopped
+      // Optional: Notify parent if needed when stopped
     }
   }
 
@@ -38,7 +39,6 @@ class _DeviceCardState extends State<DeviceCard> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -59,7 +59,6 @@ class _DeviceCardState extends State<DeviceCard> {
             ),
           ),
 
-          // Video Area (PhoneView)
           Expanded(
             child: Container(
               color: Colors.black,
@@ -80,7 +79,6 @@ class _DeviceCardState extends State<DeviceCard> {
             ),
           ),
 
-          // Footer Actions
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -94,11 +92,11 @@ class _DeviceCardState extends State<DeviceCard> {
                   ),
                 const SizedBox(width: 8),
                 if (!_isMirroring)
-                ElevatedButton.icon(
-                  onPressed: _toggleMirroring,
-                  icon: const Icon(Icons.screen_share),
-                  label: const Text('Mirror'),
-                ),
+                  ElevatedButton.icon(
+                    onPressed: _toggleMirroring,
+                    icon: const Icon(Icons.screen_share),
+                    label: const Text('Mirror'),
+                  ),
               ],
             ),
           ),
@@ -107,5 +105,3 @@ class _DeviceCardState extends State<DeviceCard> {
     );
   }
 }
-
-

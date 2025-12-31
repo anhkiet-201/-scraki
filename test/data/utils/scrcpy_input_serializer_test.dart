@@ -11,13 +11,14 @@ void main() {
         y: 200,
         width: 1080,
         height: 2400,
+        buttons: 1,
       );
 
       final bytes = msg.serialize();
 
       // Expected size:
-      // Type (1) + Action (1) + PointerId(8) + Pos(8) + Pressure(2) + Buttons(4) = 24 bytes
-      expect(bytes.length, 24);
+      // Type (1) + Action (1) + PointerId(8) + Pos(12) + Pressure(2) + ActionButton(4) + Buttons(4) = 32 bytes
+      expect(bytes.length, 32);
 
       final buffer = ByteData.sublistView(bytes);
 
@@ -26,8 +27,11 @@ void main() {
       expect(buffer.getInt64(2, Endian.big), 0); // PointerId
       expect(buffer.getInt32(10, Endian.big), 100); // X
       expect(buffer.getInt32(14, Endian.big), 200); // Y
-      expect(buffer.getUint16(18, Endian.big), 0xFFFF); // Pressure (Down)
-      expect(buffer.getInt32(20, Endian.big), 1); // Buttons (Down)
+      expect(buffer.getUint16(18, Endian.big), 1080); // Width
+      expect(buffer.getUint16(20, Endian.big), 2400); // Height
+      expect(buffer.getUint16(22, Endian.big), 0xFFFF); // Pressure (Down)
+      expect(buffer.getInt32(24, Endian.big), 1); // ActionButton
+      expect(buffer.getInt32(28, Endian.big), 1); // Buttons (Down)
     });
 
     test('TouchControlMessage Up action defaults', () {
@@ -42,8 +46,8 @@ void main() {
       final buffer = ByteData.sublistView(bytes);
 
       expect(buffer.getUint8(1), TouchControlMessage.actionUp); // Action
-      expect(buffer.getUint16(18, Endian.big), 0); // Pressure (Up = 0)
-      expect(buffer.getInt32(20, Endian.big), 0); // Buttons (Up = 0)
+      expect(buffer.getUint16(22, Endian.big), 0); // Pressure (Up = 0)
+      expect(buffer.getInt32(28, Endian.big), 0); // Buttons (Up = 0)
     });
   });
 }

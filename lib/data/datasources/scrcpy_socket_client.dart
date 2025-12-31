@@ -3,8 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
 import '../../core/error/failures.dart';
-import '../../core/protocol/scrcpy_header.dart';
-import '../../core/protocol/scrcpy_protocol_parser.dart';
+import '../../data/protocol/scrcpy_header.dart';
+import '../../data/protocol/scrcpy_protocol_parser.dart';
+import '../../core/utils/logger.dart';
 
 @lazySingleton
 class ScrcpySocketClient {
@@ -24,13 +25,13 @@ class ScrcpySocketClient {
       // It's possible we are not connected or socket closed.
       // For UI "fire and forget" control events, we might just log or ignore.
       // But let's log.
-      print('Warning: Attempted to send data but socket is null.');
+      logger.w('Warning: Attempted to send data but socket is null.');
       return;
     }
     try {
       _socket!.add(data);
     } catch (e) {
-      print('Error sending data: $e');
+      logger.e('Error sending data', error: e);
     }
   }
 
@@ -53,7 +54,7 @@ class ScrcpySocketClient {
                 final headerData = Uint8List.fromList(buffer);
                 _header = ScrcpyProtocolParser.parseHeader(headerData);
 
-                print(
+                logger.i(
                   'Device Connected: ${_header!.deviceName} (${_header!.width}x${_header!.height})',
                 );
                 headerParsed = true;

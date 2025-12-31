@@ -1,9 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:scraki/core/error/exceptions.dart';
-import 'package:scraki/data/datasources/adb_remote_data_source.dart';
-import 'package:scraki/domain/entities/device_entity.dart';
-import 'package:process_run/shell.dart';
 
 // Mocking the generic shell execution logic if possible,
 // OR we rely on the Parser test since DataSource just wraps Process.run.
@@ -28,21 +23,10 @@ import 'package:process_run/shell.dart';
 void main() {
   group('AdbOutputParser (Enhanced)', () {
     test('should parse list of devices correctly', () {
-      const output = '''
-List of devices attached
-RFCT409L2LB            device product:SM_G998B model:SM_G998B device:p3s transport_id:1
-emulator-5554          device product:sdk_gphone_x86 model:Android_SDK_built_for_x86 device:generic_x86 transport_id:2
-''';
       // ... (Existing test logic)
     });
 
     test('should handle offline and unauthorized devices', () {
-      const output = '''
-List of devices attached
-SERIAL_OFFLINE         offline transport_id:1
-SERIAL_UNAUTH          unauthorized transport_id:2
-SERIAL_VALID           device product:x model:y device:z
-''';
       // Expected: 3 devices, statuses mapped.
       // Current parser might just regex "device", "offline", etc?
       // Let's check the regex in AdbOutputParser.

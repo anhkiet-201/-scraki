@@ -19,7 +19,7 @@ import '../../data/repositories/device_repository_impl.dart' as _i34;
 import '../../data/services/device_control_service.dart' as _i315;
 import '../../data/services/scrcpy_service.dart' as _i922;
 import '../../data/services/video_proxy_service.dart' as _i416;
-import '../../domain/repositories/i_device_repository.dart' as _i664;
+import '../../domain/repositories/device_repository.dart' as _i454;
 import '../../presentation/stores/device_store.dart' as _i642;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -35,18 +35,18 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i416.VideoProxyService>(() => _i416.VideoProxyService());
     gh.lazySingleton<_i922.ScrcpyService>(() => _i922.ScrcpyService());
+    gh.lazySingleton<_i315.DeviceControlService>(
+      () => _i315.DeviceControlService(),
+    );
     gh.lazySingleton<_i387.IAdbRemoteDataSource>(
       () => _i387.AdbRemoteDataSourceImpl(),
     );
-    gh.lazySingleton<_i664.IDeviceRepository>(
+    gh.lazySingleton<_i454.DeviceRepository>(
       () => _i34.DeviceRepositoryImpl(gh<_i387.IAdbRemoteDataSource>()),
-    );
-    gh.lazySingleton<_i315.DeviceControlService>(
-      () => _i315.DeviceControlService(gh<_i922.ScrcpyService>()),
     );
     gh.lazySingleton<_i642.DeviceStore>(
       () => _i642.DeviceStore(
-        gh<_i664.IDeviceRepository>(),
+        gh<_i454.DeviceRepository>(),
         gh<_i922.ScrcpyService>(),
         gh<_i315.DeviceControlService>(),
         gh<_i416.VideoProxyService>(),

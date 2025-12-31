@@ -3,7 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobx/mobx.dart';
 import '../../core/di/injection.dart';
-import '../components/organisms/device_grid.dart';
+import '../widgets/device/device_grid.dart';
 import '../stores/device_store.dart';
 
 class DashboardScreen extends StatefulWidget {

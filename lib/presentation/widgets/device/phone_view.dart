@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/di/injection.dart';
-import '../../core/utils/android_key_codes.dart';
-import '../stores/device_store.dart';
+import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/core/utils/android_key_codes.dart';
+import 'package:scraki/presentation/stores/device_store.dart';
+import 'package:scraki/core/utils/logger.dart';
 import 'native_video_decoder.dart';
 
+/// A widget that displays a mirroring view of a phone screen and handles input events.
 class PhoneView extends StatefulWidget {
+  /// The ADB serial of the device to mirror.
   final String serial;
+
+  /// How to fit the video stream within the layout.
   final BoxFit fit;
 
-  const PhoneView({
-    super.key,
-    required this.serial,
-    this.fit = BoxFit.contain,
-  });
+  const PhoneView({super.key, required this.serial, this.fit = BoxFit.contain});
 
   @override
   State<PhoneView> createState() => _PhoneViewState();
@@ -35,7 +36,6 @@ class _PhoneViewState extends State<PhoneView> {
 
   @override
   void dispose() {
-    // Stop mirroring session (close sockets, cleanup proxy)
     getIt<DeviceStore>().stopMirroring(widget.serial);
     super.dispose();
   }
@@ -47,10 +47,12 @@ class _PhoneViewState extends State<PhoneView> {
     });
 
     try {
-      print('[PhoneView] Starting mirroring for ${widget.serial}...');
+      logger.i('[PhoneView] Starting mirroring for ${widget.serial}...');
       final store = getIt<DeviceStore>();
       final session = await store.startMirroring(widget.serial);
-      print('[PhoneView] Received session URL: ${session.videoUrl} (${session.width}x${session.height})');
+      logger.i(
+        '[PhoneView] Received session URL: ${session.videoUrl} (${session.width}x${session.height})',
+      );
 
       if (!mounted) return;
 
@@ -61,7 +63,7 @@ class _PhoneViewState extends State<PhoneView> {
         _isLoading = false;
       });
     } catch (e) {
-      print('[PhoneView] ERROR starting mirroring: $e');
+      logger.e('[PhoneView] ERROR starting mirroring', error: e);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -71,7 +73,7 @@ class _PhoneViewState extends State<PhoneView> {
   }
 
   void _onDecoderError(String error) {
-    print('[PhoneView] Decoder error: $error');
+    logger.e('[PhoneView] Decoder error: $error');
     if (!mounted) return;
     setState(() {
       _errorMessage = 'Decoder error: $error';

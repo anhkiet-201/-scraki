@@ -5,7 +5,6 @@ abstract class Failure {
 
   const Failure(this.message, [this.error, this.stackTrace]);
 
-  @override
   List<Object?> get props => [message, error, stackTrace];
 }
 

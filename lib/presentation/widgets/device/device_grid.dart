@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../domain/entities/device_entity.dart';
-import '../molecules/device_card.dart';
+import 'package:scraki/domain/entities/device_entity.dart';
+import 'device_card.dart';
 
+/// A grid layout that displays a list of [DeviceCard]s.
 class DeviceGrid extends StatelessWidget {
   final List<DeviceEntity> devices;
   final void Function(DeviceEntity) onDisconnect;

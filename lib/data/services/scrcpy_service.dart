@@ -8,11 +8,19 @@ import '../../core/di/injection.dart';
 import '../../core/error/exceptions.dart';
 import '../../domain/entities/scrcpy_options.dart';
 import '../datasources/scrcpy_client.dart';
+import '../../core/utils/logger.dart';
 
+/// Service responsible for managing the scrcpy server on the device.
+/// Handles pushing the server JAR, initializing the server with specific options,
+/// and cleaning up server processes.
 @lazySingleton
 class ScrcpyService {
   final Shell _shell;
+
+  /// Maps device serial to the local port used for the server connection.
   final Map<String, int> _devicePorts = {};
+
+  /// Tracks devices that have already had the server JAR pushed to them.
   final Set<String> _pushedDevices = {};
 
   ScrcpyService() : _shell = Shell();
@@ -26,8 +34,8 @@ class ScrcpyService {
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/scrcpy-server.jar');
       if (!await file.exists()) {
-          final byteData = await rootBundle.load(_serverAssetPath);
-          await file.writeAsBytes(byteData.buffer.asUint8List());
+        final byteData = await rootBundle.load(_serverAssetPath);
+        await file.writeAsBytes(byteData.buffer.asUint8List());
       }
       return file.path;
     } catch (e) {
@@ -39,27 +47,35 @@ class ScrcpyService {
     if (_pushedDevices.contains(deviceSerial)) return;
     try {
       final localPath = await _getServerPath();
-      await _shell.run('adb -s $deviceSerial push $localPath $_remoteServerPath');
+      await _shell.run(
+        'adb -s $deviceSerial push $localPath $_remoteServerPath',
+      );
       _pushedDevices.add(deviceSerial);
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
     }
   }
 
-  Future<int> initServer(String deviceSerial, ScrcpyOptions options, int localPort) async {
+  Future<int> initServer(
+    String deviceSerial,
+    ScrcpyOptions options,
+    int localPort,
+  ) async {
     _devicePorts[deviceSerial] = localPort;
     final client = getIt<ScrcpyClient>();
 
     try {
       await pushServer(deviceSerial);
-      final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF).toRadixString(16).padLeft(8, '0');
+      final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF)
+          .toRadixString(16)
+          .padLeft(8, '0');
       await client.setupTunnel(deviceSerial, localPort, scid);
 
       final args = [
         _serverVersion,
         'scid=$scid',
         'log_level=info',
-        'audio=false', // DISABLED
+        'audio=false',
         'video_codec=h265',
         if (options.maxSize > 0) 'max_size=${options.maxSize}',
         'video_bit_rate=2000000',
@@ -72,14 +88,19 @@ class ScrcpyService {
         'send_codec_meta=true',
       ];
 
-      final command = 'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
+      final command =
+          'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
       final parts = command.split(' ');
       Process.start(parts.first, parts.sublist(1)).then((p) {
-        p.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((data) => print('[Scrcpy-OUT] $data'));
-        p.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((data) => print('[Scrcpy-ERR] $data'));
+        p.stdout
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .listen((data) => logger.d('[Scrcpy-OUT] $data'));
+        p.stderr
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .listen((data) => logger.e('[Scrcpy-ERR] $data'));
       });
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       return localPort;
     } catch (e) {
       client.removeTunnel(deviceSerial, localPort);
@@ -96,7 +117,10 @@ class ScrcpyService {
     try {
       await _shell.run('adb -s $serial shell pkill -f scrcpy');
     } catch (e) {
-      print('[ScrcpyService] Warning: Failed to kill server on $serial: $e');
+      logger.w(
+        '[ScrcpyService] Warning: Failed to kill server on $serial',
+        error: e,
+      );
     }
   }
 
