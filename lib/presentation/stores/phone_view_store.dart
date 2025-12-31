@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:injectable/injectable.dart';
@@ -9,9 +8,8 @@ import '../../domain/entities/device_entity.dart';
 import '../../domain/entities/scrcpy_options.dart';
 import '../../domain/repositories/device_repository.dart';
 import '../../data/services/scrcpy_service.dart';
-import '../../data/services/device_control_service.dart';
-import '../../data/services/video_proxy_service.dart';
 import '../../data/utils/scrcpy_input_serializer.dart';
+import '../../data/services/video_worker_manager.dart';
 import '../../domain/entities/mirror_session.dart';
 import '../../core/utils/logger.dart';
 import '../widgets/device/native_video_decoder_service.dart';
@@ -28,15 +26,9 @@ class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 abstract class _PhoneViewStore with Store {
   final DeviceRepository _repository;
   final ScrcpyService _scrcpyService;
-  final DeviceControlService _controlService;
-  final VideoProxyService _videoProxyService;
+  final VideoWorkerManager _workerManager;
 
-  _PhoneViewStore(
-    this._repository,
-    this._scrcpyService,
-    this._controlService,
-    this._videoProxyService,
-  );
+  _PhoneViewStore(this._repository, this._scrcpyService, this._workerManager);
 
   @observable
   ObservableList<DeviceEntity> devices = ObservableList<DeviceEntity>();
@@ -126,99 +118,43 @@ abstract class _PhoneViewStore with Store {
 
     try {
       logger.i('[DeviceStore] Starting new mirroring session for $serial');
-
-      // 1. Create a server socket FIRST (before starting scrcpy server)
       const options = ScrcpyOptions();
 
-      logger.d(
-        '[DeviceStore] Creating server socket on all IPv4 interfaces...',
-      );
-      final serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
-      final localPort = serverSocket.port;
-      logger.i('[DeviceStore] Server socket listening on $localPort');
-
-      await _scrcpyService.initServer(serial, options, localPort);
-
-      // 3. Handle connections (Video, then Control)
-      final completer = Completer<MirrorSession>();
-      int connectionCount = 0;
-
-      // We expect 2 connections: Video and Control (Audio disabled)
-      serverSocket.listen(
-        (socket) async {
-          connectionCount++;
-          logger.d(
-            '[DeviceStore] Connection $connectionCount received from ${socket.remoteAddress.address}',
-          );
-
-          if (connectionCount == 1) {
-            // --- VIDEO SOCKET ---
-            try {
-              final scrcpyClient = getIt<ScrcpyClient>();
-
-              // Parse Header & Get Session (Stream)
-              final session = await scrcpyClient.parseHeaderFromSocket(socket);
-
-              // Start Video Proxy with the specific stream for this device
-              final proxyPort = await _videoProxyService.startProxyFromStream(
-                serial,
-                session.videoStream,
-              );
-
-              // Return Session info
-              final url = 'tcp://127.0.0.1:$proxyPort';
-              logger.i(
-                '[DeviceStore] Stream available at $url (${session.header.width}x${session.header.height})',
-              );
-
-              final mirrorSession = MirrorSession(
-                videoUrl: url,
-                width: session.header.width,
-                height: session.header.height,
-                decoderService: NativeVideoDecoderService(),
-              );
-
-              // 2. Pre-warm and keep-alive decoder for the entire session
-              await mirrorSession.decoderService.start(url);
-
-              runInAction(() {
-                activeSessions[serial] = mirrorSession;
-              });
-
-              if (!completer.isCompleted) {
-                completer.complete(mirrorSession);
-              }
-            } catch (e) {
-              logger.e('[DeviceStore] Error setting up video', error: e);
-              socket.destroy(); // Ensure accepted socket is closed on error
-              if (!completer.isCompleted) completer.completeError(e);
-              serverSocket.close();
-            }
-          } else if (connectionCount == 2) {
-            // --- CONTROL SOCKET ---
-            logger.d('[DeviceStore] Setting up Control Socket');
-            _controlService.setControlSocket(serial, socket);
-
-            // We have both, close listener
-            logger.i(
-              '[DeviceStore] All channels connected. Closing server listener.',
-            );
-            serverSocket.close();
-          }
-        },
-        onError: (Object e) {
-          logger.e('[DeviceStore] Server socket error', error: e);
-          if (!completer.isCompleted) completer.completeError(e);
-        },
+      // 1. Khởi tạo Isolate Worker and get ports
+      final resolutionFuture = _workerManager.waitForEvent(
+        serial,
+        'resolution_ready',
       );
 
-      return completer.future.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          serverSocket.close();
-          throw Exception('Timeout waiting for connections');
-        },
+      final portsData = await _workerManager.startMirroring(serial);
+      final adbPort = portsData['adbPort'] as int;
+      final proxyPort = portsData['proxyPort'] as int;
+
+      // 2. Setup Scrcpy Server with the allocated adbPort
+      await _scrcpyService.initServer(serial, options, adbPort);
+
+      // 3. Chờ Resolution Header được parse xong trong Isolate
+      final resolutionData = await resolutionFuture;
+      final width = resolutionData['width'] as int;
+      final height = resolutionData['height'] as int;
+
+      // 4. Create Mirror Session
+      final url = 'tcp://127.0.0.1:$proxyPort';
+      final mirrorSession = MirrorSession(
+        videoUrl: url,
+        width: width,
+        height: height,
+        decoderService: NativeVideoDecoderService(),
       );
+
+      // Pre-warm decoder
+      await mirrorSession.decoderService.start(url);
+
+      runInAction(() {
+        activeSessions[serial] = mirrorSession;
+      });
+
+      return mirrorSession;
     } catch (e, stackTrace) {
       logger.e(
         '[DeviceStore] ERROR during mirroring setup',
@@ -235,12 +171,10 @@ abstract class _PhoneViewStore with Store {
     logger.i('[DeviceStore] Stopping mirroring for $serial');
     final session = activeSessions[serial];
     if (session != null) {
-      // Actually stop the decoder session
       await session.decoderService.stop(session.videoUrl);
     }
     activeSessions.remove(serial);
-    await _videoProxyService.stopProxy(serial);
-    await _controlService.dispose(serial);
+    _workerManager.stopMirroring(serial);
     _scrcpyService.cleanup(serial);
 
     try {
@@ -292,7 +226,7 @@ abstract class _PhoneViewStore with Store {
       pointerId: 0, // Mouse always 0
     );
 
-    _controlService.sendControlMessage(serial, message);
+    _workerManager.sendControl(serial, message.serialize());
   }
 
   void sendScroll(
@@ -315,7 +249,7 @@ abstract class _PhoneViewStore with Store {
       vScroll: vScroll,
     );
 
-    _controlService.sendControlMessage(serial, message);
+    _workerManager.sendControl(serial, message.serialize());
   }
 
   void sendKey(String serial, int keyCode, int action, {int metaState = 0}) {
@@ -327,7 +261,7 @@ abstract class _PhoneViewStore with Store {
       metaState: metaState,
     );
 
-    _controlService.sendControlMessage(serial, message);
+    _workerManager.sendControl(serial, message.serialize());
   }
 
   void handlePointerEvent(

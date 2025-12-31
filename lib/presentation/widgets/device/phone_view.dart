@@ -128,8 +128,13 @@ class _PhoneViewState extends State<PhoneView> {
 
     return Observer(
       builder: (_) {
+        final session = store.activeSessions[widget.serial];
+
+        // Accessing these ensures the Observer is always active
+        final isFloating = store.floatingSerial == widget.serial;
+
         // If this is the grid view AND the device is currently floating, show a placeholder
-        if (!widget.isFloating && store.floatingSerial == widget.serial) {
+        if (!widget.isFloating && isFloating) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -180,7 +185,7 @@ class _PhoneViewState extends State<PhoneView> {
           );
         }
 
-        if (_isLoading) {
+        if (_isLoading && session == null) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -193,8 +198,13 @@ class _PhoneViewState extends State<PhoneView> {
           );
         }
 
-        if (_streamUrl == null) {
-          return const Center(child: Text('No stream URL'));
+        if (session == null && _errorMessage == null) {
+          return const Center(child: Text('Initializing session...'));
+        }
+
+        final displayUrl = session?.videoUrl ?? _streamUrl;
+        if (displayUrl == null && _errorMessage == null) {
+          return const Center(child: Text('Waiting for stream URL...'));
         }
 
         return FittedBox(
@@ -217,14 +227,14 @@ class _PhoneViewState extends State<PhoneView> {
               onPointerMove: (e) => _handlePointer(e, 2),
               onPointerSignal: _handleScroll,
               child: SizedBox(
-                width: _nativeWidth.toDouble(),
-                height: _nativeHeight.toDouble(),
+                width: (session?.width ?? _nativeWidth).toDouble(),
+                height: (session?.height ?? _nativeHeight).toDouble(),
                 child: NativeVideoDecoder(
                   key: Key('decoder_${widget.serial}'),
-                  streamUrl: _streamUrl!,
-                  nativeWidth: _nativeWidth,
-                  nativeHeight: _nativeHeight,
-                  service: store.activeSessions[widget.serial]!.decoderService,
+                  streamUrl: displayUrl!,
+                  nativeWidth: session?.width ?? _nativeWidth,
+                  nativeHeight: session?.height ?? _nativeHeight,
+                  service: session!.decoderService,
                   fit: widget.fit,
                   onError: _onDecoderError,
                 ),

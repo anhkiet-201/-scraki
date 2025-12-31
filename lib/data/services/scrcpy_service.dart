@@ -110,7 +110,9 @@ class ScrcpyService {
 
   Future<void> killServer(String serial) async {
     try {
-      await _shell.run('adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"');
+      await _shell.run(
+        'adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"',
+      );
     } catch (e) {
       logger.w(
         '[ScrcpyService] Warning: Failed to kill server on $serial',
