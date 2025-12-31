@@ -72,6 +72,9 @@ abstract class _PhoneViewStore with Store {
   ObservableMap<String, bool> lostConnectionSerials =
       ObservableMap<String, bool>();
 
+  @observable
+  ObservableMap<String, bool> isConnecting = ObservableMap<String, bool>();
+
   @computed
   double get deviceAspectRatio {
     if (activeSessions.isEmpty) return 0.5625; // Default 9:16
@@ -165,6 +168,7 @@ abstract class _PhoneViewStore with Store {
     }
   }
 
+  @action
   Future<MirrorSession> startMirroring(
     String serial, [
     ScrcpyOptions? options,
@@ -172,17 +176,24 @@ abstract class _PhoneViewStore with Store {
     runInAction(() {
       errorMessage = null;
       lostConnectionSerials.remove(serial);
+      isConnecting[serial] = true;
     });
 
-    // Return existing session if available
-    if (activeSessions.containsKey(serial)) {
-      logger.i('[DeviceStore] Using existing mirroring session for $serial');
-      return activeSessions[serial]!;
-    }
-
     try {
+      // 0. Check if device is actually connected via ADB
+      final isOnline = await _scrcpyService.isDeviceConnected(serial);
+      if (!isOnline) {
+        throw 'Device $serial is not connected or unauthorized. Please check your cable/ADB status.';
+      }
+
+      // Return existing session if available
+      if (activeSessions.containsKey(serial)) {
+        logger.i('[DeviceStore] Using existing mirroring session for $serial');
+        return activeSessions[serial]!;
+      }
+
       logger.i('[DeviceStore] Starting new mirroring session for $serial');
-      const options = ScrcpyOptions();
+      const scrcpyOptions = ScrcpyOptions();
 
       // 1. Khởi tạo Isolate Worker and get ports
       final resolutionFuture = _workerManager.waitForEvent(
@@ -196,6 +207,7 @@ abstract class _PhoneViewStore with Store {
           if (event.type == 'connection_lost') {
             logger.w('[DeviceStore] Connection lost for $serial');
             runInAction(() {
+              _workerManager.stopMirroring(serial);
               activeSessions.remove(serial);
               lostConnectionSerials[serial] = true;
             });
@@ -206,7 +218,7 @@ abstract class _PhoneViewStore with Store {
       final proxyPort = portsData['proxyPort'] as int;
 
       // 2. Setup Scrcpy Server with the allocated adbPort
-      await _scrcpyService.initServer(serial, options, adbPort);
+      await _scrcpyService.initServer(serial, scrcpyOptions, adbPort);
 
       // 3. Chờ Resolution Header được parse xong trong Isolate
       final resolutionData = await resolutionFuture;
@@ -238,6 +250,8 @@ abstract class _PhoneViewStore with Store {
       );
       runInAction(() => errorMessage = 'Mirror failed: $e');
       rethrow;
+    } finally {
+      runInAction(() => isConnecting[serial] = false);
     }
   }
 

@@ -135,4 +135,13 @@ class ScrcpyService {
       rethrow;
     }
   }
+
+  Future<bool> isDeviceConnected(String serial) async {
+    try {
+      final result = await _shell.run('adb -s $serial get-state');
+      return result.outText.trim() == 'device';
+    } catch (_) {
+      return false;
+    }
+  }
 }

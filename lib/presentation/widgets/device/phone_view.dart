@@ -215,10 +215,26 @@ class _PhoneViewState extends State<PhoneView> {
               style: TextStyle(color: Colors.white54),
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _startMirroring,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reconnect Now'),
+            Observer(
+              builder: (_) {
+                final isConnecting = store.isConnecting[widget.serial] ?? false;
+                return FilledButton.icon(
+                  onPressed: isConnecting ? null : _startMirroring,
+                  icon: isConnecting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    isConnecting ? 'Reconnecting...' : 'Reconnect Now',
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -250,20 +266,7 @@ class _PhoneViewState extends State<PhoneView> {
       );
     }
 
-    // 4. Check for Loading States
-    if (_isLoading && session == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text('Connecting to device...', style: theme.textTheme.bodyMedium),
-          ],
-        ),
-      );
-    }
-
+    // 4. Check for Initial Loading State
     if (session == null) {
       return Center(
         child: Column(
@@ -271,16 +274,18 @@ class _PhoneViewState extends State<PhoneView> {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            Text('Initializing session...', style: theme.textTheme.bodyMedium),
+            Text(
+              _isLoading
+                  ? 'Connecting to device...'
+                  : 'Initializing session...',
+              style: theme.textTheme.bodyMedium,
+            ),
           ],
         ),
       );
     }
 
     final displayUrl = session.videoUrl;
-    if (displayUrl == null) {
-      return const Center(child: Text('Waiting for stream URL...'));
-    }
 
     return FittedBox(
       fit: widget.fit,
@@ -337,9 +342,9 @@ class _PhoneViewState extends State<PhoneView> {
                         child: NativeVideoDecoder(
                           key: Key('decoder_${widget.serial}'),
                           streamUrl: displayUrl!,
-                          nativeWidth: session?.width ?? _nativeWidth,
-                          nativeHeight: session?.height ?? _nativeHeight,
-                          service: session!.decoderService,
+                          nativeWidth: session.width,
+                          nativeHeight: session.height,
+                          service: session.decoderService,
                           fit: widget.fit,
                           onError: _onDecoderError,
                         ),
