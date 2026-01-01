@@ -12,7 +12,7 @@ import '../../data/utils/scrcpy_input_serializer.dart';
 import '../../data/services/video_worker_manager.dart';
 import '../../domain/entities/mirror_session.dart';
 import '../../core/utils/logger.dart';
-import '../widgets/device/native_video_decoder_service.dart';
+import '../widgets/device/native_video_decoder/native_video_decoder_service.dart';
 
 part 'phone_view_store.g.dart';
 

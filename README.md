@@ -7,21 +7,32 @@ Scraki is a powerful and lightweight Flutter application for mirroring and contr
 - **Ultra-low Latency**: Uses native FFmpeg decoding and Flutter Texture for near-instant response.
 - **High Performance**: Optimized data flow using local TCP proxies.
 - **Full Control**: Support for touch events, keyboard input, and scrolling.
+- **Floating Window**: Double-tap to pop out devices into floating windows.
+- **File Transfer**: Drag & drop files directly to your device.
+- **Clipboard Sync**: Seamless clipboard integration with Cmd+V support.
 - **Clean Architecture**: Built with maintainability and scalability in mind.
 - **State Management**: Robust state handling with MobX.
 - **Dependency Injection**: Seamless service management with GetIt and Injectable.
 
 ## Architecture
 
-Scraki follows Clean Architecture principles. For a detailed overview, please see [ARCHITECTURE.md](ARCHITECTURE.md).
+Scraki follows **Clean Architecture** principles with a feature-based folder structure. For a detailed overview, please see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Tech Stack
 
-- **Flutter**: UI Framework.
-- **MobX**: State Management.
-- **GetIt & Injectable**: Dependency Injection.
-- **FFmpeg**: Native video decoding.
-- **fpdart**: Functional programming primitives (Either, Option).
+- **Flutter**: UI Framework
+- **MobX**: State Management (Global Stores pattern)
+- **GetIt & Injectable**: Dependency Injection
+- **FFmpeg**: Native video decoding
+- **fpdart**: Functional programming primitives (Either, Option)
+
+### Key Components
+
+- **Global Stores**:
+  - `DeviceStore`: Manages device discovery and connections
+  - `MirroringStore`: Handles mirroring lifecycle and all input events
+- **Pure UI Components**: Complete separation of UI and business logic
+- **Reusable Widgets**: Modular components for common UI patterns
 
 ## Getting Started
 

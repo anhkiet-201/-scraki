@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
-import 'package:scraki/presentation/widgets/device/device_card.dart';
+import 'package:scraki/presentation/widgets/device/device_card/device_card.dart';
 import 'package:scraki/presentation/stores/phone_view_store.dart';
 import 'package:scraki/presentation/widgets/common/status_badge.dart';
 import 'package:scraki/presentation/widgets/common/protocol_icon.dart';

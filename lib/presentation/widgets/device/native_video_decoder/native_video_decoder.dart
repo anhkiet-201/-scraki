@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/logger.dart';
+import '../../../../core/utils/logger.dart';
 import 'native_video_decoder_service.dart';
 
 /// A widget that decodes and displays a native video stream using Texture.

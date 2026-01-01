@@ -9,6 +9,14 @@ part of 'phone_view_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$PhoneViewStore on _PhoneViewStore, Store {
+  Computed<double>? _$deviceAspectRatioComputed;
+
+  @override
+  double get deviceAspectRatio =>
+      (_$deviceAspectRatioComputed ??= Computed<double>(
+        () => super.deviceAspectRatio,
+        name: '_PhoneViewStore.deviceAspectRatio',
+      )).value;
   Computed<bool>? _$isLoadingComputed;
 
   @override
@@ -190,6 +198,82 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     });
   }
 
+  late final _$isPushingFileAtom = Atom(
+    name: '_PhoneViewStore.isPushingFile',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, bool> get isPushingFile {
+    _$isPushingFileAtom.reportRead();
+    return super.isPushingFile;
+  }
+
+  @override
+  set isPushingFile(ObservableMap<String, bool> value) {
+    _$isPushingFileAtom.reportWrite(value, super.isPushingFile, () {
+      super.isPushingFile = value;
+    });
+  }
+
+  late final _$isDraggingFileAtom = Atom(
+    name: '_PhoneViewStore.isDraggingFile',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, bool> get isDraggingFile {
+    _$isDraggingFileAtom.reportRead();
+    return super.isDraggingFile;
+  }
+
+  @override
+  set isDraggingFile(ObservableMap<String, bool> value) {
+    _$isDraggingFileAtom.reportWrite(value, super.isDraggingFile, () {
+      super.isDraggingFile = value;
+    });
+  }
+
+  late final _$lostConnectionSerialsAtom = Atom(
+    name: '_PhoneViewStore.lostConnectionSerials',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, bool> get lostConnectionSerials {
+    _$lostConnectionSerialsAtom.reportRead();
+    return super.lostConnectionSerials;
+  }
+
+  @override
+  set lostConnectionSerials(ObservableMap<String, bool> value) {
+    _$lostConnectionSerialsAtom.reportWrite(
+      value,
+      super.lostConnectionSerials,
+      () {
+        super.lostConnectionSerials = value;
+      },
+    );
+  }
+
+  late final _$isConnectingAtom = Atom(
+    name: '_PhoneViewStore.isConnecting',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, bool> get isConnecting {
+    _$isConnectingAtom.reportRead();
+    return super.isConnecting;
+  }
+
+  @override
+  set isConnecting(ObservableMap<String, bool> value) {
+    _$isConnectingAtom.reportWrite(value, super.isConnecting, () {
+      super.isConnecting = value;
+    });
+  }
+
   late final _$loadDevicesAsyncAction = AsyncAction(
     '_PhoneViewStore.loadDevices',
     context: context,
@@ -243,6 +327,16 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   @override
   Future<void> disconnect(String serial) {
     return _$disconnectAsyncAction.run(() => super.disconnect(serial));
+  }
+
+  late final _$uploadFilesAsyncAction = AsyncAction(
+    '_PhoneViewStore.uploadFiles',
+    context: context,
+  );
+
+  @override
+  Future<void> uploadFiles(String serial, List<String> paths) {
+    return _$uploadFilesAsyncAction.run(() => super.uploadFiles(serial, paths));
   }
 
   late final _$_PhoneViewStoreActionController = ActionController(
@@ -299,6 +393,18 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
+  void setDragging(String serial, bool isDragging) {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.setDragging',
+    );
+    try {
+      return super.setDragging(serial, isDragging);
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 devices: ${devices},
@@ -310,6 +416,11 @@ visibleGridSerials: ${visibleGridSerials},
 visibleFloatingSerials: ${visibleFloatingSerials},
 floatingSerial: ${floatingSerial},
 activeSessions: ${activeSessions},
+isPushingFile: ${isPushingFile},
+isDraggingFile: ${isDraggingFile},
+lostConnectionSerials: ${lostConnectionSerials},
+isConnecting: ${isConnecting},
+deviceAspectRatio: ${deviceAspectRatio},
 isLoading: ${isLoading},
 isFloatingVisible: ${isFloatingVisible}
     ''';

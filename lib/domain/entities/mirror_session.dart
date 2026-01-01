@@ -1,4 +1,4 @@
-import '../../presentation/widgets/device/native_video_decoder_service.dart';
+import '../../presentation/widgets/device/native_video_decoder/native_video_decoder_service.dart';
 
 class MirrorSession {
   final String videoUrl;

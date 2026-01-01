@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
-import '../../../core/di/injection.dart';
-import '../../stores/phone_view_store.dart';
-import 'device_card.dart';
+import '../../../../core/di/injection.dart';
+import '../../../stores/phone_view_store.dart';
+import '../device_card/device_card.dart';
 
 /// A grid layout that displays a list of [DeviceCard]s.
 class DeviceGrid extends StatelessWidget {

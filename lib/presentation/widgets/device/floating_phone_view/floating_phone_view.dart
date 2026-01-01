@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'phone_view.dart';
+import '../phone_view/phone_view.dart';
 
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
@@ -72,13 +72,13 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
                 color: Colors.grey[900],
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: GestureDetector(
-                   onPanUpdate: (details) {
-                          setState(() {
-                            _position = _getClampedPosition(
-                              _position + details.delta,
-                            );
-                          });
-                        },
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _position = _getClampedPosition(
+                        _position + details.delta,
+                      );
+                    });
+                  },
                   child: Row(
                     children: [
                       const Icon(

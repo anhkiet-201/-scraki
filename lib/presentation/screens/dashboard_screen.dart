@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import '../../core/di/injection.dart';
-import '../widgets/device/device_grid.dart';
-import '../widgets/device/floating_phone_view.dart';
-import '../stores/phone_view_store.dart';
+import '../widgets/device/device_grid/device_grid.dart';
+import '../widgets/device/floating_phone_view/floating_phone_view.dart';
+import '../global_stores/device_store.dart';
+import '../global_stores/mirroring_store.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,14 +15,16 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late final PhoneViewStore _store;
+  late final DeviceStore _deviceStore;
+  late final MirroringStore _mirroringStore;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _store = getIt<PhoneViewStore>();
-    _store.loadDevices();
+    _deviceStore = getIt<DeviceStore>();
+    _mirroringStore = getIt<MirroringStore>();
+    _deviceStore.loadDevices();
   }
 
   @override
@@ -39,15 +42,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: Observer(
                     builder: (_) {
-                      final futureStatus = _store.loadDevicesFuture?.status;
-                      final errorMessage = _store.errorMessage;
+                      final futureStatus =
+                          _deviceStore.loadDevicesFuture?.status;
+                      final errorMessage = _deviceStore.errorMessage;
 
                       if (futureStatus == FutureStatus.pending &&
-                          _store.devices.isEmpty) {
+                          _deviceStore.devices.isEmpty) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (errorMessage != null && _store.devices.isEmpty) {
+                      if (errorMessage != null &&
+                          _deviceStore.devices.isEmpty) {
                         return _buildErrorView(errorMessage);
                       }
                       return LayoutBuilder(
@@ -57,18 +62,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             clipBehavior: Clip.none,
                             children: [
                               RefreshIndicator(
-                                onRefresh: _store.loadDevices,
+                                onRefresh: _deviceStore.loadDevices,
                                 child: DeviceGrid(
-                                  devices: _store.devices.toList(),
+                                  devices: _deviceStore.devices.toList(),
                                   onDisconnect: (device) {
-                                    _store.disconnect(device.serial);
+                                    _deviceStore.disconnect(device.serial);
                                   },
                                 ),
                               ),
                               Observer(
                                 builder: (_) {
-                                  final isVisible = _store.isFloatingVisible;
-                                  final serial = _store.floatingSerial;
+                                  final isVisible =
+                                      _mirroringStore.isFloatingVisible;
+                                  final serial = _mirroringStore.floatingSerial;
 
                                   if (!isVisible)
                                     return const SizedBox.shrink();
@@ -77,7 +83,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     key: ValueKey('floating_$serial'),
                                     serial: serial!,
                                     parentSize: constraints.biggest,
-                                    onClose: () => _store.toggleFloating(null),
+                                    onClose: () =>
+                                        _mirroringStore.toggleFloating(null),
                                   );
                                 },
                               ),
@@ -147,7 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 16),
           IconButton.filledTonal(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _store.loadDevices(),
+            onPressed: () => _deviceStore.loadDevices(),
             tooltip: 'Refresh',
           ),
           const SizedBox(width: 8),
@@ -173,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: _store.loadDevices,
+            onPressed: _deviceStore.loadDevices,
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
           ),

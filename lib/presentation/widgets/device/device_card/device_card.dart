@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
 import 'package:scraki/presentation/widgets/common/status_badge.dart';
-import 'phone_view.dart';
+import '../phone_view/phone_view.dart';
 
 /// A card widget that displays information about a device and provides a mirror action.
 class DeviceCard extends StatefulWidget {
@@ -43,12 +43,6 @@ class _DeviceCardState extends State<DeviceCard> {
     _cardFocusNode.removeListener(_onFocusChange);
     _cardFocusNode.dispose();
     super.dispose();
-  }
-
-  void _toggleMirroring() {
-    setState(() {
-      _isMirroring = !_isMirroring;
-    });
   }
 
   void _handleCardTap() {
