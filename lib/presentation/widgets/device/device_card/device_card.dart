@@ -19,7 +19,6 @@ class DeviceCard extends StatefulWidget {
 }
 
 class _DeviceCardState extends State<DeviceCard> {
-  bool _isMirroring = false;
   bool _isHovered = false;
   bool _hasFocus = false;
   final FocusNode _cardFocusNode = FocusNode();
@@ -63,18 +62,18 @@ class _DeviceCardState extends State<DeviceCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           child: Card(
-            elevation: _isHovered || _isMirroring ? 4 : 0,
+            elevation: _isHovered ? 4 : 0,
             surfaceTintColor: colorScheme.surfaceTint,
-            shadowColor: colorScheme.shadow.withOpacity(0.1),
+            shadowColor: colorScheme.shadow.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
                 color: _hasFocus
                     ? colorScheme.primary
-                    : (_isHovered || _isMirroring
-                          ? colorScheme.primary.withOpacity(0.5)
+                    : (_isHovered
+                          ? colorScheme.primary.withValues(alpha: 0.5)
                           : colorScheme.outlineVariant),
-                width: _hasFocus ? 3 : (_isHovered || _isMirroring ? 2 : 1),
+                width: _hasFocus ? 3 : (_isHovered ? 2 : 1),
               ),
             ),
             child: Column(
@@ -83,7 +82,9 @@ class _DeviceCardState extends State<DeviceCard> {
                 ListTile(
                   leading: Container(
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withOpacity(0.4),
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.4,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -112,8 +113,8 @@ class _DeviceCardState extends State<DeviceCard> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withOpacity(
-                        0.3,
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.3,
                       ),
                       borderRadius: BorderRadius.circular(16),
                     ),

@@ -24,7 +24,7 @@ class MirrorNavigationBar extends StatelessWidget {
           Divider(
             height: 1,
             thickness: 1,
-            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
           Expanded(
             child: Row(
@@ -98,7 +98,7 @@ class _NavigationButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(UIConstants.buttonBorderRadius),
             color: isPrimary
-                ? theme.colorScheme.primaryContainer.withOpacity(0.4)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
                 : Colors.transparent,
           ),
           child: Icon(

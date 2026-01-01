@@ -17,6 +17,7 @@ import '../widgets/device/native_video_decoder/native_video_decoder_service.dart
 part 'phone_view_store.g.dart';
 
 @lazySingleton
+// ignore: library_private_types_in_public_api
 class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 
 /// Store responsible for managing device-related state and mirroring sessions.

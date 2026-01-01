@@ -27,7 +27,7 @@ class DeviceGrid extends StatelessWidget {
             Icon(
               Icons.devices_other,
               size: 64,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.2),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
             ),
             const SizedBox(height: 16),
             Text(

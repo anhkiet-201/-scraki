@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
           seedColor: const Color(0xFF6366F1), // Modern Indigo
           brightness: Brightness.light,
           surface: Colors.white,
-          surfaceVariant: const Color(0xFFF1F2F6),
+          surfaceContainerHighest: const Color(0xFFF1F2F6),
         ),
         textTheme: GoogleFonts.outfitTextTheme(),
         appBarTheme: AppBarTheme(
@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: const Color(0xFFF8FAFC),
           selectedIconTheme: const IconThemeData(color: Color(0xFF6366F1)),
           unselectedIconTheme: IconThemeData(
-            color: const Color(0xFF64748B).withOpacity(0.8),
+            color: const Color(0xFF64748B).withValues(alpha: 0.8),
           ),
           selectedLabelTextStyle: GoogleFonts.outfit(
             color: const Color(0xFF6366F1),
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.w500,
             fontSize: 12,
           ),
-          indicatorColor: const Color(0xFF6366F1).withOpacity(0.1),
+          indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
         ),
         cardTheme: CardThemeData(
           elevation: 0,

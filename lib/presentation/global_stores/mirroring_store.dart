@@ -18,6 +18,7 @@ import '../widgets/device/native_video_decoder/native_video_decoder_service.dart
 part 'mirroring_store.g.dart';
 
 @lazySingleton
+// ignore: library_private_types_in_public_api
 class MirroringStore = _MirroringStore with _$MirroringStore;
 
 /// Store responsible for managing screen mirroring sessions and input handling.

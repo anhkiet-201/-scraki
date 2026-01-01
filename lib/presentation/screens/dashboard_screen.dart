@@ -144,7 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               leading: const Icon(Icons.search),
               elevation: WidgetStateProperty.all(0),
               backgroundColor: WidgetStateProperty.all(
-                theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               ),
               padding: WidgetStateProperty.all(
                 const EdgeInsets.symmetric(horizontal: 16),

@@ -7,6 +7,7 @@ import '../../../domain/repositories/device_repository.dart';
 part 'device_store.g.dart';
 
 @lazySingleton
+// ignore: library_private_types_in_public_api
 class DeviceStore = _DeviceStore with _$DeviceStore;
 
 /// Store responsible for managing device discovery and connections.

@@ -18,7 +18,7 @@ class DragOverlayView extends StatelessWidget {
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: Container(
-            color: theme.colorScheme.primaryContainer.withOpacity(0.7),
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -30,7 +30,9 @@ class DragOverlayView extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
                           blurRadius: 40,
                           spreadRadius: 10,
                         ),
@@ -55,8 +57,8 @@ class DragOverlayView extends StatelessWidget {
                   Text(
                     'Files will be copied to /sdcard/Download',
                     style: theme.textTheme.headlineSmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer.withOpacity(
-                        0.7,
+                      color: theme.colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.7,
                       ),
                       fontSize: UIConstants.dragOverlaySubtitleSize,
                     ),
