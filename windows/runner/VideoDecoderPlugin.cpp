@@ -14,34 +14,7 @@ std::wstring Utf8ToWide(const std::string& str) {
   return wstrTo;
 }
 
-// Pixel buffer texture
-class PixelBufferTexture : public flutter::Texture {
- public:
-  PixelBufferTexture(std::vector<uint8_t>* buffer, std::mutex* mutex, int width, int height)
-      : buffer_(buffer), mutex_(mutex), width_(width), height_(height) {}
 
-  virtual ~PixelBufferTexture() = default;
-
-  const flutter::TextureVariant* OnGetTextureVariant(
-      const flutter::FlutterView* view, 
-      const flutter::TextureVariant* old_variant) override {
-    return nullptr; // Not using hardware texture variant yet
-  }
-  
-  // Flutter Windows Texture API is ... basic. It mostly supports PixelBuffer.
-  // We need to implement the struct FlutterDesktopPixelBuffer.
-  // Wait, the C++ API wrapper simplifies this.
-  // Actually, we usually register a callback.
-  // Let's check standard implementation. 
-  // Flutter C++ API: TextureRegistrar->RegisterTexture(TextureVariant)
-  // TextureVariant is a std::variant<PixelBufferTexture, ...>
-  // We are implementing flutter::Texture? No wait.
-  // The C++ API uses flutter::Texture derived classes? No.
-  // Let's check flutter_texture_registrar.h in headers if possible.
-  // Standard way: RegisterTexture accepts a generic texture object.
-  // Let's use the simpler C API style via C++ wrapper if simpler, or standard C++ class.
-  // Actually, standard C++ plugins usually implement a class inheriting from flutter::Texture.
-};
 
 // Start simple: Use the C-style struct approach if C++ wrapper is complex or undocumented in my knowledge base.
 // BUT, we are in C++ runner.
@@ -50,7 +23,10 @@ class PixelBufferTexture : public flutter::Texture {
 // We need to provide a `flutter::PixelBufferTexture`.
 
 // Re-implementing:
-void VideoDecoderPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar) {
+void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar_ref) {
+  auto* registrar = flutter::PluginRegistrarManager::GetInstance()
+                        ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);
+
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       registrar->messenger(), "scraki/video_decoder",
       &flutter::StandardMethodCodec::GetInstance());
@@ -233,22 +209,30 @@ void VideoDecoderPlugin::DecodingLoop(const std::string& host, int port) {
         while (buffer.size() >= needed_bytes) {
             if (reading_header) {
                 // Parse Header
-                uint64_t pts = 0;
-                memcpy(&pts, buffer.data(), 8);
-                // ntohll needed? buffer is big endian from scrcpy usually?
-                // macOS impl used be64toh.
+                uint64_t pts_raw = 0;
+                memcpy(&pts_raw, buffer.data(), 8);
+                
+                // Manual 64-bit Endian Swap (Big Endian to Host/Little Endian)
+                uint8_t* p64 = (uint8_t*)&pts_raw;
+                uint64_t pts = ((uint64_t)p64[0] << 56) | ((uint64_t)p64[1] << 48) |
+                               ((uint64_t)p64[2] << 40) | ((uint64_t)p64[3] << 32) |
+                               ((uint64_t)p64[4] << 24) | ((uint64_t)p64[5] << 16) |
+                               ((uint64_t)p64[6] << 8)  |  (uint64_t)p64[7];
+
                 uint32_t size = 0;
                 memcpy(&size, buffer.data() + 8, 4);
-                // ntohl needed?
-
-                // Manual endian swap if needed. Assuming network order (BE).
-                // size = ntohl(size); 
-                // Let's implement ntohl:
-                uint8_t* p = (uint8_t*)&size;
-                uint32_t size_be = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
+                
+                // Manual 32-bit Endian Swap
+                uint8_t* p32 = (uint8_t*)&size;
+                uint32_t size_be = (p32[0] << 24) | (p32[1] << 16) | (p32[2] << 8) | p32[3];
                 size = size_be;
 
                 is_config_packet = (pts & 0x8000000000000000) != 0; // Check MSB for config
+                // Clear MSB from PTS if it was a config packet (though standard scrcpy protocol 
+                // uses special PTS for config, regular frames utilize proper PTS).
+                // Actually, for config packet, the PTS value doesn't matter much for decoding order 
+                // but the flag is crucial.
+                
                 payload_size = size;
 
                 buffer.erase(buffer.begin(), buffer.begin() + 12);
@@ -306,7 +290,7 @@ void VideoDecoderPlugin::ProcessFrame(AVFrame* frame) {
 
         sws_context_ = sws_getContext(
             width_, height_, (AVPixelFormat)frame->format,
-            width_, height_, AV_PIX_FMT_BGRA, // Flutter expects BGRA
+            width_, height_, AV_PIX_FMT_RGBA, // Flutter on Windows might expect RGBA
             SWS_FAST_BILINEAR, NULL, NULL, NULL
         );
         

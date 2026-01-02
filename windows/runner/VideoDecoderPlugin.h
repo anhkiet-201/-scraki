@@ -1,7 +1,11 @@
 #ifndef VIDEO_DECODER_PLUGIN_H_
 #define VIDEO_DECODER_PLUGIN_H_
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 #include <flutter/method_channel.h>
+#include <flutter/plugin_registrar.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 #include <flutter/texture_registrar.h>
@@ -11,10 +15,6 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
-
-// Winsock2
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
 // FFmpeg
 extern "C" {
@@ -26,7 +26,7 @@ extern "C" {
 
 class VideoDecoderPlugin : public flutter::Plugin {
  public:
-  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
+  static void RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar);
 
   VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar);
 
