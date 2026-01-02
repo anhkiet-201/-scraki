@@ -112,7 +112,6 @@ abstract class _MirroringStore with Store {
   @action
   void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
     final wasVisible = isDeviceVisible(serial);
-
     if (isFloating) {
       if (isVisible) {
         visibleFloatingSerials.add(serial);

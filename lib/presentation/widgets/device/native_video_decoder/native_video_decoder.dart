@@ -22,6 +22,10 @@ class NativeVideoDecoder extends StatefulWidget {
   /// The decoder service to use (shared between grid and floating)
   final NativeVideoDecoderService service;
 
+  /// Whether the video is currently visible in the viewport.
+  /// When false, texture will be released to save GPU memory.
+  final bool isVisible;
+
   const NativeVideoDecoder({
     super.key,
     required this.streamUrl,
@@ -30,6 +34,7 @@ class NativeVideoDecoder extends StatefulWidget {
     required this.service,
     this.fit = BoxFit.contain,
     this.onError,
+    this.isVisible = true,
   });
 
   @override
@@ -45,33 +50,52 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   @override
   void initState() {
     super.initState();
-    _initDecoder();
+    if (widget.isVisible) {
+      _acquireTexture();
+    }
   }
 
   @override
   void didUpdateWidget(NativeVideoDecoder oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Handle visibility changes
+    if (oldWidget.isVisible != widget.isVisible) {
+      if (widget.isVisible) {
+        _acquireTexture();
+      } else {
+        _releaseTexture();
+      }
+    }
+
+    // Handle URL changes
     if (oldWidget.streamUrl != widget.streamUrl) {
-      _service.stop(oldWidget.streamUrl);
-      _initDecoder();
+      if (_textureId != null) {
+        _service.stop(oldWidget.streamUrl);
+      }
+      if (widget.isVisible) {
+        _acquireTexture();
+      }
     }
   }
 
   @override
   void dispose() {
-    _service.stop(widget.streamUrl);
+    if (_textureId != null) {
+      _releaseTexture();
+    }
     super.dispose();
   }
 
-  Future<void> _initDecoder() async {
+  Future<void> _acquireTexture() async {
     setState(() {
       _isInitializing = true;
     });
 
     try {
-      logger.i('[NativeVideoDecoder] Starting decoder for ${widget.streamUrl}');
-      // Don't call stop() here, as it might kill a shared session!
-      // _initDecoder is called when we need this texture.
+      logger.i(
+        '[NativeVideoDecoder] Acquiring texture for ${widget.streamUrl}',
+      );
       final textureId = await _service.start(widget.streamUrl);
 
       if (!mounted) return;
@@ -82,7 +106,7 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
       });
       logger.i('[NativeVideoDecoder] Received texture ID: $textureId');
     } catch (e) {
-      logger.e('[NativeVideoDecoder] Error initializing decoder', error: e);
+      logger.e('[NativeVideoDecoder] Error acquiring texture', error: e);
       if (!mounted) return;
       setState(() {
         _isInitializing = false;
@@ -90,8 +114,27 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
     }
   }
 
+  void _releaseTexture() {
+    if (_textureId != null) {
+      logger.i(
+        '[NativeVideoDecoder] Releasing texture for ${widget.streamUrl}',
+      );
+      _service.stop(widget.streamUrl);
+      if (mounted) {
+        setState(() {
+          _textureId = null;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Show placeholder when not visible
+    if (!widget.isVisible) {
+      return Container(color: Colors.black);
+    }
+
     if (_isInitializing) {
       return const Center(child: CircularProgressIndicator());
     }

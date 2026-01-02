@@ -46,6 +46,7 @@ class PhoneView extends StatefulWidget {
 class _PhoneViewState extends State<PhoneView> {
   late final FocusNode _focusNode;
   late final MirroringStore _store;
+  bool _isVideoVisible = false;
 
   @override
   void initState() {
@@ -58,13 +59,6 @@ class _PhoneViewState extends State<PhoneView> {
   @override
   void dispose() {
     _store.setVisibility(widget.serial, false, isFloating: widget.isFloating);
-
-    // Only stop mirroring if not floating
-    if (!widget.isFloating && _store.floatingSerial != widget.serial) {
-      _store.stopMirroring(widget.serial);
-    }
-
-    // Only dispose FocusNode if we created it
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
@@ -95,6 +89,9 @@ class _PhoneViewState extends State<PhoneView> {
           onVisibilityChanged: (info) {
             final isVisible =
                 info.visibleFraction > UIConstants.visibilityThreshold;
+            setState(() {
+              _isVideoVisible = isVisible;
+            });
             _store.setVisibility(
               widget.serial,
               isVisible,
@@ -229,6 +226,7 @@ class _PhoneViewState extends State<PhoneView> {
               nativeHeight: session.height,
               service: session.decoderService,
               fit: widget.fit,
+              isVisible: _isVideoVisible,
               onError: (error) => _store.setDecoderError(widget.serial, error),
             ),
           ),
