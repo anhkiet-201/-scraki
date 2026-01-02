@@ -129,6 +129,15 @@ class ScrcpyService {
         logger.i('[ScrcpyService] Pushing file to $serial: $path');
         // Push to /sdcard/Download/ which is a standard location
         await _shell.run('adb -s $serial push "$path" /sdcard/Download/');
+
+        // Notify MediaScanner to scan the pushed file
+        final fileName = path.split(Platform.isWindows ? r'\' : '/').last;
+        final uri = 'file:///sdcard/Download/$fileName';
+        await _shell.run(
+          'adb -s $serial shell am broadcast '
+          '-a android.intent.action.MEDIA_SCANNER_SCAN_FILE '
+          '-d $uri',
+        );
       }
     } catch (e) {
       logger.e('[ScrcpyService] Failed to push files to $serial', error: e);

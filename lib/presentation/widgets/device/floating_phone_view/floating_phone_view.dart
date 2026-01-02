@@ -19,8 +19,8 @@ class FloatingPhoneView extends StatefulWidget {
 
 class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   Offset _position = const Offset(100, 100);
-  double _width = 480;
-  double _height = 1000;
+  double _width = 240;
+  double _height = 500;
 
   @override
   void initState() {
