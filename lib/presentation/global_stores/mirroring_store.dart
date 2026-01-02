@@ -111,7 +111,6 @@ abstract class _MirroringStore with Store {
 
   @action
   void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
-    final wasVisible = isDeviceVisible(serial);
     if (isFloating) {
       if (isVisible) {
         visibleFloatingSerials.add(serial);
@@ -126,8 +125,10 @@ abstract class _MirroringStore with Store {
       }
     }
 
-    final isNowVisible = isDeviceVisible(serial);
-
+    // Texture lifecycle is now managed by NativeVideoDecoder.isVisible parameter
+    // No need to pause/resume mirroring workers
+    // TODO: Consider removing pause/resume methods if no longer needed
+    /*
     if (wasVisible != isNowVisible) {
       if (isNowVisible) {
         _workerManager.resumeMirroring(serial);
@@ -135,6 +136,7 @@ abstract class _MirroringStore with Store {
         _workerManager.pauseMirroring(serial);
       }
     }
+    */
   }
 
   // ═══════════════════════════════════════════════════════════════

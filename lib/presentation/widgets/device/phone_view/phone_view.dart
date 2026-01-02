@@ -87,6 +87,8 @@ class _PhoneViewState extends State<PhoneView> {
             'visibility_${widget.isFloating ? 'float' : 'grid'}_${widget.serial}',
           ),
           onVisibilityChanged: (info) {
+            if (!mounted) return;
+
             final isVisible =
                 info.visibleFraction > UIConstants.visibilityThreshold;
             setState(() {
