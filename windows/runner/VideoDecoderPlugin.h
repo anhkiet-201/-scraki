@@ -15,6 +15,14 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <map>
+#include <string>
+#include <stdexcept>
+#include <iostream>
+#include <cstring>
+
+extern std::atomic<int64_t> g_active_buffers;
+extern std::atomic<int64_t> g_total_pixels_allocated;
 
 // FFmpeg
 extern "C" {
@@ -36,6 +44,64 @@ class VideoDecoderPlugin : public flutter::Plugin {
   VideoDecoderPlugin(const VideoDecoderPlugin&) = delete;
   VideoDecoderPlugin& operator=(const VideoDecoderPlugin&) = delete;
 
+  struct VideoSessionState {
+      flutter::TextureRegistrar* texture_registrar;
+      int64_t texture_id = -1;
+      std::unique_ptr<flutter::TextureVariant> texture;
+      
+      struct RGBAFrame {
+          std::vector<uint8_t> pixels;
+          int width = 0;
+          int height = 0;
+          RGBAFrame(int w, int h);
+          ~RGBAFrame();
+      };
+
+      std::recursive_mutex pixel_buffer_mutex;
+      std::shared_ptr<RGBAFrame> front_buffer;
+      std::shared_ptr<RGBAFrame> last_front_buffer;
+      std::vector<std::shared_ptr<RGBAFrame>> buffer_pool;
+      
+      int width = 0; // Current decoder width
+      int height = 0; // Current decoder height
+      FlutterDesktopPixelBuffer flutter_pixel_buffer;
+      
+      std::atomic<bool> is_alive{true};
+      std::atomic<bool> is_decoding{false};
+      SOCKET socket = INVALID_SOCKET;
+
+      // FFmpeg
+      AVCodecContext* codec_context = nullptr;
+      const AVCodec* codec = nullptr;
+      AVPacket* packet = nullptr;
+      AVFrame* frame = nullptr;
+      SwsContext* sws_context = nullptr;
+
+      VideoSessionState(flutter::TextureRegistrar* registrar) : texture_registrar(registrar), texture_id(-1) {
+          memset(&flutter_pixel_buffer, 0, sizeof(flutter_pixel_buffer));
+      }
+
+      ~VideoSessionState();
+  };
+
+  class VideoSession {
+   public:
+    VideoSession(flutter::TextureRegistrar* texture_registrar, const std::string& host, int port);
+    ~VideoSession();
+
+    int64_t texture_id() const { return state_ ? state_->texture_id : -1; }
+
+   private:
+    static void DecodingLoop(std::shared_ptr<VideoSessionState> state, std::string host, int port);
+    static bool ConnectToServer(std::shared_ptr<VideoSessionState> state, const std::string& host, int port);
+    static bool InitializeDecoder(std::shared_ptr<VideoSessionState> state);
+    static void DecodePacket(std::shared_ptr<VideoSessionState> state, const std::vector<uint8_t>& data);
+    static void ProcessFrame(std::shared_ptr<VideoSessionState> state, AVFrame* frame);
+
+    std::shared_ptr<VideoSessionState> state_;
+    std::unique_ptr<std::thread> decoder_thread_;
+  };
+
  private:
   // Called when a method is called on this plugin's channel from Dart.
   void HandleMethodCall(
@@ -44,40 +110,12 @@ class VideoDecoderPlugin : public flutter::Plugin {
 
   void StartDecoding(const std::string& url,
                      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
-  void StopDecoding();
-
-  // Decoding loop running in a separate thread
-  void DecodingLoop(const std::string& host, int port);
-  bool ConnectToServer(const std::string& host, int port);
-  bool InitializeDecoder();
-  void CleanupDecoder();
-  void DecodePacket(const std::vector<uint8_t>& data);
-  void ProcessFrame(AVFrame* frame);
-
+  void StopDecoding(int64_t texture_id);
+  void StopAllDecoding();
 
   flutter::TextureRegistrar* texture_registrar_;
-  int64_t texture_id_ = -1;
-  std::unique_ptr<flutter::TextureVariant> texture_;
-
-  // Threading
-  std::thread decoder_thread_;
-  std::atomic<bool> is_decoding_{false};
-  std::mutex pixel_buffer_mutex_;
-
-  // FFmpeg
-  AVCodecContext* codec_context_ = nullptr;
-  const AVCodec* codec_ = nullptr;
-  AVPacket* packet_ = nullptr;
-  AVFrame* frame_ = nullptr;
-  SwsContext* sws_context_ = nullptr;
-
-  // Frame buffer
-  std::vector<uint8_t> pixel_buffer_;
-  int width_ = 0;
-  int height_ = 0;
-
-  // Network
-  SOCKET socket_ = INVALID_SOCKET;
+  std::map<int64_t, std::unique_ptr<VideoSession>> sessions_;
+  std::mutex sessions_mutex_;
 };
 
 #endif  // VIDEO_DECODER_PLUGIN_H_
