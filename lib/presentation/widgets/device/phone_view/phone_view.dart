@@ -169,7 +169,9 @@ class _PhoneViewState extends State<PhoneView> {
       fit: widget.fit,
       child: KeyboardListener(
         focusNode: _focusNode,
-        onKeyEvent: (event) => _store.handleKeyboardEvent(widget.serial, event),
+        onKeyEvent: widget.isFloating
+            ? (event) => _store.handleKeyboardEvent(widget.serial, event)
+            : null,
         child: SizedBox(
           width: session.width.toDouble(),
           height: session.height.toDouble() + UIConstants.navigationBarHeight,
@@ -199,19 +201,27 @@ class _PhoneViewState extends State<PhoneView> {
       children: [
         Expanded(
           child: Listener(
-            onPointerDown: (e) => _handlePointer(e, 0, session),
-            onPointerUp: (e) => _handlePointer(e, 1, session),
-            onPointerMove: (e) => _handlePointer(e, 2, session),
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                _store.handleScrollEvent(
-                  widget.serial,
-                  event,
-                  session.width,
-                  session.height,
-                );
-              }
-            },
+            onPointerDown: widget.isFloating
+                ? (e) => _handlePointer(e, 0, session)
+                : (e) => _handleDoubleTapOnly(e),
+            onPointerUp: widget.isFloating
+                ? (e) => _handlePointer(e, 1, session)
+                : null,
+            onPointerMove: widget.isFloating
+                ? (e) => _handlePointer(e, 2, session)
+                : null,
+            onPointerSignal: widget.isFloating
+                ? (event) {
+                    if (event is PointerScrollEvent) {
+                      _store.handleScrollEvent(
+                        widget.serial,
+                        event,
+                        session.width,
+                        session.height,
+                      );
+                    }
+                  }
+                : null,
             child: NativeVideoDecoder(
               key: Key('decoder_${widget.serial}'),
               streamUrl: session.videoUrl,
@@ -223,7 +233,10 @@ class _PhoneViewState extends State<PhoneView> {
             ),
           ),
         ),
-        MirrorNavigationBar(serial: widget.serial),
+        MirrorNavigationBar(
+          serial: widget.serial,
+          isEnabled: widget.isFloating,
+        ),
       ],
     );
   }
@@ -236,8 +249,9 @@ class _PhoneViewState extends State<PhoneView> {
       FocusScope.of(context).requestFocus(_focusNode);
     }
 
-    // Check for double tap
-    if (action == 0) {
+    // Check for double tap only in grid view (to toggle floating)
+    // In floating mode, double-tap should be sent to the device
+    if (!widget.isFloating && action == 0) {
       final isDoubleTap = _store.checkDoubleTap(widget.serial);
       if (isDoubleTap) return;
     }
@@ -250,6 +264,16 @@ class _PhoneViewState extends State<PhoneView> {
       session.width,
       session.height,
     );
+  }
+
+  void _handleDoubleTapOnly(PointerEvent event) {
+    if (!mounted) return;
+
+    // Check for double tap to toggle floating
+    final isDoubleTap = _store.checkDoubleTap(widget.serial);
+    if (isDoubleTap) {
+      // No need to do anything else, checkDoubleTap already toggles floating
+    }
   }
 
   Widget _buildDragOverlay() {

@@ -9,8 +9,13 @@ import '../../../../global_stores/mirroring_store.dart';
 /// Provides Android system navigation controls for device mirroring.
 class MirrorNavigationBar extends StatelessWidget {
   final String serial;
+  final bool isEnabled;
 
-  const MirrorNavigationBar({super.key, required this.serial});
+  const MirrorNavigationBar({
+    super.key,
+    required this.serial,
+    this.isEnabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,17 +39,20 @@ class MirrorNavigationBar extends StatelessWidget {
                   serial: serial,
                   icon: Icons.arrow_back_ios_new_rounded,
                   keyCode: AndroidKeyCodes.kBack,
+                  isEnabled: isEnabled,
                 ),
                 _NavigationButton(
                   serial: serial,
                   icon: Icons.circle_outlined,
                   keyCode: AndroidKeyCodes.kHome,
                   isPrimary: true,
+                  isEnabled: isEnabled,
                 ),
                 _NavigationButton(
                   serial: serial,
                   icon: Icons.crop_square_rounded,
                   keyCode: AndroidKeyCodes.kAppSwitch,
+                  isEnabled: isEnabled,
                 ),
               ],
             ),
@@ -60,12 +68,14 @@ class _NavigationButton extends StatelessWidget {
   final IconData icon;
   final int keyCode;
   final bool isPrimary;
+  final bool isEnabled;
 
   const _NavigationButton({
     required this.serial,
     required this.icon,
     required this.keyCode,
     this.isPrimary = false,
+    this.isEnabled = true,
   });
 
   void _onTap() {
@@ -87,7 +97,7 @@ class _NavigationButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _onTap,
+        onTap: isEnabled ? _onTap : null,
         borderRadius: BorderRadius.circular(UIConstants.buttonBorderRadius),
         child: AnimatedContainer(
           duration: UIConstants.hoverAnimationDuration,
@@ -103,9 +113,11 @@ class _NavigationButton extends StatelessWidget {
           ),
           child: Icon(
             icon,
-            color: isPrimary
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+            color: isEnabled
+                ? (isPrimary
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant)
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             size: isPrimary
                 ? UIConstants.navButtonIconSizePrimary
                 : UIConstants.navButtonIconSize,
