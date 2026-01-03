@@ -62,17 +62,16 @@ class _DeviceCardState extends State<DeviceCard>
       child: GestureDetector(
         onTap: _handleCardTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.fastOutSlowIn,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               if (_isHovered || _hasFocus)
                 BoxShadow(
-                  color: colorScheme.shadow.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                  spreadRadius: -4,
+                  color: colorScheme.shadow.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
             ],
           ),
@@ -81,47 +80,30 @@ class _DeviceCardState extends State<DeviceCard>
             color: _isHovered
                 ? colorScheme.surfaceContainerLow
                 : colorScheme.surfaceContainerLowest,
-            surfaceTintColor: colorScheme.surfaceTint,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(16),
               side: BorderSide(
                 color: _hasFocus
                     ? colorScheme.primary
                     : (_isHovered
                           ? colorScheme.outline
-                          : colorScheme.outlineVariant.withValues(alpha: 0.5)),
-                width: _hasFocus ? 2.5 : (_isHovered ? 1.5 : 1),
+                          : colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                width: _hasFocus ? 2.0 : 1.0,
               ),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(theme, colorScheme),
+                SizedBox(
+                  height: 56, // M3 standard small header
+                  child: _buildHeader(theme, colorScheme),
+                ),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest.withValues(
-                          alpha: _isHovered ? 0.4 : 0.25,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(
-                            alpha: 0.3,
-                          ),
-                          width: 1,
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: PhoneView(
-                        serial: widget.device.serial,
-                        fit: widget.device.status == DeviceStatus.connected
-                            ? BoxFit.contain
-                            : BoxFit.cover,
-                        focusNode: _cardFocusNode,
-                      ),
-                    ),
+                  child: PhoneView(
+                    serial: widget.device.serial,
+                    fit: BoxFit.fill,
+                    focusNode: _cardFocusNode,
                   ),
                 ),
               ],
@@ -133,54 +115,60 @@ class _DeviceCardState extends State<DeviceCard>
   }
 
   Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          widget.device.connectionType == ConnectionType.tcp
-              ? Icons.wifi_rounded
-              : Icons.usb_rounded,
-          color: colorScheme.primary,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        widget.device.modelName,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.2,
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        widget.device.serial,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-          fontSize: 10,
-          fontFamily: 'Monospace',
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
         children: [
+          // Icon
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              widget.device.connectionType == ConnectionType.tcp
+                  ? Icons.wifi_rounded
+                  : Icons.usb_rounded,
+              color: colorScheme.onSecondaryContainer,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Titles
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.device.modelName,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  widget.device.serial,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          // Status & Actions
           StatusBadge(status: widget.device.status),
-          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 18),
             onPressed: widget.onDisconnect,
-            tooltip: 'Disconnect Device',
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             style: IconButton.styleFrom(
+              visualDensity: VisualDensity.compact,
               foregroundColor: colorScheme.onSurfaceVariant,
-              hoverColor: colorScheme.errorContainer.withValues(alpha: 0.2),
             ),
           ),
         ],

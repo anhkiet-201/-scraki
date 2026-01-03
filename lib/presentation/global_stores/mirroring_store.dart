@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
 import '../../../domain/entities/mirror_session.dart';
 
 part 'mirroring_store.g.dart';
@@ -30,14 +31,21 @@ abstract class _MirroringStore with Store {
 
   @computed
   double get deviceAspectRatio {
-    if (activeSessions.isEmpty) return 0.5625; // Default 9:16
+    const double defaultVideoRatio = 9 / 19; // Modern phone ratio
+    final double fallbackRatio =
+        defaultVideoRatio *
+        (1 / (1 + (UIConstants.navigationBarHeight / 1920)));
+
+    if (activeSessions.isEmpty) return fallbackRatio;
 
     // Use the aspect ratio of the first active session for the whole grid
     final firstSession = activeSessions.values.first;
     if (firstSession.width > 0 && firstSession.height > 0) {
-      return firstSession.width / firstSession.height;
+      // Logic: Ratio = Width / (Height + NavBarHeight)
+      return firstSession.width /
+          (firstSession.height + UIConstants.navigationBarHeight);
     }
-    return 0.5625;
+    return fallbackRatio;
   }
 
   // ═══════════════════════════════════════════════════════════════

@@ -89,13 +89,13 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
 
   @override
   Widget build(BuildContext context) {
+    // Show placeholder when not visible outside Observer to avoid MobX tracking errors
+    if (!widget.isVisible) {
+      return Container(color: Colors.black);
+    }
+
     return Observer(
       builder: (_) {
-        // Show placeholder when not visible
-        if (!widget.isVisible) {
-          return Container(color: Colors.black);
-        }
-
         if (_store.isInitializing) {
           return const Center(child: CircularProgressIndicator());
         }

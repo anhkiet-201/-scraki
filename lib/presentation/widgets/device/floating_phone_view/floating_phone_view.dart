@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:mobx/mobx.dart';
 import '../../../../core/di/injection.dart';
 import '../../../global_stores/mirroring_store.dart';
 import '../phone_view/phone_view.dart';
@@ -27,15 +28,31 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   double _width = 320;
   late double _height;
 
+  ReactionDisposer? _aspectRatioDisposer;
+
   @override
   void initState() {
     super.initState();
     _mirroringStore = getIt<MirroringStore>();
-    // Initial size based on default 9:16
-    _height =
-        _width / _mirroringStore.deviceAspectRatio +
-        40 +
-        12; // + Header + Handle
+
+    // Initial size based on default
+    _height = (_width / _mirroringStore.deviceAspectRatio) + 40 + 12;
+
+    // React to aspect ratio changes (e.g. when session starts)
+    _aspectRatioDisposer = reaction((_) => _mirroringStore.deviceAspectRatio, (
+      ratio,
+    ) {
+      setState(() {
+        _height = (_width / ratio) + 40 + 12;
+        _position = _getClampedPosition(_position);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _aspectRatioDisposer?.call();
+    super.dispose();
   }
 
   Offset _getClampedPosition(Offset target) {
@@ -61,7 +78,6 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
       child: Observer(
         builder: (_) {
           final aspectRatio = _mirroringStore.deviceAspectRatio;
-
           return Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
@@ -160,10 +176,14 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 2),
                           decoration: const BoxDecoration(color: Colors.black),
-                          child: PhoneView(
-                            serial: widget.serial,
-                            fit: BoxFit.contain,
-                            isFloating: true,
+                          child: SizedBox(
+                            width: _width,
+                            height: _height,
+                            child: PhoneView(
+                              serial: widget.serial,
+                              fit: BoxFit.fill,
+                              isFloating: true,
+                            ),
                           ),
                         ),
                       ),

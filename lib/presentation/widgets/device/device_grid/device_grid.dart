@@ -72,9 +72,9 @@ class DeviceGrid extends StatelessWidget {
             // Use real aspect ratio from mirroring sessions or default to 9:16
             final deviceRatio = store.deviceAspectRatio;
 
-            // Fixed height: Header (~72px) + Footer (~52px) = ~124px
+            // Fixed height: Header (56px)
             // itemWidth / contentHeight = deviceRatio  => contentHeight = itemWidth / deviceRatio
-            final totalHeight = (itemWidth / deviceRatio) + 124;
+            final totalHeight = (itemWidth / deviceRatio) + 56;
             final responsiveRatio = itemWidth / totalHeight;
 
             return CustomScrollView(

@@ -93,8 +93,11 @@ class _PhoneViewState extends State<PhoneView> {
               await _store.uploadFiles(widget.serial, paths);
             },
             child: Stack(
+              alignment: Alignment.center,
               children: [
-                _buildContent(_store.session, isFloating),
+                Positioned.fill(
+                  child: _buildContent(_store.session, isFloating),
+                ),
                 _buildDragOverlay(),
                 _buildPushProgress(),
               ],
@@ -165,6 +168,7 @@ class _PhoneViewState extends State<PhoneView> {
   Widget _buildMirrorView(MirrorSession session) {
     return FittedBox(
       fit: widget.fit,
+      alignment: Alignment.center,
       child: KeyboardListener(
         focusNode: _focusNode,
         onKeyEvent: widget.isFloating
@@ -181,6 +185,7 @@ class _PhoneViewState extends State<PhoneView> {
 
   Widget _buildVideoWithNavigation(MirrorSession session) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
           child: Listener(
