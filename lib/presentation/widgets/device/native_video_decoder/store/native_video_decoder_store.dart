@@ -1,11 +1,9 @@
-import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/presentation/widgets/device/native_video_decoder/native_video_decoder_service.dart';
 
 part 'native_video_decoder_store.g.dart';
 
-@lazySingleton
 // ignore: library_private_types_in_public_api
 class NativeVideoDecoderStore = _NativeVideoDecoderStore
     with _$NativeVideoDecoderStore;
@@ -35,7 +33,7 @@ abstract class _NativeVideoDecoderStore with Store {
     required this.nativeHeight,
     required this.service,
     required this.isVisible,
-    required this.onError
+    required this.onError,
   }) {
     if (isVisible) {
       acquireTexture();
@@ -56,9 +54,7 @@ abstract class _NativeVideoDecoderStore with Store {
   Future<void> acquireTexture() async {
     _isInitializing = true;
     try {
-      logger.i(
-        '[NativeVideoDecoder] Acquiring texture for $streamUrl',
-      );
+      logger.i('[NativeVideoDecoder] Acquiring texture for $streamUrl');
       _textureId = await service.start(streamUrl);
       _isInitializing = false;
       logger.i('[NativeVideoDecoder] Received texture ID: $_textureId');
@@ -71,9 +67,7 @@ abstract class _NativeVideoDecoderStore with Store {
   @action
   void releaseTexture() {
     if (_textureId != null) {
-      logger.i(
-        '[NativeVideoDecoder] Releasing texture for $streamUrl',
-      );
+      logger.i('[NativeVideoDecoder] Releasing texture for $streamUrl');
       service.stop(streamUrl);
       _textureId = null;
     }

@@ -51,20 +51,20 @@ class _PhoneViewState extends State<PhoneView> {
     _focusNode = widget.focusNode ?? FocusNode();
     _store = PhoneViewStore(widget.serial, widget.isFloating);
     super.initState();
-    if(widget.focusNode != null && _store.isFloatingView){
+    if (widget.focusNode != null && _store.isFloatingView) {
       _focusNode.requestFocus();
     }
   }
 
   @override
-  void dispose() {  
+  void dispose() {
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
     _store.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Observer(
