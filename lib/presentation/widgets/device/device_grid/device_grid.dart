@@ -55,13 +55,13 @@ class DeviceGrid extends StatelessWidget {
 
     return Observer(
       builder: (_) {
+        final deviceRatio = store.deviceAspectRatio;
         return LayoutBuilder(
           builder: (context, constraints) {
             final availableWidth = constraints.maxWidth;
             const maxItemWidth = 320.0;
             const spacing = 16.0;
 
-            // Calculate dynamic cross-axis count
             final crossAxisCount = (availableWidth / (maxItemWidth + spacing))
                 .ceil()
                 .clamp(1, 10);
@@ -69,11 +69,6 @@ class DeviceGrid extends StatelessWidget {
                 (availableWidth - (spacing * (crossAxisCount + 1))) /
                 crossAxisCount;
 
-            // Use real aspect ratio from mirroring sessions or default to 9:16
-            final deviceRatio = store.deviceAspectRatio;
-
-            // Fixed height: Header (56px)
-            // itemWidth / contentHeight = deviceRatio  => contentHeight = itemWidth / deviceRatio
             final totalHeight = (itemWidth / deviceRatio) + 56;
             final responsiveRatio = itemWidth / totalHeight;
 

@@ -62,19 +62,19 @@ class UIConstants {
   // === DRAG & DROP ===
 
   /// Icon size for drag overlay
-  static const double dragOverlayIconSize = 180.0;
+  static const double dragOverlayIconSize = 20.0;
 
   /// Font size for drag overlay title
-  static const double dragOverlayTitleSize = 80.0;
+  static const double dragOverlayTitleSize = 18.0;
 
   /// Font size for drag overlay subtitle
-  static const double dragOverlaySubtitleSize = 40.0;
+  static const double dragOverlaySubtitleSize = 14.0;
 
   // === LOADING & PROGRESS ===
 
   /// Size of progress indicators
-  static const double progressIndicatorSize = 40.0;
+  static const double progressIndicatorSize = 4.0;
 
   /// Stroke width for progress indicators
-  static const double progressIndicatorStroke = 6.0;
+  static const double progressIndicatorStroke = 2.0;
 }

@@ -17,7 +17,8 @@ class PushProgressView extends StatelessWidget {
       right: 40,
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+          alignment: Alignment.topCenter,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(100),
@@ -42,13 +43,13 @@ class PushProgressView extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 32),
+              const SizedBox(width: 8),
               Text(
                 'Pushing files to phone...',
-                style: theme.textTheme.headlineSmall?.copyWith(
+                style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.bold,
-                  fontSize: 32,
+                  fontSize: 8,
                 ),
               ),
             ],

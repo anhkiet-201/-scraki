@@ -24,6 +24,7 @@ class DragOverlayView extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
+                    alignment: Alignment.center,
                     padding: const EdgeInsets.all(48),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
