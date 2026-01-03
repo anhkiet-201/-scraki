@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
+import 'package:scraki/presentation/global_stores/mirroring_store.dart';
 import '../../../../core/di/injection.dart';
-import '../../../stores/phone_view_store.dart';
 import '../device_card/device_card.dart';
 
 /// A grid layout that displays a list of [DeviceCard]s.
@@ -51,7 +51,7 @@ class DeviceGrid extends StatelessWidget {
       );
     }
 
-    final store = getIt<PhoneViewStore>();
+    final store = getIt<MirroringStore>();
 
     return Observer(
       builder: (_) {

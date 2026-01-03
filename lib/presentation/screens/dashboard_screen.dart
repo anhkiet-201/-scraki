@@ -76,8 +76,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       _mirroringStore.isFloatingVisible;
                                   final serial = _mirroringStore.floatingSerial;
 
-                                  if (!isVisible)
+                                  if (!isVisible) {
                                     return const SizedBox.shrink();
+                                  }
 
                                   return FloatingPhoneView(
                                     key: ValueKey('floating_$serial'),

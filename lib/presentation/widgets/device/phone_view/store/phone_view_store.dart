@@ -1,0 +1,475 @@
+import 'dart:async';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:mobx/mobx.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
+import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/core/utils/android_key_codes.dart';
+import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/data/datasources/scrcpy_client.dart';
+import 'package:scraki/data/services/scrcpy_service.dart';
+import 'package:scraki/data/services/video_worker_manager.dart';
+import 'package:scraki/data/utils/scrcpy_input_serializer.dart';
+import 'package:scraki/domain/entities/mirror_session.dart';
+import 'package:scraki/domain/entities/scrcpy_options.dart';
+import 'package:scraki/presentation/mixin/global_mixin.dart';
+import 'package:scraki/presentation/widgets/device/native_video_decoder/native_video_decoder_service.dart';
+
+part 'phone_view_store.g.dart';
+
+// ignore: library_private_types_in_public_api
+class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
+
+/// Store responsible for managing screen mirroring sessions and input handling.
+///
+/// Handles:
+/// - Mirroring lifecycle (start/stop)
+/// - Active sessions management
+/// - Input events (touch, keyboard, scroll)
+/// - File operations (drag & drop)
+/// - Clipboard operations
+/// - Double-tap floating detection
+/// - UI states (loading, errors, connection status)
+abstract class _PhoneViewStore with Store, MirroringStoreMixin {
+  final ScrcpyService _scrcpyService = getIt<ScrcpyService>();
+  final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
+  final String serial;
+
+  _PhoneViewStore(this.serial);
+
+  // ═══════════════════════════════════════════════════════════════
+  // SESSION MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════
+
+  @computed
+  MirrorSession? get session => mirroringStore.activeSessions[serial];
+
+  @observable
+  ObservableSet<String> visibleGridSerials = ObservableSet<String>();
+
+  @observable
+  ObservableSet<String> visibleFloatingSerials = ObservableSet<String>();
+
+  bool isDeviceVisible(String serial) =>
+      visibleGridSerials.contains(serial) ||
+      visibleFloatingSerials.contains(serial);
+
+  // ═══════════════════════════════════════════════════════════════
+  // UI STATES
+  // ═══════════════════════════════════════════════════════════════
+
+  @observable
+  bool isFloating = false;
+
+  @observable
+  bool isLoading = false;
+
+  @observable
+  bool isConnecting = false;
+
+  @observable
+  bool isPushingFile = false;
+
+  @observable
+  bool isDraggingFile = false;
+
+  @observable
+  String? error;
+
+  @observable
+  bool hasLostConnection = false;
+
+  @observable
+  DateTime? lastTapTimes;
+
+  @readonly
+  bool _isVisible = false;
+
+  // ═══════════════════════════════════════════════════════════════
+  // FLOATING WINDOW
+  // ═══════════════════════════════════════════════════════════════
+
+  @computed
+  String? get floatingSerial => mirroringStore.floatingSerial;
+  set floatingSerial(String? serial) => mirroringStore.floatingSerial = serial;
+
+  @computed
+  bool get isFloatingVisible => mirroringStore.isFloatingVisible;
+
+  @action
+  void toggleFloating(String? serial) {
+    if (floatingSerial == serial) {
+      floatingSerial = null;
+    } else {
+      floatingSerial = serial;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VISIBILITY MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
+    this.isFloating = isFloating;
+    _isVisible = isVisible;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // MIRRORING LIFECYCLE
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  Future<MirrorSession> startMirroring([
+    ScrcpyOptions? options,
+  ]) async {
+    runInAction(() {
+      isLoading = true;
+      error = null;
+      hasLostConnection = false;
+      isConnecting = true;
+    });
+
+    try {
+      // Check if device is connected
+      final isOnline = await _scrcpyService.isDeviceConnected(serial);
+      if (!isOnline) {
+        throw 'Device $serial is not connected or unauthorized. Please check your cable/ADB status.';
+      }
+
+      // Return existing session if available
+      if (session != null) {
+        logger.i(
+          '[MirroringStore] Using existing mirroring session for $serial',
+        );
+        return session!;
+      }
+
+      logger.i('[MirroringStore] Starting new mirroring session for $serial');
+      const scrcpyOptions = ScrcpyOptions();
+
+      // Initialize worker and get ports
+      final resolutionFuture = _workerManager.waitForEvent(
+        serial,
+        'resolution_ready',
+      );
+
+      final portsData = await _workerManager.startMirroring(
+        serial,
+        listener: (event) {
+          if (event.type == 'connection_lost') {
+            logger.w('[MirroringStore] Connection lost for $serial');
+            runInAction(() {
+              _workerManager.stopMirroring(serial);
+              mirroringStore.activeSessions.remove(serial);
+              hasLostConnection = true;
+            });
+          }
+        },
+      );
+      final adbPort = portsData['adbPort'] as int;
+      final proxyPort = portsData['proxyPort'] as int;
+
+      // Setup Scrcpy Server
+      await _scrcpyService.initServer(serial, scrcpyOptions, adbPort);
+
+      // Wait for resolution
+      final resolutionData = await resolutionFuture;
+      final width = resolutionData['width'] as int;
+      final height = resolutionData['height'] as int;
+
+      // Create Mirror Session
+      final url = 'tcp://127.0.0.1:$proxyPort';
+      final mirrorSession = MirrorSession(
+        videoUrl: url,
+        width: width,
+        height: height,
+        decoderService: NativeVideoDecoderService(),
+      );
+
+      // Pre-warm decoder
+      await mirrorSession.decoderService.start(url);
+
+      runInAction(() {
+        mirroringStore.activeSessions[serial] = mirrorSession;
+        isLoading = false;
+      });
+
+      return mirrorSession;
+    } catch (e, stackTrace) {
+      logger.e(
+        '[MirroringStore] ERROR during mirroring setup',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      runInAction(() {
+        error = 'Mirror failed: $e';
+        isLoading = false;
+      });
+      rethrow;
+    } finally {
+      runInAction(() => isConnecting = false);
+    }
+  }
+
+  @action
+  Future<void> stopMirroring() async {
+    logger.i('[MirroringStore] Stopping mirroring for $serial');
+    if (session != null) {
+      await session!.decoderService.stop(session!.videoUrl);
+    }
+    mirroringStore.activeSessions.remove(serial);
+    _workerManager.stopMirroring(serial);
+    _scrcpyService.cleanup(serial);
+
+    try {
+      await getIt<ScrcpyClient>().removeTunnel(serial, 0);
+      await _scrcpyService.killServer(serial);
+    } catch (e) {
+      logger.w('[MirroringStore] Error cleaning up', error: e);
+    }
+  }
+
+  @action
+  void setDecoderError(String serial, String error) {
+    error = 'Decoder error: $error';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INPUT HANDLING - Touch Events
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  void handlePointerEvent(
+    String serial,
+    PointerEvent event,
+    int action,
+    int nativeWidth,
+    int nativeHeight,
+  ) {
+    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
+    final buttons = event.buttons;
+
+    sendTouch(
+      serial,
+      x,
+      y,
+      action,
+      nativeWidth,
+      nativeHeight,
+      buttons: buttons,
+    );
+  }
+
+  void sendTouch(
+    String serial,
+    int x,
+    int y,
+    int action,
+    int width,
+    int height, {
+    int buttons = UIConstants.defaultTouchButtons,
+  }) {
+    if (x < 0 || y < 0) return;
+
+    final message = TouchControlMessage(
+      action: action,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      buttons: buttons,
+      pointerId: 0,
+    );
+
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INPUT HANDLING - Scroll Events
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  void handleScrollEvent(
+    String serial,
+    PointerScrollEvent event,
+    int nativeWidth,
+    int nativeHeight,
+  ) {
+    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
+    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
+
+    final hScroll = -(event.scrollDelta.dx / 20).round();
+    final vScroll = -(event.scrollDelta.dy / 20).round();
+
+    if (hScroll == 0 && vScroll == 0) return;
+
+    sendScroll(serial, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
+  }
+
+  void sendScroll(
+    String serial,
+    int x,
+    int y,
+    int width,
+    int height,
+    int hScroll,
+    int vScroll,
+  ) {
+    if (x < 0 || y < 0) return;
+
+    final message = ScrollControlMessage(
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      hScroll: hScroll,
+      vScroll: vScroll,
+    );
+
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INPUT HANDLING - Keyboard Events
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  void handleKeyboardEvent(String serial, KeyEvent event) {
+    final action = (event is KeyDownEvent)
+        ? 0
+        : (event is KeyUpEvent)
+        ? 1
+        : -1;
+
+    if (action == -1) return;
+
+    // Check for keyboard shortcuts
+    final isModified =
+        HardwareKeyboard.instance.isMetaPressed ||
+        HardwareKeyboard.instance.isControlPressed;
+
+    if (isModified && action == 0) {
+      if (event.logicalKey == LogicalKeyboardKey.keyV) {
+        handlePaste(serial);
+        return;
+      }
+    }
+
+    // Send regular key event
+    final androidCode = AndroidKeyCodes.getKeyCode(event.logicalKey);
+    if (androidCode != AndroidKeyCodes.kUnknown) {
+      sendKey(serial, androidCode, action, metaState: _getAndroidMetaState());
+    }
+  }
+
+  void sendKey(String serial, int keyCode, int action, {int metaState = 0}) {
+    if (keyCode == 0) return;
+
+    final message = KeyControlMessage(
+      action: action,
+      keyCode: keyCode,
+      metaState: metaState,
+    );
+
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  int _getAndroidMetaState() {
+    int meta = 0;
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      meta |= AndroidKeyCodes.kMetaShiftOn;
+    }
+    if (HardwareKeyboard.instance.isControlPressed) {
+      meta |= AndroidKeyCodes.kMetaCtrlOn;
+    }
+    if (HardwareKeyboard.instance.isAltPressed) {
+      meta |= AndroidKeyCodes.kMetaAltOn;
+    }
+    if (HardwareKeyboard.instance.isMetaPressed) {
+      meta |= AndroidKeyCodes.kMetaCtrlOn; // Map Cmd to Ctrl for Android
+    }
+    return meta;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CLIPBOARD OPERATIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  Future<void> handlePaste(String serial) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text != null && text.isNotEmpty) {
+      logger.i(
+        '[MirroringStore] Pasting text to $serial: ${text.length} chars',
+      );
+      setClipboard(serial, text, paste: true);
+    }
+  }
+
+  void setClipboard(String serial, String text, {bool paste = false}) {
+    final message = SetClipboardControlMessage(text, paste: paste);
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  void sendText(String serial, String text) {
+    if (text.isEmpty) return;
+    final message = InjectTextControlMessage(text);
+    _workerManager.sendControl(serial, message.serialize());
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // FILE OPERATIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  void setDragging(String serial, bool isDragging) {
+    if (isDragging) {
+      isDraggingFile = true;
+    } else {
+      isDraggingFile = false;
+    }
+  }
+
+  @action
+  Future<void> uploadFiles(String serial, List<String> paths) async {
+    if (paths.isEmpty) return;
+
+    runInAction(() => isPushingFile = true);
+    try {
+      await _scrcpyService.pushFiles(serial, paths);
+      logger.i(
+        '[MirroringStore] Successfully pushed ${paths.length} files to $serial',
+      );
+    } catch (e) {
+      logger.e('[MirroringStore] Failed to push files to $serial', error: e);
+      runInAction(() => error = 'Failed to push files: $e');
+    } finally {
+      runInAction(() => isPushingFile = false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DOUBLE-TAP DETECTION
+  // ═══════════════════════════════════════════════════════════════
+
+  @action
+  bool checkDoubleTap(String serial) {
+    final now = DateTime.now();
+
+    if (lastTapTimes != null &&
+        now.difference(lastTapTimes!) < UIConstants.doubleTapTimeout) {
+      // Double tap detected
+      lastTapTimes = null;
+      toggleFloating(serial);
+      logger.i('[MirroringStore] Double tap detected for $serial');
+      return true;
+    } else {
+      // First tap or timeout
+      lastTapTimes = now;
+      return false;
+    }
+  }
+}

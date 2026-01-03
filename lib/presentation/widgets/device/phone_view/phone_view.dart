@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/presentation/widgets/device/phone_view/store/phone_view_store.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:desktop_drop/desktop_drop.dart';
-import '../../../../core/di/injection.dart';
 import '../../../../core/constants/ui_constants.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../domain/entities/mirror_session.dart';
@@ -45,14 +45,13 @@ class PhoneView extends StatefulWidget {
 
 class _PhoneViewState extends State<PhoneView> {
   late final FocusNode _focusNode;
-  late final MirroringStore _store;
-  bool _isVideoVisible = false;
+  late final PhoneViewStore _store;
 
   @override
   void initState() {
     super.initState();
     _focusNode = widget.focusNode ?? FocusNode();
-    _store = getIt<MirroringStore>();
+    _store = PhoneViewStore(widget.serial);
     _initializeMirroring();
   }
 
@@ -69,7 +68,7 @@ class _PhoneViewState extends State<PhoneView> {
   Future<void> _initializeMirroring() async {
     try {
       logger.i('[PhoneView] Starting mirroring for ${widget.serial}');
-      await _store.startMirroring(widget.serial);
+      await _store.startMirroring();
     } catch (e) {
       logger.e('[PhoneView] Failed to start mirroring', error: e);
     }
@@ -79,7 +78,6 @@ class _PhoneViewState extends State<PhoneView> {
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) {
-        final session = _store.activeSessions[widget.serial];
         final isFloating = _store.floatingSerial == widget.serial;
 
         return VisibilityDetector(
@@ -91,16 +89,13 @@ class _PhoneViewState extends State<PhoneView> {
 
             final isVisible =
                 info.visibleFraction > UIConstants.visibilityThreshold;
-            setState(() {
-              _isVideoVisible = isVisible;
-            });
             _store.setVisibility(
               widget.serial,
               isVisible,
               isFloating: widget.isFloating,
             );
           },
-          child: _buildContent(session, isFloating),
+          child: _buildContent(_store.session, isFloating),
         );
       },
     );
@@ -113,15 +108,15 @@ class _PhoneViewState extends State<PhoneView> {
     }
 
     // Connection lost
-    if (_store.lostConnectionSerials[widget.serial] == true) {
+    if (_store.hasLostConnection) {
       return ConnectionLostView(
         onReconnect: _initializeMirroring,
-        isConnecting: _store.isConnecting[widget.serial] ?? false,
+        isConnecting: _store.isConnecting,
       );
     }
 
     // Error state
-    final errorMessage = _store.errorMessages[widget.serial];
+    final errorMessage = _store.error;
     if (errorMessage != null) {
       return ErrorView(
         title: 'Mirroring Failed',
@@ -132,7 +127,7 @@ class _PhoneViewState extends State<PhoneView> {
 
     // Loading or no session
     if (session == null) {
-      final isLoading = _store.isLoadingMirroring[widget.serial] ?? true;
+      final isLoading = _store.isLoading;
       return LoadingView(
         message: isLoading
             ? 'Connecting to device...'
@@ -221,15 +216,19 @@ class _PhoneViewState extends State<PhoneView> {
                     }
                   }
                 : null,
-            child: NativeVideoDecoder(
-              key: Key('decoder_${widget.serial}'),
-              streamUrl: session.videoUrl,
-              nativeWidth: session.width,
-              nativeHeight: session.height,
-              service: session.decoderService,
-              fit: widget.fit,
-              isVisible: _isVideoVisible,
-              onError: (error) => _store.setDecoderError(widget.serial, error),
+            child: Observer(
+              builder: (context) {
+                return NativeVideoDecoder(
+                  key: Key('decoder_${widget.serial}'),
+                  streamUrl: session.videoUrl,
+                  nativeWidth: session.width,
+                  nativeHeight: session.height,
+                  service: session.decoderService,
+                  fit: widget.fit,
+                  isVisible: _store.isVisible,
+                  onError: (error) => _store.setDecoderError(widget.serial, error),
+                );
+              }
             ),
           ),
         ),
@@ -279,7 +278,7 @@ class _PhoneViewState extends State<PhoneView> {
   Widget _buildDragOverlay() {
     return Observer(
       builder: (_) {
-        final isDragging = _store.isDraggingFile[widget.serial] ?? false;
+        final isDragging = _store.isDraggingFile;
         if (!isDragging) return const SizedBox.shrink();
         return const DragOverlayView();
       },
@@ -289,7 +288,7 @@ class _PhoneViewState extends State<PhoneView> {
   Widget _buildPushProgress() {
     return Observer(
       builder: (_) {
-        final isPushing = _store.isPushingFile[widget.serial] ?? false;
+        final isPushing = _store.isPushingFile;
         if (!isPushing) return const SizedBox.shrink();
         return const PushProgressView();
       },

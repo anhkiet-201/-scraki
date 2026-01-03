@@ -18,7 +18,8 @@ class DeviceCard extends StatefulWidget {
   State<DeviceCard> createState() => _DeviceCardState();
 }
 
-class _DeviceCardState extends State<DeviceCard> {
+class _DeviceCardState extends State<DeviceCard>
+    with AutomaticKeepAliveClientMixin {
   bool _isHovered = false;
   bool _hasFocus = false;
   final FocusNode _cardFocusNode = FocusNode();
@@ -53,6 +54,7 @@ class _DeviceCardState extends State<DeviceCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    super.build(context);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -60,69 +62,65 @@ class _DeviceCardState extends State<DeviceCard> {
       child: GestureDetector(
         onTap: _handleCardTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOutCubic,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              if (_isHovered || _hasFocus)
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                  spreadRadius: -4,
+                ),
+            ],
+          ),
           child: Card(
-            elevation: _isHovered ? 4 : 0,
+            elevation: 0,
+            color: _isHovered
+                ? colorScheme.surfaceContainerLow
+                : colorScheme.surfaceContainerLowest,
             surfaceTintColor: colorScheme.surfaceTint,
-            shadowColor: colorScheme.shadow.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(22),
               side: BorderSide(
                 color: _hasFocus
                     ? colorScheme.primary
                     : (_isHovered
-                          ? colorScheme.primary.withValues(alpha: 0.5)
-                          : colorScheme.outlineVariant),
-                width: _hasFocus ? 3 : (_isHovered ? 2 : 1),
+                          ? colorScheme.outline
+                          : colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                width: _hasFocus ? 2.5 : (_isHovered ? 1.5 : 1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ListTile(
-                  leading: Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.4,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      widget.device.connectionType == ConnectionType.tcp
-                          ? Icons.wifi
-                          : Icons.usb,
-                      color: colorScheme.primary,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    widget.device.modelName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    widget.device.serial,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  trailing: StatusBadge(status: widget.device.status),
-                ),
+                _buildHeader(theme, colorScheme),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.3,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withValues(
+                          alpha: _isHovered ? 0.4 : 0.25,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(
+                            alpha: 0.3,
+                          ),
+                          width: 1,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: PhoneView(
-                      serial: widget.device.serial,
-                      fit: BoxFit.contain,
-                      focusNode: _cardFocusNode,
+                      clipBehavior: Clip.antiAlias,
+                      child: PhoneView(
+                        serial: widget.device.serial,
+                        fit: widget.device.status == DeviceStatus.connected
+                            ? BoxFit.contain
+                            : BoxFit.cover,
+                        focusNode: _cardFocusNode,
+                      ),
                     ),
                   ),
                 ),
@@ -133,4 +131,63 @@ class _DeviceCardState extends State<DeviceCard> {
       ),
     );
   }
+
+  Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          widget.device.connectionType == ConnectionType.tcp
+              ? Icons.wifi_rounded
+              : Icons.usb_rounded,
+          color: colorScheme.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        widget.device.modelName,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.2,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        widget.device.serial,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          fontSize: 10,
+          fontFamily: 'Monospace',
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StatusBadge(status: widget.device.status),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: widget.onDisconnect,
+            tooltip: 'Disconnect Device',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            style: IconButton.styleFrom(
+              foregroundColor: colorScheme.onSurfaceVariant,
+              hoverColor: colorScheme.errorContainer.withValues(alpha: 0.2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }

@@ -21,7 +21,6 @@ import '../../data/services/video_worker_manager.dart' as _i832;
 import '../../domain/repositories/device_repository.dart' as _i454;
 import '../../presentation/global_stores/device_store.dart' as _i1031;
 import '../../presentation/global_stores/mirroring_store.dart' as _i644;
-import '../../presentation/stores/phone_view_store.dart' as _i695;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -42,20 +41,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i387.AdbRemoteDataSourceImpl(),
     );
     gh.lazySingleton<_i644.MirroringStore>(
-      () => _i644.MirroringStore(
-        gh<_i922.ScrcpyService>(),
-        gh<_i832.VideoWorkerManager>(),
-      ),
+      () => _i644.MirroringStore(gh<_i832.VideoWorkerManager>()),
     );
     gh.lazySingleton<_i454.DeviceRepository>(
       () => _i34.DeviceRepositoryImpl(gh<_i387.IAdbRemoteDataSource>()),
-    );
-    gh.lazySingleton<_i695.PhoneViewStore>(
-      () => _i695.PhoneViewStore(
-        gh<_i454.DeviceRepository>(),
-        gh<_i922.ScrcpyService>(),
-        gh<_i832.VideoWorkerManager>(),
-      ),
     );
     gh.lazySingleton<_i1031.DeviceStore>(
       () => _i1031.DeviceStore(gh<_i454.DeviceRepository>()),
