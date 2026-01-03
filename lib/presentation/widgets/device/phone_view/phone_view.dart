@@ -5,7 +5,6 @@ import 'package:scraki/presentation/widgets/device/phone_view/store/phone_view_s
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import '../../../../core/constants/ui_constants.dart';
-import '../../../../core/utils/logger.dart';
 import '../../../../domain/entities/mirror_session.dart';
 import '../../../global_stores/mirroring_store.dart';
 import '../../../widgets/common/loading_view.dart';
@@ -49,44 +48,34 @@ class _PhoneViewState extends State<PhoneView> {
 
   @override
   void initState() {
-    super.initState();
     _focusNode = widget.focusNode ?? FocusNode();
-    _store = PhoneViewStore(widget.serial);
-    _initializeMirroring();
+    _store = PhoneViewStore(widget.serial, widget.isFloating);
+    super.initState();
+    if(widget.focusNode != null && _store.isFloatingView){
+      _focusNode.requestFocus();
+    }
   }
 
   @override
-  void dispose() {
-    _store.setVisibility(widget.serial, false, isFloating: widget.isFloating);
+  void dispose() {  
     if (widget.focusNode == null) {
       _focusNode.dispose();
     }
-
+    _store.dispose();
     super.dispose();
   }
-
-  Future<void> _initializeMirroring() async {
-    try {
-      logger.i('[PhoneView] Starting mirroring for ${widget.serial}');
-      await _store.startMirroring();
-    } catch (e) {
-      logger.e('[PhoneView] Failed to start mirroring', error: e);
-    }
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) {
         final isFloating = _store.floatingSerial == widget.serial;
-
         return VisibilityDetector(
           key: Key(
             'visibility_${widget.isFloating ? 'float' : 'grid'}_${widget.serial}',
           ),
           onVisibilityChanged: (info) {
             if (!mounted) return;
-
             final isVisible =
                 info.visibleFraction > UIConstants.visibilityThreshold;
             _store.setVisibility(
@@ -95,7 +84,22 @@ class _PhoneViewState extends State<PhoneView> {
               isFloating: widget.isFloating,
             );
           },
-          child: _buildContent(_store.session, isFloating),
+          child: DropTarget(
+            onDragEntered: (_) => _store.setDragging(widget.serial, true),
+            onDragExited: (_) => _store.setDragging(widget.serial, false),
+            onDragDone: (details) async {
+              _store.setDragging(widget.serial, false);
+              final paths = details.files.map((f) => f.path).toList();
+              await _store.uploadFiles(widget.serial, paths);
+            },
+            child: Stack(
+              children: [
+                _buildContent(_store.session, isFloating),
+                _buildDragOverlay(),
+                _buildPushProgress(),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -110,7 +114,7 @@ class _PhoneViewState extends State<PhoneView> {
     // Connection lost
     if (_store.hasLostConnection) {
       return ConnectionLostView(
-        onReconnect: _initializeMirroring,
+        onReconnect: _store.startMirroring,
         isConnecting: _store.isConnecting,
       );
     }
@@ -121,7 +125,7 @@ class _PhoneViewState extends State<PhoneView> {
       return ErrorView(
         title: 'Mirroring Failed',
         message: errorMessage,
-        onRetry: _initializeMirroring,
+        onRetry: _store.startMirroring,
       );
     }
 
@@ -169,22 +173,7 @@ class _PhoneViewState extends State<PhoneView> {
         child: SizedBox(
           width: session.width.toDouble(),
           height: session.height.toDouble() + UIConstants.navigationBarHeight,
-          child: DropTarget(
-            onDragEntered: (_) => _store.setDragging(widget.serial, true),
-            onDragExited: (_) => _store.setDragging(widget.serial, false),
-            onDragDone: (details) async {
-              _store.setDragging(widget.serial, false);
-              final paths = details.files.map((f) => f.path).toList();
-              await _store.uploadFiles(widget.serial, paths);
-            },
-            child: Stack(
-              children: [
-                _buildVideoWithNavigation(session),
-                _buildDragOverlay(),
-                _buildPushProgress(),
-              ],
-            ),
-          ),
+          child: _buildVideoWithNavigation(session),
         ),
       ),
     );
@@ -226,16 +215,14 @@ class _PhoneViewState extends State<PhoneView> {
                   service: session.decoderService,
                   fit: widget.fit,
                   isVisible: _store.isVisible,
-                  onError: (error) => _store.setDecoderError(widget.serial, error),
+                  onError: (error) =>
+                      _store.setDecoderError(widget.serial, error),
                 );
-              }
+              },
             ),
           ),
         ),
-        MirrorNavigationBar(
-          serial: widget.serial,
-          isEnabled: widget.isFloating,
-        ),
+        MirrorNavigationBar(store: _store, isEnabled: widget.isFloating),
       ],
     );
   }

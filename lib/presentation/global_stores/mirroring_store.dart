@@ -1,7 +1,5 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
-import '../../../data/services/video_worker_manager.dart';
-import '../../../data/utils/scrcpy_input_serializer.dart';
 import '../../../domain/entities/mirror_session.dart';
 
 part 'mirroring_store.g.dart';
@@ -20,9 +18,7 @@ class MirroringStore = _MirroringStore with _$MirroringStore;
 /// - Clipboard operations
 /// - Double-tap floating detection
 abstract class _MirroringStore with Store {
-  final VideoWorkerManager _workerManager;
-
-  _MirroringStore(this._workerManager);
+  _MirroringStore();
 
   // ═══════════════════════════════════════════════════════════════
   // SESSION MANAGEMENT
@@ -61,16 +57,5 @@ abstract class _MirroringStore with Store {
     } else {
       floatingSerial = serial;
     }
-  }
-  void sendKey(String serial, int keyCode, int action, {int metaState = 0}) {
-    if (keyCode == 0) return;
-
-    final message = KeyControlMessage(
-      action: action,
-      keyCode: keyCode,
-      metaState: metaState,
-    );
-
-    _workerManager.sendControl(serial, message.serialize());
   }
 }

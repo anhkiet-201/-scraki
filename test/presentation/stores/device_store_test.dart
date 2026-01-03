@@ -1,37 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:scraki/presentation/stores/phone_view_store.dart';
+import 'package:scraki/presentation/global_stores/device_store.dart';
 import 'package:scraki/domain/repositories/device_repository.dart';
-import 'package:scraki/data/services/scrcpy_service.dart';
-import 'package:scraki/data/services/video_worker_manager.dart';
 import 'package:scraki/domain/entities/device_entity.dart';
-import 'package:scraki/domain/entities/scrcpy_options.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
 
 // Mocks
 class MockDeviceRepository extends Mock implements DeviceRepository {}
 
-class MockScrcpyService extends Mock implements ScrcpyService {}
-
-class MockVideoWorkerManager extends Mock implements VideoWorkerManager {}
-
 void main() {
   late MockDeviceRepository repository;
-  late MockScrcpyService scrcpyService;
-  late MockVideoWorkerManager workerManager;
-  late PhoneViewStore store;
+  late DeviceStore store;
 
   setUp(() {
     repository = MockDeviceRepository();
-    scrcpyService = MockScrcpyService();
-    workerManager = MockVideoWorkerManager();
-    store = PhoneViewStore(repository, scrcpyService, workerManager);
-
-    registerFallbackValue(const ScrcpyOptions());
+    store = DeviceStore(repository);
   });
 
-  group('PhoneViewStore', () {
+  group('DeviceStore', () {
     test('Initial State', () {
       expect(store.devices, isEmpty);
       expect(store.isLoading, false);

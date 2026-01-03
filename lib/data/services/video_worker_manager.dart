@@ -10,14 +10,14 @@ import '../../../core/utils/logger.dart';
 /// Tin nhắn gửi tới Worker Isolate
 class VideoWorkerCommand {
   final String type; // 'start', 'stop', 'control', 'pause', 'resume'
-  final String serial;
+  final String sessionId;
   final String url;
   final RootIsolateToken? token;
   final List<int>? controlData;
 
   VideoWorkerCommand({
     required this.type,
-    required this.serial,
+    required this.sessionId,
     required this.url,
     this.token,
     this.controlData,
@@ -26,11 +26,11 @@ class VideoWorkerCommand {
 
 /// Tin nhắn Worker Isolate gửi về Main Isolate
 class VideoWorkerEvent {
-  final String serial;
+  final String sessionId;
   final String type; // 'error', 'ports_ready', 'resolution_ready'
   final dynamic data;
 
-  VideoWorkerEvent({required this.serial, required this.type, this.data});
+  VideoWorkerEvent({required this.sessionId, required this.type, this.data});
 }
 
 typedef VideoWorkerListener = void Function(VideoWorkerEvent);
@@ -80,53 +80,53 @@ class VideoWorkerManager {
 
   void _handleWorkerEvent(VideoWorkerEvent event) {
     if (event.type == 'ports_ready' || event.type == 'resolution_ready') {
-      final completer = _pendingSessions['${event.serial}_${event.type}'];
+      final completer = _pendingSessions['${event.sessionId}_${event.type}'];
       if (completer != null) {
         completer.complete(event.data);
-        _pendingSessions.remove('${event.serial}_${event.type}');
+        _pendingSessions.remove('${event.sessionId}_${event.type}');
       }
     } else if (event.type == 'clipboard_update') {
-      _handleClipboardUpdate(event.serial, event.data as String);
+      _handleClipboardUpdate(event.sessionId, event.data as String);
     }
-    _listeners[event.serial]?.call(event);
+    _listeners[event.sessionId]?.call(event);
   }
 
-  void _handleClipboardUpdate(String serial, String text) {
+  void _handleClipboardUpdate(String sessionId, String text) {
     logger.i(
-      '[VideoWorkerManager] Clipboard update from device $serial: $text',
+      '[VideoWorkerManager] Clipboard update from session $sessionId: $text',
     );
     Clipboard.setData(ClipboardData(text: text));
   }
 
   final Map<String, Completer<dynamic>> _pendingSessions = {};
 
-  Future<dynamic> waitForEvent(String serial, String type) {
+  Future<dynamic> waitForEvent(String sessionId, String type) {
     final completer = Completer<dynamic>();
-    _pendingSessions['${serial}_$type'] = completer;
+    _pendingSessions['${sessionId}_$type'] = completer;
     return completer.future;
   }
 
   Future<dynamic> startMirroring(
-    String serial, {
+    String sessionId, {
     VideoWorkerListener? listener,
   }) async {
     await init();
 
-    if (listener != null) _listeners[serial] = listener;
+    if (listener != null) _listeners[sessionId] = listener;
 
-    final portsFuture = waitForEvent(serial, 'ports_ready');
+    final portsFuture = waitForEvent(sessionId, 'ports_ready');
 
     final worker = _workers[_nextWorkerIndex];
     _nextWorkerIndex = (_nextWorkerIndex + 1) % _numWorkers;
 
     logger.i(
-      '[VideoWorkerManager] Assigning $serial to worker (Total sessions: ${_workers.length})',
+      '[VideoWorkerManager] Assigning $sessionId to worker (Total sessions: ${_workers.length})',
     );
 
     worker.sendPort.send(
       VideoWorkerCommand(
         type: 'start',
-        serial: serial,
+        sessionId: sessionId,
         url: '', // Not used anymore, worker will bind its own ports
         token: RootIsolateToken.instance,
       ),
@@ -135,24 +135,25 @@ class VideoWorkerManager {
     return portsFuture;
   }
 
-  void stopMirroring(String serial) {
+  void stopMirroring(String sessionId) {
+    _listeners.remove(sessionId);
     for (final worker in _workers) {
       worker.sendPort.send(
         VideoWorkerCommand(
           type: 'stop',
-          serial: serial,
+          sessionId: sessionId,
           url: '', // Not needed for stop
         ),
       );
     }
   }
 
-  void sendControl(String serial, List<int> data) {
+  void sendControl(String sessionId, List<int> data) {
     for (final worker in _workers) {
       worker.sendPort.send(
         VideoWorkerCommand(
           type: 'control',
-          serial: serial,
+          sessionId: sessionId,
           url: '',
           controlData: data,
         ),
@@ -160,18 +161,18 @@ class VideoWorkerManager {
     }
   }
 
-  void pauseMirroring(String serial) {
+  void pauseMirroring(String sessionId) {
     for (final worker in _workers) {
       worker.sendPort.send(
-        VideoWorkerCommand(type: 'pause', serial: serial, url: ''),
+        VideoWorkerCommand(type: 'pause', sessionId: sessionId, url: ''),
       );
     }
   }
 
-  void resumeMirroring(String serial) {
+  void resumeMirroring(String sessionId) {
     for (final worker in _workers) {
       worker.sendPort.send(
-        VideoWorkerCommand(type: 'resume', serial: serial, url: ''),
+        VideoWorkerCommand(type: 'resume', sessionId: sessionId, url: ''),
       );
     }
   }
@@ -212,27 +213,27 @@ void _workerEntryPoint(SendPort managerPort) async {
             BackgroundIsolateBinaryMessenger.ensureInitialized(message.token!);
           }
           final session = _IsolateVideoSession(
-            message.serial,
+            message.sessionId,
             message.url,
             eventPort,
           );
-          sessions[message.serial] = session;
+          sessions[message.sessionId] = session;
           session.start();
           break;
         case 'stop':
-          sessions[message.serial]?.stop();
-          sessions.remove(message.serial);
+          sessions[message.sessionId]?.stop();
+          sessions.remove(message.sessionId);
           break;
         case 'control':
           if (message.controlData != null) {
-            sessions[message.serial]?.sendControl(message.controlData!);
+            sessions[message.sessionId]?.sendControl(message.controlData!);
           }
           break;
         case 'pause':
-          sessions[message.serial]?.pause();
+          sessions[message.sessionId]?.pause();
           break;
         case 'resume':
-          sessions[message.serial]?.resume();
+          sessions[message.sessionId]?.resume();
           break;
       }
     }
@@ -241,7 +242,7 @@ void _workerEntryPoint(SendPort managerPort) async {
 
 /// Thực thi xử lý video thô trong Isolate
 class _IsolateVideoSession {
-  final String serial;
+  final String sessionId;
   final String url;
   final SendPort? eventPort;
 
@@ -264,7 +265,7 @@ class _IsolateVideoSession {
   final List<List<int>> _initialBuffer = [];
   bool _anyPlayerConnected = false;
 
-  _IsolateVideoSession(this.serial, this.url, this.eventPort);
+  _IsolateVideoSession(this.sessionId, this.url, this.eventPort);
 
   Future<void> start() async {
     try {
@@ -279,7 +280,7 @@ class _IsolateVideoSession {
       // Báo cáo port về Main Isolate
       eventPort?.send(
         VideoWorkerEvent(
-          serial: serial,
+          sessionId: sessionId,
           type: 'ports_ready',
           data: {'adbPort': adbPort, 'proxyPort': proxyPort},
         ),
@@ -294,7 +295,7 @@ class _IsolateVideoSession {
         // If it retries, it closes existing and connects again.
         if (_adbSocket == null) {
           print(
-            '[Isolate-Video] Accepted VIDEO socket (Count: $_connectionCount)',
+            '[Isolate-Video] Accepted VIDEO socket for $sessionId (Count: $_connectionCount)',
           );
 
           // RESET state for new connection (e.g. scrcpy retry)
@@ -309,25 +310,25 @@ class _IsolateVideoSession {
           _adbSubscription = _adbSocket!.listen(_handleAdbData);
 
           _adbSocket!.done.then((_) {
-            print('[Isolate-Video] VIDEO socket closed');
+            print('[Isolate-Video] VIDEO socket closed for $sessionId');
             _adbSocket = null;
             _adbSubscription?.cancel();
             eventPort?.send(
-              VideoWorkerEvent(serial: serial, type: 'connection_lost'),
+              VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
             );
           });
         } else if (_controlSocket == null) {
           print(
-            '[Isolate-Video] Accepted CONTROL socket (Count: $_connectionCount)',
+            '[Isolate-Video] Accepted CONTROL socket for $sessionId (Count: $_connectionCount)',
           );
           _controlSocket = socket;
           _controlSocket!.listen(
             _handleControlData,
             onDone: () {
-              print('[Isolate-Video] CONTROL socket closed');
+              print('[Isolate-Video] CONTROL socket closed for $sessionId');
               _controlSocket = null;
               eventPort?.send(
-                VideoWorkerEvent(serial: serial, type: 'connection_lost'),
+                VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
               );
             },
           );
@@ -359,7 +360,11 @@ class _IsolateVideoSession {
       });
     } catch (e) {
       eventPort?.send(
-        VideoWorkerEvent(serial: serial, type: 'error', data: e.toString()),
+        VideoWorkerEvent(
+          sessionId: sessionId,
+          type: 'error',
+          data: e.toString(),
+        ),
       );
     }
   }
@@ -379,7 +384,7 @@ class _IsolateVideoSession {
         // Báo cáo Resolution về Main Isolate
         eventPort?.send(
           VideoWorkerEvent(
-            serial: serial,
+            sessionId: sessionId,
             type: 'resolution_ready',
             data: {'width': width, 'height': height},
           ),
@@ -480,10 +485,12 @@ class _IsolateVideoSession {
         final textBytes = _controlBuffer.sublist(5, 5 + length);
         final text = utf8.decode(textBytes, allowMalformed: true);
 
-        print('[Isolate-Video] Received clipboard update from device: $text');
+        print(
+          '[Isolate-Video] Received clipboard update from session $sessionId: $text',
+        );
         eventPort?.send(
           VideoWorkerEvent(
-            serial: serial,
+            sessionId: sessionId,
             type: 'clipboard_update',
             data: text,
           ),
@@ -499,12 +506,12 @@ class _IsolateVideoSession {
 
   void pause() {
     _isPaused = true;
-    print('[Isolate-Video] Session $serial paused decoding');
+    print('[Isolate-Video] Session $sessionId paused decoding');
   }
 
   void resume() {
     _isPaused = false;
-    print('[Isolate-Video] Session $serial resumed decoding');
+    print('[Isolate-Video] Session $sessionId resumed decoding');
     // Ensure meta is sent on resume just in case
     if (_configHeader.isNotEmpty && _playerSocket != null) {
       _playerSocket!.add(_configHeader);

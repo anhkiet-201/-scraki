@@ -17,6 +17,21 @@ import 'package:scraki/presentation/widgets/device/native_video_decoder/native_v
 
 part 'phone_view_store.g.dart';
 
+/// Performance profiles for different viewing modes.
+class PerformanceProfiles {
+  static const grid = ScrcpyOptions(
+    bitRate: 100000, // 1 Mbps
+    maxFps: 10,
+    control: false,
+  );
+
+  static const floating = ScrcpyOptions(
+    bitRate: 4000000, // 8 Mbps
+    maxFps: 60,
+    control: true,
+  );
+}
+
 // ignore: library_private_types_in_public_api
 class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 
@@ -34,32 +49,57 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
   final ScrcpyService _scrcpyService = getIt<ScrcpyService>();
   final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
   final String serial;
+  final bool isFloatingView;
 
-  _PhoneViewStore(this.serial);
+  late final String sessionId;
+
+  ReactionDisposer? _floatingDisposer;
+
+  _PhoneViewStore(this.serial, this.isFloatingView) {
+    sessionId = isFloatingView ? '${serial}_floating' : '${serial}_grid';
+    initializing();
+  }
+
+  void initializing() async {
+    try {
+      if (isFloatingView) {
+        // Floating view follows visibility
+        _floatingDisposer = reaction((_) => isFloating, (isFloating) async {
+          if (isFloating) {
+            await startMirroring();
+          }
+        }, fireImmediately: true);
+      } else {
+        // Grid view always starts mirroring
+        await startMirroring();
+      }
+    } catch (e) {
+      logger.e(
+        '[PhoneView] Failed to start mirroring or setting reactions',
+        error: e,
+      );
+    }
+  }
+
+  void dispose() {
+    setVisibility(serial, false, isFloating: isFloatingView);
+    _floatingDisposer?.call();
+    stopMirroring();
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // SESSION MANAGEMENT
   // ═══════════════════════════════════════════════════════════════
 
   @computed
-  MirrorSession? get session => mirroringStore.activeSessions[serial];
-
-  @observable
-  ObservableSet<String> visibleGridSerials = ObservableSet<String>();
-
-  @observable
-  ObservableSet<String> visibleFloatingSerials = ObservableSet<String>();
-
-  bool isDeviceVisible(String serial) =>
-      visibleGridSerials.contains(serial) ||
-      visibleFloatingSerials.contains(serial);
+  MirrorSession? get session => mirroringStore.activeSessions[sessionId];
 
   // ═══════════════════════════════════════════════════════════════
   // UI STATES
   // ═══════════════════════════════════════════════════════════════
 
-  @observable
-  bool isFloating = false;
+  @computed
+  bool get isFloating => floatingSerial == serial;
 
   @observable
   bool isLoading = false;
@@ -111,8 +151,10 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
 
   @action
   void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
-    this.isFloating = isFloating;
-    _isVisible = isVisible;
+    // Only update visibility for the current session type
+    if (isFloating == isFloatingView) {
+      _isVisible = isVisible || isFloating;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -120,9 +162,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
   // ═══════════════════════════════════════════════════════════════
 
   @action
-  Future<MirrorSession> startMirroring([
-    ScrcpyOptions? options,
-  ]) async {
+  Future<MirrorSession> startMirroring([ScrcpyOptions? options]) async {
     runInAction(() {
       isLoading = true;
       error = null;
@@ -140,28 +180,34 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       // Return existing session if available
       if (session != null) {
         logger.i(
-          '[MirroringStore] Using existing mirroring session for $serial',
+          '[MirroringStore] Using existing mirroring session for $sessionId',
         );
         return session!;
       }
 
-      logger.i('[MirroringStore] Starting new mirroring session for $serial');
-      const scrcpyOptions = ScrcpyOptions();
+      logger.i(
+        '[MirroringStore] Starting new mirroring session for $sessionId',
+      );
+      final scrcpyOptions =
+          options ??
+          (isFloatingView
+              ? PerformanceProfiles.floating
+              : PerformanceProfiles.grid);
 
       // Initialize worker and get ports
       final resolutionFuture = _workerManager.waitForEvent(
-        serial,
+        sessionId,
         'resolution_ready',
       );
 
       final portsData = await _workerManager.startMirroring(
-        serial,
+        sessionId,
         listener: (event) {
           if (event.type == 'connection_lost') {
-            logger.w('[MirroringStore] Connection lost for $serial');
+            logger.w('[MirroringStore] Connection lost for $sessionId');
             runInAction(() {
-              _workerManager.stopMirroring(serial);
-              mirroringStore.activeSessions.remove(serial);
+              _workerManager.stopMirroring(sessionId);
+              mirroringStore.activeSessions.remove(sessionId);
               hasLostConnection = true;
             });
           }
@@ -171,7 +217,12 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       final proxyPort = portsData['proxyPort'] as int;
 
       // Setup Scrcpy Server
-      await _scrcpyService.initServer(serial, scrcpyOptions, adbPort);
+      final serverData = await _scrcpyService.initServer(
+        serial,
+        scrcpyOptions,
+        adbPort,
+      );
+      final scid = serverData.scid;
 
       // Wait for resolution
       final resolutionData = await resolutionFuture;
@@ -184,6 +235,8 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
         videoUrl: url,
         width: width,
         height: height,
+        port: adbPort,
+        scid: scid,
         decoderService: NativeVideoDecoderService(),
       );
 
@@ -191,14 +244,14 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       await mirrorSession.decoderService.start(url);
 
       runInAction(() {
-        mirroringStore.activeSessions[serial] = mirrorSession;
+        mirroringStore.activeSessions[sessionId] = mirrorSession;
         isLoading = false;
       });
 
       return mirrorSession;
     } catch (e, stackTrace) {
       logger.e(
-        '[MirroringStore] ERROR during mirroring setup',
+        '[MirroringStore] ERROR during mirroring setup for $sessionId',
         error: e,
         stackTrace: stackTrace,
       );
@@ -214,19 +267,35 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
 
   @action
   Future<void> stopMirroring() async {
-    logger.i('[MirroringStore] Stopping mirroring for $serial');
-    if (session != null) {
-      await session!.decoderService.stop(session!.videoUrl);
-    }
-    mirroringStore.activeSessions.remove(serial);
-    _workerManager.stopMirroring(serial);
-    _scrcpyService.cleanup(serial);
+    logger.i('[MirroringStore] Stopping mirroring for $sessionId');
+    final currentSession = session;
+    if (currentSession != null) {
+      await currentSession.decoderService.stop(currentSession.videoUrl);
 
-    try {
-      await getIt<ScrcpyClient>().removeTunnel(serial, 0);
-      await _scrcpyService.killServer(serial);
-    } catch (e) {
-      logger.w('[MirroringStore] Error cleaning up', error: e);
+      // Cleanup ADB tunnel for this specific scid
+      try {
+        await getIt<ScrcpyClient>().removeTunnel(serial, currentSession.scid);
+      } catch (e) {
+        logger.w(
+          '[MirroringStore] Failed to remove tunnel for $sessionId',
+          error: e,
+        );
+      }
+    }
+
+    mirroringStore.activeSessions.remove(sessionId);
+    _workerManager.stopMirroring(sessionId);
+
+    // Only kill server if NO OTHER sessions for this serial exist
+    final hasOtherSessions = mirroringStore.activeSessions.keys.any(
+      (k) => k.startsWith('${serial}_'),
+    );
+    if (!hasOtherSessions) {
+      try {
+        await _scrcpyService.killServer(serial);
+      } catch (e) {
+        logger.w('[MirroringStore] Error cleaning up server', error: e);
+      }
     }
   }
 
@@ -252,7 +321,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
     final buttons = event.buttons;
 
     sendTouch(
-      serial,
+      sessionId,
       x,
       y,
       action,
@@ -263,7 +332,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
   }
 
   void sendTouch(
-    String serial,
+    String sessionId,
     int x,
     int y,
     int action,
@@ -283,7 +352,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       pointerId: 0,
     );
 
-    _workerManager.sendControl(serial, message.serialize());
+    _workerManager.sendControl(sessionId, message.serialize());
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -305,11 +374,11 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
 
     if (hScroll == 0 && vScroll == 0) return;
 
-    sendScroll(serial, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
+    sendScroll(sessionId, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
   }
 
   void sendScroll(
-    String serial,
+    String sessionId,
     int x,
     int y,
     int width,
@@ -328,7 +397,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       vScroll: vScroll,
     );
 
-    _workerManager.sendControl(serial, message.serialize());
+    _workerManager.sendControl(sessionId, message.serialize());
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -373,7 +442,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
       metaState: metaState,
     );
 
-    _workerManager.sendControl(serial, message.serialize());
+    _workerManager.sendControl(sessionId, message.serialize());
   }
 
   int _getAndroidMetaState() {
@@ -411,13 +480,13 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
 
   void setClipboard(String serial, String text, {bool paste = false}) {
     final message = SetClipboardControlMessage(text, paste: paste);
-    _workerManager.sendControl(serial, message.serialize());
+    _workerManager.sendControl(sessionId, message.serialize());
   }
 
   void sendText(String serial, String text) {
     if (text.isEmpty) return;
     final message = InjectTextControlMessage(text);
-    _workerManager.sendControl(serial, message.serialize());
+    _workerManager.sendControl(sessionId, message.serialize());
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -444,7 +513,7 @@ abstract class _PhoneViewStore with Store, MirroringStoreMixin {
         '[MirroringStore] Successfully pushed ${paths.length} files to $serial',
       );
     } catch (e) {
-      logger.e('[MirroringStore] Failed to push files to $serial', error: e);
+      logger.e('[MirroringStore] Failed to push files to $sessionId', error: e);
       runInAction(() => error = 'Failed to push files: $e');
     } finally {
       runInAction(() => isPushingFile = false);

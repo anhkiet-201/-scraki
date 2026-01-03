@@ -37,11 +37,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i832.VideoWorkerManager>(
       () => _i832.VideoWorkerManager(),
     );
+    gh.lazySingleton<_i644.MirroringStore>(() => _i644.MirroringStore());
     gh.lazySingleton<_i387.IAdbRemoteDataSource>(
       () => _i387.AdbRemoteDataSourceImpl(),
-    );
-    gh.lazySingleton<_i644.MirroringStore>(
-      () => _i644.MirroringStore(gh<_i832.VideoWorkerManager>()),
     );
     gh.lazySingleton<_i454.DeviceRepository>(
       () => _i34.DeviceRepositoryImpl(gh<_i387.IAdbRemoteDataSource>()),

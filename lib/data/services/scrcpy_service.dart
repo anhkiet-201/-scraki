@@ -17,9 +17,6 @@ import '../../core/utils/logger.dart';
 class ScrcpyService {
   final Shell _shell;
 
-  /// Maps device serial to the local port used for the server connection.
-  final Map<String, int> _devicePorts = {};
-
   ScrcpyService() : _shell = Shell();
 
   static const _serverAssetPath = 'assets/server/scrcpy-server.jar';
@@ -51,37 +48,21 @@ class ScrcpyService {
     }
   }
 
-  Future<int> initServer(
+  Future<({int port, String scid})> initServer(
     String deviceSerial,
     ScrcpyOptions options,
     int localPort,
   ) async {
-    _devicePorts[deviceSerial] = localPort;
     final client = getIt<ScrcpyClient>();
+    final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF)
+        .toRadixString(16)
+        .padLeft(8, '0');
 
     try {
       await pushServer(deviceSerial);
-      final scid = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF)
-          .toRadixString(16)
-          .padLeft(8, '0');
       await client.setupTunnel(deviceSerial, localPort, scid);
 
-      final args = [
-        _serverVersion,
-        'scid=$scid',
-        'log_level=info',
-        'audio=false',
-        'video_codec=h265',
-        if (options.maxSize > 0) 'max_size=${options.maxSize}',
-        'video_bit_rate=2000000',
-        if (options.maxFps > 0) 'max_fps=${options.maxFps}',
-        'tunnel_forward=false',
-        'control=true',
-        'cleanup=true',
-        'send_device_meta=true',
-        'send_frame_meta=true',
-        'send_codec_meta=true',
-      ];
+      final args = options.toArgs(_serverVersion, scid);
 
       final command =
           'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
@@ -96,16 +77,11 @@ class ScrcpyService {
       });
 
       await Future<void>.delayed(const Duration(milliseconds: 500));
-      return localPort;
+      return (port: localPort, scid: scid);
     } catch (e) {
-      client.removeTunnel(deviceSerial, localPort);
-      _devicePorts.remove(deviceSerial);
+      client.removeTunnel(deviceSerial, scid);
       throw ServerException('Failed to init server on $deviceSerial: $e');
     }
-  }
-
-  void cleanup(String serial) {
-    _devicePorts.remove(serial);
   }
 
   Future<void> killServer(String serial) async {
@@ -120,8 +96,6 @@ class ScrcpyService {
       );
     }
   }
-
-  int? getForwardPort(String serial) => _devicePorts[serial];
 
   Future<void> pushFiles(String serial, List<String> filePaths) async {
     try {

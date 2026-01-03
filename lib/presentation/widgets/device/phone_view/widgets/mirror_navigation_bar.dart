@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/ui_constants.dart';
 import '../../../../../core/utils/android_key_codes.dart';
-import '../../../../../core/di/injection.dart';
-import '../../../../global_stores/mirroring_store.dart';
+import '../store/phone_view_store.dart';
 
 /// Android navigation bar component with Back, Home, Recent Apps buttons.
 ///
 /// Provides Android system navigation controls for device mirroring.
 class MirrorNavigationBar extends StatelessWidget {
-  final String serial;
+  final PhoneViewStore store;
   final bool isEnabled;
 
   const MirrorNavigationBar({
     super.key,
-    required this.serial,
+    required this.store,
     this.isEnabled = true,
   });
 
@@ -36,20 +35,20 @@ class MirrorNavigationBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _NavigationButton(
-                  serial: serial,
+                  store: store,
                   icon: Icons.arrow_back_ios_new_rounded,
                   keyCode: AndroidKeyCodes.kBack,
                   isEnabled: isEnabled,
                 ),
                 _NavigationButton(
-                  serial: serial,
+                  store: store,
                   icon: Icons.circle_outlined,
                   keyCode: AndroidKeyCodes.kHome,
                   isPrimary: true,
                   isEnabled: isEnabled,
                 ),
                 _NavigationButton(
-                  serial: serial,
+                  store: store,
                   icon: Icons.crop_square_rounded,
                   keyCode: AndroidKeyCodes.kAppSwitch,
                   isEnabled: isEnabled,
@@ -64,14 +63,14 @@ class MirrorNavigationBar extends StatelessWidget {
 }
 
 class _NavigationButton extends StatelessWidget {
-  final String serial;
+  final PhoneViewStore store;
   final IconData icon;
   final int keyCode;
   final bool isPrimary;
   final bool isEnabled;
 
   const _NavigationButton({
-    required this.serial,
+    required this.store,
     required this.icon,
     required this.keyCode,
     this.isPrimary = false,
@@ -79,14 +78,12 @@ class _NavigationButton extends StatelessWidget {
   });
 
   void _onTap() {
-    final store = getIt<MirroringStore>();
-
     // Send keydown
-    store.sendKey(serial, keyCode, 0);
+    store.sendKey(store.serial, keyCode, 0);
 
     // Send keyup after delay
     Future.delayed(UIConstants.navButtonPressDelay, () {
-      store.sendKey(serial, keyCode, 1);
+      store.sendKey(store.serial, keyCode, 1);
     });
   }
 

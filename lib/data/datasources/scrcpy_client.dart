@@ -45,10 +45,12 @@ class ScrcpyClient {
     }
   }
 
-  /// Removes ADB reverse tunnel
-  Future<void> removeTunnel(String serial, int localPort) async {
+  /// Removes ADB reverse tunnel for a specific scid
+  Future<void> removeTunnel(String serial, String scid) async {
     try {
-      await _shell.run('adb -s $serial reverse --remove-all');
+      await _shell.run(
+        'adb -s $serial reverse --remove localabstract:scrcpy_$scid',
+      );
     } catch (_) {
       // Ignore cleanup errors
     }

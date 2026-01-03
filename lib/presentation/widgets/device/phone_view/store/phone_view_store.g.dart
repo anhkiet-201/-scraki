@@ -16,6 +16,13 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     () => super.session,
     name: '_PhoneViewStore.session',
   )).value;
+  Computed<bool>? _$isFloatingComputed;
+
+  @override
+  bool get isFloating => (_$isFloatingComputed ??= Computed<bool>(
+    () => super.isFloating,
+    name: '_PhoneViewStore.isFloating',
+  )).value;
   Computed<String?>? _$floatingSerialComputed;
 
   @override
@@ -30,64 +37,6 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     () => super.isFloatingVisible,
     name: '_PhoneViewStore.isFloatingVisible',
   )).value;
-
-  late final _$visibleGridSerialsAtom = Atom(
-    name: '_PhoneViewStore.visibleGridSerials',
-    context: context,
-  );
-
-  @override
-  ObservableSet<String> get visibleGridSerials {
-    _$visibleGridSerialsAtom.reportRead();
-    return super.visibleGridSerials;
-  }
-
-  @override
-  set visibleGridSerials(ObservableSet<String> value) {
-    _$visibleGridSerialsAtom.reportWrite(value, super.visibleGridSerials, () {
-      super.visibleGridSerials = value;
-    });
-  }
-
-  late final _$visibleFloatingSerialsAtom = Atom(
-    name: '_PhoneViewStore.visibleFloatingSerials',
-    context: context,
-  );
-
-  @override
-  ObservableSet<String> get visibleFloatingSerials {
-    _$visibleFloatingSerialsAtom.reportRead();
-    return super.visibleFloatingSerials;
-  }
-
-  @override
-  set visibleFloatingSerials(ObservableSet<String> value) {
-    _$visibleFloatingSerialsAtom.reportWrite(
-      value,
-      super.visibleFloatingSerials,
-      () {
-        super.visibleFloatingSerials = value;
-      },
-    );
-  }
-
-  late final _$isFloatingAtom = Atom(
-    name: '_PhoneViewStore.isFloating',
-    context: context,
-  );
-
-  @override
-  bool get isFloating {
-    _$isFloatingAtom.reportRead();
-    return super.isFloating;
-  }
-
-  @override
-  set isFloating(bool value) {
-    _$isFloatingAtom.reportWrite(value, super.isFloating, () {
-      super.isFloating = value;
-    });
-  }
 
   late final _$isLoadingAtom = Atom(
     name: '_PhoneViewStore.isLoading',
@@ -396,9 +345,6 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   @override
   String toString() {
     return '''
-visibleGridSerials: ${visibleGridSerials},
-visibleFloatingSerials: ${visibleFloatingSerials},
-isFloating: ${isFloating},
 isLoading: ${isLoading},
 isConnecting: ${isConnecting},
 isPushingFile: ${isPushingFile},
@@ -407,6 +353,7 @@ error: ${error},
 hasLostConnection: ${hasLostConnection},
 lastTapTimes: ${lastTapTimes},
 session: ${session},
+isFloating: ${isFloating},
 floatingSerial: ${floatingSerial},
 isFloatingVisible: ${isFloatingVisible}
     ''';
