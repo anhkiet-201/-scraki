@@ -5,7 +5,9 @@ Scraki is a powerful and lightweight Flutter application for mirroring and contr
 ## Features
 
 - **Ultra-low Latency**: Uses native FFmpeg decoding and Flutter Texture for near-instant response.
-- **High Performance**: Optimized data flow using local TCP proxies.
+- **High Performance**: Optimized data flow using **Isolates** and `VideoWorkerManager` for parallel video processing.
+- **Audio Mirroring**: Cross-platform audio mirroring (macOS & Windows) using native FFmpeg decoding.
+- **Cross-Platform**: Full support for **macOS** and **Windows**.
 - **Full Control**: Support for touch events, keyboard input, and scrolling.
 - **Floating Window**: Double-tap to pop out devices into floating windows.
 - **File Transfer**: Drag & drop files directly to your device.
@@ -21,16 +23,20 @@ Scraki follows **Clean Architecture** principles with a feature-based folder str
 ### Tech Stack
 
 - **Flutter**: UI Framework
-- **MobX**: State Management (Global Stores pattern)
+- **MobX**: State Management (Global & Scoped Stores pattern)
 - **GetIt & Injectable**: Dependency Injection
-- **FFmpeg**: Native video decoding
+- **FFmpeg**: Native video and audio decoding via FFI
+- **Isolates**: Dedicated background isolates for network proxying and parsing
 - **fpdart**: Functional programming primitives (Either, Option)
 
 ### Key Components
 
-- **Global Stores**:
-  - `DeviceStore`: Manages device discovery and connections
-  - `MirroringStore`: Handles mirroring lifecycle and all input events
+- **Stores**:
+  - **Global Stores** (`DeviceStore`, `MirroringStore`): Manage global app state and device lifecycle.
+  - **Scoped Stores** (`PhoneViewStore`): Manage local UI state for individual device views (floating/grid).
+- **Services**:
+  - `VideoWorkerManager`: Manages a pool of background Isolates to handle high-throughput video streams without blocking the UI.
+  - `ScrcpyService`: Orchestrates the `scrcpy` server deployment and connection.
 - **Pure UI Components**: Complete separation of UI and business logic
 - **Reusable Widgets**: Modular components for common UI patterns
 
