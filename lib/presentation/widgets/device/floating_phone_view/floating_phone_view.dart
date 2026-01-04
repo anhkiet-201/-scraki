@@ -5,6 +5,7 @@ import 'package:mobx/mobx.dart';
 import '../../../../core/di/injection.dart';
 import '../../../global_stores/mirroring_store.dart';
 import '../phone_view/phone_view.dart';
+import 'widgets/floating_tool_box.dart';
 
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
@@ -58,13 +59,27 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   Offset _getClampedPosition(Offset target) {
     if (widget.parentSize.isEmpty) return target;
 
-    final maxX = widget.parentSize.width - _width;
+    // Account for Tool Box width khi clamping
+    // Tool Box simplified: collapsed (56px) hoặc expanded (100px) + margins
+    const toolBoxMaxWidth =
+        100 + 12 + 12; // expanded width + left margin + spacing
+    final totalWidth = _width + toolBoxMaxWidth;
+
+    final maxX = widget.parentSize.width - totalWidth;
     final maxY = widget.parentSize.height - _height;
 
     return Offset(
       target.dx.clamp(0.0, maxX > 0 ? maxX : 0.0),
       target.dy.clamp(0.0, maxY > 0 ? maxY : 0.0),
     );
+  }
+
+  /// Calculate available space cho Tool Box (để quyết định collapse/expand)
+  double _getToolBoxAvailableSpace() {
+    if (widget.parentSize.isEmpty) return 0;
+
+    final floatingWindowRight = _position.dx + _width + 12; // + margin
+    return widget.parentSize.width - floatingWindowRight;
   }
 
   @override
@@ -78,182 +93,200 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
       child: Observer(
         builder: (_) {
           final aspectRatio = _mirroringStore.deviceAspectRatio;
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                  offset: const Offset(0, 10),
-                ),
-                BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  spreadRadius: -2,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  width: _width,
-                  height: _height,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface.withValues(alpha: 0.8),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
+          return Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                      offset: const Offset(0, 10),
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    children: [
-                      // Header / Drag Handle
-                      GestureDetector(
-                        onPanUpdate: (details) {
-                          setState(() {
-                            _position = _getClampedPosition(
-                              _position + details.delta,
-                            );
-                          });
-                        },
-                        child: Container(
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.drag_indicator_rounded,
-                                size: 18,
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  widget.serial,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.onSurface,
-                                    letterSpacing: 0.5,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Material(
-                                color: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                  ),
-                                  style: IconButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    padding: EdgeInsets.zero,
-                                    foregroundColor: colorScheme.error
-                                        .withValues(alpha: 0.8),
-                                  ),
-                                  onPressed: widget.onClose,
-                                ),
-                              ),
-                            ],
-                          ),
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: _width,
+                      height: _height,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.8),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          width: 1,
                         ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      // View Content
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: const BoxDecoration(color: Colors.black),
-                          child: SizedBox(
-                            width: _width,
-                            height: _height,
-                            child: PhoneView(
-                              serial: widget.serial,
-                              fit: BoxFit.fill,
-                              isFloating: true,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Resize Handle - Proportional
-                      GestureDetector(
-                        onPanUpdate: (details) {
-                          setState(() {
-                            // Calculate combined delta for proportional scaling
-                            final delta = details.delta.dx + details.delta.dy;
-
-                            // Calculate constraints based on current position and parent size
-                            double maxAllowedWidth = 1200.0; // Absolute max
-                            if (!widget.parentSize.isEmpty) {
-                              final maxWidthByX =
-                                  widget.parentSize.width - _position.dx;
-                              // height = (width / aspect) + 52
-                              // width / aspect <= parentHeight - position.dy - 52
-                              final maxHeightAvailable =
-                                  widget.parentSize.height - _position.dy - 52;
-                              final maxWidthByY =
-                                  maxHeightAvailable * aspectRatio;
-
-                              maxAllowedWidth = [
-                                maxWidthByX,
-                                maxWidthByY,
-                                1200.0,
-                              ].reduce((a, b) => a < b ? a : b);
-                            }
-
-                            final newWidth = (_width + delta).clamp(
-                              240.0,
-                              maxAllowedWidth,
-                            );
-
-                            _width = newWidth;
-                            // Recalculate height based on aspect ratio + header + handle
-                            _height = (_width / aspectRatio) + 40 + 12;
-
-                            // Re-clamp position if resizing made it go out of bounds
-                            _position = _getClampedPosition(_position);
-                          });
-                        },
-                        child: Container(
-                          height: 12,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: const BorderRadius.vertical(
-                              bottom: Radius.circular(20),
-                            ),
-                          ),
-                          child: Center(
+                      child: Column(
+                        children: [
+                          // Header / Drag Handle
+                          GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                _position = _getClampedPosition(
+                                  _position + details.delta,
+                                );
+                              });
+                            },
                             child: Container(
-                              width: 30,
-                              height: 4,
+                              height: 40,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               decoration: BoxDecoration(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.2,
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(20),
                                 ),
-                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.drag_indicator_rounded,
+                                    size: 18,
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      widget.serial,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.onSurface,
+                                            letterSpacing: 0.5,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 18,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        foregroundColor: colorScheme.error
+                                            .withValues(alpha: 0.8),
+                                      ),
+                                      onPressed: widget.onClose,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ),
+                          // View Content
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                              ),
+                              child: SizedBox(
+                                width: _width,
+                                height: _height,
+                                child: PhoneView(
+                                  serial: widget.serial,
+                                  fit: BoxFit.fill,
+                                  isFloating: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Resize Handle - Proportional
+                          GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                // Calculate combined delta for proportional scaling
+                                final delta =
+                                    details.delta.dx + details.delta.dy;
+
+                                // Calculate constraints based on current position and parent size
+                                double maxAllowedWidth = 1200.0; // Absolute max
+                                if (!widget.parentSize.isEmpty) {
+                                  final maxWidthByX =
+                                      widget.parentSize.width - _position.dx;
+                                  // height = (width / aspect) + 52
+                                  // width / aspect <= parentHeight - position.dy - 52
+                                  final maxHeightAvailable =
+                                      widget.parentSize.height -
+                                      _position.dy -
+                                      52;
+                                  final maxWidthByY =
+                                      maxHeightAvailable * aspectRatio;
+
+                                  maxAllowedWidth = [
+                                    maxWidthByX,
+                                    maxWidthByY,
+                                    1200.0,
+                                  ].reduce((a, b) => a < b ? a : b);
+                                }
+
+                                final newWidth = (_width + delta).clamp(
+                                  240.0,
+                                  maxAllowedWidth,
+                                );
+
+                                _width = newWidth;
+                                // Recalculate height based on aspect ratio + header + handle
+                                _height = (_width / aspectRatio) + 40 + 12;
+
+                                // Re-clamp position if resizing made it go out of bounds
+                                _position = _getClampedPosition(_position);
+                              });
+                            },
+                            child: Container(
+                              height: 12,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(20),
+                                ),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 30,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+
+              FloatingToolBox(
+                serial: widget.serial,
+                height: _height,
+                availableSpace: _getToolBoxAvailableSpace(),
+              ),
+            ],
           );
         },
       ),
