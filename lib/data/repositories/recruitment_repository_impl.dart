@@ -97,14 +97,14 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
       
       Fields:
       - jobTitle (String): The official job title.
-      - catchyHeadline (String): A short, exciting, professional, and clear headline (2-5 words). Example: "CƠ HỘI NGHỀ NGHIỆP", "TUYỂN DỤNG GẤP", "THU NHẬP HẤP DẪN", "ĐỒNG ĐỘI MỚI". ALL CAPS.
+      - catchyHeadline (String): A short, exciting, professional, and clear headline (2-5 words). Example: "CƠ HỘI NGHỀ NGHIỆP", "THU NHẬP HẤP DẪN", "ĐỒNG ĐỘI MỚI". ALL CAPS.
       - companyName (String): Name of the company.
       - location (String): location of work.
       - salaryRange (String): e.g. "10 - 15 Triệu". Consistent with market rates.
       - requirements (List<String>): Max 5 brief bullet points.
       - benefits (List<String>): Max 5 brief bullet points.
       - contactInfo (String): Email or Phone or Url.
-      - tikTokCaption (String): A viral, engaging caption for TikTok (max 50 words). Include emojis and 3-5 relevant hashtags (e.g. #ViecLam #BinhDuong).
+      - tikTokCaption (String): A viral, engaging caption for TikTok (max 50 words). Include emojis and 3-5 relevant hashtags (e.g. #ViecLam #BinhDuong #ttnhr). IMPORTANT: STRICTLY COMPLY with TikTok Community Guidelines. DO NOT usage keywords directing users off-platform (e.g., "Bio", "Link", "Zalo", "Phone", "Call"). Focus on the job value.
       
       If a field is missing, use empty string or empty list on JSON.
       

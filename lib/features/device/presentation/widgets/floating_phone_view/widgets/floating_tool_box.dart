@@ -6,6 +6,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/store/floating_tool_box_store.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_job_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box_card.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
@@ -117,8 +118,10 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
             _buildToolBoxAction(context),
             if (_store.showJobSelector)
               _buildJobSelector(context)
-            else if (widget.isGenerating || widget.posterData != null)
+            else if (widget.isGenerating || widget.posterData != null) ...[
               _buildPosterGenerator(context),
+              _buildCaptionPanel(context),
+            ],
           ],
         );
       },
@@ -323,6 +326,90 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
           ),
         );
       },
+    );
+  }
+
+  /// Xây dựng panel gợi ý caption
+  Widget _buildCaptionPanel(BuildContext context) {
+    final caption = widget.posterData?.tikTokCaption;
+    if (caption == null) return const SizedBox();
+    final theme = Theme.of(context);
+
+    // Tính toán chiều rộng khả dụng: Tổng - (Action + Poster Generator)
+    // Action: 100 (expanded) + padding margin
+    // Poster Generator: height * (9/19) (Column chứa Selector + Preview)
+    // Card padding/margin: ~32
+    final usedWidth = 100.0 + (widget.height * (9 / 19)) + 32;
+    final remainingSpace = widget.availableSpace - usedWidth;
+
+    // Nếu không đủ chỗ hiển thị tối thiểu 150px thì ẩn
+    if (remainingSpace < 150) return const SizedBox();
+
+    return FloatingToolBoxCard(
+      width: remainingSpace.clamp(150.0, 350.0), // Max 350px
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'GỢI Ý CAPTION',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Icon(
+                  Icons.copy_rounded,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: caption));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đã copy caption!'),
+                    duration: Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.3),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    caption,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
