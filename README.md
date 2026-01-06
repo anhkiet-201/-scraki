@@ -1,91 +1,158 @@
 # Scraki
 
-Scraki is a powerful and lightweight Flutter application for mirroring and controlling Android devices with ultra-low latency. It leverages the robust `scrcpy` protocol and native FFmpeg decoding for high-performance screen sharing.
+Scraki is a powerful Flutter desktop application for mirroring and controlling Android devices with ultra-low latency. Built with **Feature-Clean Architecture**, **MobX** state management, and native FFmpeg decoding for maximum performance.
 
-## Features
+## ✨ Features
 
-- **Ultra-low Latency**: Uses native FFmpeg decoding and Flutter Texture for near-instant response.
-- **High Performance**: Optimized data flow using **Isolates** and `VideoWorkerManager` for parallel video processing.
-- **Audio Mirroring**: Cross-platform audio mirroring (macOS & Windows) using native FFmpeg decoding.
-- **Cross-Platform**: Full support for **macOS** and **Windows**.
-- **Full Control**: Support for touch events, keyboard input, and scrolling.
-- **Floating Window**: Double-tap to pop out devices into floating windows.
-- **File Transfer**: Drag & drop files directly to your device.
-- **Clipboard Sync**: Seamless clipboard integration with Cmd+V support.
-- **Clean Architecture**: Built with maintainability and scalability in mind.
-- **State Management**: Robust state handling with MobX.
-- **Dependency Injection**: Seamless service management with GetIt and Injectable.
+- **🚀 Ultra-low Latency**: Native FFmpeg decoding with Flutter Texture for near-instant response
+- **⚡ High Performance**: Dedicated Isolates for video/audio processing, zero UI blocking
+- **🎵 Audio Mirroring**: Cross-platform audio support (macOS & Windows)
+- **🖥️ Cross-Platform**: Full support for macOS and Windows
+- **🎮 Full Device Control**: Touch events, keyboard input, scrolling, clipboard sync
+- **🪟 Floating Windows**: Double-tap devices to pop out into floating mode
+- **📁 File Transfer**: Drag & drop files directly to device
+- **📋 Clipboard Sync**: Seamless clipboard integration (Cmd+V support)
+- **🏗️ Clean Architecture**: Feature-based structure for scalability
+- **📱 Multi-Device**: Control multiple devices simultaneously in grid or floating mode
 
-## Architecture
+## 🏛️ Architecture
 
-Scraki follows **Clean Architecture** principles with a feature-based folder structure. For a detailed overview, please see [ARCHITECTURE.md](ARCHITECTURE.md).
+Scraki follows **Feature-Based Clean Architecture** with strict **SOLID** principles. For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-### Tech Stack
+### 📦 Tech Stack
 
-- **Flutter**: UI Framework
-- **MobX**: State Management (Global & Scoped Stores pattern)
-- **GetIt & Injectable**: Dependency Injection
-- **FFmpeg**: Native video and audio decoding via FFI
-- **Isolates**: Dedicated background isolates for network proxying and parsing
-- **fpdart**: Functional programming primitives (Either, Option)
+| Category                   | Technology                         |
+| -------------------------- | ---------------------------------- |
+| **Framework**              | Flutter                            |
+| **State Management**       | MobX (Global & Scoped Stores)      |
+| **Dependency Injection**   | GetIt + Injectable                 |
+| **Native Decoding**        | FFmpeg (via FFI)                   |
+| **Concurrency**            | Isolates (dedicated video workers) |
+| **Functional Programming** | fpdart (Either, Option)            |
+| **Mirroring Protocol**     | scrcpy                             |
 
-### Key Components
+### 📂 Project Structure
 
-- **Stores**:
-  - **Global Stores** (`DeviceStore`, `MirroringStore`): Manage global app state and device lifecycle.
-  - **Scoped Stores** (`PhoneViewStore`): Manage local UI state for individual device views (floating/grid).
-- **Services**:
-  - `VideoWorkerManager`: Manages a pool of background Isolates to handle high-throughput video streams without blocking the UI.
-  - `ScrcpyService`: Orchestrates the `scrcpy` server deployment and connection.
-- **Pure UI Components**: Complete separation of UI and business logic
-- **Reusable Widgets**: Modular components for common UI patterns
+```
+lib/
+├── core/               # Shared: DI, stores, utils, widgets
+│   ├── di/
+│   ├── stores/         # Global stores (DeviceManager, SessionManager)
+│   └── mixins/
+├── features/           # Feature modules
+│   ├── device/         # Device mirroring (data, domain, presentation)
+│   ├── poster/         # AI poster creation
+│   └── dashboard/      # Main dashboard
+└── main.dart
+```
 
-## Getting Started
+### 🔄 State Management Pattern
+
+**No setState!** Everything is reactive with MobX:
+
+```dart
+// Store
+@observable
+ObservableList<Device> devices = ObservableList();
+
+// Widget
+class MyWidget extends StatelessWidget with DeviceManagerStoreMixin {
+  Widget build(context) => Observer(
+    builder: (_) => Text('Devices: ${deviceManagerStore.devices.length}'),
+  );
+}
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.0+)
 - [ADB (Android Debug Bridge)](https://developer.android.com/tools/adb)
-- FFmpeg libraries installed on the host system (for native decoding).
+- FFmpeg libraries (installed on host system)
 
 ### Installation
 
-1.  Clone the repository:
+1. **Clone the repository**
 
-    ```bash
-    git clone https://github.com/yourusername/scraki.git
-    cd scraki
-    ```
+   ```bash
+   git clone https://github.com/yourusername/scraki.git
+   cd scraki
+   ```
 
-2.  Install dependencies:
+2. **Install dependencies**
 
-    ```bash
-    flutter pub get
-    ```
+   ```bash
+   flutter pub get
+   ```
 
-3.  Generate code for MobX and Injectable:
+3. **Generate code** (MobX + Injectable)
 
-    ```bash
-    flutter pub run build_runner build --delete-conflicting-outputs
-    ```
+   ```bash
+   flutter pub run build_runner build --delete-conflicting-outputs
+   ```
 
-4.  Run the application:
-    ```bash
-    flutter run
-    ```
+4. **Run the application**
+   ```bash
+   flutter run -d macos  # or -d windows
+   ```
 
-## Development
+## 🛠️ Development
 
-To watch for changes and automatically regenerate code:
+### Watch mode (auto-regenerate code)
 
 ```bash
 flutter pub run build_runner watch --delete-conflicting-outputs
 ```
 
-## Contributing
+### Run tests
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+flutter test
+```
 
-## License
+### Analyze code
+
+```bash
+flutter analyze
+```
+
+## 📖 Key Concepts
+
+### Global vs Scoped Stores
+
+**Global Stores** (`lib/core/stores/`)
+
+- `DeviceManagerStore`: Manages device list and ADB connections
+- `SessionManagerStore`: Manages mirroring sessions (grid/floating modes)
+
+**Scoped Stores** (`lib/features/*/presentation/stores/`)
+
+- Created/disposed with widget lifecycle
+- Example: `PhoneViewStore`, `FloatingPhoneViewStore`
+
+### Performance Profiles
+
+- **Grid Mode**: 1 Mbps, 10 FPS (low bandwidth)
+- **Floating Mode**: 8 Mbps, 60 FPS (high quality)
+
+Sessions automatically switch profiles based on viewing mode.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Follow the existing architecture patterns
+2. Use MobX for state (no `setState`)
+3. Write tests for new features
+4. Run `flutter analyze` before committing
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [scrcpy](https://github.com/Genymobile/scrcpy) - The amazing Android mirroring protocol
+- Flutter team for the cross-platform framework
+- MobX community for reactive state management

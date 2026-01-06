@@ -1,88 +1,277 @@
 # Scraki Architecture
 
-This document describes the high-level architecture of the Scraki project.
+This document describes the architecture of Scraki after the **Feature-Clean Architecture** refactoring.
 
-## Project Structure
+## Overview
 
-Scraki follows **Clean Architecture** principles to ensure separation of concerns and maintainability.
+Scraki follows **Feature-Based Clean Architecture** with strict **SOLID** principles, **MobX** state management, and **Dependency Injection** patterns.
 
-- **`lib/core/`**: Contains cross-cutting concerns like DI (Dependency Injection), constants, error handling, and utilities.
-- **`lib/domain/`**: The heart of the application. Contains Business Logic, Entities, and Repository Interfaces. This layer depends on nothing.
-- **`lib/data/`**: Implementation of repository interfaces. Handles data retrieval from ADB, Scrcpy server, and local TCP sockets.
-- **`lib/presentation/`**: The UI layer. Uses MobX for state management. Contains Screens, Widgets, and Stores.
+## Directory Structure
 
-## Core Components
-
-### Mirroring Flow
-
-The mirroring process involves several layers working together, leveraging **Isolates** for high performance:
-
-1.  **`DeviceStore` (Presentation)**: Orchestrates the mirroring process.
-2.  **`ScrcpyService` (Data)**: Pushes the scrcpy server JAR to the device and starts it via ADB.
-3.  **`VideoWorkerManager` (Data)**: Manages a pool of background Isolates. Assigns a dedicated worker to each mirroring session.
-4.  **`VideoWorker Isolate` (Data)**:
-    - Sets up ADB servers to receive video/control streams.
-    - Parses the raw Scrcpy protocol.
-    - Exposes a local TCP port for the video stream.
-5.  **`NativeVideoDecoder` (Presentation)**: Connects to the local TCP port exposed by the Isolate and uses native FFmpeg (via Flutter Texture) to decode and render the video.
-
-```mermaid
-sequenceDiagram
-    participant UI as Dashboard / PhoneView
-    participant Store as DeviceStore
-    participant Manager as VideoWorkerManager
-    participant Isolate as VideoWorker Isolate
-    participant Svc as ScrcpyService
-    participant Native as Native Video Decoder
-
-    UI->>Store: startMirroring(serial)
-    Store->>Manager: startMirroring(session_id)
-    Manager->>Isolate: spawn / assign
-    Isolate->>Isolate: Bind local ports (ADB & Proxy)
-    Isolate-->>Manager: ports_ready (adbPort, proxyPort)
-    Manager-->>Store: ports_ready
-
-    Store->>Svc: initServer(serial, tunnel_forward=true)
-    Svc->>Svc: adb forward tcp:adbPort localabstract:scrcpy
-    Svc->>Svc: start scrcpy-server
-
-    Store->>Native: render(tcp://127.0.0.1:proxyPort)
-    Native->>Isolate: Connect to Proxy Port
-    Isolate->>Native: Stream H.264 Data
 ```
-
-### Audio Mirroring Flow
-
-Audio mirroring works similarly but uses a separate decoding pipeline:
-
-1.  **Scrcpy Server**: Captures device audio and streams it.
-2.  **`AudioDecoderService`**: Receives the raw audio stream.
-3.  **Native Audio Decoder**:
-    - **macOS**: Uses FFmpeg for decoding and `AVAudioEngine` for playback.
-    - **Windows**: Uses FFmpeg for decoding and `WASAPI` for playback.
-
-```mermaid
-sequenceDiagram
-    participant Device as Android Device
-    participant Svc as AudioDecoderService
-    participant Native as Native Audio Engine
-
-    Device->>Svc: Raw Audio Stream
-    Svc->>Native: Feed Data
-    Native->>Native: FFmpeg Decode
-    Native->>Native: Playback (AVAudioEngine/WASAPI)
+lib/
+├── core/                     # Shared utilities and global components
+│   ├── di/                   # Dependency Injection setup (GetIt + Injectable)
+│   ├── mixins/               # Reusable mixins (DiMixin, Store mixins)
+│   ├── stores/               # Global application stores
+│   │   ├── device_manager_store.dart       # Manages device list and connections
+│   │   └── session_manager_store.dart      # Manages mirroring sessions
+│   ├── network/              # Network clients (Dio, HTTP)
+│   ├── utils/                # Utilities and extensions
+│   └── widgets/              # Reusable UI components
+│
+├── features/                 # Feature modules (Clean Architecture)
+│   ├── device/               # Device mirroring & management
+│   │   ├── data/             # Repositories impl, datasources, DTOs
+│   │   ├── domain/           # Entities, repository interfaces
+│   │   └── presentation/     # Stores, screens, widgets
+│   ├── poster/               # Poster creation feature
+│   ├── dashboard/            # Dashboard feature
+│   └── recruitment/          # Recruitment feature
+│
+├── data/                     # Legacy data layer (being migrated)
+├── domain/                   # Legacy domain layer (being migrated)
+└── main.dart
 ```
 
 ## State Management (MobX)
 
-We use **MobX** to manage application state.
+### Global Stores (`lib/core/stores/`)
 
-- **Stores**: Contain `@observable` state, `@computed` properties, and `@action` methods.
-- **Observers**: Widgets wrapped in `Observer` automatically rebuild when their observed state changes.
+**DeviceManagerStore**
 
-## Dependency Injection (GetIt & Injectable)
+- Manages device list (ADB devices)
+- Handles device connections/disconnections
+- Observable: `devices`, `isScanning`
 
-We use **GetIt** as a service locator and **Injectable** to automate the registration of dependencies.
+**SessionManagerStore**
 
-- Use `@lazySingleton` for services and repositories.
-- Run `flutter pub run build_runner build` to regenerate the injection configuration.
+- Manages mirroring sessions (grid + floating)
+- Handles session lifecycle (start/stop/switch modes)
+- Observable: `activeSessions`, `floatingSessionId`, `deviceAspectRatio`
+
+### Scoped Stores (`lib/features/*/presentation/stores/`)
+
+Each feature has its own stores for local UI state:
+
+- `PhoneViewStore`: Manages visibility tracking, file drag/drop, focus state
+- `FloatingPhoneViewStore`: Manages floating window position, size, poster workflow
+- `FloatingToolBoxStore`: Manages tool box UI state
+- `DashboardStore`: Manages dashboard screen state
+
+### Store Access Pattern
+
+**Using Mixins (Recommended)**
+
+```dart
+class MyWidget extends StatelessWidget with DeviceManagerStoreMixin {
+  Widget build(context) {
+    return Observer(
+      builder: (_) => Text('Devices: ${deviceManagerStore.devices.length}'),
+    );
+  }
+}
+```
+
+**Direct Injection**
+
+```dart
+class MyWidget extends StatelessWidget with DiMixin {
+  Widget build(context) {
+    final store = inject<DeviceManagerStore>();
+    return Observer(builder: (_) => ...);
+  }
+}
+```
+
+## Mirroring Architecture
+
+### Video Mirroring Flow
+
+```mermaid
+sequenceDiagram
+    participant UI as PhoneView
+    participant Session as SessionManagerStore
+    participant Scrcpy as ScrcpyService
+    participant Worker as VideoWorkerManager
+    participant Isolate as VideoWorker Isolate
+    participant Decoder as NativeVideoDecoder
+
+    UI->>Session: startMirroring(serial)
+    Session->>Worker: startMirroring(sessionId)
+    Worker->>Isolate: Spawn isolate & bind ports
+    Isolate-->>Worker: ports ready (adbPort, proxyPort)
+
+    Session->>Scrcpy: initServer(serial, adbPort)
+    Scrcpy->>Scrcpy: adb forward + start scrcpy-server
+
+    UI->>Decoder: Create with proxyPort
+    Decoder->>Isolate: Connect to TCP proxy
+    Isolate-->>Decoder: Stream H.264 frames
+    Decoder->>Decoder: FFmpeg decode → Texture
+```
+
+### Performance Optimization
+
+**Grid Mode (Low Performance)**
+
+- Bitrate: 1 Mbps
+- FPS: 10
+- Resolution: Auto-scaled
+
+**Floating Mode (High Performance)**
+
+- Bitrate: 8 Mbps
+- FPS: 60
+- Resolution: Full device resolution
+
+Sessions automatically restart with appropriate profile when switching modes.
+
+### Audio Mirroring (macOS & Windows)
+
+```mermaid
+graph LR
+    A[Scrcpy Server] --> B[Audio Stream]
+    B --> C[AudioDecoderService]
+    C --> D[Native FFmpeg Decoder]
+    D --> E{Platform}
+    E -->|macOS| F[AVAudioEngine]
+    E -->|Windows| G[WASAPI]
+```
+
+## Dependency Injection
+
+### Setup (`lib/core/di/`)
+
+```dart
+@InjectableInit()
+void configureDependencies() => getIt.init();
+```
+
+### Registration Patterns
+
+**Global Stores** (`@singleton`)
+
+```dart
+@singleton
+class DeviceManagerStore { }
+```
+
+**Services** (`@lazySingleton`)
+
+```dart
+@lazySingleton
+class ScrcpyService implements IScrcpyService { }
+```
+
+**Scoped Dependencies** (Manual creation)
+
+```dart
+class PhoneViewStore {
+  PhoneViewStore() : _scrcpyService = getIt<IScrcpyService>();
+}
+```
+
+## Design Patterns
+
+### Repository Pattern
+
+All data access goes through repository interfaces:
+
+```dart
+// Domain layer (interface)
+abstract class IDeviceRepository {
+  Future<Either<Failure, List<Device>>> getDevices();
+}
+
+// Data layer (implementation)
+@LazySingleton(as: IDeviceRepository)
+class DeviceRepositoryImpl implements IDeviceRepository {
+  final IAdbRemoteDataSource _adb;
+  // ...
+}
+```
+
+### Observer Pattern (MobX)
+
+Widgets automatically rebuild when observed state changes:
+
+```dart
+@observable
+ObservableList<Device> devices = ObservableList();
+
+@action
+void addDevice(Device device) {
+  devices.add(device); // Triggers UI rebuild
+}
+```
+
+## Key Technical Decisions
+
+### No setState Rule
+
+- **All widgets** use MobX observables instead of `setState`
+- **StatelessWidget + Observer** pattern for reactive UI
+- Enforced through code reviews and linting
+
+### Lifecycle Management
+
+**Global Stores**: Singleton, live for app lifetime
+**Scoped Stores**: Created/disposed with widget lifecycle
+
+```dart
+class _MyWidgetState extends State<MyWidget> {
+  late final MyStore _store;
+
+  @override
+  void initState() {
+    super.initState();
+    _store = MyStore(); // Create
+  }
+
+  @override
+  void dispose() {
+    _store.dispose(); // Cleanup
+    super.dispose();
+  }
+}
+```
+
+### Isolate Communication
+
+Video/Audio workers run in separate isolates for max performance:
+
+- **SendPort/ReceivePort** for bidirectional communication
+- **Zero-copy** data transfer using `TransferableTypedData`
+- **Dedicated isolate per session** ensures isolation
+
+## Testing Strategy
+
+### Unit Tests
+
+- Test stores in isolation
+- Mock repository interfaces
+- Test domain entities and use cases
+
+### Widget Tests
+
+- Test UI with mock stores
+- Verify Observer rebuilds
+- Test user interactions
+
+### Integration Tests
+
+- Test full mirroring flow
+- Verify isolate communication
+- Test state persistence
+
+## Migration Path (from Legacy)
+
+1. **Phase 1-2**: Core setup + Global stores ✅
+2. **Phase 3**: Feature migration (Device, Poster, Dashboard) ✅
+3. **Phase 4**: Import path fixes ✅
+4. **Phase 5**: setState removal ✅
+5. **Phase 6**: Documentation ✅
+6. **Phase 7**: Cleanup
+
+See [Implementation Plan](file:///Users/anhkiet/.gemini/antigravity/brain/eb0c0154-0d1a-4737-adc2-337e2e4ba241/implementation_plan.md) for details.
