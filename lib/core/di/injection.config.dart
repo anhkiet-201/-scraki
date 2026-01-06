@@ -48,14 +48,14 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     gh.factory<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
+    gh.lazySingleton<_i773.SessionManagerStore>(
+      () => _i773.SessionManagerStore(),
+    );
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
     gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
     gh.lazySingleton<_i607.ScrcpySocketClient>(
       () => _i607.ScrcpySocketClient(),
-    );
-    gh.lazySingleton<_i773.SessionManagerStore>(
-      () => _i773.SessionManagerStore(),
     );
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
