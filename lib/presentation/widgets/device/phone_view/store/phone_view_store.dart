@@ -23,6 +23,7 @@ class PerformanceProfiles {
     bitRate: 100000, // 1 Mbps
     maxFps: 10,
     control: false,
+    maxSize: 360,
   );
 
   static const floating = ScrcpyOptions(
