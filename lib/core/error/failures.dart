@@ -19,3 +19,11 @@ class DeviceNotFoundFailure extends Failure {
 class ConnectionFailure extends Failure {
   const ConnectionFailure(super.message, [super.error, super.stackTrace]);
 }
+
+class ParsingFailure extends Failure {
+  const ParsingFailure(super.message, [super.error, super.stackTrace]);
+}
+
+class ApiFailure extends Failure {
+  const ApiFailure(super.message, [super.error, super.stackTrace]);
+}

@@ -6,6 +6,7 @@ import '../widgets/device/device_grid/device_grid.dart';
 import '../widgets/device/floating_phone_view/floating_phone_view.dart';
 import '../global_stores/device_store.dart';
 import '../global_stores/mirroring_store.dart';
+import 'poster_creator_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -36,68 +37,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _buildNavigationRail(theme),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: Column(
-              children: [
-                _buildTopBar(theme),
-                Expanded(
-                  child: Observer(
-                    builder: (_) {
-                      final futureStatus =
-                          _deviceStore.loadDevicesFuture?.status;
-                      final errorMessage = _deviceStore.errorMessage;
+            child:
+                _selectedIndex ==
+                    1 // Index for Recruitment
+                ? const PosterCreatorScreen()
+                : Column(
+                    children: [
+                      _buildTopBar(theme),
+                      Expanded(
+                        child: Observer(
+                          builder: (_) {
+                            final futureStatus =
+                                _deviceStore.loadDevicesFuture?.status;
+                            final errorMessage = _deviceStore.errorMessage;
 
-                      if (futureStatus == FutureStatus.pending &&
-                          _deviceStore.devices.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                            if (futureStatus == FutureStatus.pending &&
+                                _deviceStore.devices.isEmpty) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
 
-                      if (errorMessage != null &&
-                          _deviceStore.devices.isEmpty) {
-                        return _buildErrorView(errorMessage);
-                      }
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Stack(
-                            fit: StackFit.expand,
-                            clipBehavior: Clip.none,
-                            children: [
-                              RefreshIndicator(
-                                onRefresh: _deviceStore.loadDevices,
-                                child: DeviceGrid(
-                                  devices: _deviceStore.devices.toList(),
-                                  onDisconnect: (device) {
-                                    _deviceStore.disconnect(device.serial);
-                                  },
-                                ),
-                              ),
-                              Observer(
-                                builder: (_) {
-                                  final isVisible =
-                                      _mirroringStore.isFloatingVisible;
-                                  final serial = _mirroringStore.floatingSerial;
+                            if (errorMessage != null &&
+                                _deviceStore.devices.isEmpty) {
+                              return _buildErrorView(errorMessage);
+                            }
+                            return LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Stack(
+                                  fit: StackFit.expand,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    RefreshIndicator(
+                                      onRefresh: _deviceStore.loadDevices,
+                                      child: DeviceGrid(
+                                        devices: _deviceStore.devices.toList(),
+                                        onDisconnect: (device) {
+                                          _deviceStore.disconnect(
+                                            device.serial,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    Observer(
+                                      builder: (_) {
+                                        final isVisible =
+                                            _mirroringStore.isFloatingVisible;
+                                        final serial =
+                                            _mirroringStore.floatingSerial;
 
-                                  if (!isVisible) {
-                                    return const SizedBox.shrink();
-                                  }
+                                        if (!isVisible) {
+                                          return const SizedBox.shrink();
+                                        }
 
-                                  return FloatingPhoneView(
-                                    key: ValueKey('floating_$serial'),
-                                    serial: serial!,
-                                    parentSize: constraints.biggest,
-                                    onClose: () =>
-                                        _mirroringStore.toggleFloating(null),
-                                  );
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                                        return FloatingPhoneView(
+                                          key: ValueKey('floating_$serial'),
+                                          serial: serial!,
+                                          parentSize: constraints.biggest,
+                                          onClose: () => _mirroringStore
+                                              .toggleFloating(null),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -118,6 +128,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           icon: Icon(Icons.devices),
           selectedIcon: Icon(Icons.devices_rounded),
           label: Text('Devices'),
+        ),
+        NavigationRailDestination(
+          icon: Icon(Icons.post_add),
+          selectedIcon: Icon(Icons.post_add_outlined),
+          label: Text('Posters'),
         ),
         NavigationRailDestination(
           icon: Icon(Icons.terminal_outlined),
@@ -145,7 +160,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               leading: const Icon(Icons.search),
               elevation: WidgetStateProperty.all(0),
               backgroundColor: WidgetStateProperty.all(
-                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
               ),
               padding: WidgetStateProperty.all(
                 const EdgeInsets.symmetric(horizontal: 16),

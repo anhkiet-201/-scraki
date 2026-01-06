@@ -6,6 +6,13 @@ import '../../../../core/di/injection.dart';
 import '../../../global_stores/mirroring_store.dart';
 import '../phone_view/phone_view.dart';
 import 'widgets/floating_tool_box.dart';
+import 'widgets/social_share_preview.dart';
+import '../../../../domain/entities/poster_data.dart';
+import '../../../stores/poster_creation_store.dart';
+
+import 'widgets/floating_window_header.dart';
+import 'widgets/floating_resize_handle.dart';
+import 'widgets/floating_loading_overlay.dart';
 
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
@@ -29,6 +36,12 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   double _width = 320;
   late double _height;
 
+  // Poster Workflow State
+  bool _isGeneratingPoster = false;
+  PosterData? _selectedPosterData;
+
+  final GlobalKey<FloatingToolBoxState> _toolBoxKey = GlobalKey();
+
   ReactionDisposer? _aspectRatioDisposer;
 
   @override
@@ -43,10 +56,12 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
     _aspectRatioDisposer = reaction((_) => _mirroringStore.deviceAspectRatio, (
       ratio,
     ) {
-      setState(() {
-        _height = (_width / ratio) + 40 + 12;
-        _position = _getClampedPosition(_position);
-      });
+      if (mounted) {
+        setState(() {
+          _height = (_width / ratio) + 40 + 12;
+          _position = _getClampedPosition(_position);
+        });
+      }
     });
   }
 
@@ -59,8 +74,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
   Offset _getClampedPosition(Offset target) {
     if (widget.parentSize.isEmpty) return target;
 
-    // Account for Tool Box width khi clamping
-    // Tool Box simplified: collapsed (56px) hoặc expanded (100px) + margins
+    // Account for Tool Box width when clamping
     const toolBoxMaxWidth =
         100 + 12 + 12; // expanded width + left margin + spacing
     final totalWidth = _width + toolBoxMaxWidth;
@@ -74,7 +88,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
     );
   }
 
-  /// Calculate available space cho Tool Box (để quyết định collapse/expand)
+  /// Calculate available space for Tool Box
   double _getToolBoxAvailableSpace() {
     if (widget.parentSize.isEmpty) return 0;
 
@@ -127,164 +141,171 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> {
                         ),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Column(
+                      child: Stack(
                         children: [
-                          // Header / Drag Handle
-                          GestureDetector(
-                            onPanUpdate: (details) {
-                              setState(() {
-                                _position = _getClampedPosition(
-                                  _position + details.delta,
-                                );
-                              });
-                            },
-                            child: Container(
-                              height: 40,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                          Column(
+                            children: [
+                              // 1. Header Component
+                              FloatingWindowHeader(
+                                title: widget.serial,
+                                onClose: widget.onClose,
+                                onDragUpdate: (details) {
+                                  setState(() {
+                                    _position = _getClampedPosition(
+                                      _position + details.delta,
+                                    );
+                                  });
+                                },
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(20),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.drag_indicator_rounded,
-                                    size: 18,
-                                    color: colorScheme.primary.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      widget.serial,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.onSurface,
-                                            letterSpacing: 0.5,
-                                          ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.close_rounded,
-                                        size: 18,
-                                      ),
-                                      style: IconButton.styleFrom(
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        foregroundColor: colorScheme.error
-                                            .withValues(alpha: 0.8),
-                                      ),
-                                      onPressed: widget.onClose,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          // View Content
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: const BoxDecoration(
-                                color: Colors.black,
-                              ),
-                              child: SizedBox(
-                                width: _width,
-                                height: _height,
-                                child: PhoneView(
-                                  serial: widget.serial,
-                                  fit: BoxFit.fill,
-                                  isFloating: true,
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Resize Handle - Proportional
-                          GestureDetector(
-                            onPanUpdate: (details) {
-                              setState(() {
-                                // Calculate combined delta for proportional scaling
-                                final delta =
-                                    details.delta.dx + details.delta.dy;
 
-                                // Calculate constraints based on current position and parent size
-                                double maxAllowedWidth = 1200.0; // Absolute max
-                                if (!widget.parentSize.isEmpty) {
-                                  final maxWidthByX =
-                                      widget.parentSize.width - _position.dx;
-                                  // height = (width / aspect) + 52
-                                  // width / aspect <= parentHeight - position.dy - 52
-                                  final maxHeightAvailable =
-                                      widget.parentSize.height -
-                                      _position.dy -
-                                      52;
-                                  final maxWidthByY =
-                                      maxHeightAvailable * aspectRatio;
-
-                                  maxAllowedWidth = [
-                                    maxWidthByX,
-                                    maxWidthByY,
-                                    1200.0,
-                                  ].reduce((a, b) => a < b ? a : b);
-                                }
-
-                                final newWidth = (_width + delta).clamp(
-                                  240.0,
-                                  maxAllowedWidth,
-                                );
-
-                                _width = newWidth;
-                                // Recalculate height based on aspect ratio + header + handle
-                                _height = (_width / aspectRatio) + 40 + 12;
-
-                                // Re-clamp position if resizing made it go out of bounds
-                                _position = _getClampedPosition(_position);
-                              });
-                            },
-                            child: Container(
-                              height: 12,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(20),
-                                ),
-                              ),
-                              child: Center(
+                              // View Content
+                              Expanded(
                                 child: Container(
-                                  width: 30,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.onSurface.withValues(
-                                      alpha: 0.2,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black,
+                                  ),
+                                  child: SizedBox(
+                                    width: _width,
+                                    height: _height,
+                                    child: PhoneView(
+                                      serial: widget.serial,
+                                      fit: BoxFit.fill,
+                                      isFloating: true,
+                                      onPosterDropped: (data) async {
+                                        final file = await _toolBoxKey
+                                            .currentState
+                                            ?.capturePoster();
+                                        return file;
+                                      },
                                     ),
-                                    borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
                               ),
-                            ),
+
+                              // 2. Resize Handle Component
+                              FloatingResizeHandle(
+                                onResizeUpdate: (details) {
+                                  setState(() {
+                                    // Calculate combined delta for proportional scaling
+                                    final delta =
+                                        details.delta.dx + details.delta.dy;
+
+                                    // Calculate constraints
+                                    double maxAllowedWidth = 1200.0;
+                                    if (!widget.parentSize.isEmpty) {
+                                      final maxWidthByX =
+                                          widget.parentSize.width -
+                                          _position.dx;
+                                      final maxHeightAvailable =
+                                          widget.parentSize.height -
+                                          _position.dy -
+                                          52;
+                                      final maxWidthByY =
+                                          maxHeightAvailable * aspectRatio;
+
+                                      maxAllowedWidth = [
+                                        maxWidthByX,
+                                        maxWidthByY,
+                                        1200.0,
+                                      ].reduce((a, b) => a < b ? a : b);
+                                    }
+
+                                    final newWidth = (_width + delta).clamp(
+                                      240.0,
+                                      maxAllowedWidth,
+                                    );
+
+                                    _width = newWidth;
+                                    _height = (_width / aspectRatio) + 40 + 12;
+                                    _position = _getClampedPosition(_position);
+                                  });
+                                },
+                              ),
+                            ],
                           ),
+
+                          // // Job Selector Overlay
+                          // if (_showJobSelector)
+                          //   Positioned.fill(
+                          //     child: Container(
+                          //       color: Colors.black54,
+                          //       child: FloatingJobSelector(
+                          //         onCancel: () =>
+                          //             setState(() => _showJobSelector = false),
+                          //         onJobSelected: (job) async {
+                          //           setState(() {
+                          //             _showJobSelector = false;
+                          //             _isGeneratingPoster = true;
+                          //           });
+
+                          //           final store = getIt<PosterCreationStore>();
+                          //           await store.selectJob(job);
+
+                          //           if (mounted) {
+                          //             setState(() {
+                          //               _isGeneratingPoster = false;
+                          //               if (store.currentPosterData != null) {
+                          //                 _selectedPosterData =
+                          //                     store.currentPosterData;
+                          //               }
+                          //             });
+                          //           }
+                          //         },
+                          //       ),
+                          //     ),
+                          //   ),
+
+                          // 3. Loading Overlay Component
+                          // FloatingLoadingOverlay(
+                          //   isVisible: _isGeneratingPoster,
+                          // ),
+
+                          // Preview Overlay
+                          // if (_selectedPosterData != null)
+                          //   Positioned.fill(
+                          //     child: Container(
+                          //       color: Colors.black54,
+                          //       child: SocialSharePreview(
+                          //         data: _selectedPosterData!,
+                          //         onClose: () => setState(
+                          //           () => _selectedPosterData = null,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
                         ],
                       ),
                     ),
                   ),
                 ),
               ),
-
               FloatingToolBox(
+                key: _toolBoxKey,
                 serial: widget.serial,
                 height: _height,
                 availableSpace: _getToolBoxAvailableSpace(),
+                posterData: _selectedPosterData,
+                isGenerating: _isGeneratingPoster,
+                onJobSelected: (job) async {
+                  setState(() {
+                    _isGeneratingPoster = true;
+                  });
+
+                  final store = getIt<PosterCreationStore>();
+                  await store.selectJob(job);
+
+                  if (mounted) {
+                    setState(() {
+                      _isGeneratingPoster = false;
+                      if (store.currentPosterData != null) {
+                        _selectedPosterData = store.currentPosterData;
+                      }
+                    });
+                  }
+                },
               ),
             ],
           );

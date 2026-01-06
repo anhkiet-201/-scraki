@@ -24,11 +24,15 @@ import 'widgets/push_progress_view.dart';
 /// - File drag and drop
 ///
 /// All business logic and state management is handled by [MirroringStore].
+import 'dart:io';
+import 'package:scraki/domain/entities/poster_data.dart';
+
 class PhoneView extends StatefulWidget {
   final String serial;
   final BoxFit fit;
   final bool isFloating;
   final FocusNode? focusNode;
+  final Future<File?> Function(PosterData)? onPosterDropped;
 
   const PhoneView({
     super.key,
@@ -36,6 +40,7 @@ class PhoneView extends StatefulWidget {
     this.fit = BoxFit.contain,
     this.isFloating = false,
     this.focusNode,
+    this.onPosterDropped,
   });
 
   @override
@@ -92,15 +97,35 @@ class _PhoneViewState extends State<PhoneView> {
               final paths = details.files.map((f) => f.path).toList();
               await _store.uploadFiles(widget.serial, paths);
             },
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned.fill(
-                  child: _buildContent(_store.session, isFloating),
-                ),
-                _buildDragOverlay(),
-                _buildPushProgress(),
-              ],
+            child: DragTarget<PosterData>(
+              onWillAcceptWithDetails: (details) {
+                _store.setDragging(widget.serial, true);
+                return true;
+              },
+              onLeave: (data) {
+                _store.setDragging(widget.serial, false);
+              },
+              onAcceptWithDetails: (details) async {
+                _store.setDragging(widget.serial, false);
+                if (widget.onPosterDropped != null) {
+                  final file = await widget.onPosterDropped!(details.data);
+                  if (mounted && file != null) {
+                    await _store.uploadFiles(widget.serial, [file.path]);
+                  }
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: _buildContent(_store.session, isFloating),
+                    ),
+                    _buildDragOverlay(),
+                    _buildPushProgress(),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -176,7 +201,11 @@ class _PhoneViewState extends State<PhoneView> {
             : null,
         child: SizedBox(
           width: session.width.toDouble(),
-          height: session.height.toDouble() + (_store.isFloating ? UIConstants.floatingNavigationBarHeight : UIConstants.gridNavigationBarHeight),
+          height:
+              session.height.toDouble() +
+              (_store.isFloating
+                  ? UIConstants.floatingNavigationBarHeight
+                  : UIConstants.gridNavigationBarHeight),
           child: _buildVideoWithNavigation(session),
         ),
       ),
@@ -227,7 +256,11 @@ class _PhoneViewState extends State<PhoneView> {
             ),
           ),
         ),
-        MirrorNavigationBar(store: _store, isEnabled: widget.isFloating, isFloating: widget.isFloating),
+        MirrorNavigationBar(
+          store: _store,
+          isEnabled: widget.isFloating,
+          isFloating: widget.isFloating,
+        ),
       ],
     );
   }
