@@ -3,10 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:injectable/injectable.dart';
-
-import '../../core/error/failures.dart';
-import '../../domain/entities/poster_data.dart';
-import '../../domain/repositories/recruitment_repository.dart';
+import 'package:scraki/core/error/failures.dart';
+import 'package:scraki/domain/repositories/recruitment_repository.dart';
+import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
 @LazySingleton(as: RecruitmentRepository)
 class RecruitmentRepositoryImpl implements RecruitmentRepository {
