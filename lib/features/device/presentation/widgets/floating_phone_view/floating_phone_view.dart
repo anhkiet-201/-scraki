@@ -6,7 +6,7 @@ import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import '../phone_view/phone_view.dart';
-import 'widgets/floating_tool_box.dart';
+import 'widgets/floating_tool_box/floating_tool_box.dart';
 import 'widgets/floating_window_header.dart';
 import 'widgets/floating_resize_handle.dart';
 import 'store/floating_phone_view_store.dart';
