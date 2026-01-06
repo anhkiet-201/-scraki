@@ -9,6 +9,7 @@ class ModernPoster extends PosterTemplate {
     required super.data,
     super.width,
     super.height,
+    super.customizationStore,
   });
 
   @override
@@ -71,34 +72,46 @@ class ModernPoster extends PosterTemplate {
                         color: Colors.orangeAccent,
                         borderRadius: BorderRadius.circular(4 * scale),
                       ),
-                      child: Text(
-                        data.catchyHeadline?.toUpperCase() ?? 'HIRING',
-                        style: GoogleFonts.roboto(
-                          fontSize: 10 * scale,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                      child: wrapEditable(
+                        'headline',
+                        (s) => Text(
+                          data.catchyHeadline?.toUpperCase() ?? 'HIRING',
+                          style: GoogleFonts.roboto(
+                            fontSize: 10 * scale,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          textScaler: TextScaler.linear(s),
                         ),
                       ),
                     ),
                     SizedBox(height: 8 * scale),
-                    Text(
-                      data.jobTitle,
-                      style: GoogleFonts.robotoCondensed(
-                        fontSize: 32 * scale,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.1,
+                    wrapEditable(
+                      'jobTitle',
+                      (s) => Text(
+                        data.jobTitle,
+                        style: GoogleFonts.robotoCondensed(
+                          fontSize: 32 * scale,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.1,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textScaler: TextScaler.linear(s),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4 * scale),
-                    Text(
-                      data.companyName.toUpperCase(),
-                      style: GoogleFonts.roboto(
-                        fontSize: 14 * scale,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
+                    wrapEditable(
+                      'companyName',
+                      (s) => Text(
+                        data.companyName.toUpperCase(),
+                        style: GoogleFonts.roboto(
+                          fontSize: 14 * scale,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                   ],
@@ -136,6 +149,7 @@ class ModernPoster extends PosterTemplate {
                               Icons.monetization_on_outlined,
                               Colors.green[700]!,
                               scale,
+                              id: 'salary',
                             ),
                           ),
                           SizedBox(width: 16 * scale),
@@ -146,35 +160,41 @@ class ModernPoster extends PosterTemplate {
                               Icons.location_on_outlined,
                               Colors.blue[700]!,
                               scale,
+                              id: 'location',
                             ),
                           ),
                         ],
                       ),
-                  
+
                       SizedBox(height: 16 * scale),
                       Divider(color: Colors.grey[200]),
                       SizedBox(height: 16 * scale),
-                  
+
                       // Requirements
                       if (data.requirements.isNotEmpty) ...[
                         _buildSectionTitle('YÊU CẦU', scale),
                         SizedBox(height: 12 * scale),
-                        ...data.requirements.map(
-                          (req) => _buildListItem(req, scale),
+                        ...data.requirements.asMap().entries.map(
+                          (entry) => _buildListItem(
+                            entry.value,
+                            scale,
+                            id: 'req_${entry.key}',
+                          ),
                         ),
                         SizedBox(height: 16 * scale),
                       ],
-                  
+
                       // Benefits
                       if (data.benefits.isNotEmpty) ...[
                         _buildSectionTitle('QUYỀN LỢI', scale),
                         SizedBox(height: 12 * scale),
-                        ...data.benefits.map(
-                          (ben) => _buildListItem(
-                            ben,
+                        ...data.benefits.asMap().entries.map(
+                          (entry) => _buildListItem(
+                            entry.value,
                             scale,
                             icon: Icons.star_border_rounded,
                             color: Colors.orange,
+                            id: 'ben_${entry.key}',
                           ),
                         ),
                       ],
@@ -229,15 +249,19 @@ class ModernPoster extends PosterTemplate {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  data.contactInfo,
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 14 * scale,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                wrapEditable(
+                                  'contactInfo',
+                                  (s) => Text(
+                                    data.contactInfo,
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 14 * scale,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textScaler: TextScaler.linear(s),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -272,6 +296,7 @@ class ModernPoster extends PosterTemplate {
     double scale, {
     IconData icon = Icons.check_circle_outline_rounded,
     Color color = const Color(0xFF1E272E),
+    String? id,
   }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8 * scale),
@@ -283,14 +308,27 @@ class ModernPoster extends PosterTemplate {
             child: Icon(icon, size: 16 * scale, color: color),
           ),
           Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.roboto(
-                fontSize: 14 * scale,
-                color: const Color(0xFF485460),
-                height: 1.4,
-              ),
-            ),
+            child: id != null
+                ? wrapEditable(
+                    id,
+                    (s) => Text(
+                      text,
+                      style: GoogleFonts.roboto(
+                        fontSize: 14 * scale,
+                        color: const Color(0xFF485460),
+                        height: 1.4,
+                      ),
+                      textScaler: TextScaler.linear(s),
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: GoogleFonts.roboto(
+                      fontSize: 14 * scale,
+                      color: const Color(0xFF485460),
+                      height: 1.4,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -302,8 +340,9 @@ class ModernPoster extends PosterTemplate {
     String value,
     IconData icon,
     Color accent,
-    double scale,
-  ) {
+    double scale, {
+    String? id,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,17 +361,34 @@ class ModernPoster extends PosterTemplate {
           ],
         ),
         SizedBox(height: 6 * scale),
-        Text(
-          value,
-          style: GoogleFonts.roboto(
-            fontSize: 14 * scale, // Slightly smaller to prevent overflow
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1E272E),
-            height: 1.2,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
+        id != null
+            ? wrapEditable(
+                id,
+                (s) => Text(
+                  value,
+                  style: GoogleFonts.roboto(
+                    fontSize:
+                        14 * scale, // Slightly smaller to prevent overflow
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E272E),
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textScaler: TextScaler.linear(s),
+                ),
+              )
+            : Text(
+                value,
+                style: GoogleFonts.roboto(
+                  fontSize: 14 * scale, // Slightly smaller to prevent overflow
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1E272E),
+                  height: 1.2,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
       ],
     );
   }

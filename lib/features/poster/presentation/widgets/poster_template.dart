@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../features/poster/domain/entities/poster_data.dart';
+import '../store/poster_customization_store.dart';
+import 'editable_poster_element.dart';
 
 /// Abstract base class for all poster templates.
 ///
@@ -11,12 +13,14 @@ abstract class PosterTemplate extends StatelessWidget {
   final PosterData data;
   final double width;
   final double height;
+  final PosterCustomizationStore? customizationStore;
 
   const PosterTemplate({
     super.key,
     required this.data,
     this.width = 375,
     this.height = 667,
+    this.customizationStore,
   });
 
   @override
@@ -54,4 +58,14 @@ abstract class PosterTemplate extends StatelessWidget {
   /// [w]: The effective width of the poster.
   /// [h]: The effective height of the poster.
   Widget buildPoster(BuildContext context, double scale, double w, double h);
+
+  /// Helper to wrap content in [EditablePosterElement] if customization is enabled.
+  Widget wrapEditable(String id, Widget Function(double textScale) builder) {
+    if (customizationStore == null) return builder(1.0);
+    return EditablePosterElement(
+      id: id,
+      store: customizationStore!,
+      builder: builder,
+    );
+  }
 }

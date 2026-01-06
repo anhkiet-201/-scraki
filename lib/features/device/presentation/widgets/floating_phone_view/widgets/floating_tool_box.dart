@@ -15,6 +15,7 @@ import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.da
 import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart';
+import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
 
 /// Floating Tool Box widget với thiết kế Glassmorphism.
 ///
@@ -47,6 +48,7 @@ class FloatingToolBox extends StatefulWidget {
 
 class FloatingToolBoxState extends State<FloatingToolBox> {
   late final FloatingToolBoxStore _store;
+  late final PosterCustomizationStore _customizationStore;
   final GlobalKey _posterKey = GlobalKey();
   int _selectedTemplateIndex = 0;
 
@@ -62,10 +64,17 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
   void initState() {
     super.initState();
     _store = FloatingToolBoxStore();
+    _customizationStore = PosterCustomizationStore();
   }
 
   /// Chụp ảnh widget poster thành file ảnh PNG.
   Future<File?> capturePoster() async {
+    // Clear selection so no borders are captured
+    _customizationStore.selectField(null);
+
+    // Wait for frame to repaint to remove highlights
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
     try {
       final boundary =
           _posterKey.currentContext?.findRenderObject()
@@ -95,17 +104,32 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
   Widget _buildPosterWidget(PosterData data) {
     switch (_selectedTemplateIndex) {
       case 0:
-        return ModernPoster(data: data);
+        return ModernPoster(
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 1:
-        return MinimalistPoster(data: data);
+        return MinimalistPoster(
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 2:
-        return BoldPoster(data: data);
+        return BoldPoster(data: data, customizationStore: _customizationStore);
       case 3:
-        return CorporatePoster(data: data);
+        return CorporatePoster(
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 4:
-        return CreativePoster(data: data);
+        return CreativePoster(
+          data: data,
+          customizationStore: _customizationStore,
+        );
       default:
-        return ModernPoster(data: data);
+        return ModernPoster(
+          data: data,
+          customizationStore: _customizationStore,
+        );
     }
   }
 
@@ -120,7 +144,12 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               _buildJobSelector(context)
             else if (widget.isGenerating || widget.posterData != null) ...[
               _buildPosterGenerator(context),
-              _buildCaptionPanel(context),
+              Column(
+                children: [
+                  _buildCaptionPanel(context),
+                  _buildTextScaleSlider(context),
+                ],
+              ),
             ],
           ],
         );
@@ -389,8 +418,9 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                 margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.3),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(
+                    0.3,
+                  ),
                   border: Border.all(
                     color: theme.colorScheme.outlineVariant.withOpacity(0.5),
                   ),
@@ -411,6 +441,161 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
         ],
       ),
     );
+  }
+
+  Widget _buildTextScaleSlider(BuildContext context) {
+    if (widget.posterData == null) return const SizedBox();
+
+    return Observer(
+      builder: (context) {
+        if (_customizationStore.selectedFieldId == null) {
+          return const SizedBox();
+        }
+
+        final currentScale = _customizationStore.getScale(
+          _customizationStore.selectedFieldId!,
+        );
+
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+
+        return Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: FloatingToolBoxCard(
+            width: 350,
+            margin: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.format_size_rounded,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _getFriendlyName(
+                            _customizationStore.selectedFieldId!,
+                          ),
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Tooltip(
+                        message: 'Đặt lại',
+                        child: InkWell(
+                          onTap: () => _customizationStore.updateScale(1.0),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: 16,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Slider Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.remove_rounded,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        onPressed: () {
+                          final newScale = (currentScale - 0.1).clamp(0.5, 3.0);
+                          _customizationStore.updateScale(newScale);
+                        },
+                        tooltip: 'Giảm cỡ chữ',
+                      ),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: colorScheme.primary,
+                            inactiveTrackColor:
+                                colorScheme.surfaceContainerHighest,
+                            thumbColor: colorScheme.primary,
+                            overlayColor: colorScheme.primary.withOpacity(0.1),
+                            trackHeight: 2,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6,
+                              elevation: 2,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 16,
+                            ),
+                          ),
+                          child: Slider(
+                            value: currentScale,
+                            min: 0.5,
+                            max: 3.0,
+                            divisions: 25,
+                            label: '${(currentScale * 100).toInt()}%',
+                            onChanged: (value) {
+                              _customizationStore.updateScale(value);
+                            },
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.add_rounded,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        onPressed: () {
+                          final newScale = (currentScale + 0.1).clamp(0.5, 3.0);
+                          _customizationStore.updateScale(newScale);
+                        },
+                        tooltip: 'Tăng cỡ chữ',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getFriendlyName(String id) {
+    if (id == 'jobTitle') return 'Chức danh';
+    if (id == 'companyName') return 'Tên công ty';
+    if (id == 'headline') return 'Tiêu đề chính';
+    if (id == 'salary') return 'Mức lương';
+    if (id == 'location') return 'Địa điểm';
+    if (id == 'locationShort') return 'Địa điểm (Ngắn)';
+    if (id == 'contactInfo') return 'Liên hệ';
+    if (id.startsWith('req_')) {
+      final index = int.tryParse(id.split('_').last) ?? 0;
+      return 'Yêu cầu ${index + 1}';
+    }
+    if (id.startsWith('ben_')) {
+      final index = int.tryParse(id.split('_').last) ?? 0;
+      return 'Quyền lợi ${index + 1}';
+    }
+    return id; // Fallback
   }
 
   /// Icon button cho collapsed mode

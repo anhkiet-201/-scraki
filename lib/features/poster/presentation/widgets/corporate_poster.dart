@@ -8,6 +8,7 @@ class CorporatePoster extends PosterTemplate {
     required super.data,
     super.width,
     super.height,
+    super.customizationStore,
   });
 
   @override
@@ -63,11 +64,15 @@ class CorporatePoster extends PosterTemplate {
                         ),
                       ),
                       Spacer(),
-                      Text(
-                        data.location.split(',').first, // Short location
-                        style: GoogleFonts.roboto(
-                          fontSize: 12 * scale,
-                          color: Colors.grey[600],
+                      wrapEditable(
+                        'locationShort',
+                        (s) => Text(
+                          data.location.split(',').first, // Short location
+                          style: GoogleFonts.roboto(
+                            fontSize: 12 * scale,
+                            color: Colors.grey[600],
+                          ),
+                          textScaler: TextScaler.linear(s),
                         ),
                       ),
                     ],
@@ -76,13 +81,20 @@ class CorporatePoster extends PosterTemplate {
                   SizedBox(height: 20 * scale),
 
                   // Job Title
-                  Text(
-                    data.jobTitle,
-                    style: GoogleFonts.robotoCondensed(
-                      fontSize: 36 * scale,
-                      fontWeight: FontWeight.w700,
-                      color: primaryColor,
-                      height: 1.1,
+                  // Job Title
+                  wrapEditable(
+                    'jobTitle',
+                    (s) => Text(
+                      data.jobTitle,
+                      style: GoogleFonts.robotoSlab(
+                        fontSize: 32 * scale,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        height: 1.1,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textScaler: TextScaler.linear(s),
                     ),
                   ),
 
@@ -111,6 +123,7 @@ class CorporatePoster extends PosterTemplate {
                         Colors.blue[50]!,
                         primaryColor,
                         scale,
+                        id: 'salary',
                       ),
                       SizedBox(height: 12 * scale),
                       _buildCorporateBox(
@@ -122,6 +135,7 @@ class CorporatePoster extends PosterTemplate {
                         Colors.grey[100]!,
                         Colors.black87,
                         scale,
+                        id: 'location',
                       ),
                     ],
                   ),
@@ -139,33 +153,35 @@ class CorporatePoster extends PosterTemplate {
                       ),
                     ),
                     Divider(),
-                    ...data.requirements
-                        .take(3)
-                        .map(
-                          (req) => Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4 * scale),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.check_circle,
-                                  size: 16 * scale,
-                                  color: accentColor,
-                                ),
-                                SizedBox(width: 8 * scale),
-                                Expanded(
-                                  child: Text(
-                                    req,
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14 * scale,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                    ...data.requirements.asMap().entries.map(
+                      (entry) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4 * scale),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16 * scale,
+                              color: accentColor,
                             ),
-                          ),
+                            SizedBox(width: 8 * scale),
+                            Expanded(
+                              child: wrapEditable(
+                                'req_${entry.key}',
+                                (s) => Text(
+                                  entry.value,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14 * scale,
+                                    color: Colors.black87,
+                                  ),
+                                  textScaler: TextScaler.linear(s),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
                     SizedBox(height: 16 * scale),
                   ],
 
@@ -180,33 +196,35 @@ class CorporatePoster extends PosterTemplate {
                       ),
                     ),
                     Divider(),
-                    ...data.benefits
-                        .take(3)
-                        .map(
-                          (ben) => Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4 * scale),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.star,
-                                  size: 16 * scale,
-                                  color: Colors.orange,
-                                ),
-                                SizedBox(width: 8 * scale),
-                                Expanded(
-                                  child: Text(
-                                    ben,
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14 * scale,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                    ...data.benefits.asMap().entries.map(
+                      (entry) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4 * scale),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.star,
+                              size: 16 * scale,
+                              color: Colors.orange,
                             ),
-                          ),
+                            SizedBox(width: 8 * scale),
+                            Expanded(
+                              child: wrapEditable(
+                                'ben_${entry.key}',
+                                (s) => Text(
+                                  entry.value,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14 * scale,
+                                    color: Colors.black87,
+                                  ),
+                                  textScaler: TextScaler.linear(s),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -224,19 +242,28 @@ class CorporatePoster extends PosterTemplate {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      data.companyName.toUpperCase(),
-                      style: GoogleFonts.roboto(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16 * scale,
+                    wrapEditable(
+                      'companyName',
+                      (s) => Text(
+                        data.companyName.toUpperCase(),
+                        style: GoogleFonts.roboto(
+                          fontSize: 14 * scale,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
-                    Text(
-                      data.contactInfo,
-                      style: GoogleFonts.roboto(
-                        color: Colors.white70,
-                        fontSize: 12 * scale,
+                    SizedBox(height: 4 * scale),
+                    wrapEditable(
+                      'contactInfo',
+                      (s) => Text(
+                        data.contactInfo,
+                        style: GoogleFonts.roboto(
+                          fontSize: 12 * scale,
+                          color: Colors.white70,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                   ],
@@ -254,8 +281,9 @@ class CorporatePoster extends PosterTemplate {
     String value,
     Color bg,
     Color textColor,
-    double scale,
-  ) {
+    double scale, {
+    String? id,
+  }) {
     return Container(
       padding: EdgeInsets.all(12 * scale),
       width: double.infinity,
@@ -275,16 +303,31 @@ class CorporatePoster extends PosterTemplate {
             ),
           ),
           SizedBox(height: 4 * scale),
-          Text(
-            value,
-            style: GoogleFonts.roboto(
-              fontSize: 14 * scale,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          id != null
+              ? wrapEditable(
+                  id,
+                  (s) => Text(
+                    value,
+                    style: GoogleFonts.roboto(
+                      fontSize: 14 * scale,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textScaler: TextScaler.linear(s),
+                  ),
+                )
+              : Text(
+                  value,
+                  style: GoogleFonts.roboto(
+                    fontSize: 14 * scale,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
         ],
       ),
     );

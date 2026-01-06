@@ -8,6 +8,7 @@ class CreativePoster extends PosterTemplate {
     required super.data,
     super.width,
     super.height,
+    super.customizationStore,
   });
 
   @override
@@ -87,27 +88,35 @@ class CreativePoster extends PosterTemplate {
                 ),
               if (data.imageUrls.isNotEmpty) SizedBox(height: 20 * scale),
 
-              Text(
-                data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
-                style: GoogleFonts.poppins(
-                  fontSize: 14 * scale,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2.0,
-                  color: Colors.white,
+              wrapEditable(
+                'headline',
+                (s) => Text(
+                  data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14 * scale,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.0,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                  textScaler: TextScaler.linear(s),
                 ),
-                textAlign: TextAlign.center,
               ),
 
               SizedBox(height: 10 * scale),
 
-              Text(
-                data.jobTitle,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24 * scale,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D2D2D),
-                  height: 1.1,
+              wrapEditable(
+                'jobTitle',
+                (s) => Text(
+                  data.jobTitle,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24 * scale,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2D2D2D),
+                    height: 1.1,
+                  ),
+                  textScaler: TextScaler.linear(s),
                 ),
               ),
 
@@ -129,12 +138,16 @@ class CreativePoster extends PosterTemplate {
                     ),
                   ],
                 ),
-                child: Text(
-                  data.salaryRange,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18 * scale,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFFF6B6B),
+                child: wrapEditable(
+                  'salary',
+                  (s) => Text(
+                    data.salaryRange,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18 * scale,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFFF6B6B),
+                    ),
+                    textScaler: TextScaler.linear(s),
                   ),
                 ),
               ),
@@ -149,9 +162,10 @@ class CreativePoster extends PosterTemplate {
                         Icons.location_on_rounded,
                         data.location,
                         scale,
+                        id: 'location',
                       ),
                       SizedBox(height: 12 * scale),
-                  
+
                       if (data.requirements.isNotEmpty) ...[
                         Text(
                           'YÊU CẦU',
@@ -162,21 +176,20 @@ class CreativePoster extends PosterTemplate {
                           ),
                         ),
                         SizedBox(height: 4 * scale),
-                        ...data.requirements
-                            .take(3)
-                            .map(
-                              (req) => Padding(
-                                padding: EdgeInsets.only(bottom: 4 * scale),
-                                child: _buildCreativeRow(
-                                  Icons.star_rounded,
-                                  req,
-                                  scale,
-                                ),
-                              ),
+                        ...data.requirements.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(bottom: 4 * scale),
+                            child: _buildCreativeRow(
+                              Icons.star_rounded,
+                              entry.value,
+                              scale,
+                              id: 'req_${entry.key}',
                             ),
+                          ),
+                        ),
                         SizedBox(height: 12 * scale),
                       ],
-                  
+
                       if (data.benefits.isNotEmpty) ...[
                         Text(
                           'PHÚC LỢI',
@@ -187,18 +200,17 @@ class CreativePoster extends PosterTemplate {
                           ),
                         ),
                         SizedBox(height: 4 * scale),
-                        ...data.benefits
-                            .take(3)
-                            .map(
-                              (ben) => Padding(
-                                padding: EdgeInsets.only(bottom: 4 * scale),
-                                child: _buildCreativeRow(
-                                  Icons.favorite_rounded,
-                                  ben,
-                                  scale,
-                                ),
-                              ),
+                        ...data.benefits.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(bottom: 4 * scale),
+                            child: _buildCreativeRow(
+                              Icons.favorite_rounded,
+                              entry.value,
+                              scale,
+                              id: 'ben_${entry.key}',
                             ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -225,20 +237,28 @@ class CreativePoster extends PosterTemplate {
                       ),
                     ),
                     SizedBox(height: 8 * scale),
-                    Text(
-                      data.contactInfo, // Replaced "Scan to Apply" with contact info
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16 * scale,
+                    wrapEditable(
+                      'contactInfo',
+                      (s) => Text(
+                        data.contactInfo, // Replaced "Scan to Apply" with contact info
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16 * scale,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                     SizedBox(height: 4 * scale),
-                    Text(
-                      data.companyName,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 14 * scale,
+                    wrapEditable(
+                      'companyName',
+                      (s) => Text(
+                        data.companyName,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14 * scale,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                   ],
@@ -251,21 +271,39 @@ class CreativePoster extends PosterTemplate {
     );
   }
 
-  Widget _buildCreativeRow(IconData icon, String text, double scale) {
+  Widget _buildCreativeRow(
+    IconData icon,
+    String text,
+    double scale, {
+    String? id,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: 20 * scale, color: const Color(0xFF2D2D2D)),
         SizedBox(width: 8 * scale),
         Flexible(
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 14 * scale,
-              color: const Color(0xFF4A4A4A),
-            ),
-          ),
+          child: id != null
+              ? wrapEditable(
+                  id,
+                  (s) => Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14 * scale,
+                      color: const Color(0xFF4A4A4A),
+                    ),
+                    textScaler: TextScaler.linear(s),
+                  ),
+                )
+              : Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14 * scale,
+                    color: const Color(0xFF4A4A4A),
+                  ),
+                ),
         ),
       ],
     );

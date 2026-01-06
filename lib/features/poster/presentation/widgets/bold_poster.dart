@@ -3,7 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'poster_template.dart';
 
 class BoldPoster extends PosterTemplate {
-  const BoldPoster({super.key, required super.data, super.width, super.height});
+  const BoldPoster({
+    super.key,
+    required super.data,
+    super.width,
+    super.height,
+    super.customizationStore,
+  });
 
   @override
   Widget buildPoster(BuildContext context, double scale, double w, double h) {
@@ -39,13 +45,19 @@ class BoldPoster extends PosterTemplate {
               ),
               Transform.translate(
                 offset: Offset(0, -20 * scale),
-                child: Text(
-                  data.jobTitle.toUpperCase(),
-                  style: GoogleFonts.oswald(
-                    fontSize: 36 * scale,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
-                    color: Colors.black,
+                child: wrapEditable(
+                  'jobTitle',
+                  (s) => Text(
+                    data.jobTitle.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.oswald(
+                      fontSize: 48 * scale,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      height: 1.0,
+                      letterSpacing: -1,
+                    ),
+                    textScaler: TextScaler.linear(s),
                   ),
                 ),
               ),
@@ -62,12 +74,17 @@ class BoldPoster extends PosterTemplate {
                   color: Colors.black,
                   borderRadius: BorderRadius.zero,
                 ),
-                child: Text(
-                  data.salaryRange,
-                  style: GoogleFonts.montserrat(
-                    color: Colors.yellowAccent,
-                    fontSize: 16 * scale,
-                    fontWeight: FontWeight.bold,
+                child: wrapEditable(
+                  'salary',
+                  (s) => Text(
+                    data.salaryRange,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.roboto(
+                      fontSize: 16 * scale,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                    textScaler: TextScaler.linear(s),
                   ),
                 ),
               ),
@@ -81,13 +98,19 @@ class BoldPoster extends PosterTemplate {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildBoldSection('ĐỊA CHỈ', data.location, scale),
+                      _buildBoldSection(
+                        'ĐỊA CHỈ',
+                        data.location,
+                        scale,
+                        id: 'location',
+                      ),
                       SizedBox(height: 12 * scale),
                       if (data.requirements.isNotEmpty)
                         _buildBoldSection(
                           'Yêu cầu',
                           data.requirements.take(3).join('\n• '),
                           scale,
+                          id: 'requirements',
                         ),
                       SizedBox(height: 12 * scale),
                       if (data.benefits.isNotEmpty)
@@ -95,6 +118,7 @@ class BoldPoster extends PosterTemplate {
                           'Quyền lợi',
                           data.benefits.take(3).join('\n• '),
                           scale,
+                          id: 'benefits',
                         ),
                     ],
                   ),
@@ -115,20 +139,28 @@ class BoldPoster extends PosterTemplate {
                         fontSize: 16 * scale,
                       ),
                     ),
-                    Text(
-                      data.contactInfo,
-                      style: GoogleFonts.montserrat(
-                        color: Colors.white,
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.bold,
+                    wrapEditable(
+                      'contactInfo',
+                      (s) => Text(
+                        data.contactInfo,
+                        style: GoogleFonts.montserrat(
+                          color: Colors.white,
+                          fontSize: 12 * scale,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                     SizedBox(height: 4 * scale),
-                    Text(
-                      data.companyName,
-                      style: GoogleFonts.montserrat(
-                        color: Colors.white,
-                        fontSize: 12 * scale,
+                    wrapEditable(
+                      'companyName',
+                      (s) => Text(
+                        data.companyName,
+                        style: GoogleFonts.montserrat(
+                          color: Colors.white,
+                          fontSize: 12 * scale,
+                        ),
+                        textScaler: TextScaler.linear(s),
                       ),
                     ),
                   ],
@@ -141,7 +173,12 @@ class BoldPoster extends PosterTemplate {
     );
   }
 
-  Widget _buildBoldSection(String title, String content, double scale) {
+  Widget _buildBoldSection(
+    String title,
+    String content,
+    double scale, {
+    String? id,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -159,14 +196,29 @@ class BoldPoster extends PosterTemplate {
           color: Colors.black,
           margin: EdgeInsets.symmetric(vertical: 4 * scale),
         ),
-        Text(
-          content,
-          style: GoogleFonts.montserrat(
-            fontSize: 12 * scale,
-            fontWeight: FontWeight.w600,
-            height: 1.4,
-          ),
-        ),
+        id != null
+            ? wrapEditable(
+                id,
+                (s) => Text(
+                  content,
+                  style: GoogleFonts.roboto(
+                    fontSize: 14 * scale,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.left,
+                  textScaler: TextScaler.linear(s),
+                ),
+              )
+            : Text(
+                content,
+                style: GoogleFonts.roboto(
+                  fontSize: 14 * scale,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.left,
+              ),
       ],
     );
   }
