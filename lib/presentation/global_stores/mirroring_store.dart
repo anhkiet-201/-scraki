@@ -32,9 +32,7 @@ abstract class _MirroringStore with Store {
   @computed
   double get deviceAspectRatio {
     const double defaultVideoRatio = 9 / 19; // Modern phone ratio
-    final double fallbackRatio =
-        defaultVideoRatio *
-        (1 / (1 + (UIConstants.navigationBarHeight / 1920)));
+    final double fallbackRatio = defaultVideoRatio;
 
     if (activeSessions.isEmpty) return fallbackRatio;
 
@@ -43,7 +41,7 @@ abstract class _MirroringStore with Store {
     if (firstSession.width > 0 && firstSession.height > 0) {
       // Logic: Ratio = Width / (Height + NavBarHeight)
       return firstSession.width /
-          (firstSession.height + UIConstants.navigationBarHeight);
+          (firstSession.height + UIConstants.gridNavigationBarHeight);
     }
     return fallbackRatio;
   }

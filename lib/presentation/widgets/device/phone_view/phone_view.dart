@@ -176,7 +176,7 @@ class _PhoneViewState extends State<PhoneView> {
             : null,
         child: SizedBox(
           width: session.width.toDouble(),
-          height: session.height.toDouble() + UIConstants.navigationBarHeight,
+          height: session.height.toDouble() + (_store.isFloating ? UIConstants.floatingNavigationBarHeight : UIConstants.gridNavigationBarHeight),
           child: _buildVideoWithNavigation(session),
         ),
       ),
@@ -227,7 +227,7 @@ class _PhoneViewState extends State<PhoneView> {
             ),
           ),
         ),
-        MirrorNavigationBar(store: _store, isEnabled: widget.isFloating),
+        MirrorNavigationBar(store: _store, isEnabled: widget.isFloating, isFloating: widget.isFloating),
       ],
     );
   }

@@ -9,11 +9,13 @@ import '../store/phone_view_store.dart';
 class MirrorNavigationBar extends StatelessWidget {
   final PhoneViewStore store;
   final bool isEnabled;
+  final bool isFloating;
 
   const MirrorNavigationBar({
     super.key,
     required this.store,
     this.isEnabled = true,
+    this.isFloating = false,
   });
 
   @override
@@ -21,7 +23,7 @@ class MirrorNavigationBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      height: UIConstants.navigationBarHeight,
+      height: isFloating ? UIConstants.floatingNavigationBarHeight : UIConstants.gridNavigationBarHeight,
       decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerLow),
       child: Column(
         children: [
@@ -39,6 +41,7 @@ class MirrorNavigationBar extends StatelessWidget {
                   icon: Icons.arrow_back_ios_new_rounded,
                   keyCode: AndroidKeyCodes.kBack,
                   isEnabled: isEnabled,
+                  isFloating: isFloating,
                 ),
                 _NavigationButton(
                   store: store,
@@ -46,12 +49,14 @@ class MirrorNavigationBar extends StatelessWidget {
                   keyCode: AndroidKeyCodes.kHome,
                   isPrimary: true,
                   isEnabled: isEnabled,
+                  isFloating: isFloating,
                 ),
                 _NavigationButton(
                   store: store,
                   icon: Icons.crop_square_rounded,
                   keyCode: AndroidKeyCodes.kAppSwitch,
                   isEnabled: isEnabled,
+                  isFloating: isFloating,
                 ),
               ],
             ),
@@ -67,6 +72,7 @@ class _NavigationButton extends StatelessWidget {
   final IconData icon;
   final int keyCode;
   final bool isPrimary;
+  final bool isFloating;
   final bool isEnabled;
 
   const _NavigationButton({
@@ -75,6 +81,7 @@ class _NavigationButton extends StatelessWidget {
     required this.keyCode,
     this.isPrimary = false,
     this.isEnabled = true,
+    this.isFloating = false,
   });
 
   void _onTap() {
@@ -98,9 +105,9 @@ class _NavigationButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(UIConstants.buttonBorderRadius),
         child: AnimatedContainer(
           duration: UIConstants.hoverAnimationDuration,
-          padding: const EdgeInsets.symmetric(
-            horizontal: UIConstants.navButtonPaddingHorizontal,
-            vertical: UIConstants.navButtonPaddingVertical,
+          padding: EdgeInsets.symmetric(
+            horizontal: isFloating ? UIConstants.floatingNavButtonPaddingHorizontal : UIConstants.gridNavButtonPaddingHorizontal,
+            vertical: isFloating ? UIConstants.floatingNavButtonPaddingVertical : UIConstants.gridNavButtonPaddingVertical,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(UIConstants.buttonBorderRadius),
@@ -116,8 +123,8 @@ class _NavigationButton extends StatelessWidget {
                       : theme.colorScheme.onSurfaceVariant)
                 : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             size: isPrimary
-                ? UIConstants.navButtonIconSizePrimary
-                : UIConstants.navButtonIconSize,
+                ? (isFloating ? UIConstants.floatingNavButtonIconSizePrimary : UIConstants.gridNavButtonIconSizePrimary)
+                : (isFloating ? UIConstants.floatingNavButtonIconSize : UIConstants.gridNavButtonIconSize),
           ),
         ),
       ),
