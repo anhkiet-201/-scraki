@@ -1,4 +1,4 @@
-import '../../domain/entities/device_entity.dart';
+import '../../features/device/domain/entities/device_entity.dart';
 
 class AdbOutputParser {
   static List<DeviceEntity> parseDevices(String output) {
