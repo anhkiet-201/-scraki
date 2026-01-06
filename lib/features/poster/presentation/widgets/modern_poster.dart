@@ -27,7 +27,7 @@ class ModernPoster extends PosterTemplate {
                 Image.network(
                   data.imageUrls.first,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (context, error, stackTrace) =>
                       Container(color: const Color(0xFF2C3E50)),
                 )
               else

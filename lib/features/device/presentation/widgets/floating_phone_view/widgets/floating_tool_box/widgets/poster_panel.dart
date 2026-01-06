@@ -10,6 +10,12 @@ import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart
 import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
 
+import 'package:scraki/features/poster/presentation/widgets/tech_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/elegant_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/playful_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/retro_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/swiss_poster.dart';
+
 class PosterPanel extends StatefulWidget {
   final double height;
   final bool isGenerating;
@@ -39,6 +45,11 @@ class _PosterPanelState extends State<PosterPanel> {
     'Bold',
     'Corporate',
     'Creative',
+    'Tech',
+    'Elegant',
+    'Playful',
+    'Retro',
+    'Swiss',
   ];
 
   Widget _buildPosterWidget(PosterData data) {
@@ -65,6 +76,31 @@ class _PosterPanelState extends State<PosterPanel> {
         );
       case 4:
         return CreativePoster(
+          data: data,
+          customizationStore: widget.customizationStore,
+        );
+      case 5:
+        return TechPoster(
+          data: data,
+          customizationStore: widget.customizationStore,
+        );
+      case 6:
+        return ElegantPoster(
+          data: data,
+          customizationStore: widget.customizationStore,
+        );
+      case 7:
+        return PlayfulPoster(
+          data: data,
+          customizationStore: widget.customizationStore,
+        );
+      case 8:
+        return RetroPoster(
+          data: data,
+          customizationStore: widget.customizationStore,
+        );
+      case 9:
+        return SwissPoster(
           data: data,
           customizationStore: widget.customizationStore,
         );
