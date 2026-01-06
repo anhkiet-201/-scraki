@@ -10,6 +10,10 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
 import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart';
 
 /// Floating Tool Box widget với thiết kế Glassmorphism.
 ///
@@ -43,6 +47,15 @@ class FloatingToolBox extends StatefulWidget {
 class FloatingToolBoxState extends State<FloatingToolBox> {
   late final FloatingToolBoxStore _store;
   final GlobalKey _posterKey = GlobalKey();
+  int _selectedTemplateIndex = 0;
+
+  final List<String> _templateNames = [
+    'Modern',
+    'Minimalist',
+    'Bold',
+    'Corporate',
+    'Creative',
+  ];
 
   @override
   void initState() {
@@ -77,6 +90,23 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
   }
 
   bool get _isCollapsed => widget.availableSpace < 100;
+
+  Widget _buildPosterWidget(PosterData data) {
+    switch (_selectedTemplateIndex) {
+      case 0:
+        return ModernPoster(data: data);
+      case 1:
+        return MinimalistPoster(data: data);
+      case 2:
+        return BoldPoster(data: data);
+      case 3:
+        return CorporatePoster(data: data);
+      case 4:
+        return CreativePoster(data: data);
+      default:
+        return ModernPoster(data: data);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +199,9 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
           FloatingToolBoxCard(
             height: 75,
             width: widget.height * (9 / 19),
-            child: SizedBox(),
+            child: widget.isGenerating || widget.posterData == null
+                ? const SizedBox()
+                : _buildTemplateSelector(),
           ),
           FloatingToolBoxCard(
             width: widget.height * (9 / 19),
@@ -188,6 +220,9 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                             contactInfo: '',
                           );
 
+                      // Cache widget to avoid rebuilding everything on drag
+                      final posterWidget = _buildPosterWidget(data);
+
                       return Stack(
                         children: [
                           Positioned.fill(
@@ -199,7 +234,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                                   aspectRatio:
                                       (widget.height * (9 / 19)) /
                                       (widget.height - 87),
-                                  child: ModernPoster(data: data),
+                                  child: posterWidget,
                                 ),
                               ),
                             ),
@@ -225,7 +260,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: ModernPoster(data: data),
+                                  child: posterWidget,
                                 ),
                               ),
                             ),
@@ -235,14 +270,14 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                                 aspectRatio:
                                     (widget.height * (9 / 19)) /
                                     (widget.height - 87),
-                                child: ModernPoster(data: data),
+                                child: posterWidget,
                               ),
                             ),
                             child: AspectRatio(
                               aspectRatio:
                                   (widget.height * (9 / 19)) /
                                   (widget.height - 87),
-                              child: ModernPoster(data: data),
+                              child: posterWidget,
                             ),
                           ),
                         ],
@@ -252,6 +287,42 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTemplateSelector() {
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      itemCount: _templateNames.length,
+      itemBuilder: (context, index) {
+        final isSelected = _selectedTemplateIndex == index;
+        return GestureDetector(
+          onTap: () => setState(() => _selectedTemplateIndex = index),
+          child: Container(
+            margin: EdgeInsets.only(right: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(context).primaryColor
+                  : Colors.white.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(20),
+              border: isSelected
+                  ? null
+                  : Border.all(color: Colors.grey.withOpacity(0.3)),
+            ),
+            child: Text(
+              _templateNames[index],
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

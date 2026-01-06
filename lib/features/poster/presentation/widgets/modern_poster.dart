@@ -12,353 +12,328 @@ class ModernPoster extends PosterTemplate {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Effective dimensions
-        final double w = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : width;
-        final double h = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : height;
-
-        // Calculate scale factor using the limiting dimension to ensure fit
-        // Base reference: 375 x 667
-        final double scaleX = w / 375.0;
-        final double scaleY = h / 667.0;
-        final double scale = (scaleX < scaleY)
-            ? scaleX
-            : scaleY; // Use min scale
-
-        return Container(
-          width: w,
-          height: h,
-          color: Colors.white,
+  Widget buildPoster(BuildContext context, double scale, double w, double h) {
+    return Column(
+      children: [
+        // TOP SECTION: Header & Image (35% Height)
+        SizedBox(
+          height: h * 0.25,
           child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Background Gradient decoration
-              // Height locked to scale to maintain aspect ratio relative to text
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height:
-                    200 * scale, // Fixed visual height proportional to scale
-                child: Stack(
-                  fit: StackFit.expand,
+              // Background Image
+              if (data.imageUrls.isNotEmpty)
+                Image.network(
+                  data.imageUrls.first,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: const Color(0xFF2C3E50)),
+                )
+              else
+                Container(
+                  color: const Color(0xFF2C3E50),
+                  child: Center(
+                    child: Icon(
+                      Icons.business_center,
+                      size: 25 * scale,
+                      color: Colors.white24,
+                    ),
+                  ),
+                ),
+
+              // Gradient Overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Company Info & Job Title Overlay
+              Padding(
+                padding: EdgeInsets.all(20 * scale),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (data.imageUrls.isNotEmpty)
-                      Image.network(
-                        data.imageUrls.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox(),
-                      ),
                     Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10 * scale,
+                        vertical: 4 * scale,
+                      ),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: data.imageUrls.isNotEmpty
-                              ? [
-                                  Colors.black.withValues(alpha: 0.8),
-                                  Colors.black.withValues(alpha: 0.4),
-                                  Colors.transparent,
-                                ]
-                              : [
-                                  const Color(0xFF1A2980),
-                                  const Color(0xFF26D0CE),
-                                ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                        color: Colors.orangeAccent,
+                        borderRadius: BorderRadius.circular(4 * scale),
+                      ),
+                      child: Text(
+                        data.catchyHeadline?.toUpperCase() ?? 'HIRING',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10 * scale,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
+                      ),
+                    ),
+                    SizedBox(height: 8 * scale),
+                    Text(
+                      data.jobTitle,
+                      style: GoogleFonts.robotoCondensed(
+                        fontSize: 32 * scale,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4 * scale),
+                    Text(
+                      data.companyName.toUpperCase(),
+                      style: GoogleFonts.roboto(
+                        fontSize: 14 * scale,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
                       ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
 
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        // BOTTOM SECTION: Details (65% Height)
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(color: Colors.white),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                16 * scale,
+                16 * scale,
+                16 * scale,
+                0,
+              ),
+              child: Stack(
                 children: [
-                  // Header
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20 * scale,
-                      30 * scale,
-                      20 * scale,
-                      10 * scale,
-                    ),
-                    child: Column(
-                      children: [
-                        if (data.catchyHeadline != null &&
-                            data.catchyHeadline!.isNotEmpty) ...[
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              data.catchyHeadline!,
-                              style: GoogleFonts.montserrat(
-                                fontSize: 24 * scale,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.yellowAccent,
-                                letterSpacing: 1.5 * scale,
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 10.0 * scale,
-                                    color: Colors.black45,
-                                    offset: Offset(2.0 * scale, 2.0 * scale),
-                                  ),
-                                ],
-                              ),
-                              textAlign: TextAlign.center,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Salary & Location Grid
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildModernInfoBox(
+                              'LƯƠNG',
+                              data.salaryRange,
+                              Icons.monetization_on_outlined,
+                              Colors.green[700]!,
+                              scale,
                             ),
                           ),
-                          SizedBox(height: 5 * scale),
-                        ] else ...[
-                          Text(
-                            'TUYỂN DỤNG',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 24 * scale,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 2.0 * scale,
+                          SizedBox(width: 16 * scale),
+                          Expanded(
+                            child: _buildModernInfoBox(
+                              'ĐỊA ĐIỂM',
+                              data.location,
+                              Icons.location_on_outlined,
+                              Colors.blue[700]!,
+                              scale,
                             ),
                           ),
-                          SizedBox(height: 10 * scale),
                         ],
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            data.jobTitle.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            style: GoogleFonts.roboto(
-                              fontSize: 32 * scale,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
+                      ),
+                  
+                      SizedBox(height: 16 * scale),
+                      Divider(color: Colors.grey[200]),
+                      SizedBox(height: 16 * scale),
+                  
+                      // Requirements
+                      if (data.requirements.isNotEmpty) ...[
+                        _buildSectionTitle('YÊU CẦU', scale),
+                        SizedBox(height: 12 * scale),
+                        ...data.requirements.map(
+                          (req) => _buildListItem(req, scale),
+                        ),
+                        SizedBox(height: 16 * scale),
+                      ],
+                  
+                      // Benefits
+                      if (data.benefits.isNotEmpty) ...[
+                        _buildSectionTitle('QUYỀN LỢI', scale),
+                        SizedBox(height: 12 * scale),
+                        ...data.benefits.map(
+                          (ben) => _buildListItem(
+                            ben,
+                            scale,
+                            icon: Icons.star_border_rounded,
+                            color: Colors.orange,
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
 
-                  SizedBox(height: 10 * scale),
-
-                  // Salary Badge
-                  Center(
+                  // Floating Footer/Contact
+                  Positioned(
+                    bottom: 16 * scale,
+                    left: 0,
+                    right: 0,
                     child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 20 * scale),
                       padding: EdgeInsets.symmetric(
-                        horizontal: 30 * scale,
-                        vertical: 10 * scale,
+                        horizontal: 20 * scale,
+                        vertical: 16 * scale,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orangeAccent,
-                        borderRadius: BorderRadius.circular(30 * scale),
+                        color: const Color(0xFF1E272E),
+                        borderRadius: BorderRadius.circular(16 * scale),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 10 * scale,
-                            offset: Offset(0, 5 * scale),
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
                           ),
                         ],
                       ),
-                      child: Text(
-                        data.salaryRange,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.roboto(
-                          fontSize: 20 * scale,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 15 * scale),
-
-                  // Content Body
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 30 * scale),
-                      child: LayoutBuilder(
-                        builder: (context, innerConstraints) {
-                          return SingleChildScrollView(
-                            physics: const NeverScrollableScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: innerConstraints.maxHeight,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildSectionHeader(
-                                    'ĐỊA ĐIỂM LÀM VIỆC',
-                                    scale,
-                                  ),
-                                  Text(
-                                    data.location,
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14 * scale,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  SizedBox(height: 5 * scale),
-
-                                  if (data.requirements.isNotEmpty) ...[
-                                    _buildSectionHeader('YÊU CẦU', scale),
-                                    ...data.requirements
-                                        .take(3)
-                                        .map(
-                                          (req) =>
-                                              _buildBulletPoint(req, scale),
-                                        ),
-                                    SizedBox(height: 5 * scale),
-                                  ],
-
-                                  if (data.benefits.isNotEmpty) ...[
-                                    _buildSectionHeader('QUYỀN LỢI', scale),
-                                    ...data.benefits
-                                        .take(3)
-                                        .map(
-                                          (ben) =>
-                                              _buildBulletPoint(ben, scale),
-                                        ),
-                                  ],
-
-                                  if (data.imageUrls.isNotEmpty) ...[
-                                    SizedBox(height: 8 * scale),
-                                    _buildSectionHeader('HÌNH ẢNH', scale),
-                                    SizedBox(
-                                      height: 80 * scale,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: data.imageUrls
-                                            .take(3)
-                                            .length,
-                                        separatorBuilder: (_, __) =>
-                                            SizedBox(width: 8 * scale),
-                                        itemBuilder: (context, index) {
-                                          return ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8 * scale,
-                                            ),
-                                            child: Image.network(
-                                              data.imageUrls[index],
-                                              width: 100 * scale,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
-                                                  Container(
-                                                    width: 100 * scale,
-                                                    color: Colors.grey[300],
-                                                    child: Icon(
-                                                      Icons.broken_image,
-                                                      size: 24 * scale,
-                                                    ),
-                                                  ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8 * scale),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // Footer
-                  Container(
-                    color: Colors.grey[100],
-                    padding: EdgeInsets.all(20 * scale),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.business,
-                          color: const Color(0xFF1A2980),
-                          size: 24 * scale,
-                        ),
-                        SizedBox(width: 10 * scale),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data.companyName,
-                                style: GoogleFonts.roboto(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14 * scale,
+                            child: Icon(
+                              Icons.phone_in_talk_rounded,
+                              color: Colors.white,
+                              size: 20 * scale,
+                            ),
+                          ),
+                          SizedBox(width: 12 * scale),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'ỨNG TUYỂN NGAY',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 10 * scale,
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                data.contactInfo,
-                                style: GoogleFonts.roboto(fontSize: 12 * scale),
-                              ),
-                            ],
+                                Text(
+                                  data.contactInfo,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14 * scale,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        // QR Code Placeholder
-                        Container(
-                          width: 60 * scale,
-                          height: 60 * scale,
-                          color: Colors.black12,
-                          child: Icon(
-                            Icons.qr_code,
-                            color: Colors.black54,
-                            size: 24 * scale,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
-  Widget _buildSectionHeader(String title, double scale) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8 * scale),
-      child: Text(
-        title,
-        style: GoogleFonts.montserrat(
-          fontSize: 14 * scale,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFF1A2980),
-        ),
+  Widget _buildSectionTitle(String title, double scale) {
+    return Text(
+      title,
+      style: GoogleFonts.roboto(
+        fontSize: 14 * scale,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF1E272E),
+        letterSpacing: 0.5,
       ),
     );
   }
 
-  Widget _buildBulletPoint(String text, double scale) {
+  Widget _buildListItem(
+    String text,
+    double scale, {
+    IconData icon = Icons.check_circle_outline_rounded,
+    Color color = const Color(0xFF1E272E),
+  }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 2 * scale),
+      padding: EdgeInsets.only(bottom: 8 * scale),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '• ',
-            style: TextStyle(
-              color: Colors.orangeAccent,
-              fontWeight: FontWeight.bold,
-              fontSize: 14 * scale,
-            ),
+          Padding(
+            padding: EdgeInsets.only(top: 2 * scale, right: 10 * scale),
+            child: Icon(icon, size: 16 * scale, color: color),
           ),
           Expanded(
-            child: Text(text, style: GoogleFonts.roboto(fontSize: 13 * scale)),
+            child: Text(
+              text,
+              style: GoogleFonts.roboto(
+                fontSize: 14 * scale,
+                color: const Color(0xFF485460),
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildModernInfoBox(
+    String title,
+    String value,
+    IconData icon,
+    Color accent,
+    double scale,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14 * scale, color: Colors.grey[500]),
+            SizedBox(width: 6 * scale),
+            Text(
+              title,
+              style: GoogleFonts.roboto(
+                fontSize: 11 * scale,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 6 * scale),
+        Text(
+          value,
+          style: GoogleFonts.roboto(
+            fontSize: 14 * scale, // Slightly smaller to prevent overflow
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1E272E),
+            height: 1.2,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }
