@@ -11,9 +11,13 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
 import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
 
-/// Floating Tool Box widget với glassmorphism design
+/// Floating Tool Box widget với thiết kế Glassmorphism.
 ///
-/// Simplified version - chỉ có Power button
+/// Cung cấp các công cụ nhanh:
+/// - Power: Bật/tắt màn hình
+/// - Poster: Tạo ảnh tuyển dụng (AI Job Poster)
+///
+/// Tự động thu gọn khi không gian hẹp.
 class FloatingToolBox extends StatefulWidget {
   final String serial;
   final double height;
@@ -46,6 +50,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
     _store = FloatingToolBoxStore();
   }
 
+  /// Chụp ảnh widget poster thành file ảnh PNG.
   Future<File?> capturePoster() async {
     try {
       final boundary =
@@ -90,6 +95,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
     );
   }
 
+  /// Xây dựng menu chọn việc làm.
   Widget _buildJobSelector(BuildContext context) {
     return FloatingToolBoxCard(
       width: 300,
@@ -106,6 +112,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
     );
   }
 
+  /// Xây dựng thanh công cụ chính (Power, Poster button).
   Widget _buildToolBoxAction(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -152,6 +159,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
     );
   }
 
+  /// Xây dựng khu vực tạo Poster (Hiển thị Skeleton hoặc Poster thật).
   Widget _buildPosterGenerator(BuildContext context) {
     return SizedBox(
       height: widget.height,

@@ -9,15 +9,15 @@ part 'session_manager_store.g.dart';
 // ignore: library_private_types_in_public_api
 class SessionManagerStore = _SessionManagerStore with _$SessionManagerStore;
 
-/// Store responsible for managing screen mirroring sessions and input handling.
+/// Store chịu trách nhiệm quản lý các phiên phản chiếu (mirroring sessions) và xử lý đầu vào.
 ///
-/// Handles:
-/// - Mirroring lifecycle (start/stop)
-/// - Active sessions management
-/// - Input events (touch, keyboard, scroll)
-/// - File operations (drag & drop)
-/// - Clipboard operations
-/// - Double-tap floating detection
+/// Chức năng chính:
+/// - Quản lý vòng đời Mirroring (start/stop)
+/// - Quản lý danh sách các session đang hoạt động
+/// - Xử lý sự kiện đầu vào (touch, keyboard, scroll)
+/// - Xử lý kéo thả file (drag & drop)
+/// - Đồng bộ Clipboard
+/// - Phát hiện thao tác double-tap để mở cửa sổ nổi
 abstract class _SessionManagerStore with Store {
   _SessionManagerStore();
 
@@ -36,8 +36,8 @@ abstract class _SessionManagerStore with Store {
 
     if (activeSessions.isEmpty) return fallbackRatio;
 
-    // Use the aspect ratio of the first active session for the whole grid
-    // Logic: Ratio = Width / (Height + NavBarHeight)
+    // Sử dụng tỷ lệ khung hình của session hoạt động đầu tiên cho toàn bộ lưới
+    // Logic: Tỷ lệ = Chiều rộng / (Chiều cao + Chiều cao thanh điều hướng)
     final firstSession = activeSessions.values.first;
     if (firstSession.width > 0 && firstSession.height > 0) {
       return firstSession.width /

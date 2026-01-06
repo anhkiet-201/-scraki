@@ -10,13 +10,13 @@ part 'device_manager_store.g.dart';
 // ignore: library_private_types_in_public_api
 class DeviceManagerStore = _DeviceManagerStore with _$DeviceManagerStore;
 
-/// Store responsible for managing device discovery and connections.
+/// Store chịu trách nhiệm quản lý việc tìm kiếm và kết nối thiết bị.
 ///
-/// Handles:
-/// - Device list management
-/// - ADB device discovery
-/// - TCP/IP connections
-/// - Device disconnection
+/// Chức năng chính:
+/// - Quản lý danh sách thiết bị
+/// - Tìm kiếm thiết bị qua ADB
+/// - Kết nối TCP/IP
+/// - Ngắt kết nối thiết bị
 abstract class _DeviceManagerStore with Store {
   final DeviceRepository _repository;
 
@@ -52,6 +52,7 @@ abstract class _DeviceManagerStore with Store {
   // DEVICE ACTIONS
   // ═══════════════════════════════════════════════════════════════
 
+  /// Tải danh sách thiết bị từ ADB.
   @action
   Future<void> loadDevices() async {
     errorMessage = null;
@@ -77,6 +78,7 @@ abstract class _DeviceManagerStore with Store {
     );
   }
 
+  /// Kết nối tới thiết bị qua địa chỉ IP và Port (TCP/IP).
   @action
   Future<void> connectTcp(String ip, int port) async {
     errorMessage = null;
@@ -98,6 +100,7 @@ abstract class _DeviceManagerStore with Store {
     );
   }
 
+  /// Ngắt kết nối thiết bị.
   @action
   Future<void> disconnect(String serial) async {
     errorMessage = null;
@@ -123,6 +126,7 @@ abstract class _DeviceManagerStore with Store {
   // DEVICE SELECTION
   // ═══════════════════════════════════════════════════════════════
 
+  /// Chọn hoặc bỏ chọn thiết bị để thực hiện thao tác hàng loạt.
   @action
   void toggleDeviceSelection(String serial) {
     if (selectedSerials.contains(serial)) {
@@ -132,11 +136,14 @@ abstract class _DeviceManagerStore with Store {
     }
   }
 
+  /// Bật/Tắt chế độ điều khiển đồng loạt (Broadcasting).
+  /// Khi bật, thao tác trên một thiết bị sẽ được gửi tới tất cả các thiết bị đang chọn.
   @action
   void toggleBroadcasting() {
     isBroadcastingMode = !isBroadcastingMode;
   }
 
+  /// Xóa toàn bộ danh sách thiết bị đã chọn.
   @action
   void clearSelection() {
     selectedSerials.clear();

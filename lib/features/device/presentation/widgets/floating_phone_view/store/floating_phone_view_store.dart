@@ -9,12 +9,12 @@ part 'floating_phone_view_store.g.dart';
 class FloatingPhoneViewStore = _FloatingPhoneViewStore
     with _$FloatingPhoneViewStore;
 
-/// Store responsible for managing FloatingPhoneView UI state.
+/// Store chịu trách nhiệm quản lý trạng thái UI của FloatingPhoneView.
 ///
-/// Handles:
-/// - Window position (dragging)
-/// - Window size (resizing)
-/// - Poster workflow state
+/// Chức năng chính:
+/// - Quản lý vị trí cửa sổ (kéo thả)
+/// - Quản lý kích thước cửa sổ (thay đổi kích thước)
+/// - Quản lý trạng thái luồng tạo Poster
 abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   final Size parentSize;
 
@@ -25,12 +25,12 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   ReactionDisposer? _aspectRatioDisposer;
 
   void _initializeStore() {
-    // Initialize position and dimensions based on aspect ratio
+    // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình
     final aspectRatio = sessionManagerStore.deviceAspectRatio;
     final initialHeight = (320 / aspectRatio) + 40 + 12;
     initializePositionAndSize(const Offset(100, 100), 320, initialHeight);
 
-    // React to aspect ratio changes (e.g. when session starts)
+    // Phản ứng với thay đổi tỷ lệ khung hình (ví dụ: khi session bắt đầu)
     _aspectRatioDisposer ??= reaction(
       (_) => sessionManagerStore.deviceAspectRatio,
       (ratio) {
@@ -115,7 +115,7 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   // HELPERS
   // ═══════════════════════════════════════════════════════════════
 
-  /// Clamp position to stay within parent bounds accounting for ToolBox
+  /// Giới hạn vị trí để cửa sổ nằm trong phạm vi màn hình cha, có tính đến ToolBox
   Offset getClampedPosition(Offset target, Size parentSize) {
     if (parentSize.isEmpty) return target;
 
@@ -131,7 +131,7 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
     );
   }
 
-  /// Calculate available space for Tool Box
+  /// Tính toán không gian hiển thị khả dụng cho ToolBox
   double getToolBoxAvailableSpace(Size parentSize) {
     if (parentSize.isEmpty) return 0;
 

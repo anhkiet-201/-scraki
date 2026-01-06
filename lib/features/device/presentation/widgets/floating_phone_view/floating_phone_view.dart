@@ -11,6 +11,13 @@ import 'widgets/floating_window_header.dart';
 import 'widgets/floating_resize_handle.dart';
 import 'store/floating_phone_view_store.dart';
 
+/// Widget hiển thị cửa sổ điện thoại nổi (Floating Window).
+///
+/// Bao gồm:
+/// - Header: Tiêu đề và nút đóng, hỗ trợ kéo thả
+/// - Content: Hiển thị màn hình điện thoại (PhoneView)
+/// - Resize Handle: Cho phép thay đổi kích thước
+/// - ToolBox: Các công cụ hỗ trợ (Power, Poster)
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
   final VoidCallback onClose;
@@ -27,8 +34,8 @@ class FloatingPhoneView extends StatefulWidget {
   State<FloatingPhoneView> createState() => _FloatingPhoneViewState();
 }
 
-class _FloatingPhoneViewState extends State<FloatingPhoneView> with SessionManagerStoreMixin {
-
+class _FloatingPhoneViewState extends State<FloatingPhoneView>
+    with SessionManagerStoreMixin {
   late final FloatingPhoneViewStore _store;
   final GlobalKey<FloatingToolBoxState> _toolBoxKey = GlobalKey();
 
@@ -148,7 +155,8 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> with SessionManag
                                     double maxAllowedWidth = 1200.0;
                                     if (!widget.parentSize.isEmpty) {
                                       final maxWidthByX =
-                                          widget.parentSize.width - _store.position.dx;
+                                          widget.parentSize.width -
+                                          _store.position.dx;
                                       final maxHeightAvailable =
                                           widget.parentSize.height -
                                           _store.position.dy -
@@ -193,7 +201,9 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView> with SessionManag
                 key: _toolBoxKey,
                 serial: widget.serial,
                 height: _store.height,
-                availableSpace: _store.getToolBoxAvailableSpace(widget.parentSize),
+                availableSpace: _store.getToolBoxAvailableSpace(
+                  widget.parentSize,
+                ),
                 posterData: _store.selectedPosterData,
                 isGenerating: _store.isGeneratingPoster,
                 onJobSelected: (job) async {

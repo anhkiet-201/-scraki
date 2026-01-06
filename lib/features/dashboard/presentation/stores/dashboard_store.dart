@@ -7,10 +7,10 @@ part 'dashboard_store.g.dart';
 // ignore: library_private_types_in_public_api
 class DashboardStore = _DashboardStore with _$DashboardStore;
 
-/// Store responsible for managing Dashboard UI state.
+/// Store chịu trách nhiệm quản lý trạng thái UI của Dashboard.
 ///
-/// Handles:
-/// - Navigation selection state
+/// Chức năng chính:
+/// - Quản lý trạng thái tab được chọn (Navigation)
 abstract class _DashboardStore with Store {
   _DashboardStore();
 
