@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:scraki/domain/entities/device_entity.dart';
-import 'package:scraki/presentation/widgets/device/device_card/device_card.dart';
-import 'package:scraki/presentation/stores/phone_view_store.dart';
-import 'package:scraki/presentation/widgets/common/status_badge.dart';
-import 'package:scraki/presentation/widgets/common/protocol_icon.dart';
+import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/features/device/presentation/widgets/device_card/device_card.dart';
+import 'package:scraki/features/device/presentation/widgets/phone_view/store/phone_view_store.dart';
+import 'package:scraki/core/widgets/status_badge.dart';
+import 'package:scraki/core/widgets/protocol_icon.dart';
 
 class MockPhoneViewStore extends Mock implements PhoneViewStore {}
 
@@ -17,12 +17,6 @@ void main() {
     await GetIt.I.reset();
     mockStore = MockPhoneViewStore();
     GetIt.I.registerSingleton<PhoneViewStore>(mockStore);
-
-    // Default Stubs
-    when(() => mockStore.startMirroring(any())).thenAnswer(
-      (_) async => throw Exception('Mock not needed for render test'),
-    );
-    when(() => mockStore.disconnect(any())).thenAnswer((_) async {});
   });
 
   testWidgets('DeviceCard renders device info correctly', (tester) async {

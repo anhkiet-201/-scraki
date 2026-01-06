@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:scraki/presentation/global_stores/device_store.dart';
-import 'package:scraki/domain/repositories/device_repository.dart';
-import 'package:scraki/domain/entities/device_entity.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
+import 'package:scraki/features/device/domain/repositories/device_repository.dart';
+import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -11,14 +11,14 @@ class MockDeviceRepository extends Mock implements DeviceRepository {}
 
 void main() {
   late MockDeviceRepository repository;
-  late DeviceStore store;
+  late DeviceManagerStore store;
 
   setUp(() {
     repository = MockDeviceRepository();
-    store = DeviceStore(repository);
+    store = DeviceManagerStore(repository);
   });
 
-  group('DeviceStore', () {
+  group('DeviceManagerStore', () {
     test('Initial State', () {
       expect(store.devices, isEmpty);
       expect(store.isLoading, false);
