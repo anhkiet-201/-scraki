@@ -46,3 +46,4 @@ app.*.map.json
 windows/ffmpeg/
 build_dmg.sh
 BUILD_DMG_README.md
+.env

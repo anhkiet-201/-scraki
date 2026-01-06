@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:scraki/core/config/app_config.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -13,13 +14,12 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   // Note: GenerativeModel should ideally be injected or configured via a provider.
   // For simplicity, we initialize it here or inject a wrapper.
   // We'll initialize it lazily or assume the key is passed/injected.
-  final String _geminiApiKey =
-      'AIzaSyDEaEWbaYhdwvBEwnvThdo02kmPUEwXtsg'; // TODO: Move to config
+  final String _geminiApiKey = AppConfig.geminiApiKey;
   late final GenerativeModel _geminiModel;
 
   RecruitmentRepositoryImpl(this._dio) {
     _geminiModel = GenerativeModel(
-      model: 'gemini-2.5-flash-lite',
+      model: AppConfig.geminiModel,
       apiKey: _geminiApiKey,
     );
   }
@@ -28,7 +28,9 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   Future<Either<Failure, List<PosterData>>> fetchJobsFromApi() async {
     try {
       // TODO: Add timeout and better error handling
-      final response = await _dio.get('https://timviec.vieclamhr.com/api/jobs');
+      final response = await _dio.get<Map<String, dynamic>>(
+        'https://timviec.vieclamhr.com/api/jobs',
+      );
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
@@ -140,7 +142,7 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   @override
   Future<Either<Failure, PosterData>> fetchJobDetail(String slug) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         'https://timviec.vieclamhr.com/api/jobs/$slug',
       );
 
