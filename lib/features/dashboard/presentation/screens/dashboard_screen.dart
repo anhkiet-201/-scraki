@@ -4,6 +4,7 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/device_manager_store_mixin.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
+import 'package:scraki/features/dashboard/presentation/screens/widgets/device_search_bar.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
@@ -33,7 +34,7 @@ class DashboardScreen extends StatelessWidget
               builder: (_) {
                 return Column(
                   children: [
-                    _buildTopBar(theme),
+                    _buildTopBar(theme, dashboardStore),
                     Expanded(
                       child: Observer(
                         builder: (_) {
@@ -60,12 +61,18 @@ class DashboardScreen extends StatelessWidget
                                 children: [
                                   RefreshIndicator(
                                     onRefresh: deviceManagerStore.loadDevices,
-                                    child: DeviceGrid(
-                                      devices: deviceManagerStore.devices
-                                          .toList(),
-                                      onDisconnect: (device) {
-                                        deviceManagerStore.disconnect(
-                                          device.serial,
+                                    child: Observer(
+                                      builder: (_) {
+                                        return DeviceGrid(
+                                          devices: deviceManagerStore.devices
+                                              .toList(),
+                                          searchQuery:
+                                              dashboardStore.searchQuery,
+                                          onDisconnect: (device) {
+                                            deviceManagerStore.disconnect(
+                                              device.serial,
+                                            );
+                                          },
                                         );
                                       },
                                     ),
@@ -145,27 +152,13 @@ class DashboardScreen extends StatelessWidget
     );
   }
 
-  Widget _buildTopBar(ThemeData theme) {
+  Widget _buildTopBar(ThemeData theme, DashboardStore dashboardStore) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       color: theme.colorScheme.surface,
       child: Row(
         children: [
-          Expanded(
-            child: SearchBar(
-              hintText: 'Search devices...',
-              leading: const Icon(Icons.search),
-              elevation: WidgetStateProperty.all(0),
-              backgroundColor: WidgetStateProperty.all(
-                theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-              ),
-              padding: WidgetStateProperty.all(
-                const EdgeInsets.symmetric(horizontal: 16),
-              ),
-            ),
-          ),
+          Expanded(child: DeviceSearchBar(dashboardStore: dashboardStore)),
           const SizedBox(width: 16),
           IconButton.filledTonal(
             icon: const Icon(Icons.refresh),

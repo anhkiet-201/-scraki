@@ -27,6 +27,24 @@ mixin _$DashboardStore on _DashboardStore, Store {
     });
   }
 
+  late final _$searchQueryAtom = Atom(
+    name: '_DashboardStore.searchQuery',
+    context: context,
+  );
+
+  @override
+  String get searchQuery {
+    _$searchQueryAtom.reportRead();
+    return super.searchQuery;
+  }
+
+  @override
+  set searchQuery(String value) {
+    _$searchQueryAtom.reportWrite(value, super.searchQuery, () {
+      super.searchQuery = value;
+    });
+  }
+
   late final _$_DashboardStoreActionController = ActionController(
     name: '_DashboardStore',
     context: context,
@@ -45,9 +63,22 @@ mixin _$DashboardStore on _DashboardStore, Store {
   }
 
   @override
+  void setSearchQuery(String query) {
+    final _$actionInfo = _$_DashboardStoreActionController.startAction(
+      name: '_DashboardStore.setSearchQuery',
+    );
+    try {
+      return super.setSearchQuery(query);
+    } finally {
+      _$_DashboardStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
-selectedIndex: ${selectedIndex}
+selectedIndex: ${selectedIndex},
+searchQuery: ${searchQuery}
     ''';
   }
 }

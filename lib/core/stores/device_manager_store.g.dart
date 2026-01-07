@@ -137,6 +137,16 @@ mixin _$DeviceManagerStore on _DeviceManagerStore, Store {
     return _$disconnectAsyncAction.run(() => super.disconnect(serial));
   }
 
+  late final _$connectToBoxAsyncAction = AsyncAction(
+    '_DeviceManagerStore.connectToBox',
+    context: context,
+  );
+
+  @override
+  Future<void> connectToBox() {
+    return _$connectToBoxAsyncAction.run(() => super.connectToBox());
+  }
+
   late final _$_DeviceManagerStoreActionController = ActionController(
     name: '_DeviceManagerStore',
     context: context,

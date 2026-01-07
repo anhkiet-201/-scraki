@@ -7,11 +7,13 @@ import 'package:scraki/features/device/presentation/widgets/device_card/device_c
 /// A grid layout that displays a list of [DeviceCard]s.
 class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
   final List<DeviceEntity> devices;
+  final String searchQuery;
   final void Function(DeviceEntity) onDisconnect;
 
   const DeviceGrid({
     super.key,
     required this.devices,
+    this.searchQuery = '',
     required this.onDisconnect,
   });
 
@@ -59,72 +61,50 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
             const maxItemWidth = 320.0;
             const spacing = 16.0;
 
-            final crossAxisCount = (availableWidth / (maxItemWidth + spacing))
-                .ceil()
-                .clamp(1, 10);
+            final contentWidth =
+                availableWidth - 48; // Padding horizontal 24 * 2
+
+            final crossAxisCount =
+                ((contentWidth + spacing) / (maxItemWidth + spacing))
+                    .ceil()
+                    .clamp(1, 10);
+
+            // Wrap only puts spacing BETWEEN items (count - 1)
             final itemWidth =
-                (availableWidth - (spacing * (crossAxisCount + 1))) /
+                (contentWidth - ((crossAxisCount - 1) * spacing)) /
                 crossAxisCount;
 
             final totalHeight = (itemWidth / deviceRatio) + 56;
-            final responsiveRatio = itemWidth / totalHeight;
 
-            return CustomScrollView(
+            // Filter logic inside build
+            final query = searchQuery.toLowerCase();
+
+            return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                    child: Row(
-                      children: [
-                        FilterChip(
-                          label: const Text('All'),
-                          selected: true,
-                          onSelected: (_) {},
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('Online'),
-                          selected: false,
-                          onSelected: (_) {},
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('USB'),
-                          selected: false,
-                          onSelected: (_) {},
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('TCP'),
-                          selected: false,
-                          onSelected: (_) {},
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(vertical: spacing),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: responsiveRatio,
-                      crossAxisSpacing: spacing,
-                      mainAxisSpacing: spacing,
-                    ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final device = devices[index];
-                      return DeviceCard(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: devices.map((device) {
+                  final isVisible =
+                      query.isEmpty ||
+                      device.serial.toLowerCase().contains(query) ||
+                      device.modelName.toLowerCase().contains(query);
+
+                  return Offstage(
+                    offstage: !isVisible,
+                    child: SizedBox(
+                      width: isVisible ? itemWidth : 0.01,
+                      height: isVisible ? totalHeight : 0.01,
+                      child: DeviceCard(
                         key: ValueKey('card_${device.serial}'),
                         device: device,
                         onDisconnect: () => onDisconnect(device),
-                      );
-                    }, childCount: devices.length),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             );
           },
         );

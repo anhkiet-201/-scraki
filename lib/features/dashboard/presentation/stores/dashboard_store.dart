@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 
@@ -24,5 +25,22 @@ abstract class _DashboardStore with Store {
   @action
   void setSelectedIndex(int index) {
     selectedIndex = index;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SEARCH STATE
+  // ═══════════════════════════════════════════════════════════════
+
+  @observable
+  String searchQuery = '';
+
+  Timer? _searchDebounceTimer;
+
+  @action
+  void setSearchQuery(String query) {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      runInAction(() => searchQuery = query);
+    });
   }
 }
