@@ -37,8 +37,8 @@ class MinimalistPoster extends PosterTemplate {
               Expanded(
                 child: wrapEditable(
                   'companyName',
-                  (s) => Text(
-                    data.companyName.toUpperCase(),
+                  (t, s) => Text(
+                    t,
                     style: GoogleFonts.lato(
                       fontSize: 14 * scale,
                       fontWeight: FontWeight.bold,
@@ -47,6 +47,7 @@ class MinimalistPoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.companyName.toUpperCase(),
                 ),
               ),
             ],
@@ -57,8 +58,8 @@ class MinimalistPoster extends PosterTemplate {
           // Main Title
           wrapEditable(
             'headline',
-            (s) => Text(
-              data.catchyHeadline ?? 'TUYỂN DỤNG',
+            (t, s) => Text(
+              t,
               style: GoogleFonts.playfairDisplay(
                 fontSize: 12 * scale,
                 fontStyle: FontStyle.italic,
@@ -66,12 +67,13 @@ class MinimalistPoster extends PosterTemplate {
               ),
               textScaler: TextScaler.linear(s),
             ),
+            defaultText: data.catchyHeadline ?? 'TUYỂN DỤNG',
           ),
           SizedBox(height: 8 * scale),
           wrapEditable(
             'jobTitle',
-            (s) => Text(
-              data.jobTitle,
+            (t, s) => Text(
+              t,
               style: GoogleFonts.playfairDisplay(
                 fontSize: 36 * scale,
                 fontWeight: FontWeight.bold,
@@ -80,6 +82,7 @@ class MinimalistPoster extends PosterTemplate {
               ),
               textScaler: TextScaler.linear(s),
             ),
+            defaultText: data.jobTitle,
           ),
 
           SizedBox(height: 24 * scale),
@@ -119,8 +122,8 @@ class MinimalistPoster extends PosterTemplate {
                         padding: EdgeInsets.only(bottom: 4 * scale),
                         child: wrapEditable(
                           'req_${entry.key}',
-                          (s) => Text(
-                            '• ${entry.value}',
+                          (t, s) => Text(
+                            t,
                             style: GoogleFonts.lato(
                               fontSize: 14 * scale,
                               color: Colors.black87,
@@ -129,6 +132,7 @@ class MinimalistPoster extends PosterTemplate {
                             overflow: TextOverflow.ellipsis,
                             textScaler: TextScaler.linear(s),
                           ),
+                          defaultText: '• ${entry.value}',
                         ),
                       ),
                     ),
@@ -151,8 +155,8 @@ class MinimalistPoster extends PosterTemplate {
                         padding: EdgeInsets.only(bottom: 4 * scale),
                         child: wrapEditable(
                           'ben_${entry.key}',
-                          (s) => Text(
-                            '• ${entry.value}',
+                          (t, s) => Text(
+                            t,
                             style: GoogleFonts.lato(
                               fontSize: 14 * scale,
                               color: Colors.black87,
@@ -161,6 +165,7 @@ class MinimalistPoster extends PosterTemplate {
                             overflow: TextOverflow.ellipsis,
                             textScaler: TextScaler.linear(s),
                           ),
+                          defaultText: '• ${entry.value}',
                         ),
                       ),
                     ),
@@ -191,8 +196,8 @@ class MinimalistPoster extends PosterTemplate {
                       ),
                       wrapEditable(
                         'contactInfo',
-                        (s) => Text(
-                          data.contactInfo,
+                        (t, s) => Text(
+                          t,
                           style: GoogleFonts.lato(
                             fontSize: 14 * scale,
                             fontWeight: FontWeight.bold,
@@ -200,6 +205,7 @@ class MinimalistPoster extends PosterTemplate {
                           ),
                           textScaler: TextScaler.linear(s),
                         ),
+                        defaultText: data.contactInfo,
                       ),
                     ],
                   ),
@@ -229,8 +235,8 @@ class MinimalistPoster extends PosterTemplate {
         id != null
             ? wrapEditable(
                 id,
-                (s) => Text(
-                  value,
+                (t, s) => Text(
+                  t,
                   style: GoogleFonts.lato(
                     fontSize: 16 * scale,
                     fontWeight: FontWeight.w600,
@@ -238,6 +244,7 @@ class MinimalistPoster extends PosterTemplate {
                   ),
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: value,
               )
             : Text(
                 value,
@@ -250,4 +257,7 @@ class MinimalistPoster extends PosterTemplate {
       ],
     );
   }
+  
+  @override
+  String get templateId => 'minimalist';
 }

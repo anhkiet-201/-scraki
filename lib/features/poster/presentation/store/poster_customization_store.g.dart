@@ -27,6 +27,24 @@ mixin _$PosterCustomizationStore on _PosterCustomizationStore, Store {
     });
   }
 
+  late final _$selectedDefaultTextAtom = Atom(
+    name: '_PosterCustomizationStore.selectedDefaultText',
+    context: context,
+  );
+
+  @override
+  String? get selectedDefaultText {
+    _$selectedDefaultTextAtom.reportRead();
+    return super.selectedDefaultText;
+  }
+
+  @override
+  set selectedDefaultText(String? value) {
+    _$selectedDefaultTextAtom.reportWrite(value, super.selectedDefaultText, () {
+      super.selectedDefaultText = value;
+    });
+  }
+
   late final _$textScalesAtom = Atom(
     name: '_PosterCustomizationStore.textScales',
     context: context,
@@ -45,17 +63,35 @@ mixin _$PosterCustomizationStore on _PosterCustomizationStore, Store {
     });
   }
 
+  late final _$textOverridesAtom = Atom(
+    name: '_PosterCustomizationStore.textOverrides',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, String> get textOverrides {
+    _$textOverridesAtom.reportRead();
+    return super.textOverrides;
+  }
+
+  @override
+  set textOverrides(ObservableMap<String, String> value) {
+    _$textOverridesAtom.reportWrite(value, super.textOverrides, () {
+      super.textOverrides = value;
+    });
+  }
+
   late final _$_PosterCustomizationStoreActionController = ActionController(
     name: '_PosterCustomizationStore',
     context: context,
   );
 
   @override
-  void selectField(String? id) {
+  void selectField(String? id, {String? defaultText}) {
     final _$actionInfo = _$_PosterCustomizationStoreActionController
         .startAction(name: '_PosterCustomizationStore.selectField');
     try {
-      return super.selectField(id);
+      return super.selectField(id, defaultText: defaultText);
     } finally {
       _$_PosterCustomizationStoreActionController.endAction(_$actionInfo);
     }
@@ -73,10 +109,23 @@ mixin _$PosterCustomizationStore on _PosterCustomizationStore, Store {
   }
 
   @override
+  void updateText(String text) {
+    final _$actionInfo = _$_PosterCustomizationStoreActionController
+        .startAction(name: '_PosterCustomizationStore.updateText');
+    try {
+      return super.updateText(text);
+    } finally {
+      _$_PosterCustomizationStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 selectedFieldId: ${selectedFieldId},
-textScales: ${textScales}
+selectedDefaultText: ${selectedDefaultText},
+textScales: ${textScales},
+textOverrides: ${textOverrides}
     ''';
   }
 }

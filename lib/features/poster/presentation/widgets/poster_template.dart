@@ -59,11 +59,39 @@ abstract class PosterTemplate extends StatelessWidget {
   /// [h]: The effective height of the poster.
   Widget buildPoster(BuildContext context, double scale, double w, double h);
 
+  /// Unique ID for this template (e.g., 'modern', 'tech', 'retro').
+  /// Used for scoping edits to avoid conflicts between templates.
+  String get templateId;
+
   /// Helper to wrap content in [EditablePosterElement] if customization is enabled.
-  Widget wrapEditable(String id, Widget Function(double textScale) builder) {
-    if (customizationStore == null) return builder(1.0);
+  Widget wrapEditable(
+    String id,
+    Widget Function(String text, double textScale) builder, {
+    String? defaultText,
+  }) {
+    if (customizationStore == null) {
+      return builder(defaultText ?? '', 1.0);
+    }
+
+    // If no default text is provided, try to infer it from the builder or use empty
+    // But ideally refactor templates to pass it explicitely.
+    // For now we just use a placeholder if not provided, assuming builder handles text.
+    // However, to support text editing, we need the text.
+
+    // Better signature:
+    // Widget wrapEditable(String id, String defaultText, Widget Function(String text, double scale) builder)
+    // But since we are doing stepwise refactor, let's stick to the plan.
+    // The previous plan said:
+    // wrapEditable(String id, String defaultText, Widget Function(String text, double scale) builder)
+
+    // Wait, I cannot change the builder signature yet because all templates use the old one.
+    // I need to update the signature AND the implementation in one go for each file, OR provide backward compatibility.
+    // Given the request "Refactor all poster templates", I should update the signature here first, then fix the errors in subclasses.
+
+    final scopedId = '${templateId}_$id';
     return EditablePosterElement(
-      id: id,
+      id: scopedId,
+      defaultText: defaultText ?? '',
       store: customizationStore!,
       builder: builder,
     );

@@ -66,14 +66,15 @@ class CorporatePoster extends PosterTemplate {
                       Spacer(),
                       wrapEditable(
                         'locationShort',
-                        (s) => Text(
-                          data.location.split(',').first, // Short location
+                        (text, s) => Text(
+                          text,
                           style: GoogleFonts.roboto(
                             fontSize: 12 * scale,
                             color: Colors.grey[600],
                           ),
                           textScaler: TextScaler.linear(s),
                         ),
+                        defaultText: data.location.split(',').first,
                       ),
                     ],
                   ),
@@ -84,8 +85,8 @@ class CorporatePoster extends PosterTemplate {
                   // Job Title
                   wrapEditable(
                     'jobTitle',
-                    (s) => Text(
-                      data.jobTitle,
+                    (text, s) => Text(
+                      text,
                       style: GoogleFonts.robotoSlab(
                         fontSize: 32 * scale,
                         fontWeight: FontWeight.bold,
@@ -96,6 +97,7 @@ class CorporatePoster extends PosterTemplate {
                       overflow: TextOverflow.ellipsis,
                       textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: data.jobTitle,
                   ),
 
                   // Image Banner
@@ -168,14 +170,15 @@ class CorporatePoster extends PosterTemplate {
                             Expanded(
                               child: wrapEditable(
                                 'req_${entry.key}',
-                                (s) => Text(
-                                  entry.value,
+                                (text, s) => Text(
+                                  text,
                                   style: GoogleFonts.roboto(
                                     fontSize: 14 * scale,
                                     color: Colors.black87,
                                   ),
                                   textScaler: TextScaler.linear(s),
                                 ),
+                                defaultText: entry.value,
                               ),
                             ),
                           ],
@@ -211,14 +214,15 @@ class CorporatePoster extends PosterTemplate {
                             Expanded(
                               child: wrapEditable(
                                 'ben_${entry.key}',
-                                (s) => Text(
-                                  entry.value,
+                                (text, s) => Text(
+                                  text,
                                   style: GoogleFonts.roboto(
                                     fontSize: 14 * scale,
                                     color: Colors.black87,
                                   ),
                                   textScaler: TextScaler.linear(s),
                                 ),
+                                defaultText: entry.value,
                               ),
                             ),
                           ],
@@ -244,8 +248,8 @@ class CorporatePoster extends PosterTemplate {
                   children: [
                     wrapEditable(
                       'companyName',
-                      (s) => Text(
-                        data.companyName.toUpperCase(),
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.roboto(
                           fontSize: 14 * scale,
                           fontWeight: FontWeight.bold,
@@ -253,11 +257,12 @@ class CorporatePoster extends PosterTemplate {
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.companyName,
                     ),
                     SizedBox(height: 4 * scale),
                     wrapEditable(
                       'contactInfo',
-                      (s) => Text(
+                      (text, s) => Text(
                         data.contactInfo,
                         style: GoogleFonts.roboto(
                           fontSize: 12 * scale,
@@ -265,6 +270,7 @@ class CorporatePoster extends PosterTemplate {
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.contactInfo,
                     ),
                   ],
                 ),
@@ -306,8 +312,8 @@ class CorporatePoster extends PosterTemplate {
           id != null
               ? wrapEditable(
                   id,
-                  (s) => Text(
-                    value,
+                  (text, s) => Text(
+                    text,
                     style: GoogleFonts.roboto(
                       fontSize: 14 * scale,
                       fontWeight: FontWeight.bold,
@@ -317,6 +323,7 @@ class CorporatePoster extends PosterTemplate {
                     overflow: TextOverflow.ellipsis,
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: value,
                 )
               : Text(
                   value,
@@ -332,4 +339,7 @@ class CorporatePoster extends PosterTemplate {
       ),
     );
   }
+  
+  @override
+  String get templateId => 'corporate';
 }

@@ -47,8 +47,8 @@ class BoldPoster extends PosterTemplate {
                 offset: Offset(0, -20 * scale),
                 child: wrapEditable(
                   'jobTitle',
-                  (s) => Text(
-                    data.jobTitle.toUpperCase(),
+                  (text, s) => Text(
+                    text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.oswald(
                       fontSize: 48 * scale,
@@ -59,6 +59,7 @@ class BoldPoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle.toUpperCase(),
                 ),
               ),
 
@@ -76,8 +77,8 @@ class BoldPoster extends PosterTemplate {
                 ),
                 child: wrapEditable(
                   'salary',
-                  (s) => Text(
-                    data.salaryRange,
+                  (text, s) => Text(
+                    text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
                       fontSize: 16 * scale,
@@ -86,6 +87,7 @@ class BoldPoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.salaryRange,
                 ),
               ),
 
@@ -141,8 +143,8 @@ class BoldPoster extends PosterTemplate {
                     ),
                     wrapEditable(
                       'contactInfo',
-                      (s) => Text(
-                        data.contactInfo,
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
                           fontSize: 12 * scale,
@@ -150,18 +152,20 @@ class BoldPoster extends PosterTemplate {
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.contactInfo,
                     ),
                     SizedBox(height: 4 * scale),
                     wrapEditable(
                       'companyName',
-                      (s) => Text(
-                        data.companyName,
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
                           fontSize: 12 * scale,
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.companyName,
                     ),
                   ],
                 ),
@@ -199,8 +203,8 @@ class BoldPoster extends PosterTemplate {
         id != null
             ? wrapEditable(
                 id,
-                (s) => Text(
-                  content,
+                (text, s) => Text(
+                  text,
                   style: GoogleFonts.roboto(
                     fontSize: 14 * scale,
                     color: Colors.black87,
@@ -209,6 +213,7 @@ class BoldPoster extends PosterTemplate {
                   textAlign: TextAlign.left,
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: content,
               )
             : Text(
                 content,
@@ -222,4 +227,7 @@ class BoldPoster extends PosterTemplate {
       ],
     );
   }
+  
+  @override
+  String get templateId => "bold";
 }

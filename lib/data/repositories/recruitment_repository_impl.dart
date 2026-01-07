@@ -103,7 +103,7 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
       - salaryRange (String): e.g. "10 - 15 Triệu". Consistent with market rates.
       - requirements (List<String>): Max 5 brief bullet points.
       - benefits (List<String>): Max 5 brief bullet points.
-      - contactInfo (String): Email or Phone or Url.
+      - contactInfo (String): Email or Phone or Url (default: "0844. 456. 787").
       - tikTokCaption (String): A viral, engaging caption for TikTok (max 50 words). Include emojis and 3-5 relevant hashtags (e.g. #ViecLam #BinhDuong #ttnhr). IMPORTANT: STRICTLY COMPLY with TikTok Community Guidelines. DO NOT usage keywords directing users off-platform (e.g., "Bio", "Link", "Zalo", "Phone", "Call"). Focus on the job value.
       
       If a field is missing, use empty string or empty list on JSON.

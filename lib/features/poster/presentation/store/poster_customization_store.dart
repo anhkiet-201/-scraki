@@ -7,17 +7,26 @@ class PosterCustomizationStore = _PosterCustomizationStore
 
 abstract class _PosterCustomizationStore with Store {
   @observable
+  @observable
   String? selectedFieldId;
+
+  @observable
+  String? selectedDefaultText;
 
   @observable
   ObservableMap<String, double> textScales = ObservableMap<String, double>();
 
+  @observable
+  ObservableMap<String, String> textOverrides = ObservableMap<String, String>();
+
   @action
-  void selectField(String? id) {
+  void selectField(String? id, {String? defaultText}) {
     if (selectedFieldId == id) {
       selectedFieldId = null; // Toggle off if tapping same field
+      selectedDefaultText = null;
     } else {
       selectedFieldId = id;
+      selectedDefaultText = defaultText;
     }
   }
 
@@ -28,5 +37,21 @@ abstract class _PosterCustomizationStore with Store {
     }
   }
 
+  @action
+  void updateText(String text) {
+    if (selectedFieldId != null) {
+      textOverrides[selectedFieldId!] = text;
+    }
+  }
+
+  @action
+  void resetText() {
+    if (selectedFieldId != null) {
+      textOverrides.remove(selectedFieldId);
+    }
+  }
+
   double getScale(String id) => textScales[id] ?? 1.0;
+
+  String? getText(String id) => textOverrides[id];
 }

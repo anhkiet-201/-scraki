@@ -13,316 +13,414 @@ class PlayfulPoster extends PosterTemplate {
   });
 
   @override
+  String get templateId => 'playful';
+
+  @override
   Widget buildPoster(BuildContext context, double scale, double w, double h) {
-    // Vibrant colors
-    final bgColors = [
-      const Color(0xFFFFDE59), // Yellow
-      const Color(0xFFFF914D), // Orange
-    ];
-    final cardColor = Colors.white;
-    final textColor = const Color(0xFF333333);
-    final accentColor1 = const Color(0xFF7ED957); // Green info
-    final accentColor2 = const Color(0xFF5CE1E6); // Blue info
+    // Neo-Brutalism / Pop Palette
+    final bgColor = const Color(0xFFFEF9E7); // Cream
+    final primaryColor = const Color(0xFFFF6B6B); // Red/Pink
+    final secondaryColor = const Color(0xFF4ECDC4); // Teal
+    final yellowColor = const Color(0xFFFFD93D); // Yellow
+    final purpleColor = const Color(0xFF6C5CE7); // Purple
+    final textColor = const Color(0xFF2D3436);
 
     return Container(
       width: w,
       height: h,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: bgColors,
-        ),
-      ),
+      color: bgColor,
       child: Stack(
         children: [
-          // Decorative Circles
+          // Background Shapes (Abstract)
           Positioned(
             top: -50 * scale,
             right: -50 * scale,
-            child: CircleAvatar(
-              radius: 80 * scale,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            child: _buildBlob(200 * scale, yellowColor.withValues(alpha: 0.3)),
+          ),
+          Positioned(
+            bottom: 100 * scale,
+            left: -30 * scale,
+            child: _buildBlob(
+              150 * scale,
+              secondaryColor.withValues(alpha: 0.3),
             ),
           ),
           Positioned(
-            bottom: -50 * scale,
-            left: -50 * scale,
-            child: CircleAvatar(
-              radius: 100 * scale,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            top: 200 * scale,
+            left: -40 * scale,
+            child: Transform.rotate(
+              angle: -0.2, // Radians
+              child: Container(
+                width: 100 * scale,
+                height: 100 * scale,
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20 * scale),
+                ),
+              ),
             ),
           ),
 
-          Padding(
-            padding: EdgeInsets.all(24 * scale),
-            child: Column(
-              children: [
-                // Header Card
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(20 * scale),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(24 * scale),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.all(24.0 * scale),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top Header: Company Name Pill
+                  Center(
+                    child: _buildNeoCard(
+                      color: Colors.white,
+                      scale: scale,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16.0 * scale,
+                          vertical: 8.0 * scale,
+                        ),
+                        child: wrapEditable(
+                          'companyName',
+                          (t, s) => Text(
+                            t.toUpperCase(),
+                            style: GoogleFonts.fredoka(
+                              fontSize: 14 * scale,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                              letterSpacing: 1.0,
+                            ),
+                            textScaler: TextScaler.linear(s),
+                          ),
+                          defaultText: data.companyName,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      wrapEditable(
-                        'headline',
-                        (s) => Text(
-                          data.catchyHeadline?.toUpperCase() ??
-                              'GIA NHẬP TEAM!',
-                          style: GoogleFonts.fredoka(
-                            fontSize: 16 * scale,
-                            fontWeight: FontWeight.w600,
-                            color: textColor.withValues(alpha: 0.6),
-                          ),
-                          textAlign: TextAlign.center,
-                          textScaler: TextScaler.linear(s),
+
+                  SizedBox(height: 20 * scale),
+
+                  // Job Title "Sticker"
+                  Transform.rotate(
+                    angle: -0.05,
+                    child: _buildNeoCard(
+                      color: yellowColor,
+                      scale: scale,
+                      offset: Offset(4 * scale, 4 * scale),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20 * scale,
+                          vertical: 24 * scale,
                         ),
-                      ),
-                      SizedBox(height: 8 * scale),
-                      wrapEditable(
-                        'jobTitle',
-                        (s) => Text(
-                          data.jobTitle,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 30 * scale,
-                            fontWeight: FontWeight.w900,
-                            color: textColor,
-                            height: 1.1,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textScaler: TextScaler.linear(s),
-                        ),
-                      ),
-                      SizedBox(height: 8 * scale),
-                      wrapEditable(
-                        'companyName',
-                        (s) => Text(
-                          '@ ${data.companyName}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14 * scale,
-                            fontWeight: FontWeight.w600,
-                            color: textColor.withValues(alpha: 0.7),
-                          ),
-                          textScaler: TextScaler.linear(s),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 16 * scale),
-
-                // Info Chips
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPlayfulChip(
-                        data.salaryRange,
-                        accentColor1,
-                        scale,
-                        id: 'salary',
-                      ),
-                    ),
-                    SizedBox(width: 12 * scale),
-                    Expanded(
-                      child: _buildPlayfulChip(
-                        data.location,
-                        accentColor2,
-                        scale,
-                        id: 'location',
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 16 * scale),
-
-                // Main Content Card
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(20 * scale),
-                    decoration: BoxDecoration(
-                      color: cardColor.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(24 * scale),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Requirements
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Bạn Cần:',
-                                style: GoogleFonts.fredoka(
+                        child: Column(
+                          children: [
+                            wrapEditable(
+                              'headline',
+                              (t, s) => Text(
+                                t,
+                                style: GoogleFonts.permanentMarker(
                                   fontSize: 16 * scale,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
+                                  color: Colors.black54,
                                 ),
+                                textScaler: TextScaler.linear(s),
                               ),
-                              SizedBox(height: 8 * scale),
-                              if (data.requirements.isNotEmpty)
-                                ...data.requirements.asMap().entries.map(
-                                  (entry) => _buildPlayfulItem(
-                                    entry.value,
-                                    scale,
-                                    textColor,
-                                    id: 'req_${entry.key}',
-                                  ),
+                              defaultText:
+                                  data.catchyHeadline ?? 'TUYỂN DỤNG',
+                            ),
+                            SizedBox(height: 8 * scale),
+                            wrapEditable(
+                              'jobTitle',
+                              (t, s) => Text(
+                                t.toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.fredoka(
+                                  fontSize: 40 * scale, // Massive font
+                                  fontWeight: FontWeight.w900,
+                                  color: textColor,
+                                  height: 1.0,
                                 ),
-                            ],
+                                maxLines: 2,
+                                overflow: TextOverflow.visible,
+                                textScaler: TextScaler.linear(s),
+                              ),
+                              defaultText: data.jobTitle,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 24 * scale),
+
+                  // Salary & Location Chips
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildInfoTag(
+                          icon: Icons.monetization_on_outlined,
+                          text: data.salaryRange,
+                          color: secondaryColor,
+                          scale: scale,
+                          id: 'salary',
+                        ),
+                      ),
+                      SizedBox(width: 12 * scale),
+                      Expanded(
+                        child: _buildInfoTag(
+                          icon: Icons.location_on_outlined,
+                          text: data.location.split(',').last.trim(),
+                          color: primaryColor,
+                          scale: scale,
+                          id: 'location',
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 24 * scale),
+
+                  // Main Content: Requirements & Benefits
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Col 1: Requirements
+                        Expanded(
+                          child: _buildListCard(
+                            title: 'YÊU CẦU',
+                            items: data.requirements,
+                            color: Colors.white,
+                            accentColor: purpleColor,
+                            scale: scale,
+                            prefix: 'req',
+                            rotation: 0.02,
                           ),
                         ),
                         SizedBox(width: 12 * scale),
-                        // Benefits
+                        // Col 2: Benefits
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Bạn Được:',
-                                style: GoogleFonts.fredoka(
-                                  fontSize: 16 * scale,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
-                              ),
-                              SizedBox(height: 8 * scale),
-                              if (data.benefits.isNotEmpty)
-                                ...data.benefits.asMap().entries.map(
-                                  (entry) => _buildPlayfulItem(
-                                    entry.value,
-                                    scale,
-                                    textColor,
-                                    id: 'ben_${entry.key}',
-                                  ),
-                                ),
-                            ],
+                          child: _buildListCard(
+                            title: 'QUYỀN LỢI',
+                            items: data.benefits,
+                            color: Colors.white,
+                            accentColor: secondaryColor,
+                            scale: scale,
+                            prefix: 'ben',
+                            rotation: -0.01,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
 
-                SizedBox(height: 16 * scale),
+                  SizedBox(height: 20 * scale),
 
-                // Footer Bubble
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 24 * scale,
-                    vertical: 16 * scale,
-                  ),
-                  decoration: BoxDecoration(
+                  // Footer: Apply Now
+                  _buildNeoCard(
                     color: Colors.black,
-                    borderRadius: BorderRadius.circular(50 * scale),
-                  ),
-                  child: wrapEditable(
-                    'contactInfo',
-                    (s) => Text(
-                      'ỨNG TUYỂN: ${data.contactInfo}',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14 * scale,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    scale: scale,
+                    offset: Offset(4 * scale, 4 * scale),
+                    child: Padding(
+                      padding: EdgeInsets.all(16 * scale),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.send_rounded,
+                            color: yellowColor,
+                            size: 24 * scale,
+                          ),
+                          SizedBox(width: 12 * scale),
+                          Expanded(
+                            child: wrapEditable(
+                              'contactInfo',
+                              (t, s) => Text(
+                                t,
+                                style: GoogleFonts.fredoka(
+                                  fontSize: 14 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textScaler: TextScaler.linear(s),
+                              ),
+                              defaultText: 'ỨNG TUYỂN: ${data.contactInfo}',
+                            ),
+                          ),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textScaler: TextScaler.linear(s),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayfulChip(
-    String text,
-    Color color,
-    double scale, {
-    required String id,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: 12 * scale,
-        horizontal: 8 * scale,
-      ),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16 * scale),
-        border: Border.all(
-          color: Colors.black.withValues(alpha: 0.1),
-          width: 2,
-        ),
-      ),
-      child: wrapEditable(
-        id,
-        (s) => Text(
-          text,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
-            fontSize: 12 * scale,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textScaler: TextScaler.linear(s),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayfulItem(
-    String text,
-    double scale,
-    Color textColor, {
-    required String id,
-  }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 6 * scale),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '• ',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14 * scale),
-          ),
-          Expanded(
-            child: wrapEditable(
-              id,
-              (s) => Text(
-                text,
-                style: GoogleFonts.poppins(
-                  fontSize: 11 * scale,
-                  color: textColor.withValues(alpha: 0.8),
-                  height: 1.3,
-                ),
-                textScaler: TextScaler.linear(s),
+                ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // --- Helper Widgets ---
+
+  Widget _buildBlob(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+
+  Widget _buildNeoCard({
+    required Widget child,
+    required Color color,
+    required double scale,
+    Offset? offset,
+  }) {
+    final shadowOffset = offset ?? Offset(3 * scale, 3 * scale);
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        border: Border.all(color: Colors.black, width: 2.0 * scale),
+        borderRadius: BorderRadius.circular(12 * scale),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black,
+            offset: shadowOffset,
+            blurRadius: 0, // Solid shadow
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildInfoTag({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required double scale,
+    required String id,
+  }) {
+    return _buildNeoCard(
+      color: Colors.white,
+      scale: scale,
+      offset: Offset(2 * scale, 2 * scale),
+      child: Padding(
+        padding: EdgeInsets.all(12 * scale),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8 * scale),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24 * scale),
+            ),
+            SizedBox(height: 8 * scale),
+            wrapEditable(
+              id,
+              (t, s) => Text(
+                t,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.fredoka(
+                  fontSize: 14 * scale,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textScaler: TextScaler.linear(s),
+              ),
+              defaultText: text,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListCard({
+    required String title,
+    required List<String> items,
+    required Color color,
+    required Color accentColor,
+    required double scale,
+    required String prefix,
+    required double rotation,
+  }) {
+    return Transform.rotate(
+      angle: rotation,
+      child: _buildNeoCard(
+        color: color,
+        scale: scale,
+        child: Padding(
+          padding: EdgeInsets.all(16 * scale),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12 * scale,
+                  vertical: 4 * scale,
+                ),
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(20 * scale),
+                  border: Border.all(color: Colors.black, width: 1.5 * scale),
+                ),
+                child: Text(
+                  title,
+                  style: GoogleFonts.fredoka(
+                    fontSize: 12 * scale,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12 * scale),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Column(
+                    children: items.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 8 * scale),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '• ',
+                              style: TextStyle(
+                                fontSize: 14 * scale,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Expanded(
+                              child: wrapEditable(
+                                '${prefix}_${entry.key}',
+                                (t, s) => Text(
+                                  t,
+                                  style: GoogleFonts.quicksand(
+                                    fontSize: 12 * scale,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                    height: 1.2,
+                                  ),
+                                  textScaler: TextScaler.linear(s),
+                                ),
+                                defaultText: entry.value,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

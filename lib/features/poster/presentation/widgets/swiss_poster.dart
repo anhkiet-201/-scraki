@@ -37,8 +37,8 @@ class SwissPoster extends PosterTemplate {
               children: [
                 wrapEditable(
                   'headline',
-                  (s) => Text(
-                    data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
+                  (text, s) => Text(
+                    text,
                     style: GoogleFonts.inter(
                       fontSize: 40 * scale,
                       fontWeight: FontWeight.w900,
@@ -50,12 +50,13 @@ class SwissPoster extends PosterTemplate {
                     overflow: TextOverflow.ellipsis,
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
                 ),
                 SizedBox(height: 8 * scale),
                 wrapEditable(
                   'companyName',
-                  (s) => Text(
-                    data.companyName.toUpperCase(),
+                  (t, s) => Text(
+                    t,
                     style: GoogleFonts.inter(
                       fontSize: 16 * scale,
                       fontWeight: FontWeight.bold,
@@ -63,6 +64,7 @@ class SwissPoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.companyName.toUpperCase(),
                 ),
               ],
             ),
@@ -78,8 +80,8 @@ class SwissPoster extends PosterTemplate {
                   // Job Title (Dominant)
                   wrapEditable(
                     'jobTitle',
-                    (s) => Text(
-                      data.jobTitle,
+                    (t, s) => Text(
+                      t,
                       style: GoogleFonts.inter(
                         fontSize: 34 * scale,
                         fontWeight: FontWeight.w800,
@@ -91,6 +93,7 @@ class SwissPoster extends PosterTemplate {
                       overflow: TextOverflow.ellipsis,
                       textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: data.jobTitle,
                   ),
 
                   SizedBox(height: 20 * scale),
@@ -122,8 +125,8 @@ class SwissPoster extends PosterTemplate {
                               ),
                               wrapEditable(
                                 'salary',
-                                (s) => Text(
-                                  data.salaryRange,
+                                (t, s) => Text(
+                                  t,
                                   style: GoogleFonts.inter(
                                     fontSize: 15 * scale,
                                     fontWeight: FontWeight.bold,
@@ -131,6 +134,7 @@ class SwissPoster extends PosterTemplate {
                                   ),
                                   textScaler: TextScaler.linear(s),
                                 ),
+                                defaultText: data.salaryRange,
                               ),
                               SizedBox(height: 20 * scale),
                               _buildSwissSection(
@@ -140,8 +144,8 @@ class SwissPoster extends PosterTemplate {
                               ),
                               wrapEditable(
                                 'location',
-                                (s) => Text(
-                                  data.location,
+                                (t, s) => Text(
+                                  t,
                                   style: GoogleFonts.inter(
                                     fontSize: 15 * scale,
                                     fontWeight: FontWeight.w600,
@@ -149,17 +153,18 @@ class SwissPoster extends PosterTemplate {
                                   ),
                                   textScaler: TextScaler.linear(s),
                                 ),
+                                defaultText: data.location,
                               ),
                               SizedBox(height: 20 * scale),
                               _buildSwissSection(
-                                'LIÊN HỆ',
+                                'ỨNG TUYỂN',
                                 scale,
                                 primaryColor,
                               ),
                               wrapEditable(
                                 'contactInfo',
-                                (s) => Text(
-                                  data.contactInfo,
+                                (t, s) => Text(
+                                  t,
                                   style: GoogleFonts.inter(
                                     fontSize:
                                         14 *
@@ -169,6 +174,7 @@ class SwissPoster extends PosterTemplate {
                                   ),
                                   textScaler: TextScaler.linear(s),
                                 ),
+                                defaultText: data.contactInfo,
                               ),
                             ],
                           ),
@@ -269,8 +275,8 @@ class SwissPoster extends PosterTemplate {
           Expanded(
             child: wrapEditable(
               id,
-              (s) => Text(
-                text,
+              (t, s) => Text(
+                t,
                 style: GoogleFonts.inter(
                   fontSize: 13 * scale,
                   color: color,
@@ -279,10 +285,14 @@ class SwissPoster extends PosterTemplate {
                 ),
                 textScaler: TextScaler.linear(s),
               ),
+              defaultText: text,
             ),
           ),
         ],
       ),
     );
   }
+
+  @override
+  String get templateId => 'swiss';
 }

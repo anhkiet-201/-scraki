@@ -42,8 +42,8 @@ class RetroPoster extends PosterTemplate {
                 children: [
                   wrapEditable(
                     'companyName',
-                    (s) => Text(
-                      data.companyName.toUpperCase(),
+                    (t, s) => Text(
+                      t,
                       style: GoogleFonts.roboto(
                         fontSize: 14 * scale,
                         fontWeight: FontWeight.bold,
@@ -52,12 +52,13 @@ class RetroPoster extends PosterTemplate {
                       ),
                       textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: data.companyName.toUpperCase(),
                   ),
                   SizedBox(height: 8 * scale),
                   wrapEditable(
                     'headline',
-                    (s) => Text(
-                      data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
+                    (t, s) => Text(
+                      t,
                       style: GoogleFonts.rye(
                         fontSize: 42 * scale,
                         fontWeight: FontWeight.normal,
@@ -66,6 +67,7 @@ class RetroPoster extends PosterTemplate {
                       textScaler: TextScaler.linear(s),
                       textAlign: TextAlign.center,
                     ),
+                    defaultText: data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
                   ),
                 ],
               ),
@@ -83,8 +85,8 @@ class RetroPoster extends PosterTemplate {
               ),
               child: wrapEditable(
                 'jobTitle',
-                (s) => Text(
-                  data.jobTitle,
+                (t, s) => Text(
+                  t,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.abrilFatface(
                     fontSize: 32 * scale,
@@ -95,6 +97,7 @@ class RetroPoster extends PosterTemplate {
                   overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: data.jobTitle,
               ),
             ),
 
@@ -201,7 +204,7 @@ class RetroPoster extends PosterTemplate {
               child: Column(
                 children: [
                   Text(
-                    'LIÊN HỆ TRỰC TIẾP HOẶC QUA',
+                    'ỨNG TUYỂN',
                     style: GoogleFonts.roboto(
                       fontSize: 10 * scale,
                       color: bgColor,
@@ -211,8 +214,8 @@ class RetroPoster extends PosterTemplate {
                   SizedBox(height: 4 * scale),
                   wrapEditable(
                     'contactInfo',
-                    (s) => Text(
-                      data.contactInfo.toUpperCase(),
+                    (t, s) => Text(
+                      t,
                       style: GoogleFonts.oswald(
                         fontSize: 18 * scale,
                         fontWeight: FontWeight.bold,
@@ -222,6 +225,7 @@ class RetroPoster extends PosterTemplate {
                       overflow: TextOverflow.ellipsis,
                       textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: data.contactInfo.toUpperCase(),
                   ),
                 ],
               ),
@@ -256,8 +260,8 @@ class RetroPoster extends PosterTemplate {
           SizedBox(height: 4 * scale),
           wrapEditable(
             id,
-            (s) => Text(
-              value,
+            (t, s) => Text(
+              t,
               textAlign: TextAlign.center,
               style: GoogleFonts.robotoSlab(
                 fontSize: 12 * scale,
@@ -268,6 +272,7 @@ class RetroPoster extends PosterTemplate {
               overflow: TextOverflow.ellipsis,
               textScaler: TextScaler.linear(s),
             ),
+            defaultText: value,
           ),
         ],
       ),
@@ -284,12 +289,16 @@ class RetroPoster extends PosterTemplate {
       padding: EdgeInsets.only(bottom: 6 * scale),
       child: wrapEditable(
         id,
-        (s) => Text(
-          '- $text',
+        (t, s) => Text(
+          t,
           style: GoogleFonts.robotoSlab(fontSize: 10 * scale, color: color),
           textScaler: TextScaler.linear(s),
         ),
+        defaultText: '- $text',
       ),
     );
   }
+
+  @override
+  String get templateId => 'retro';
 }

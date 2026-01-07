@@ -90,8 +90,8 @@ class CreativePoster extends PosterTemplate {
 
               wrapEditable(
                 'headline',
-                (s) => Text(
-                  data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
+                (text, s) => Text(
+                  text,
                   style: GoogleFonts.poppins(
                     fontSize: 14 * scale,
                     fontWeight: FontWeight.w600,
@@ -101,14 +101,15 @@ class CreativePoster extends PosterTemplate {
                   textAlign: TextAlign.center,
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
               ),
 
               SizedBox(height: 10 * scale),
 
               wrapEditable(
                 'jobTitle',
-                (s) => Text(
-                  data.jobTitle,
+                (text, s) => Text(
+                  text,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 24 * scale,
@@ -118,6 +119,7 @@ class CreativePoster extends PosterTemplate {
                   ),
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: data.jobTitle,
               ),
 
               SizedBox(height: 20 * scale),
@@ -140,8 +142,8 @@ class CreativePoster extends PosterTemplate {
                 ),
                 child: wrapEditable(
                   'salary',
-                  (s) => Text(
-                    data.salaryRange,
+                  (text, s) => Text(
+                    text,
                     style: GoogleFonts.poppins(
                       fontSize: 18 * scale,
                       fontWeight: FontWeight.bold,
@@ -149,6 +151,7 @@ class CreativePoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.salaryRange,
                 ),
               ),
 
@@ -239,8 +242,8 @@ class CreativePoster extends PosterTemplate {
                     SizedBox(height: 8 * scale),
                     wrapEditable(
                       'contactInfo',
-                      (s) => Text(
-                        data.contactInfo, // Replaced "Scan to Apply" with contact info
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -248,18 +251,20 @@ class CreativePoster extends PosterTemplate {
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.contactInfo,
                     ),
                     SizedBox(height: 4 * scale),
                     wrapEditable(
                       'companyName',
-                      (s) => Text(
-                        data.companyName,
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.poppins(
                           color: Colors.white70,
                           fontSize: 14 * scale,
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.companyName,
                     ),
                   ],
                 ),
@@ -286,7 +291,7 @@ class CreativePoster extends PosterTemplate {
           child: id != null
               ? wrapEditable(
                   id,
-                  (s) => Text(
+                  (text, s) => Text(
                     text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
@@ -295,6 +300,7 @@ class CreativePoster extends PosterTemplate {
                     ),
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: text,
                 )
               : Text(
                   text,
@@ -308,4 +314,7 @@ class CreativePoster extends PosterTemplate {
       ],
     );
   }
+  
+  @override
+  String get templateId => 'creative';
 }

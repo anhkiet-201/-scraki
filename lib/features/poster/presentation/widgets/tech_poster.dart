@@ -52,9 +52,8 @@ class TechPoster extends PosterTemplate {
                         children: [
                           wrapEditable(
                             'headline',
-                            (s) => Text(
-                              data.catchyHeadline?.toUpperCase() ??
-                                  'HỆ THỐNG: ĐANG TUYỂN DỤNG',
+                            (t, s) => Text(
+                              t,
                               style: GoogleFonts.orbitron(
                                 fontSize: 12 * scale,
                                 fontWeight: FontWeight.bold,
@@ -63,12 +62,13 @@ class TechPoster extends PosterTemplate {
                               ),
                               textScaler: TextScaler.linear(s),
                             ),
+                            defaultText: data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
                           ),
                           SizedBox(height: 4 * scale),
                           wrapEditable(
                             'companyName',
-                            (s) => Text(
-                              data.companyName.toUpperCase(),
+                            (t, s) => Text(
+                              t,
                               style: GoogleFonts.robotoMono(
                                 fontSize: 16 * scale,
                                 fontWeight: FontWeight.bold,
@@ -76,6 +76,7 @@ class TechPoster extends PosterTemplate {
                               ),
                               textScaler: TextScaler.linear(s),
                             ),
+                            defaultText: data.companyName.toUpperCase(),
                           ),
                         ],
                       ),
@@ -88,8 +89,8 @@ class TechPoster extends PosterTemplate {
                 // Job Title
                 wrapEditable(
                   'jobTitle',
-                  (s) => Text(
-                    data.jobTitle.toUpperCase(),
+                  (t, s) => Text(
+                    t,
                     style: GoogleFonts.orbitron(
                       fontSize: 32 * scale,
                       fontWeight: FontWeight.w900,
@@ -100,6 +101,7 @@ class TechPoster extends PosterTemplate {
                     overflow: TextOverflow.ellipsis,
                     textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle.toUpperCase(),
                 ),
 
                 SizedBox(height: 24 * scale),
@@ -240,8 +242,8 @@ class TechPoster extends PosterTemplate {
                       SizedBox(height: 4 * scale),
                       wrapEditable(
                         'contactInfo',
-                        (s) => Text(
-                          data.contactInfo,
+                        (t, s) => Text(
+                          t,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.robotoMono(
                             fontSize: 16 * scale,
@@ -252,6 +254,7 @@ class TechPoster extends PosterTemplate {
                           overflow: TextOverflow.ellipsis,
                           textScaler: TextScaler.linear(s),
                         ),
+                        defaultText: data.contactInfo,
                       ),
                     ],
                   ),
@@ -284,8 +287,8 @@ class TechPoster extends PosterTemplate {
         SizedBox(height: 4 * scale),
         wrapEditable(
           id,
-          (s) => Text(
-            value,
+          (t, s) => Text(
+            t,
             style: GoogleFonts.robotoMono(
               fontSize: 14 * scale,
               fontWeight: FontWeight.bold,
@@ -295,6 +298,7 @@ class TechPoster extends PosterTemplate {
             overflow: TextOverflow.ellipsis,
             textScaler: TextScaler.linear(s),
           ),
+          defaultText: value,
         ),
       ],
     );
@@ -324,8 +328,8 @@ class TechPoster extends PosterTemplate {
           Expanded(
             child: wrapEditable(
               id,
-              (s) => Text(
-                text,
+              (t, s) => Text(
+                t,
                 style: GoogleFonts.robotoMono(
                   fontSize: 12 * scale,
                   color: textColor,
@@ -333,12 +337,16 @@ class TechPoster extends PosterTemplate {
                 ),
                 textScaler: TextScaler.linear(s),
               ),
+              defaultText: text,
             ),
           ),
         ],
       ),
     );
   }
+
+  @override
+  String get templateId => 'tech';
 }
 
 class GridPainter extends CustomPainter {

@@ -4,12 +4,14 @@ import 'package:scraki/features/poster/presentation/store/poster_customization_s
 
 class EditablePosterElement extends StatelessWidget {
   final String id;
-  final Widget Function(double) builder;
+  final String defaultText;
+  final Widget Function(String, double) builder;
   final PosterCustomizationStore store;
 
   const EditablePosterElement({
     super.key,
     required this.id,
+    required this.defaultText,
     required this.builder,
     required this.store,
   });
@@ -20,9 +22,10 @@ class EditablePosterElement extends StatelessWidget {
       builder: (context) {
         final isSelected = store.selectedFieldId == id;
         final scale = store.getScale(id);
+        final effectiveText = store.getText(id) ?? defaultText;
 
         return GestureDetector(
-          onTap: () => store.selectField(id),
+          onTap: () => store.selectField(id, defaultText: defaultText),
           behavior: HitTestBehavior.translucent,
           child: Container(
             decoration: isSelected
@@ -34,7 +37,7 @@ class EditablePosterElement extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   )
                 : null,
-            child: builder(scale),
+            child: builder(effectiveText, scale),
           ),
         );
       },

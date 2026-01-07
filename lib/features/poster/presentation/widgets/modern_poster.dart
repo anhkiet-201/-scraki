@@ -74,8 +74,8 @@ class ModernPoster extends PosterTemplate {
                       ),
                       child: wrapEditable(
                         'headline',
-                        (s) => Text(
-                          data.catchyHeadline?.toUpperCase() ?? 'HIRING',
+                        (text, s) => Text(
+                          text,
                           style: GoogleFonts.roboto(
                             fontSize: 10 * scale,
                             fontWeight: FontWeight.bold,
@@ -83,13 +83,14 @@ class ModernPoster extends PosterTemplate {
                           ),
                           textScaler: TextScaler.linear(s),
                         ),
+                        defaultText: data.catchyHeadline?.toUpperCase() ?? 'HIRING',
                       ),
                     ),
                     SizedBox(height: 8 * scale),
                     wrapEditable(
                       'jobTitle',
-                      (s) => Text(
-                        data.jobTitle,
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.robotoCondensed(
                           fontSize: 32 * scale,
                           fontWeight: FontWeight.bold,
@@ -100,12 +101,13 @@ class ModernPoster extends PosterTemplate {
                         overflow: TextOverflow.ellipsis,
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.jobTitle,
                     ),
                     SizedBox(height: 4 * scale),
                     wrapEditable(
                       'companyName',
-                      (s) => Text(
-                        data.companyName.toUpperCase(),
+                      (text, s) => Text(
+                        text,
                         style: GoogleFonts.roboto(
                           fontSize: 14 * scale,
                           fontWeight: FontWeight.w500,
@@ -113,6 +115,7 @@ class ModernPoster extends PosterTemplate {
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
+                      defaultText: data.companyName.toUpperCase(),
                     ),
                   ],
                 ),
@@ -251,8 +254,8 @@ class ModernPoster extends PosterTemplate {
                                 ),
                                 wrapEditable(
                                   'contactInfo',
-                                  (s) => Text(
-                                    data.contactInfo,
+                                  (text, s) => Text(
+                                    text,
                                     style: GoogleFonts.roboto(
                                       fontSize: 14 * scale,
                                       color: Colors.white,
@@ -262,6 +265,7 @@ class ModernPoster extends PosterTemplate {
                                     overflow: TextOverflow.ellipsis,
                                     textScaler: TextScaler.linear(s),
                                   ),
+                                  
                                 ),
                               ],
                             ),
@@ -311,8 +315,8 @@ class ModernPoster extends PosterTemplate {
             child: id != null
                 ? wrapEditable(
                     id,
-                    (s) => Text(
-                      text,
+                    (t, s) => Text(
+                      t,
                       style: GoogleFonts.roboto(
                         fontSize: 14 * scale,
                         color: const Color(0xFF485460),
@@ -320,6 +324,7 @@ class ModernPoster extends PosterTemplate {
                       ),
                       textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: text,
                   )
                 : Text(
                     text,
@@ -364,8 +369,8 @@ class ModernPoster extends PosterTemplate {
         id != null
             ? wrapEditable(
                 id,
-                (s) => Text(
-                  value,
+                (t, s) => Text(
+                  t,
                   style: GoogleFonts.roboto(
                     fontSize:
                         14 * scale, // Slightly smaller to prevent overflow
@@ -377,6 +382,7 @@ class ModernPoster extends PosterTemplate {
                   overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.linear(s),
                 ),
+                defaultText: value,
               )
             : Text(
                 value,
@@ -392,4 +398,7 @@ class ModernPoster extends PosterTemplate {
       ],
     );
   }
+  
+  @override
+  String get templateId => "modern";
 }
