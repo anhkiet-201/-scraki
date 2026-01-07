@@ -66,6 +66,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   dio: ^5.9.0
   flutter_dotenv: ^6.0.0
+  pretty_dio_logger: ^1.4.0
 
 dev_dependencies:
   flutter_test:

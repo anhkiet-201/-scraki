@@ -4,20 +4,21 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:injectable/injectable.dart';
+import 'package:scraki/core/network/dio_client.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/repositories/recruitment_repository.dart';
 import '../../../poster/domain/entities/poster_data.dart';
 
 @LazySingleton(as: RecruitmentRepository)
 class RecruitmentRepositoryImpl implements RecruitmentRepository {
-  final Dio _dio;
+  final DioClient _dioClient;
   // Note: GenerativeModel should ideally be injected or configured via a provider.
   // For simplicity, we initialize it here or inject a wrapper.
   // We'll initialize it lazily or assume the key is passed/injected.
   final String _geminiApiKey = AppConfig.geminiApiKey;
   late final GenerativeModel _geminiModel;
 
-  RecruitmentRepositoryImpl(this._dio) {
+  RecruitmentRepositoryImpl(this._dioClient) {
     _geminiModel = GenerativeModel(
       model: AppConfig.geminiModel,
       apiKey: _geminiApiKey,
@@ -27,10 +28,7 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   @override
   Future<Either<Failure, List<PosterData>>> fetchJobsFromApi() async {
     try {
-      // TODO: Add timeout and better error handling
-      final response = await _dio.get<Map<String, dynamic>>(
-        'https://timviec.vieclamhr.com/api/jobs',
-      );
+      final response = await _dioClient.get<Map<String, dynamic>>('/jobs');
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
@@ -53,8 +51,6 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
               ? '$min - $max'
               : (min.isNotEmpty ? '> $min' : 'Thỏa thuận');
 
-          // We'll strip HTML tags from content for a rough description, or use AI later to summarize it.
-          // For now, map basic fields.
           return PosterData(
             jobTitle: (item['title'] as String?) ?? 'Tuyển Dụng',
             companyName: 'VieclamHR',
@@ -73,10 +69,28 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
 
         return right(posters);
       } else {
-        return left(ApiFailure('API Error: ${response.statusCode}'));
+        return left(
+          ApiFailure(
+            'API Error: ${response.statusCode} - ${response.statusMessage}',
+          ),
+        );
       }
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        return left(
+          ConnectionFailure(
+            'Network timeout or connection error: ${e.message}',
+          ),
+        );
+      } else if (e.type == DioExceptionType.badResponse) {
+        return left(ApiFailure('Bad response: ${e.response?.statusCode}'));
+      }
+      return left(ApiFailure('Dio Error: ${e.message}', e));
     } catch (e, stackTrace) {
-      return left(ApiFailure('Failed to fetch jobs', e, stackTrace));
+      return left(ApiFailure('Failed to fetch jobs: $e', e, stackTrace));
     }
   }
 
@@ -142,8 +156,8 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   @override
   Future<Either<Failure, PosterData>> fetchJobDetail(String slug) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        'https://timviec.vieclamhr.com/api/jobs/$slug',
+      final response = await _dioClient.get<Map<String, dynamic>>(
+        '/jobs/$slug',
       );
 
       if (response.statusCode == 200) {

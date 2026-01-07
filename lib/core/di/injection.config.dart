@@ -39,6 +39,7 @@ import '../../features/recruitment/domain/usecases/fetch_jobs_usecase.dart'
     as _i420;
 import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
     as _i405;
+import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
 import 'register_module.dart' as _i291;
@@ -65,8 +66,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
+    gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
     gh.lazySingleton<_i481.RecruitmentRepository>(
-      () => _i240.RecruitmentRepositoryImpl(gh<_i361.Dio>()),
+      () => _i240.RecruitmentRepositoryImpl(gh<_i667.DioClient>()),
     );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
