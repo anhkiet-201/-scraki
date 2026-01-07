@@ -23,10 +23,16 @@ import '../../features/device/data/datasources/scrcpy_socket_client.dart'
     as _i607;
 import '../../features/device/data/datasources/video_worker_manager.dart'
     as _i3;
+import '../../features/device/data/repositories/device_group_repository_impl.dart'
+    as _i454;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
+import '../../features/device/domain/repositories/device_group_repository.dart'
+    as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
+import '../../features/device/presentation/stores/device_group_store.dart'
+    as _i246;
 import '../../features/poster/presentation/stores/poster_creation_store.dart'
     as _i876;
 import '../../features/recruitment/data/repositories/recruitment_repository_impl.dart'
@@ -52,11 +58,11 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
-    gh.factory<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
+    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
     gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
@@ -65,6 +71,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
+    );
+    gh.lazySingleton<_i510.DeviceGroupRepository>(
+      () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
     gh.lazySingleton<_i481.RecruitmentRepository>(
@@ -90,6 +99,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
+    );
+    gh.lazySingleton<_i246.DeviceGroupStore>(
+      () => _i246.DeviceGroupStore(
+        gh<_i510.DeviceGroupRepository>(),
+        gh<_i563.DeviceManagerStore>(),
+        gh<_i891.DashboardStore>(),
+      ),
     );
     return this;
   }

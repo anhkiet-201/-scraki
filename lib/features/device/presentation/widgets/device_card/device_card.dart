@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
-import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/widgets/status_badge.dart';
+import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+
 import '../phone_view/phone_view.dart';
 
 /// A card widget that displays information about a device and provides a mirror action.
@@ -10,14 +13,18 @@ class DeviceCard extends StatefulWidget {
   final DeviceEntity device;
   final VoidCallback onDisconnect;
 
-  const DeviceCard({super.key, required this.device, required this.onDisconnect});
+  const DeviceCard({
+    super.key,
+    required this.device,
+    required this.onDisconnect,
+  });
 
   @override
   State<DeviceCard> createState() => _DeviceCardState();
 }
 
-class _DeviceCardState extends State<DeviceCard> with AutomaticKeepAliveClientMixin {
-
+class _DeviceCardState extends State<DeviceCard>
+    with AutomaticKeepAliveClientMixin {
   // Local UI state using MobX observables
   final Observable<bool> _isHovered = Observable(false);
   final Observable<bool> _hasFocus = Observable(false);
@@ -33,6 +40,70 @@ class _DeviceCardState extends State<DeviceCard> with AutomaticKeepAliveClientMi
     FocusScope.of(context).requestFocus(_cardFocusNode);
   }
 
+  void _showContextMenu(BuildContext context, Offset position) {
+    final store = getIt<DeviceGroupStore>();
+    final allGroups = store.groups;
+    final deviceGroups = allGroups
+        .where((g) => g.deviceSerials.contains(widget.device.serial))
+        .toList();
+    final availableGroups = allGroups
+        .where((g) => !g.deviceSerials.contains(widget.device.serial))
+        .toList();
+
+    showMenu<void>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      items: <PopupMenuEntry<void>>[
+        if (availableGroups.isNotEmpty)
+          PopupMenuItem<void>(
+            child: const Text('Add to Group'),
+            enabled: false, // Just a label or we can make it clickable?
+            // Original plan: "Add to Group" -> List.
+            // Wait, the map below adds the items directly.
+            // So "Add to Group" acts as a section header?
+            // If so, enabled: false is good.
+          ),
+        ...availableGroups.map(
+          (group) => PopupMenuItem<void>(
+            onTap: () => store.addDeviceToGroup(group.id, widget.device.serial),
+            child: Row(
+              children: [
+                Icon(Icons.add, size: 16, color: Color(group.colorValue)),
+                const SizedBox(width: 8),
+                Text(group.name),
+              ],
+            ),
+          ),
+        ),
+        if (deviceGroups.isNotEmpty) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem<void>(
+            child: Text('Remove from Group'),
+            enabled: false,
+          ),
+          ...deviceGroups.map(
+            (group) => PopupMenuItem<void>(
+              onTap: () =>
+                  store.removeDeviceFromGroup(group.id, widget.device.serial),
+              child: Row(
+                children: [
+                  Icon(Icons.remove, size: 16, color: Color(group.colorValue)),
+                  const SizedBox(width: 8),
+                  Text(group.name),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -46,6 +117,8 @@ class _DeviceCardState extends State<DeviceCard> with AutomaticKeepAliveClientMi
           onExit: (_) => runInAction(() => _isHovered.value = false),
           child: GestureDetector(
             onTap: () => _handleCardTap(context),
+            onSecondaryTapDown: (details) =>
+                _showContextMenu(context, details.globalPosition),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.fastOutSlowIn,
@@ -104,64 +177,99 @@ class _DeviceCardState extends State<DeviceCard> with AutomaticKeepAliveClientMi
   }
 
   Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              widget.device.connectionType == ConnectionType.tcp
-                  ? Icons.wifi_rounded
-                  : Icons.usb_rounded,
-              color: colorScheme.onSecondaryContainer,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.device.modelName,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+    final store = getIt<DeviceGroupStore>();
+    // Need to observe store to update dots
+    return Observer(
+      builder: (_) {
+        final deviceGroups = store.groups
+            .where((g) => g.deviceSerials.contains(widget.device.serial))
+            .toList();
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                Text(
-                  widget.device.serial,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                    fontSize: 10,
-                    letterSpacing: 0.5,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                child: Icon(
+                  widget.device.connectionType == ConnectionType.tcp
+                      ? Icons.wifi_rounded
+                      : Icons.usb_rounded,
+                  color: colorScheme.onSecondaryContainer,
+                  size: 18,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            widget.device.modelName,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Group Dots
+                        if (deviceGroups.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          ...deviceGroups.map(
+                            (g) => Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Color(g.colorValue),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      widget.device.serial,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.7,
+                        ),
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              StatusBadge(status: widget.device.status),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: widget.onDisconnect,
+                style: IconButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          StatusBadge(status: widget.device.status),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 18),
-            onPressed: widget.onDisconnect,
-            style: IconButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              foregroundColor: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
-  
+
   @override
   bool get wantKeepAlive => true;
 }

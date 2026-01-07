@@ -27,3 +27,7 @@ class ParsingFailure extends Failure {
 class ApiFailure extends Failure {
   const ApiFailure(super.message, [super.error, super.stackTrace]);
 }
+
+class CacheFailure extends Failure {
+  const CacheFailure(super.message, [super.error, super.stackTrace]);
+}
