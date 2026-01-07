@@ -148,4 +148,45 @@ abstract class _DeviceManagerStore with Store {
   void clearSelection() {
     selectedSerials.clear();
   }
+
+  /// Kết nối tới các Box trong dải IP 192.168.1.20 -> 192.168.96.20
+  @action
+  Future<void> connectToBox() async {
+    errorMessage = null;
+
+    // Wrap to show loading
+    loadDevicesFuture = ObservableFuture(_connectToBoxInternal());
+    await loadDevicesFuture;
+  }
+
+  Future<void> _connectToBoxInternal() async {
+    // 1. Restart ADB
+    logger.i('[DeviceManagerStore] Restarting ADB Server...');
+    final restartResult = await _repository.restartAdb();
+
+    if (restartResult.isLeft()) {
+      runInAction(() => errorMessage = "Failed to restart ADB");
+      return;
+    }
+
+    // 2. Build IP list
+    final ips = List.generate(96, (index) => '192.168.${index + 1}.20');
+
+    // 3. Connect in batches to avoid overwhelming ADB
+    const batchSize = 10;
+    for (var i = 0; i < ips.length; i += batchSize) {
+      final end = (i + batchSize < ips.length) ? i + batchSize : ips.length;
+      final batch = ips.sublist(i, end);
+
+      logger.i(
+        '[DeviceManagerStore] Connecting batch: ${batch.first} - ${batch.last}',
+      );
+
+      // Run batch in parallel but ignore individual failures
+      await Future.wait(batch.map((ip) => _repository.connectTcp(ip, 5555)));
+    }
+
+    // 4. Reload devices
+    await _loadDevicesInternal();
+  }
 }

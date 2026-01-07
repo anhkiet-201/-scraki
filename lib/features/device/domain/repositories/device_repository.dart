@@ -11,4 +11,7 @@ abstract class DeviceRepository {
 
   /// Disconnects a device.
   Future<Either<Failure, Unit>> disconnectDevice(String serial);
+
+  /// Restarts the ADB server.
+  Future<Either<Failure, Unit>> restartAdb();
 }

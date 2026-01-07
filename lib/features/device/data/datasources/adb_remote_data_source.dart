@@ -6,6 +6,7 @@ abstract class IAdbRemoteDataSource {
   Future<String> getConnectedDevicesOutput();
   Future<void> connectTcp(String ip, int port);
   Future<void> disconnect(String serial);
+  Future<void> restartServer();
 
   /// Lấy danh sách packages đã cài đặt trên device
   /// [serial] - Device serial number
@@ -73,6 +74,16 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       await _shell.run(cmd);
     } catch (e) {
       throw ServerException('Failed to execute $cmd: $e');
+    }
+  }
+
+  @override
+  Future<void> restartServer() async {
+    try {
+      await _shell.run('adb kill-server');
+      await _shell.run('adb start-server');
+    } catch (e) {
+      throw ServerException('Failed to restart ADB server: $e');
     }
   }
 

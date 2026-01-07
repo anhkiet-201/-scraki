@@ -32,77 +32,73 @@ class DashboardScreen extends StatelessWidget
             child: Observer(
               builder: (_) {
                 return Column(
-                        children: [
-                          _buildTopBar(theme),
-                          Expanded(
-                            child: Observer(
-                              builder: (_) {
-                                final futureStatus = deviceManagerStore
-                                    .loadDevicesFuture
-                                    ?.status;
-                                final errorMessage =
-                                    deviceManagerStore.errorMessage;
+                  children: [
+                    _buildTopBar(theme),
+                    Expanded(
+                      child: Observer(
+                        builder: (_) {
+                          final futureStatus =
+                              deviceManagerStore.loadDevicesFuture?.status;
+                          final errorMessage = deviceManagerStore.errorMessage;
 
-                                if (futureStatus == FutureStatus.pending &&
-                                    deviceManagerStore.devices.isEmpty) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                }
+                          if (futureStatus == FutureStatus.pending &&
+                              deviceManagerStore.devices.isEmpty) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                                if (errorMessage != null &&
-                                    deviceManagerStore.devices.isEmpty) {
-                                  return _buildErrorView(errorMessage);
-                                }
-                                return LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    return Stack(
-                                      fit: StackFit.expand,
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        RefreshIndicator(
-                                          onRefresh:
-                                              deviceManagerStore.loadDevices,
-                                          child: DeviceGrid(
-                                            devices: deviceManagerStore.devices
-                                                .toList(),
-                                            onDisconnect: (device) {
-                                              deviceManagerStore.disconnect(
-                                                device.serial,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        Observer(
-                                          builder: (_) {
-                                            final isVisible =
-                                                sessionManagerStore
-                                                    .isFloatingVisible;
-                                            final serial = sessionManagerStore
-                                                .floatingSerial;
+                          if (errorMessage != null &&
+                              deviceManagerStore.devices.isEmpty) {
+                            return _buildErrorView(errorMessage);
+                          }
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Stack(
+                                fit: StackFit.expand,
+                                clipBehavior: Clip.none,
+                                children: [
+                                  RefreshIndicator(
+                                    onRefresh: deviceManagerStore.loadDevices,
+                                    child: DeviceGrid(
+                                      devices: deviceManagerStore.devices
+                                          .toList(),
+                                      onDisconnect: (device) {
+                                        deviceManagerStore.disconnect(
+                                          device.serial,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Observer(
+                                    builder: (_) {
+                                      final isVisible =
+                                          sessionManagerStore.isFloatingVisible;
+                                      final serial =
+                                          sessionManagerStore.floatingSerial;
 
-                                            if (!isVisible) {
-                                              return const SizedBox.shrink();
-                                            }
+                                      if (!isVisible) {
+                                        return const SizedBox.shrink();
+                                      }
 
-                                            return FloatingPhoneView(
-                                              key: ValueKey('floating_$serial'),
-                                              serial: serial!,
-                                              parentSize: constraints.biggest,
-                                              onClose: () => sessionManagerStore
-                                                  .toggleFloating(null),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      );
+                                      return FloatingPhoneView(
+                                        key: ValueKey('floating_$serial'),
+                                        serial: serial!,
+                                        parentSize: constraints.biggest,
+                                        onClose: () => sessionManagerStore
+                                            .toggleFloating(null),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
               },
             ),
           ),
@@ -181,6 +177,30 @@ class DashboardScreen extends StatelessWidget
             icon: const Icon(Icons.add),
             onPressed: () {},
             tooltip: 'Add Device',
+          ),
+          const SizedBox(width: 8),
+          Observer(
+            builder: (_) {
+              if (deviceManagerStore.isLoading) {
+                return const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              return IconButton.filled(
+                icon: const Icon(Icons.cast_connected),
+                onPressed: () => deviceManagerStore.connectToBox(),
+                tooltip: 'Connect Box (192.168.x.20)',
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.tertiary,
+                  foregroundColor: theme.colorScheme.onTertiary,
+                ),
+              );
+            },
           ),
         ],
       ),

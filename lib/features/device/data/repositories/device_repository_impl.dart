@@ -49,4 +49,16 @@ class DeviceRepositoryImpl implements DeviceRepository {
       return Left(const AdbFailure('Unexpected error during disconnect'));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> restartAdb() async {
+    try {
+      await _remoteDataSource.restartServer();
+      return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(AdbFailure(e.message));
+    } catch (e) {
+      return Left(const AdbFailure('Unexpected error during ADB restart'));
+    }
+  }
 }
