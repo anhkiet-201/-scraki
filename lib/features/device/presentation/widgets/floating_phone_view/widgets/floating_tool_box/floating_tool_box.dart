@@ -27,6 +27,8 @@ class FloatingToolBox extends StatefulWidget {
   final void Function(PosterData) onJobSelected;
   final PosterData? posterData;
   final bool isGenerating;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   const FloatingToolBox({
     super.key,
@@ -36,6 +38,8 @@ class FloatingToolBox extends StatefulWidget {
     required this.onJobSelected,
     this.posterData,
     this.isGenerating = false,
+    this.errorMessage,
+    this.onRetry,
   });
 
   @override
@@ -118,6 +122,8 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                 posterData: widget.posterData,
                 customizationStore: _customizationStore,
                 posterKey: _posterKey,
+                errorMessage: widget.errorMessage,
+                onRetry: widget.onRetry,
               ),
               Column(
                 children: [

@@ -79,15 +79,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i420.FetchJobsUseCase>(
       () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i985.DeviceRepository>(
-      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
-    );
     gh.lazySingleton<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),
-        gh<_i833.FetchJobDetailUseCase>(),
       ),
+    );
+    gh.lazySingleton<_i985.DeviceRepository>(
+      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),

@@ -22,6 +22,8 @@ class PosterPanel extends StatefulWidget {
   final PosterData? posterData;
   final PosterCustomizationStore customizationStore;
   final GlobalKey posterKey;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   const PosterPanel({
     super.key,
@@ -30,6 +32,8 @@ class PosterPanel extends StatefulWidget {
     required this.posterData,
     required this.customizationStore,
     required this.posterKey,
+    this.errorMessage,
+    this.onRetry,
   });
 
   @override
@@ -136,6 +140,56 @@ class _PosterPanelState extends State<PosterPanel> {
             height: widget.height - 87,
             child: widget.isGenerating
                 ? GeminiSkeletonLayout()
+                : widget.errorMessage != null
+                ? Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: Colors.red,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.errorMessage!,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (widget.onRetry != null) ...[
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: widget.onRetry,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.withValues(
+                                alpha: 0.1,
+                              ),
+                              foregroundColor: Colors.red,
+                              shadowColor: Colors.transparent,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Colors.red.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Thử lại'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       final data =

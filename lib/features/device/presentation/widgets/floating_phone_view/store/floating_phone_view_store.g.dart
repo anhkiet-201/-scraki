@@ -99,6 +99,42 @@ mixin _$FloatingPhoneViewStore on _FloatingPhoneViewStore, Store {
     });
   }
 
+  late final _$errorMessageAtom = Atom(
+    name: '_FloatingPhoneViewStore.errorMessage',
+    context: context,
+  );
+
+  @override
+  String? get errorMessage {
+    _$errorMessageAtom.reportRead();
+    return super.errorMessage;
+  }
+
+  @override
+  set errorMessage(String? value) {
+    _$errorMessageAtom.reportWrite(value, super.errorMessage, () {
+      super.errorMessage = value;
+    });
+  }
+
+  late final _$lastSelectedJobAtom = Atom(
+    name: '_FloatingPhoneViewStore.lastSelectedJob',
+    context: context,
+  );
+
+  @override
+  PosterData? get lastSelectedJob {
+    _$lastSelectedJobAtom.reportRead();
+    return super.lastSelectedJob;
+  }
+
+  @override
+  set lastSelectedJob(PosterData? value) {
+    _$lastSelectedJobAtom.reportWrite(value, super.lastSelectedJob, () {
+      super.lastSelectedJob = value;
+    });
+  }
+
   late final _$_FloatingPhoneViewStoreActionController = ActionController(
     name: '_FloatingPhoneViewStore',
     context: context,
@@ -173,13 +209,39 @@ mixin _$FloatingPhoneViewStore on _FloatingPhoneViewStore, Store {
   }
 
   @override
+  void setErrorMessage(String? message) {
+    final _$actionInfo = _$_FloatingPhoneViewStoreActionController.startAction(
+      name: '_FloatingPhoneViewStore.setErrorMessage',
+    );
+    try {
+      return super.setErrorMessage(message);
+    } finally {
+      _$_FloatingPhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setLastSelectedJob(PosterData? job) {
+    final _$actionInfo = _$_FloatingPhoneViewStoreActionController.startAction(
+      name: '_FloatingPhoneViewStore.setLastSelectedJob',
+    );
+    try {
+      return super.setLastSelectedJob(job);
+    } finally {
+      _$_FloatingPhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 position: ${position},
 width: ${width},
 height: ${height},
 isGeneratingPoster: ${isGeneratingPoster},
-selectedPosterData: ${selectedPosterData}
+selectedPosterData: ${selectedPosterData},
+errorMessage: ${errorMessage},
+lastSelectedJob: ${lastSelectedJob}
     ''';
   }
 }

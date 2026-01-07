@@ -1,6 +1,5 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
-import 'package:scraki/features/recruitment/domain/usecases/fetch_job_detail_usecase.dart';
 import 'package:scraki/features/recruitment/domain/usecases/fetch_jobs_usecase.dart';
 import 'package:scraki/features/recruitment/domain/usecases/parse_job_text_usecase.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
@@ -8,17 +7,16 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 part 'poster_creation_store.g.dart';
 
 @lazySingleton
+// ignore: library_private_types_in_public_api
 class PosterCreationStore = _PosterCreationStore with _$PosterCreationStore;
 
 abstract class _PosterCreationStore with Store {
   final ParseJobTextUseCase _parseJobTextUseCase;
   final FetchJobsUseCase _fetchJobsUseCase;
-  final FetchJobDetailUseCase _fetchJobDetailUseCase;
 
   _PosterCreationStore(
     this._parseJobTextUseCase,
     this._fetchJobsUseCase,
-    this._fetchJobDetailUseCase,
   );
 
   /// Current step in the wizard
@@ -91,35 +89,24 @@ abstract class _PosterCreationStore with Store {
     errorMessage = null;
 
     try {
-      PosterData jobToParse = job;
-
-      // 1. Fetch detailed info if slug exists
-      if (job.slug != null && job.slug!.isNotEmpty) {
-        final detailResult = await _fetchJobDetailUseCase(job.slug!);
-        if (detailResult.isRight()) {
-          jobToParse = detailResult.getRight().toNullable() ?? job;
-        }
-      }
-
       // 2. Parse AI content
-      if (jobToParse.rawContent != null && jobToParse.rawContent!.isNotEmpty) {
-        final parseResult = await _parseJobTextUseCase(jobToParse.rawContent!);
-
+      if (job.rawContent != null && job.rawContent!.isNotEmpty) {
+        final parseResult = await _parseJobTextUseCase(job.rawContent!);
         parseResult.fold(
           (failure) {
             errorMessage = failure.message;
-            currentPosterData = jobToParse; // Fallback to raw detail
+            currentPosterData = job; // Fallback to raw detail
           },
           (parsedData) {
-            // 3. Merge Images + Slug from Detail into Parsed Data (which only has text fields)
             currentPosterData = parsedData.copyWith(
-              slug: jobToParse.slug,
-              imageUrls: jobToParse.imageUrls,
+              slug: job.slug,
+              imageUrls: job.imageUrls,
+              salaryRange: job.salaryRange,
             );
           },
         );
       } else {
-        currentPosterData = jobToParse;
+        currentPosterData = job;
       }
 
       currentStep = 1; // Move to Editor

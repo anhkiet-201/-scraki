@@ -111,6 +111,22 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
     selectedPosterData = data;
   }
 
+  @observable
+  String? errorMessage;
+
+  @action
+  void setErrorMessage(String? message) {
+    errorMessage = message;
+  }
+
+  @observable
+  PosterData? lastSelectedJob;
+
+  @action
+  void setLastSelectedJob(PosterData? job) {
+    lastSelectedJob = job;
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════════════════════

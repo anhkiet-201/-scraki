@@ -10,6 +10,7 @@ import 'widgets/floating_tool_box/floating_tool_box.dart';
 import 'widgets/floating_window_header.dart';
 import 'widgets/floating_resize_handle.dart';
 import 'store/floating_phone_view_store.dart';
+import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
 /// Widget hiển thị cửa sổ điện thoại nổi (Floating Window).
 ///
@@ -206,20 +207,12 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                 ),
                 posterData: _store.selectedPosterData,
                 isGenerating: _store.isGeneratingPoster,
-                onJobSelected: (job) async {
-                  runInAction(() => _store.setGeneratingPoster(true));
-
-                  final posterStore = inject<PosterCreationStore>();
-                  await posterStore.selectJob(job);
-
-                  runInAction(() {
-                    _store.setGeneratingPoster(false);
-                    if (posterStore.currentPosterData != null) {
-                      _store.setSelectedPosterData(
-                        posterStore.currentPosterData,
-                      );
-                    }
-                  });
+                errorMessage: _store.errorMessage,
+                onJobSelected: (job) => _handleJobSelection(job),
+                onRetry: () {
+                  if (_store.lastSelectedJob != null) {
+                    _handleJobSelection(_store.lastSelectedJob!);
+                  }
                 },
               ),
             ],
@@ -227,5 +220,26 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
         );
       },
     );
+  }
+
+  Future<void> _handleJobSelection(PosterData job) async {
+    runInAction(() {
+      _store.setGeneratingPoster(true);
+      _store.setErrorMessage(null);
+      _store.setLastSelectedJob(job);
+    });
+
+    final posterStore = inject<PosterCreationStore>();
+    await posterStore.selectJob(job);
+
+    runInAction(() {
+      _store.setGeneratingPoster(false);
+      if (posterStore.currentPosterData != null) {
+        _store.setSelectedPosterData(posterStore.currentPosterData);
+      }
+      if (posterStore.errorMessage != null) {
+        _store.setErrorMessage(posterStore.errorMessage);
+      }
+    });
   }
 }
