@@ -1,6 +1,6 @@
 import 'package:fpdart/fpdart.dart';
-import '../../core/error/failures.dart';
-import '../../features/poster/domain/entities/poster_data.dart';
+import '../../../../core/error/failures.dart';
+import '../../../poster/domain/entities/poster_data.dart';
 
 /// Interface for fetching recruitment data.
 /// Implementations can be AI-based (parsing text) or API-based.

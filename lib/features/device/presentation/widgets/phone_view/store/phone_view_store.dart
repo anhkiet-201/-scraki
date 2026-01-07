@@ -10,7 +10,7 @@ import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_client.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_service.dart';
 import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
-import 'package:scraki/core/utils/scrcpy_input_serializer.dart';
+import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
@@ -131,7 +131,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @computed
   String? get floatingSerial => sessionManagerStore.floatingSerial;
-  set floatingSerial(String? serial) => sessionManagerStore.floatingSerial = serial;
+  set floatingSerial(String? serial) =>
+      sessionManagerStore.floatingSerial = serial;
 
   @computed
   bool get isFloatingVisible => sessionManagerStore.isFloatingVisible;
@@ -513,7 +514,10 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         '[SessionManagerStore] Successfully pushed ${paths.length} files to $serial',
       );
     } catch (e) {
-      logger.e('[SessionManagerStore] Failed to push files to $sessionId', error: e);
+      logger.e(
+        '[SessionManagerStore] Failed to push files to $sessionId',
+        error: e,
+      );
       runInAction(() => error = 'Failed to push files: $e');
     } finally {
       runInAction(() => isPushingFile = false);

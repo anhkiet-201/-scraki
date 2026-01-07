@@ -13,11 +13,6 @@ import 'package:dio/dio.dart' as _i361;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 
-import '../../data/repositories/recruitment_repository_impl.dart' as _i1060;
-import '../../domain/repositories/recruitment_repository.dart' as _i871;
-import '../../domain/usecase/fetch_job_detail_usecase.dart' as _i797;
-import '../../domain/usecase/fetch_jobs_usecase.dart' as _i75;
-import '../../domain/usecase/parse_job_text_usecase.dart' as _i974;
 import '../../features/dashboard/presentation/stores/dashboard_store.dart'
     as _i891;
 import '../../features/device/data/datasources/adb_remote_data_source.dart'
@@ -34,6 +29,16 @@ import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
 import '../../features/poster/presentation/stores/poster_creation_store.dart'
     as _i876;
+import '../../features/recruitment/data/repositories/recruitment_repository_impl.dart'
+    as _i240;
+import '../../features/recruitment/domain/repositories/recruitment_repository.dart'
+    as _i481;
+import '../../features/recruitment/domain/usecases/fetch_job_detail_usecase.dart'
+    as _i833;
+import '../../features/recruitment/domain/usecases/fetch_jobs_usecase.dart'
+    as _i420;
+import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
+    as _i405;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
 import 'register_module.dart' as _i291;
@@ -60,27 +65,27 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
-    gh.lazySingleton<_i871.RecruitmentRepository>(
-      () => _i1060.RecruitmentRepositoryImpl(gh<_i361.Dio>()),
+    gh.lazySingleton<_i481.RecruitmentRepository>(
+      () => _i240.RecruitmentRepositoryImpl(gh<_i361.Dio>()),
     );
-    gh.lazySingleton<_i797.FetchJobDetailUseCase>(
-      () => _i797.FetchJobDetailUseCase(gh<_i871.RecruitmentRepository>()),
+    gh.lazySingleton<_i833.FetchJobDetailUseCase>(
+      () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i974.ParseJobTextUseCase>(
-      () => _i974.ParseJobTextUseCase(gh<_i871.RecruitmentRepository>()),
+    gh.lazySingleton<_i405.ParseJobTextUseCase>(
+      () => _i405.ParseJobTextUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i75.FetchJobsUseCase>(
-      () => _i75.FetchJobsUseCase(gh<_i871.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i876.PosterCreationStore>(
-      () => _i876.PosterCreationStore(
-        gh<_i974.ParseJobTextUseCase>(),
-        gh<_i75.FetchJobsUseCase>(),
-        gh<_i797.FetchJobDetailUseCase>(),
-      ),
+    gh.lazySingleton<_i420.FetchJobsUseCase>(
+      () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
+    );
+    gh.lazySingleton<_i876.PosterCreationStore>(
+      () => _i876.PosterCreationStore(
+        gh<_i405.ParseJobTextUseCase>(),
+        gh<_i420.FetchJobsUseCase>(),
+        gh<_i833.FetchJobDetailUseCase>(),
+      ),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),

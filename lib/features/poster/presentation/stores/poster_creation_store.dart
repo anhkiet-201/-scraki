@@ -1,10 +1,9 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
-import 'package:scraki/domain/usecase/fetch_job_detail_usecase.dart';
-import 'package:scraki/domain/usecase/fetch_jobs_usecase.dart';
-import 'package:scraki/domain/usecase/parse_job_text_usecase.dart';
+import 'package:scraki/features/recruitment/domain/usecases/fetch_job_detail_usecase.dart';
+import 'package:scraki/features/recruitment/domain/usecases/fetch_jobs_usecase.dart';
+import 'package:scraki/features/recruitment/domain/usecases/parse_job_text_usecase.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
-
 
 part 'poster_creation_store.g.dart';
 

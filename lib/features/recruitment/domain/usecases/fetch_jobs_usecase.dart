@@ -1,9 +1,9 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 
-import '../../core/error/failures.dart';
-import '../../features/poster/domain/entities/poster_data.dart';
-import '../../domain/repositories/recruitment_repository.dart';
+import '../../../../core/error/failures.dart';
+import '../../../poster/domain/entities/poster_data.dart';
+import '../repositories/recruitment_repository.dart';
 
 @lazySingleton
 class FetchJobsUseCase {

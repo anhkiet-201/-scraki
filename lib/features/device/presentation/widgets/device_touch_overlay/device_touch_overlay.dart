@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:scraki/core/utils/scrcpy_input_serializer.dart';
+import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 
 class DeviceTouchOverlay extends StatelessWidget {
   final Size originalScreenSize;

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scraki/core/utils/scrcpy_input_serializer.dart';
+import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 
 void main() {
   group('ScrcpyInputSerializer', () {

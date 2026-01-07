@@ -120,6 +120,17 @@ mixin _$PosterCustomizationStore on _PosterCustomizationStore, Store {
   }
 
   @override
+  void resetText() {
+    final _$actionInfo = _$_PosterCustomizationStoreActionController
+        .startAction(name: '_PosterCustomizationStore.resetText');
+    try {
+      return super.resetText();
+    } finally {
+      _$_PosterCustomizationStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 selectedFieldId: ${selectedFieldId},
