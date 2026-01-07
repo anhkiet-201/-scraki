@@ -5,6 +5,7 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/widgets/status_badge.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+import 'package:scraki/core/widgets/box_card_menu.dart';
 
 import '../phone_view/phone_view.dart';
 
@@ -50,53 +51,37 @@ class _DeviceCardState extends State<DeviceCard>
         .where((g) => !g.deviceSerials.contains(widget.device.serial))
         .toList();
 
-    showMenu<void>(
+    BoxCardMenu.show<void>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx,
-        position.dy,
-      ),
-      items: <PopupMenuEntry<void>>[
-        if (availableGroups.isNotEmpty)
-          PopupMenuItem<void>(
-            child: const Text('Add to Group'),
-            enabled: false, // Just a label or we can make it clickable?
-            // Original plan: "Add to Group" -> List.
-            // Wait, the map below adds the items directly.
-            // So "Add to Group" acts as a section header?
-            // If so, enabled: false is good.
-          ),
-        ...availableGroups.map(
-          (group) => PopupMenuItem<void>(
-            onTap: () => store.addDeviceToGroup(group.id, widget.device.serial),
-            child: Row(
-              children: [
-                Icon(Icons.add, size: 16, color: Color(group.colorValue)),
-                const SizedBox(width: 8),
-                Text(group.name),
-              ],
+      position: position,
+      width: 250,
+      items: [
+        if (availableGroups.isNotEmpty) ...[
+          const BoxCardMenuHeader(title: 'Add to Group'),
+          ...availableGroups.map(
+            (group) => BoxCardMenuItem(
+              icon: Icon(
+                Icons.add_circle_outline,
+                color: Color(group.colorValue),
+              ),
+              label: Text(group.name),
+              onTap: () =>
+                  store.addDeviceToGroup(group.id, widget.device.serial),
             ),
           ),
-        ),
+        ],
         if (deviceGroups.isNotEmpty) ...[
-          const PopupMenuDivider(),
-          const PopupMenuItem<void>(
-            child: Text('Remove from Group'),
-            enabled: false,
-          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          const BoxCardMenuHeader(title: 'Remove from Group'),
           ...deviceGroups.map(
-            (group) => PopupMenuItem<void>(
+            (group) => BoxCardMenuItem(
+              icon: Icon(
+                Icons.remove_circle_outline,
+                color: Color(group.colorValue),
+              ),
+              label: Text(group.name),
               onTap: () =>
                   store.removeDeviceFromGroup(group.id, widget.device.serial),
-              child: Row(
-                children: [
-                  Icon(Icons.remove, size: 16, color: Color(group.colorValue)),
-                  const SizedBox(width: 8),
-                  Text(group.name),
-                ],
-              ),
             ),
           ),
         ],

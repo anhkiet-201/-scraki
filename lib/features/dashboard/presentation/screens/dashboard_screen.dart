@@ -5,7 +5,7 @@ import 'package:scraki/core/mixins/device_manager_store_mixin.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/screens/widgets/device_search_bar.dart';
-import 'package:scraki/features/dashboard/presentation/screens/widgets/group_sidebar.dart';
+import 'package:scraki/features/dashboard/presentation/screens/widgets/group_horizontal_selector.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
@@ -32,87 +32,79 @@ class DashboardScreen extends StatelessWidget
         children: [
           _buildNavigationRail(theme, dashboardStore),
           const VerticalDivider(thickness: 1, width: 1),
-          // Group Sidebar
-          const GroupSidebar(),
-          const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: Observer(
-              builder: (_) {
-                return Column(
-                  children: [
-                    _buildTopBar(theme, dashboardStore),
-                    Expanded(
-                      child: Observer(
-                        builder: (_) {
-                          final futureStatus =
-                              deviceManagerStore.loadDevicesFuture?.status;
-                          final errorMessage = deviceManagerStore.errorMessage;
+            child: Column(
+              children: [
+                _buildTopBar(theme, dashboardStore),
+                const GroupHorizontalSelector(),
+                Expanded(
+                  child: Observer(
+                    builder: (_) {
+                      final futureStatus =
+                          deviceManagerStore.loadDevicesFuture?.status;
+                      final errorMessage = deviceManagerStore.errorMessage;
 
-                          if (futureStatus == FutureStatus.pending &&
-                              deviceManagerStore.devices.isEmpty) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+                      if (futureStatus == FutureStatus.pending &&
+                          deviceManagerStore.devices.isEmpty) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                          if (errorMessage != null &&
-                              deviceManagerStore.devices.isEmpty) {
-                            return _buildErrorView(errorMessage);
-                          }
-                          return LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Stack(
-                                fit: StackFit.expand,
-                                clipBehavior: Clip.none,
-                                children: [
-                                  RefreshIndicator(
-                                    onRefresh: deviceManagerStore.loadDevices,
-                                    child: Observer(
-                                      builder: (_) {
-                                        return DeviceGrid(
-                                          devices: deviceManagerStore.devices
-                                              .toList(), // Pass full list
-                                          visibleSerials:
-                                              deviceGroupStore.visibleSerials,
-                                          onDisconnect: (device) {
-                                            deviceManagerStore.disconnect(
-                                              device.serial,
-                                            );
-                                          },
+                      if (errorMessage != null &&
+                          deviceManagerStore.devices.isEmpty) {
+                        return _buildErrorView(errorMessage);
+                      }
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Stack(
+                            fit: StackFit.expand,
+                            clipBehavior: Clip.none,
+                            children: [
+                              RefreshIndicator(
+                                onRefresh: deviceManagerStore.loadDevices,
+                                child: Observer(
+                                  builder: (_) {
+                                    return DeviceGrid(
+                                      devices: deviceManagerStore.devices
+                                          .toList(), // Pass full list
+                                      visibleSerials:
+                                          deviceGroupStore.visibleSerials,
+                                      onDisconnect: (device) {
+                                        deviceManagerStore.disconnect(
+                                          device.serial,
                                         );
                                       },
-                                    ),
-                                  ),
-                                  Observer(
-                                    builder: (_) {
-                                      final isVisible =
-                                          sessionManagerStore.isFloatingVisible;
-                                      final serial =
-                                          sessionManagerStore.floatingSerial;
+                                    );
+                                  },
+                                ),
+                              ),
+                              Observer(
+                                builder: (_) {
+                                  final isVisible =
+                                      sessionManagerStore.isFloatingVisible;
+                                  final serial =
+                                      sessionManagerStore.floatingSerial;
 
-                                      if (!isVisible) {
-                                        return const SizedBox.shrink();
-                                      }
+                                  if (!isVisible) {
+                                    return const SizedBox.shrink();
+                                  }
 
-                                      return FloatingPhoneView(
-                                        key: ValueKey('floating_$serial'),
-                                        serial: serial!,
-                                        parentSize: constraints.biggest,
-                                        onClose: () => sessionManagerStore
-                                            .toggleFloating(null),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
+                                  return FloatingPhoneView(
+                                    key: ValueKey('floating_$serial'),
+                                    serial: serial!,
+                                    parentSize: constraints.biggest,
+                                    onClose: () => sessionManagerStore
+                                        .toggleFloating(null),
+                                  );
+                                },
+                              ),
+                            ],
                           );
                         },
-                      ),
-                    ),
-                  ],
-                );
-              },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
