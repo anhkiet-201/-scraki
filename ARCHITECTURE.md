@@ -19,12 +19,14 @@ lib/
 │   ├── network/              # Network clients (Dio, HTTP)
 │   ├── utils/                # Utilities and extensions
 │   └── widgets/              # Reusable UI components
+│       ├── box_card.dart                   # Glassmorphism container
+│       └── box_card_menu.dart              # Premium context menu
 │
 ├── features/                 # Feature modules (Clean Architecture)
 │   ├── device/               # Device mirroring & management
-│   │   ├── data/             # Repositories impl, datasources, DTOs
-│   │   ├── domain/           # Entities, repository interfaces
-│   │   └── presentation/     # Stores, screens, widgets
+│   │   ├── data/             # Repositories impl (including DeviceGroup), datasources, DTOs
+│   │   ├── domain/           # Entities (Device, DeviceGroup), repository interfaces
+│   │   └── presentation/     # Stores (Mirroring, Group), screens, widgets
 │   ├── poster/               # Poster creation feature
 │   ├── dashboard/            # Dashboard feature
 │   └── recruitment/          # Recruitment feature
@@ -57,7 +59,8 @@ Each feature has its own stores for local UI state:
 - `PhoneViewStore`: Manages visibility tracking, file drag/drop, focus state
 - `FloatingPhoneViewStore`: Manages floating window position, size, poster workflow
 - `FloatingToolBoxStore`: Manages tool box UI state
-- `DashboardStore`: Manages dashboard screen state
+- `DashboardStore`: Manages dashboard screen and navigation state
+- `DeviceGroupStore`: Manages group list, selection, and device filtering logic
 
 ### Store Access Pattern
 
@@ -138,6 +141,20 @@ graph LR
     E -->|macOS| F[AVAudioEngine]
     E -->|Windows| G[WASAPI]
 ```
+
+### Premium UI & Glassmorphism
+
+Scraki uses a custom design system based on glassmorphism principles:
+
+- **BoxCard**: A fundamental container that combines `BackdropFilter` (blur), semi-transparent surface colors, and sophisticated shadows to create a premium "glass" look.
+- **BoxCardMenu**: A custom context menu implementation that uses `BoxCard` and specific `Overlay` logic to provide a consistent, high-end experience for device actions.
+
+### Dashboard & Grouping
+
+The dashboard layout was optimized to prioritize screen real estate while maintaining quick access to device groups:
+
+- **Horizontal Group Selector**: Replaced the vertical sidebar with a scrollable horizontal list of chips. This allows the device grid to span the full width of the screen.
+- **Pinpoint Reactivity**: Group selection is managed by `DeviceGroupStore` and uses granular `Observer` widgets to ensure the UI updates instantly without full-screen rebuilds.
 
 ## Dependency Injection
 

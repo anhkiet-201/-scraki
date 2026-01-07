@@ -14,6 +14,8 @@ Scraki is a powerful Flutter desktop application for mirroring and controlling A
 - **📋 Clipboard Sync**: Seamless clipboard integration (Cmd+V support)
 - **🏗️ Clean Architecture**: Feature-based structure for scalability
 - **📱 Multi-Device**: Control multiple devices simultaneously in grid or floating mode
+- **📂 Device Grouping**: Organize devices into groups with custom colors and horizontal filtering
+- **✨ Premium UI**: Sophisticated glassmorphism aesthetic with specialized `BoxCard` and `BoxCardMenu` components
 
 ## 🏛️ Architecture
 
@@ -40,9 +42,9 @@ lib/
 │   ├── stores/         # Global stores (DeviceManager, SessionManager)
 │   └── mixins/
 ├── features/           # Feature modules
-│   ├── device/         # Device mirroring (data, domain, presentation)
+│   ├── device/         # Device mirroring & group management
 │   ├── poster/         # AI poster creation
-│   └── dashboard/      # Main dashboard
+│   └── dashboard/      # Main dashboard with horizontal group selector
 └── main.dart
 ```
 
@@ -137,6 +139,18 @@ flutter analyze
 - **Floating Mode**: 8 Mbps, 60 FPS (high quality)
 
 Sessions automatically switch profiles based on viewing mode.
+
+### 📱 Internal scrcpy Integration
+
+Scraki leverages a customized implementation of the `scrcpy` protocol:
+
+- **Server Lifecycle**: Scraki automatically pushes and manages the `scrcpy-server.jar` on the Android device via ADB.
+- **Port Management**: Dynamic port forwarding and TCP proxying enable multiple simultaneous mirroring sessions.
+- **Protocol Support**:
+  - **Video**: H.264/H.265 encoded via hardware on device, decoded via FFmpeg on host.
+  - **Audio**: Raw/AAC/Opus support depending on device capabilities.
+  - **Control**: Direct binary protocol for injecting input events (touch, keys, mouse).
+- **Customizations**: Optimized server parameters for specific Scraki performance profiles.
 
 ## 🤝 Contributing
 
