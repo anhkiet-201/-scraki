@@ -105,12 +105,13 @@ class ScrcpyService {
         await _shell.run('adb -s $serial push "$path" /sdcard/Download/');
 
         // Notify MediaScanner to scan the pushed file
-        final fileName = path.split(Platform.isWindows ? r'\' : '/').last;
+        // Handle both forward and backward slashes for cross-platform compatibility
+        final fileName = path.split(RegExp(r'[/\\]')).last;
         final uri = 'file:///sdcard/Download/$fileName';
+
+        // Use quotes around the broadcast command and the URI to ensure correct parsing on Windows/CMD
         await _shell.run(
-          'adb -s $serial shell am broadcast '
-          '-a android.intent.action.MEDIA_SCANNER_SCAN_FILE '
-          '-d $uri',
+          'adb -s $serial shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d \\"$uri\\""',
         );
       }
     } catch (e) {

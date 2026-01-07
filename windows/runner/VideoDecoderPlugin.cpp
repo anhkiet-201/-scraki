@@ -671,10 +671,13 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
 }
 
 VideoDecoderPlugin::VideoSessionState::RGBAFrame::RGBAFrame(int w, int h) : width(w), height(h) {
-    size_t size = static_cast<size_t>(w) * h * 4;
+    // Add 4KB padding to prevent HEAP CORRUPTION due to sws_scale/SIMD over-read/write
+    // The previous crash "wrote to memory after end of heap buffer" detected during destruction 
+    // indicates that sws_scale was writing slightly past the buffer end.
+    size_t size = (static_cast<size_t>(w) * h * 4) + 4096;
     pixels.assign(size, 0);
     g_active_buffers++;
-    g_total_pixels_allocated += (static_cast<int64_t>(w) * h);
+    g_total_pixels_allocated += (static_cast<int64_t>(w) * h); // Keep stats logical pixel count
 }
 
 VideoDecoderPlugin::VideoSessionState::RGBAFrame::~RGBAFrame() {
