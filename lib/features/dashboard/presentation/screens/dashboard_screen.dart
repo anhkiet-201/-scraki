@@ -5,7 +5,9 @@ import 'package:scraki/core/mixins/device_manager_store_mixin.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/screens/widgets/device_search_bar.dart';
+import 'package:scraki/features/dashboard/presentation/screens/widgets/group_sidebar.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
+import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
 
@@ -16,6 +18,7 @@ class DashboardScreen extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final dashboardStore = inject<DashboardStore>();
+    final deviceGroupStore = inject<DeviceGroupStore>();
 
     // Ensure devices are loaded when screen is built
     if (deviceManagerStore.devices.isEmpty &&
@@ -28,6 +31,9 @@ class DashboardScreen extends StatelessWidget
       body: Row(
         children: [
           _buildNavigationRail(theme, dashboardStore),
+          const VerticalDivider(thickness: 1, width: 1),
+          // Group Sidebar
+          const GroupSidebar(),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
             child: Observer(
@@ -65,9 +71,9 @@ class DashboardScreen extends StatelessWidget
                                       builder: (_) {
                                         return DeviceGrid(
                                           devices: deviceManagerStore.devices
-                                              .toList(),
-                                          searchQuery:
-                                              dashboardStore.searchQuery,
+                                              .toList(), // Pass full list
+                                          visibleSerials:
+                                              deviceGroupStore.visibleSerials,
                                           onDisconnect: (device) {
                                             deviceManagerStore.disconnect(
                                               device.serial,

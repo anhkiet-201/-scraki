@@ -7,13 +7,13 @@ import 'package:scraki/features/device/presentation/widgets/device_card/device_c
 /// A grid layout that displays a list of [DeviceCard]s.
 class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
   final List<DeviceEntity> devices;
-  final String searchQuery;
+  final Set<String>? visibleSerials;
   final void Function(DeviceEntity) onDisconnect;
 
   const DeviceGrid({
     super.key,
     required this.devices,
-    this.searchQuery = '',
+    this.visibleSerials,
     required this.onDisconnect,
   });
 
@@ -76,9 +76,6 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
 
             final totalHeight = (itemWidth / deviceRatio) + 56;
 
-            // Filter logic inside build
-            final query = searchQuery.toLowerCase();
-
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -87,9 +84,8 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
                 runSpacing: spacing,
                 children: devices.map((device) {
                   final isVisible =
-                      query.isEmpty ||
-                      device.serial.toLowerCase().contains(query) ||
-                      device.modelName.toLowerCase().contains(query);
+                      visibleSerials == null ||
+                      visibleSerials!.contains(device.serial);
 
                   return Offstage(
                     offstage: !isVisible,
