@@ -4,7 +4,7 @@ import 'package:mobx/mobx.dart';
 
 part 'dashboard_store.g.dart';
 
-@injectable
+@lazySingleton
 // ignore: library_private_types_in_public_api
 class DashboardStore = _DashboardStore with _$DashboardStore;
 
