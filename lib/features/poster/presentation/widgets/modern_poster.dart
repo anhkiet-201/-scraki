@@ -18,40 +18,45 @@ class ModernPoster extends PosterTemplate {
       children: [
         // TOP SECTION: Header & Image (35% Height)
         SizedBox(
-          height: h * 0.25,
           child: Stack(
-            fit: StackFit.expand,
+            fit: StackFit.passthrough,
             children: [
               // Background Image
               if (data.imageUrls.isNotEmpty)
-                Image.network(
-                  data.imageUrls.first,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      Container(color: const Color(0xFF2C3E50)),
+                Positioned.fill(
+                  child: Image.network(
+                    data.imageUrls.first,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(color: const Color(0xFF2C3E50)),
+                  ),
                 )
               else
-                Container(
-                  color: const Color(0xFF2C3E50),
-                  child: Center(
-                    child: Icon(
-                      Icons.business_center,
-                      size: 25 * scale,
-                      color: Colors.white24,
+                Positioned.fill(
+                  child: Container(
+                    color: const Color(0xFF2C3E50),
+                    child: Center(
+                      child: Icon(
+                        Icons.business_center,
+                        size: 25 * scale,
+                        color: Colors.white24,
+                      ),
                     ),
                   ),
                 ),
 
               // Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.2),
-                      Colors.black.withValues(alpha: 0.7),
-                    ],
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.7),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -83,10 +88,11 @@ class ModernPoster extends PosterTemplate {
                           ),
                           textScaler: TextScaler.linear(s),
                         ),
-                        defaultText: data.catchyHeadline?.toUpperCase() ?? 'HIRING',
+                        defaultText:
+                            data.catchyHeadline?.toUpperCase() ?? 'HIRING',
                       ),
                     ),
-                    SizedBox(height: 8 * scale),
+                    SizedBox(height: 8 * scale, width: double.infinity),
                     wrapEditable(
                       'jobTitle',
                       (text, s) => Text(
@@ -265,7 +271,7 @@ class ModernPoster extends PosterTemplate {
                                     overflow: TextOverflow.ellipsis,
                                     textScaler: TextScaler.linear(s),
                                   ),
-                                  
+                                  defaultText: data.contactInfo,
                                 ),
                               ],
                             ),
@@ -398,7 +404,7 @@ class ModernPoster extends PosterTemplate {
       ],
     );
   }
-  
+
   @override
   String get templateId => "modern";
 }
