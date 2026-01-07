@@ -18,7 +18,7 @@ class JobSelectorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingToolBoxCard(
-      width: 300,
+      width: 450,
       height: height,
       child: FloatingJobSelector(
         onJobSelected: onJobSelected,
