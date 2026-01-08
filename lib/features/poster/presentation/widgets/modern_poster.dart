@@ -16,7 +16,7 @@ class ModernPoster extends PosterTemplate {
   Widget buildPoster(BuildContext context, double scale, double w, double h) {
     return Column(
       children: [
-        // TOP SECTION: Header & Image (35% Height)
+        // TOP SECTION: Header & Image (30% Height - Reduced from 35% for 0.7 aspect ratio)
         SizedBox(
           child: Stack(
             fit: StackFit.passthrough,
@@ -38,7 +38,7 @@ class ModernPoster extends PosterTemplate {
                     child: Center(
                       child: Icon(
                         Icons.business_center,
-                        size: 25 * scale,
+                        size: 16 * scale, // Reduced from 20 (and 25 prev)
                         color: Colors.white24,
                       ),
                     ),
@@ -63,15 +63,15 @@ class ModernPoster extends PosterTemplate {
 
               // Company Info & Job Title Overlay
               Padding(
-                padding: EdgeInsets.all(20 * scale),
+                padding: EdgeInsets.all(10 * scale), // Reduced from 12
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 10 * scale,
-                        vertical: 4 * scale,
+                        horizontal: 8 * scale, // Reduced from 10
+                        vertical: 2 * scale, // Reduced from 4
                       ),
                       decoration: BoxDecoration(
                         color: Colors.orangeAccent,
@@ -82,7 +82,7 @@ class ModernPoster extends PosterTemplate {
                         (text, s) => Text(
                           text,
                           style: GoogleFonts.roboto(
-                            fontSize: 10 * scale,
+                            fontSize: 9 * scale, // Reduced from 10
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -98,7 +98,8 @@ class ModernPoster extends PosterTemplate {
                       (text, s) => Text(
                         text,
                         style: GoogleFonts.robotoCondensed(
-                          fontSize: 30 * scale, // Reduced from 32
+                          fontSize:
+                              20 * scale, // Reduced from 22 (and 26, 30 prev)
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           height: 1.1,
@@ -115,7 +116,7 @@ class ModernPoster extends PosterTemplate {
                       (text, s) => Text(
                         text,
                         style: GoogleFonts.roboto(
-                          fontSize: 14 * scale,
+                          fontSize: 10 * scale, // Reduced from 11
                           fontWeight: FontWeight.w500,
                           color: Colors.white70,
                         ),
@@ -137,9 +138,9 @@ class ModernPoster extends PosterTemplate {
             decoration: const BoxDecoration(color: Colors.white),
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                16 * scale,
-                16 * scale,
-                16 * scale,
+                6 * scale, // Reduced from 8
+                6 * scale, // Reduced from 8
+                6 * scale, // Reduced from 8
                 0,
               ),
               child: Stack(
@@ -162,7 +163,7 @@ class ModernPoster extends PosterTemplate {
                             ),
                           ),
                           SizedBox(
-                            width: 12 * scale,
+                            width: 4 * scale, // Reduced spacing from 6
                           ), // Reduced spacing from 16
                           Expanded(
                             child: _buildModernInfoBox(
@@ -177,14 +178,13 @@ class ModernPoster extends PosterTemplate {
                         ],
                       ),
 
-                      SizedBox(height: 16 * scale),
+                      SizedBox(height: 8 * scale), // Reduced from 10
                       Divider(color: Colors.grey[200]),
-                      SizedBox(height: 16 * scale),
-
+                      SizedBox(height: 8 * scale), // Reduced from 10
                       // Requirements
                       if (data.requirements.isNotEmpty) ...[
                         _buildSectionTitle('YÊU CẦU', scale),
-                        SizedBox(height: 12 * scale),
+                        SizedBox(height: 8 * scale), // Reduced from 12
                         ...data.requirements.asMap().entries.map(
                           (entry) => _buildListItem(
                             entry.value,
@@ -192,13 +192,13 @@ class ModernPoster extends PosterTemplate {
                             id: 'req_${entry.key}',
                           ),
                         ),
-                        SizedBox(height: 16 * scale),
+                        SizedBox(height: 12 * scale), // Reduced from 16
                       ],
 
                       // Benefits
                       if (data.benefits.isNotEmpty) ...[
                         _buildSectionTitle('QUYỀN LỢI', scale),
-                        SizedBox(height: 12 * scale),
+                        SizedBox(height: 8 * scale), // Reduced from 12
                         ...data.benefits.asMap().entries.map(
                           (entry) => _buildListItem(
                             entry.value,
@@ -219,8 +219,8 @@ class ModernPoster extends PosterTemplate {
                     right: 0,
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 20 * scale,
-                        vertical: 16 * scale,
+                        horizontal: 10 * scale, // Reduced from 12
+                        vertical: 6 * scale, // Reduced from 8
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E272E),
@@ -244,7 +244,7 @@ class ModernPoster extends PosterTemplate {
                             child: Icon(
                               Icons.phone_in_talk_rounded,
                               color: Colors.white,
-                              size: 20 * scale,
+                              size: 14 * scale, // Reduced from 18
                             ),
                           ),
                           SizedBox(width: 12 * scale),
@@ -265,7 +265,7 @@ class ModernPoster extends PosterTemplate {
                                   (text, s) => Text(
                                     text,
                                     style: GoogleFonts.roboto(
-                                      fontSize: 14 * scale,
+                                      fontSize: 12 * scale, // Reduced from 14
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -295,7 +295,7 @@ class ModernPoster extends PosterTemplate {
     return Text(
       title,
       style: GoogleFonts.roboto(
-        fontSize: 14 * scale,
+        fontSize: 10 * scale,
         fontWeight: FontWeight.w900,
         color: const Color(0xFF1E272E),
         letterSpacing: 0.5,
@@ -316,8 +316,15 @@ class ModernPoster extends PosterTemplate {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only(top: 2 * scale, right: 10 * scale),
-            child: Icon(icon, size: 16 * scale, color: color),
+            padding: EdgeInsets.only(
+              top: 2 * scale,
+              right: 6 * scale,
+            ), // Reduced right from 10
+            child: Icon(
+              icon,
+              size: 10 * scale, // Reduced size from 12
+              color: color,
+            ), // Reduced size from 16
           ),
           Expanded(
             child: id != null
@@ -326,7 +333,7 @@ class ModernPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.roboto(
-                        fontSize: 14 * scale,
+                        fontSize: 13 * scale, // Reduced from 14
                         color: const Color(0xFF485460),
                         height: 1.4,
                       ),
@@ -337,7 +344,7 @@ class ModernPoster extends PosterTemplate {
                 : Text(
                     text,
                     style: GoogleFonts.roboto(
-                      fontSize: 14 * scale,
+                      fontSize: 13 * scale, // Reduced from 14
                       color: const Color(0xFF485460),
                       height: 1.4,
                     ),
@@ -361,12 +368,12 @@ class ModernPoster extends PosterTemplate {
       children: [
         Row(
           children: [
-            Icon(icon, size: 14 * scale, color: Colors.grey[500]),
-            SizedBox(width: 6 * scale),
+            Icon(icon, size: 10 * scale, color: Colors.grey[500]),
+            SizedBox(width: 2 * scale),
             Text(
               title,
               style: GoogleFonts.roboto(
-                fontSize: 11 * scale,
+                fontSize: 10 * scale,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey[500],
               ),
@@ -395,7 +402,7 @@ class ModernPoster extends PosterTemplate {
             : Text(
                 value,
                 style: GoogleFonts.roboto(
-                  fontSize: 14 * scale, // Slightly smaller to prevent overflow
+                  fontSize: 12 * scale, // Reduced from 14
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1E272E),
                   height: 1.2,

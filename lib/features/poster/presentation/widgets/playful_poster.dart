@@ -33,12 +33,15 @@ class PlayfulPoster extends PosterTemplate {
         children: [
           // Background Shapes (Abstract)
           Positioned(
-            top: -50 * scale,
-            right: -50 * scale,
-            child: _buildBlob(200 * scale, yellowColor.withValues(alpha: 0.3)),
+            top: -20 * scale, // Reduced from -30
+            right: -40 * scale,
+            child: _buildBlob(
+              160 * scale,
+              yellowColor.withValues(alpha: 0.3),
+            ), // Reduced size
           ),
           Positioned(
-            bottom: 100 * scale,
+            bottom: 50 * scale, // Reduced from 100
             left: -30 * scale,
             child: _buildBlob(
               150 * scale,
@@ -63,7 +66,7 @@ class PlayfulPoster extends PosterTemplate {
 
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.all(24.0 * scale),
+              padding: EdgeInsets.all(12.0 * scale), // Reduced from 16
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -74,15 +77,15 @@ class PlayfulPoster extends PosterTemplate {
                       scale: scale,
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 16.0 * scale,
-                          vertical: 8.0 * scale,
+                          horizontal: 8.0 * scale, // Reduced from 12
+                          vertical: 4.0 * scale, // Reduced from 6
                         ),
                         child: wrapEditable(
                           'companyName',
                           (t, s) => Text(
                             t.toUpperCase(),
                             style: GoogleFonts.fredoka(
-                              fontSize: 14 * scale,
+                              fontSize: 12 * scale, // Reduced from 14
                               fontWeight: FontWeight.bold,
                               color: textColor,
                               letterSpacing: 1.0,
@@ -107,8 +110,8 @@ class PlayfulPoster extends PosterTemplate {
                       child: Container(
                         width: double.infinity,
                         padding: EdgeInsets.symmetric(
-                          horizontal: 20 * scale,
-                          vertical: 24 * scale,
+                          horizontal: 12 * scale, // Reduced from 16
+                          vertical: 8 * scale, // Reduced from 12
                         ),
                         child: Column(
                           children: [
@@ -117,7 +120,7 @@ class PlayfulPoster extends PosterTemplate {
                               (t, s) => Text(
                                 t,
                                 style: GoogleFonts.permanentMarker(
-                                  fontSize: 16 * scale,
+                                  fontSize: 14 * scale, // Reduced from 16
                                   color: Colors.black54,
                                 ),
                                 textScaler: TextScaler.linear(s),
@@ -132,8 +135,8 @@ class PlayfulPoster extends PosterTemplate {
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.fredoka(
                                   fontSize:
-                                      34 *
-                                      scale, // Massive font reduced from 40
+                                      22 *
+                                      scale, // Huge font reduced from 28 (and 34, 40 prev)
                                   fontWeight: FontWeight.w900,
                                   color: textColor,
                                   height: 1.0,
@@ -150,8 +153,7 @@ class PlayfulPoster extends PosterTemplate {
                     ),
                   ),
 
-                  SizedBox(height: 24 * scale),
-
+                  SizedBox(height: 8 * scale), // Reduced from 12
                   // Salary & Location Chips
                   Row(
                     children: [
@@ -221,14 +223,14 @@ class PlayfulPoster extends PosterTemplate {
                     scale: scale,
                     offset: Offset(4 * scale, 4 * scale),
                     child: Padding(
-                      padding: EdgeInsets.all(16 * scale),
+                      padding: EdgeInsets.all(12 * scale), // Reduced from 16
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.send_rounded,
                             color: yellowColor,
-                            size: 24 * scale,
+                            size: 18 * scale, // Reduced from 24
                           ),
                           SizedBox(width: 12 * scale),
                           Expanded(
@@ -237,7 +239,7 @@ class PlayfulPoster extends PosterTemplate {
                               (t, s) => Text(
                                 t,
                                 style: GoogleFonts.fredoka(
-                                  fontSize: 14 * scale,
+                                  fontSize: 12 * scale, // Reduced from 14
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -307,7 +309,7 @@ class PlayfulPoster extends PosterTemplate {
       scale: scale,
       offset: Offset(2 * scale, 2 * scale),
       child: Padding(
-        padding: EdgeInsets.all(12 * scale),
+        padding: EdgeInsets.all(8 * scale), // Reduced from 12
         child: Column(
           children: [
             Container(
@@ -316,7 +318,11 @@ class PlayfulPoster extends PosterTemplate {
                 color: color.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 24 * scale),
+              child: Icon(
+                icon,
+                color: color,
+                size: 16 * scale, // Reduced from 20 (and 24 prev)
+              ), // Reduced from 24
             ),
             SizedBox(height: 8 * scale),
             wrapEditable(
@@ -325,7 +331,7 @@ class PlayfulPoster extends PosterTemplate {
                 t,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.fredoka(
-                  fontSize: 14 * scale,
+                  fontSize: 12 * scale, // Reduced from 14
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -356,7 +362,7 @@ class PlayfulPoster extends PosterTemplate {
         color: color,
         scale: scale,
         child: Padding(
-          padding: EdgeInsets.all(16 * scale),
+          padding: EdgeInsets.all(8 * scale), // Reduced from 12
           child: Column(
             children: [
               Container(
@@ -372,7 +378,7 @@ class PlayfulPoster extends PosterTemplate {
                 child: Text(
                   title,
                   style: GoogleFonts.fredoka(
-                    fontSize: 12 * scale,
+                    fontSize: 10 * scale, // Reduced from 12
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -392,7 +398,7 @@ class PlayfulPoster extends PosterTemplate {
                             Text(
                               '• ',
                               style: TextStyle(
-                                fontSize: 14 * scale,
+                                fontSize: 12 * scale, // Reduced from 14
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -402,7 +408,7 @@ class PlayfulPoster extends PosterTemplate {
                                 (t, s) => Text(
                                   t,
                                   style: GoogleFonts.quicksand(
-                                    fontSize: 12 * scale,
+                                    fontSize: 10 * scale, // Reduced from 12
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                     height: 1.2,

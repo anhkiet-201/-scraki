@@ -43,7 +43,7 @@ class PosterPanel extends StatefulWidget {
 class _PosterPanelState extends State<PosterPanel> {
   int _selectedTemplateIndex = 0;
 
-  final double _aspectRatio = 9 / 16;
+  final double _aspectRatio = 0.7;
 
   final List<String> _templateNames = [
     'Modern',
@@ -209,15 +209,15 @@ class _PosterPanelState extends State<PosterPanel> {
 
                       return Stack(
                         children: [
-                          Positioned.fill(
-                            child: Transform.translate(
-                              offset: const Offset(10000, 0),
-                              child: RepaintBoundary(
-                                key: widget.posterKey,
-                                child: AspectRatio(
-                                  aspectRatio: _aspectRatio,
-                                  child: posterWidget,
-                                ),
+                          Positioned(
+                            left: 10000, // Move off-screen
+                            top: 0,
+                            child: RepaintBoundary(
+                              key: widget.posterKey,
+                              child: SizedBox(
+                                width: 360,
+                                height: 360 / _aspectRatio,
+                                child: posterWidget,
                               ),
                             ),
                           ),

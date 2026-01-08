@@ -14,7 +14,9 @@ class MinimalistPoster extends PosterTemplate {
   @override
   Widget buildPoster(BuildContext context, double scale, double w, double h) {
     return Padding(
-      padding: EdgeInsets.all(24.0 * scale),
+      padding: EdgeInsets.all(
+        10.0 * scale,
+      ), // Reduced from 16 // Reduced from 20 // Reduced from 24
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -23,8 +25,8 @@ class MinimalistPoster extends PosterTemplate {
             children: [
               if (data.imageUrls.isNotEmpty)
                 Container(
-                  width: 40 * scale,
-                  height: 40 * scale,
+                  width: 28 * scale, // Reduced from 32
+                  height: 28 * scale, // Reduced from 32
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
@@ -33,14 +35,15 @@ class MinimalistPoster extends PosterTemplate {
                     ),
                   ),
                 ),
-              if (data.imageUrls.isNotEmpty) SizedBox(width: 12 * scale),
+              if (data.imageUrls.isNotEmpty)
+                SizedBox(width: 8 * scale), // Reduced from 12
               Expanded(
                 child: wrapEditable(
                   'companyName',
                   (t, s) => Text(
                     t,
                     style: GoogleFonts.lato(
-                      fontSize: 14 * scale,
+                      fontSize: 11 * scale, // Reduced from 12
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
                       color: Colors.black54,
@@ -53,15 +56,16 @@ class MinimalistPoster extends PosterTemplate {
             ],
           ),
 
-          SizedBox(height: 32 * scale),
-
+          SizedBox(
+            height: 8 * scale,
+          ), // Reduced from 16 // Reduced from 20 // Reduced from 32
           // Main Title
           wrapEditable(
             'headline',
             (t, s) => Text(
               t,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 11 * scale, // Reduced from 12
+                fontSize: 8 * scale, // Reduced from 9
                 fontStyle: FontStyle.italic,
                 color: Colors.grey[600],
               ),
@@ -69,13 +73,13 @@ class MinimalistPoster extends PosterTemplate {
             ),
             defaultText: data.catchyHeadline ?? 'TUYỂN DỤNG',
           ),
-          SizedBox(height: 8 * scale),
+          SizedBox(height: 4 * scale), // Reduced from 8
           wrapEditable(
             'jobTitle',
             (t, s) => Text(
               t,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 32 * scale, // Reduced from 36
+                fontSize: 20 * scale, // Reduced from 22 (and 28, 32, 36 prev)
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
                 height: 1.0,
@@ -85,10 +89,9 @@ class MinimalistPoster extends PosterTemplate {
             defaultText: data.jobTitle,
           ),
 
-          SizedBox(height: 24 * scale),
+          SizedBox(height: 6 * scale), // Reduced from 8
           Divider(color: Colors.black, thickness: 1 * scale),
-          SizedBox(height: 24 * scale),
-
+          SizedBox(height: 6 * scale), // Reduced from 8
           // Details grid
           Expanded(
             child: SingleChildScrollView(
@@ -97,14 +100,14 @@ class MinimalistPoster extends PosterTemplate {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInfoRow('LƯƠNG', data.salaryRange, scale, id: 'salary'),
-                  SizedBox(height: 16 * scale),
+                  SizedBox(height: 12 * scale), // Reduced from 16
                   _buildInfoRow(
                     'ĐỊA CHỈ',
                     data.location,
                     scale,
                     id: 'location',
                   ),
-                  SizedBox(height: 24 * scale),
+                  SizedBox(height: 16 * scale), // Reduced from 24
 
                   if (data.requirements.isNotEmpty) ...[
                     Text(
@@ -116,7 +119,7 @@ class MinimalistPoster extends PosterTemplate {
                         color: Colors.grey[500],
                       ),
                     ),
-                    SizedBox(height: 8 * scale),
+                    SizedBox(height: 6 * scale), // Reduced from 8
                     ...data.requirements.asMap().entries.map(
                       (entry) => Padding(
                         padding: EdgeInsets.only(bottom: 4 * scale),
@@ -125,7 +128,7 @@ class MinimalistPoster extends PosterTemplate {
                           (t, s) => Text(
                             t,
                             style: GoogleFonts.lato(
-                              fontSize: 14 * scale,
+                              fontSize: 13 * scale, // Reduced from 14
                               color: Colors.black87,
                             ),
                             maxLines: 2,
@@ -136,7 +139,7 @@ class MinimalistPoster extends PosterTemplate {
                         ),
                       ),
                     ),
-                    SizedBox(height: 16 * scale),
+                    SizedBox(height: 12 * scale), // Reduced from 16
                   ],
 
                   if (data.benefits.isNotEmpty) ...[
@@ -149,7 +152,7 @@ class MinimalistPoster extends PosterTemplate {
                         color: Colors.grey[500],
                       ),
                     ),
-                    SizedBox(height: 8 * scale),
+                    SizedBox(height: 6 * scale), // Reduced from 8
                     ...data.benefits.asMap().entries.map(
                       (entry) => Padding(
                         padding: EdgeInsets.only(bottom: 4 * scale),
@@ -158,7 +161,7 @@ class MinimalistPoster extends PosterTemplate {
                           (t, s) => Text(
                             t,
                             style: GoogleFonts.lato(
-                              fontSize: 14 * scale,
+                              fontSize: 13 * scale, // Reduced from 14
                               color: Colors.black87,
                             ),
                             maxLines: 2,
@@ -177,7 +180,9 @@ class MinimalistPoster extends PosterTemplate {
 
           // Footer
           Container(
-            padding: EdgeInsets.symmetric(vertical: 16 * scale),
+            padding: EdgeInsets.symmetric(
+              vertical: 6 * scale,
+            ), // Reduced from 12 // Reduced from 16
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: Colors.grey[200]!)),
             ),
@@ -190,7 +195,7 @@ class MinimalistPoster extends PosterTemplate {
                       Text(
                         'ỨNG TUYỂN',
                         style: GoogleFonts.lato(
-                          fontSize: 12 * scale,
+                          fontSize: 10 * scale, // Reduced from 12
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -225,20 +230,20 @@ class MinimalistPoster extends PosterTemplate {
         Text(
           label,
           style: GoogleFonts.lato(
-            fontSize: 11 * scale, // Reduced from 12
+            fontSize: 8 * scale, // Reduced from 9
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
             color: Colors.grey[500],
           ),
         ),
-        SizedBox(height: 4 * scale),
+        SizedBox(height: 2 * scale), // Reduced from 4
         id != null
             ? wrapEditable(
                 id,
                 (t, s) => Text(
                   t,
                   style: GoogleFonts.lato(
-                    fontSize: 16 * scale,
+                    fontSize: 13 * scale, // Reduced from 14
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
@@ -249,7 +254,7 @@ class MinimalistPoster extends PosterTemplate {
             : Text(
                 value,
                 style: GoogleFonts.lato(
-                  fontSize: 16 * scale,
+                  fontSize: 15 * scale, // Reduced from 16
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),

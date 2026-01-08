@@ -26,13 +26,17 @@ class ElegantPoster extends PosterTemplate {
         borderRadius: BorderRadius.circular(4 * scale),
       ),
       padding: EdgeInsets.symmetric(
-        horizontal: 30 * scale,
-        vertical: 40 * scale,
+        horizontal: 16 * scale, // Reduced from 24
+        vertical: 12 * scale, // Reduced from 16
       ),
       child: Column(
         children: [
           // Top Ornament
-          Icon(Icons.stars, color: goldColor, size: 24 * scale),
+          Icon(
+            Icons.stars,
+            color: goldColor,
+            size: 16 * scale, // Reduced from 20
+          ), // Reduced from 24
           SizedBox(height: 16 * scale),
 
           // Hiring Headline
@@ -41,7 +45,7 @@ class ElegantPoster extends PosterTemplate {
             (t, s) => Text(
               t,
               style: GoogleFonts.montserrat(
-                fontSize: 12 * scale,
+                fontSize: 10 * scale, // Reduced from 12
                 letterSpacing: 3.0,
                 fontWeight: FontWeight.w600,
                 color: itemsColor.withValues(alpha: 0.6),
@@ -68,7 +72,7 @@ class ElegantPoster extends PosterTemplate {
               t,
               textAlign: TextAlign.center,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 28 * scale, // Reduced from 32
+                fontSize: 20 * scale, // Reduced from 24 (and 28, 32 prev)
                 fontWeight: FontWeight.w700,
                 color: itemsColor,
                 height: 1.1,
@@ -89,7 +93,7 @@ class ElegantPoster extends PosterTemplate {
             (t, s) => Text(
               t,
               style: GoogleFonts.montserrat(
-                fontSize: 12 * scale,
+                fontSize: 10 * scale, // Reduced from 12
                 fontWeight: FontWeight.w500,
                 color: itemsColor.withValues(alpha: 0.5),
                 letterSpacing: 1.0,
@@ -99,11 +103,12 @@ class ElegantPoster extends PosterTemplate {
             defaultText: data.companyName,
           ),
 
-          SizedBox(height: 32 * scale),
-
+          SizedBox(height: 20 * scale), // Reduced from 32
           // Info Row (Salary | Location)
           Container(
-            padding: EdgeInsets.symmetric(vertical: 12 * scale),
+            padding: EdgeInsets.symmetric(
+              vertical: 6 * scale, // Reduced from 8
+            ), // Reduced from 12
             decoration: BoxDecoration(
               border: Border.symmetric(
                 horizontal: BorderSide(
@@ -144,8 +149,7 @@ class ElegantPoster extends PosterTemplate {
             ),
           ),
 
-          SizedBox(height: 32 * scale),
-
+          SizedBox(height: 20 * scale), // Reduced from 32
           // Content Columns
           Expanded(
             child: Row(
@@ -158,7 +162,7 @@ class ElegantPoster extends PosterTemplate {
                       Text(
                         'Yêu Cầu',
                         style: GoogleFonts.playfairDisplay(
-                          fontSize: 18 * scale,
+                          fontSize: 16 * scale, // Reduced from 18
                           fontWeight: FontWeight.bold,
                           color: itemsColor,
                         ),
@@ -184,7 +188,7 @@ class ElegantPoster extends PosterTemplate {
                       Text(
                         'Quyền Lợi',
                         style: GoogleFonts.playfairDisplay(
-                          fontSize: 18 * scale,
+                          fontSize: 16 * scale, // Reduced from 18
                           fontWeight: FontWeight.bold,
                           color: itemsColor,
                         ),
@@ -210,8 +214,8 @@ class ElegantPoster extends PosterTemplate {
           Container(
             margin: EdgeInsets.only(top: 20 * scale),
             padding: EdgeInsets.symmetric(
-              vertical: 16 * scale,
-              horizontal: 32 * scale,
+              vertical: 8 * scale, // Reduced from 12
+              horizontal: 16 * scale, // Reduced from 24
             ),
             decoration: BoxDecoration(border: Border.all(color: goldColor)),
             child: Column(
@@ -230,7 +234,7 @@ class ElegantPoster extends PosterTemplate {
                   (t, s) => Text(
                     t,
                     style: GoogleFonts.playfairDisplay(
-                      fontSize: 16 * scale,
+                      fontSize: 14 * scale, // Reduced from 16
                       fontWeight: FontWeight.bold,
                       color: itemsColor,
                     ),
@@ -259,7 +263,7 @@ class ElegantPoster extends PosterTemplate {
       (text, s) => Text(
         text,
         style: GoogleFonts.montserrat(
-          fontSize: 12 * scale,
+          fontSize: 10 * scale, // Reduced from 12
           fontWeight: FontWeight.w600,
           color: color,
         ),
@@ -285,7 +289,7 @@ class ElegantPoster extends PosterTemplate {
           t,
           textAlign: TextAlign.center,
           style: GoogleFonts.montserrat(
-            fontSize: 11 * scale,
+            fontSize: 9 * scale, // Reduced from 11
             color: color.withValues(alpha: 0.8),
             height: 1.5,
           ),

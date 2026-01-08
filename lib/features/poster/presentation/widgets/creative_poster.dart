@@ -57,7 +57,7 @@ class CreativePoster extends PosterTemplate {
 
         // Main Content
         Padding(
-          padding: EdgeInsets.all(24.0 * scale),
+          padding: EdgeInsets.all(12.0 * scale), // Reduced from 16
           child: Column(
             children: [
               // Image Bubble
@@ -79,8 +79,8 @@ class CreativePoster extends PosterTemplate {
                     child: ClipOval(
                       child: Image.network(
                         data.imageUrls.first,
-                        width: 120 * scale,
-                        height: 120 * scale,
+                        width: 70 * scale, // Reduced from 90 (and 100 prev)
+                        height: 70 * scale, // Reduced from 90 (and 100 prev)
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -93,7 +93,7 @@ class CreativePoster extends PosterTemplate {
                 (text, s) => Text(
                   text,
                   style: GoogleFonts.poppins(
-                    fontSize: 14 * scale,
+                    fontSize: 12 * scale, // Reduced from 14
                     fontWeight: FontWeight.w600,
                     letterSpacing: 2.0,
                     color: Colors.white,
@@ -113,7 +113,7 @@ class CreativePoster extends PosterTemplate {
                   text,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 22 * scale, // Reduced from 24
+                    fontSize: 16 * scale, // Reduced from 18 (and 22, 24 prev)
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF2D2D2D),
                     height: 1.1,
@@ -123,12 +123,12 @@ class CreativePoster extends PosterTemplate {
                 defaultText: data.jobTitle,
               ),
 
-              SizedBox(height: 20 * scale),
+              SizedBox(height: 16 * scale), // Reduced from 20
 
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: 24 * scale,
-                  vertical: 12 * scale,
+                  horizontal: 12 * scale, // Reduced from 16
+                  vertical: 6 * scale, // Reduced from 8
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -146,7 +146,7 @@ class CreativePoster extends PosterTemplate {
                   (text, s) => Text(
                     text,
                     style: GoogleFonts.poppins(
-                      fontSize: 18 * scale,
+                      fontSize: 14 * scale, // Reduced from 16 (and 18 prev)
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFFFF6B6B),
                     ),
@@ -156,7 +156,7 @@ class CreativePoster extends PosterTemplate {
                 ),
               ),
 
-              SizedBox(height: 30 * scale),
+              SizedBox(height: 20 * scale), // Reduced from 30
 
               Expanded(
                 child: SingleChildScrollView(
@@ -174,7 +174,7 @@ class CreativePoster extends PosterTemplate {
                         Text(
                           'YÊU CẦU',
                           style: GoogleFonts.poppins(
-                            fontSize: 12 * scale,
+                            fontSize: 11 * scale, // Reduced from 12
                             fontWeight: FontWeight.bold,
                             color: Colors.black54,
                           ),
@@ -198,7 +198,7 @@ class CreativePoster extends PosterTemplate {
                         Text(
                           'PHÚC LỢI',
                           style: GoogleFonts.poppins(
-                            fontSize: 12 * scale,
+                            fontSize: 11 * scale, // Reduced from 12
                             fontWeight: FontWeight.bold,
                             color: Colors.black54,
                           ),
@@ -226,7 +226,7 @@ class CreativePoster extends PosterTemplate {
               // Bottom Card
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(20 * scale),
+                padding: EdgeInsets.all(12 * scale), // Reduced from 16
                 decoration: BoxDecoration(
                   color: const Color(0xFF2D2D2D),
                   borderRadius: BorderRadius.circular(24 * scale),
@@ -248,7 +248,7 @@ class CreativePoster extends PosterTemplate {
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16 * scale,
+                          fontSize: 14 * scale, // Reduced from 16
                         ),
                         textScaler: TextScaler.linear(s),
                       ),
@@ -286,7 +286,11 @@ class CreativePoster extends PosterTemplate {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 20 * scale, color: const Color(0xFF2D2D2D)),
+        Icon(
+          icon,
+          size: 14 * scale, // Reduced from 16
+          color: const Color(0xFF2D2D2D),
+        ), // Reduced from 20
         SizedBox(width: 8 * scale),
         Flexible(
           child: id != null
@@ -296,7 +300,7 @@ class CreativePoster extends PosterTemplate {
                     text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontSize: 14 * scale,
+                      fontSize: 12 * scale, // Reduced from 14
                       color: const Color(0xFF4A4A4A),
                     ),
                     textScaler: TextScaler.linear(s),
@@ -307,7 +311,7 @@ class CreativePoster extends PosterTemplate {
                   text,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 14 * scale,
+                    fontSize: 12 * scale, // Reduced from 14
                     color: const Color(0xFF4A4A4A),
                   ),
                 ),

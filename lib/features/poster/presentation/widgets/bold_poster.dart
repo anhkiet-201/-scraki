@@ -29,7 +29,7 @@ class BoldPoster extends PosterTemplate {
         ),
 
         Padding(
-          padding: EdgeInsets.all(20.0 * scale),
+          padding: EdgeInsets.all(10.0 * scale), // Reduced from 12
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -37,7 +37,7 @@ class BoldPoster extends PosterTemplate {
               Text(
                 'TUYỂN\nDỤNG',
                 style: GoogleFonts.oswald(
-                  fontSize: 54 * scale, // Reduced from 60
+                  fontSize: 32 * scale, // Reduced from 36 (and 48, 54, 60 prev)
                   fontWeight: FontWeight.w900,
                   height: 0.9,
                   color: Colors.black.withValues(alpha: 0.1),
@@ -51,7 +51,8 @@ class BoldPoster extends PosterTemplate {
                     text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.oswald(
-                      fontSize: 42 * scale, // Reduced from 48
+                      fontSize:
+                          24 * scale, // Reduced from 26 (and 36, 42, 48 prev)
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                       height: 1.0,
@@ -63,13 +64,12 @@ class BoldPoster extends PosterTemplate {
                 ),
               ),
 
-              SizedBox(height: 20 * scale),
-
+              SizedBox(height: 6 * scale), // Reduced from 8
               // Highlight Box
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: 20 * scale,
-                  vertical: 15 * scale,
+                  horizontal: 12 * scale, // Reduced from 16
+                  vertical: 6 * scale, // Reduced from 8
                 ),
                 decoration: BoxDecoration(
                   color: Colors.black,
@@ -81,7 +81,7 @@ class BoldPoster extends PosterTemplate {
                     text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
-                      fontSize: 16 * scale,
+                      fontSize: 15 * scale, // Reduced from 16
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
@@ -91,8 +91,7 @@ class BoldPoster extends PosterTemplate {
                 ),
               ),
 
-              SizedBox(height: 30 * scale),
-
+              SizedBox(height: 12 * scale), // Reduced from 16
               // Content
               Expanded(
                 child: SingleChildScrollView(
@@ -106,7 +105,7 @@ class BoldPoster extends PosterTemplate {
                         scale,
                         id: 'location',
                       ),
-                      SizedBox(height: 12 * scale),
+                      SizedBox(height: 10 * scale), // Reduced from 12
                       if (data.requirements.isNotEmpty)
                         _buildBoldSection(
                           'Yêu cầu',
@@ -114,7 +113,7 @@ class BoldPoster extends PosterTemplate {
                           scale,
                           id: 'requirements',
                         ),
-                      SizedBox(height: 12 * scale),
+                      SizedBox(height: 10 * scale), // Reduced from 12
                       if (data.benefits.isNotEmpty)
                         _buildBoldSection(
                           'Quyền lợi',
@@ -130,7 +129,7 @@ class BoldPoster extends PosterTemplate {
               // Footer with slanted cut design
               Container(
                 color: Colors.blueAccent[700],
-                padding: EdgeInsets.all(20 * scale),
+                padding: EdgeInsets.all(10 * scale), // Reduced from 12
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -138,7 +137,7 @@ class BoldPoster extends PosterTemplate {
                       'ỨNG TUYỂN',
                       style: GoogleFonts.oswald(
                         color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 16 * scale,
+                        fontSize: 14 * scale, // Reduced from 16
                       ),
                     ),
                     wrapEditable(
@@ -206,7 +205,7 @@ class BoldPoster extends PosterTemplate {
                 (text, s) => Text(
                   text,
                   style: GoogleFonts.roboto(
-                    fontSize: 14 * scale,
+                    fontSize: 12 * scale, // Reduced from 14
                     color: Colors.black87,
                     height: 1.4,
                   ),

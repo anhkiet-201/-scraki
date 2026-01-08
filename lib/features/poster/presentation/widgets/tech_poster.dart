@@ -33,7 +33,7 @@ class TechPoster extends PosterTemplate {
           ),
 
           Padding(
-            padding: EdgeInsets.all(24 * scale),
+            padding: EdgeInsets.all(12 * scale), // Reduced from 16
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -42,7 +42,7 @@ class TechPoster extends PosterTemplate {
                   children: [
                     Container(
                       width: 4 * scale,
-                      height: 40 * scale,
+                      height: 26 * scale, // Reduced from 32 (and 40 prev)
                       color: accentColor2,
                     ),
                     SizedBox(width: 12 * scale),
@@ -55,7 +55,7 @@ class TechPoster extends PosterTemplate {
                             (t, s) => Text(
                               t,
                               style: GoogleFonts.orbitron(
-                                fontSize: 12 * scale,
+                                fontSize: 10 * scale, // Reduced from 12
                                 fontWeight: FontWeight.bold,
                                 color: accentColor1,
                                 letterSpacing: 1.5,
@@ -72,7 +72,7 @@ class TechPoster extends PosterTemplate {
                             (t, s) => Text(
                               t,
                               style: GoogleFonts.robotoMono(
-                                fontSize: 16 * scale,
+                                fontSize: 14 * scale, // Reduced from 16
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -86,15 +86,14 @@ class TechPoster extends PosterTemplate {
                   ],
                 ),
 
-                SizedBox(height: 24 * scale),
-
+                SizedBox(height: 12 * scale), // Reduced from 16
                 // Job Title
                 wrapEditable(
                   'jobTitle',
                   (t, s) => Text(
                     t,
                     style: GoogleFonts.orbitron(
-                      fontSize: 28 * scale, // Reduced from 32
+                      fontSize: 20 * scale, // Reduced from 24 (and 28, 32 prev)
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                       height: 1.1,
@@ -106,11 +105,10 @@ class TechPoster extends PosterTemplate {
                   defaultText: data.jobTitle.toUpperCase(),
                 ),
 
-                SizedBox(height: 24 * scale),
-
+                SizedBox(height: 16 * scale), // Reduced from 24
                 // Info Grid (Salary & Location)
                 Container(
-                  padding: EdgeInsets.all(16 * scale),
+                  padding: EdgeInsets.all(8 * scale), // Reduced from 12
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: accentColor1.withValues(alpha: 0.3),
@@ -133,7 +131,7 @@ class TechPoster extends PosterTemplate {
                         height: 40 * scale,
                         color: accentColor1.withValues(alpha: 0.3),
                       ),
-                      SizedBox(width: 16 * scale),
+                      SizedBox(width: 12 * scale), // Reduced from 16
                       Expanded(
                         child: _buildTechInfo(
                           'ĐỊA ĐIỂM',
@@ -147,8 +145,7 @@ class TechPoster extends PosterTemplate {
                   ),
                 ),
 
-                SizedBox(height: 24 * scale),
-
+                SizedBox(height: 12 * scale), // Reduced from 16
                 // Details Sections
                 Expanded(
                   child: Row(
@@ -162,7 +159,7 @@ class TechPoster extends PosterTemplate {
                             Text(
                               '// YÊU CẦU',
                               style: GoogleFonts.robotoMono(
-                                fontSize: 12 * scale,
+                                fontSize: 10 * scale, // Reduced from 12
                                 color: accentColor2,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -190,7 +187,7 @@ class TechPoster extends PosterTemplate {
                             Text(
                               '// QUYỀN LỢI',
                               style: GoogleFonts.robotoMono(
-                                fontSize: 12 * scale,
+                                fontSize: 10 * scale, // Reduced from 12
                                 color: accentColor2,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -217,8 +214,8 @@ class TechPoster extends PosterTemplate {
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(
-                    vertical: 16 * scale,
-                    horizontal: 20 * scale,
+                    vertical: 8 * scale, // Reduced from 12
+                    horizontal: 12 * scale, // Reduced from 16
                   ),
                   decoration: BoxDecoration(
                     color: accentColor2,
@@ -248,7 +245,7 @@ class TechPoster extends PosterTemplate {
                           t,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.robotoMono(
-                            fontSize: 16 * scale,
+                            fontSize: 14 * scale, // Reduced from 16
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -292,7 +289,7 @@ class TechPoster extends PosterTemplate {
           (t, s) => Text(
             t,
             style: GoogleFonts.robotoMono(
-              fontSize: 14 * scale,
+              fontSize: 12 * scale, // Reduced from 14
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -314,14 +311,14 @@ class TechPoster extends PosterTemplate {
     required String id,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 8 * scale),
+      padding: EdgeInsets.only(bottom: 6 * scale), // Reduced from 8
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '>',
             style: GoogleFonts.robotoMono(
-              fontSize: 14 * scale,
+              fontSize: 12 * scale, // Reduced from 14
               color: accent,
               fontWeight: FontWeight.bold,
             ),
@@ -333,7 +330,7 @@ class TechPoster extends PosterTemplate {
               (t, s) => Text(
                 t,
                 style: GoogleFonts.robotoMono(
-                  fontSize: 12 * scale,
+                  fontSize: 10 * scale, // Reduced from 12
                   color: textColor,
                   height: 1.4,
                 ),

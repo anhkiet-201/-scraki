@@ -22,17 +22,22 @@ class RetroPoster extends PosterTemplate {
       width: w,
       height: h,
       color: bgColor,
-      padding: EdgeInsets.all(16 * scale),
+      padding: EdgeInsets.all(12 * scale), // Reduced from 16
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: inkColor, width: 3 * scale),
+          border: Border.all(
+            color: inkColor,
+            width: 2 * scale,
+          ), // Reduced from 3
         ),
         child: Column(
           children: [
             // Header Section
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 20 * scale),
+              padding: EdgeInsets.symmetric(
+                vertical: 10 * scale, // Reduced from 16
+              ), // Reduced from 20
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: inkColor, width: 2 * scale),
@@ -45,7 +50,7 @@ class RetroPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.roboto(
-                        fontSize: 14 * scale,
+                        fontSize: 12 * scale, // Reduced from 14
                         fontWeight: FontWeight.bold,
                         color: inkColor,
                         letterSpacing: 2.0,
@@ -60,7 +65,7 @@ class RetroPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.rye(
-                        fontSize: 36 * scale, // Reduced from 42
+                        fontSize: 24 * scale, // Reduced from 32 (and 36 prev)
                         fontWeight: FontWeight.normal,
                         color: accentColor,
                       ),
@@ -77,7 +82,7 @@ class RetroPoster extends PosterTemplate {
             // Job Title Box
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(24 * scale),
+              padding: EdgeInsets.all(8 * scale), // Reduced from 12
               decoration: BoxDecoration(
                 color: inkColor.withValues(alpha: 0.05),
                 border: Border(
@@ -90,7 +95,7 @@ class RetroPoster extends PosterTemplate {
                   t,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.abrilFatface(
-                    fontSize: 28 * scale, // Reduced from 32
+                    fontSize: 20 * scale, // Reduced from 24 (and 28, 32 prev)
                     color: inkColor,
                     height: 1.0,
                   ),
@@ -108,7 +113,7 @@ class RetroPoster extends PosterTemplate {
                 children: [
                   Expanded(
                     child: _buildRetroInfo(
-                      'THÙ LAO',
+                      'LƯƠNG',
                       data.salaryRange,
                       scale,
                       inkColor,
@@ -133,7 +138,7 @@ class RetroPoster extends PosterTemplate {
             // Body Content (Two Columns like newspaper)
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(16 * scale),
+                padding: EdgeInsets.all(12 * scale), // Reduced from 16
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -145,7 +150,7 @@ class RetroPoster extends PosterTemplate {
                           Text(
                             'YÊU CẦU',
                             style: GoogleFonts.oswald(
-                              fontSize: 14 * scale,
+                              fontSize: 12 * scale, // Reduced from 14
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                               color: inkColor,
@@ -173,7 +178,7 @@ class RetroPoster extends PosterTemplate {
                           Text(
                             'ĐÃI NGỘ',
                             style: GoogleFonts.oswald(
-                              fontSize: 14 * scale,
+                              fontSize: 12 * scale, // Reduced from 14
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                               color: inkColor,
@@ -200,7 +205,7 @@ class RetroPoster extends PosterTemplate {
             // Footer / Apply Box
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(16 * scale),
+              padding: EdgeInsets.all(8 * scale), // Reduced from 12
               color: inkColor,
               child: Column(
                 children: [
@@ -218,7 +223,7 @@ class RetroPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.oswald(
-                        fontSize: 18 * scale,
+                        fontSize: 14 * scale, // Reduced from 18
                         fontWeight: FontWeight.bold,
                         color: bgColor,
                       ),
@@ -246,15 +251,15 @@ class RetroPoster extends PosterTemplate {
   }) {
     return Padding(
       padding: EdgeInsets.symmetric(
-        vertical: 12 * scale,
-        horizontal: 8 * scale,
+        vertical: 6 * scale, // Reduced from 8
+        horizontal: 4 * scale, // Reduced from 6
       ),
       child: Column(
         children: [
           Text(
             label,
             style: GoogleFonts.oswald(
-              fontSize: 10 * scale,
+              fontSize: 9 * scale, // Reduced from 10
               color: color.withValues(alpha: 0.6),
             ),
           ),
@@ -265,7 +270,7 @@ class RetroPoster extends PosterTemplate {
               t,
               textAlign: TextAlign.center,
               style: GoogleFonts.robotoSlab(
-                fontSize: 12 * scale,
+                fontSize: 10 * scale, // Reduced from 12
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -292,7 +297,10 @@ class RetroPoster extends PosterTemplate {
         id,
         (t, s) => Text(
           t,
-          style: GoogleFonts.robotoSlab(fontSize: 10 * scale, color: color),
+          style: GoogleFonts.robotoSlab(
+            fontSize: 10 * scale,
+            color: color,
+          ), // Reduced from 10
           textScaler: TextScaler.linear(s),
         ),
         defaultText: '- $text',

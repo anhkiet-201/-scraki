@@ -22,20 +22,29 @@ class CorporatePoster extends PosterTemplate {
         Row(
           children: [
             Expanded(
-              child: Container(height: 8 * scale, color: primaryColor),
+              child: Container(
+                height: 6 * scale,
+                color: primaryColor,
+              ), // Reduced from 8
             ),
             Expanded(
-              child: Container(height: 8 * scale, color: accentColor),
+              child: Container(
+                height: 6 * scale,
+                color: accentColor,
+              ), // Reduced from 8
             ),
             Expanded(
-              child: Container(height: 8 * scale, color: Colors.grey[300]),
+              child: Container(
+                height: 6 * scale,
+                color: Colors.grey[300],
+              ), // Reduced from 8
             ),
           ],
         ),
 
         Expanded(
           child: Padding(
-            padding: EdgeInsets.all(24.0 * scale),
+            padding: EdgeInsets.all(12.0 * scale), // Reduced from 16
             child: SingleChildScrollView(
               physics: const NeverScrollableScrollPhysics(),
               child: Column(
@@ -46,8 +55,8 @@ class CorporatePoster extends PosterTemplate {
                     children: [
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 12 * scale,
-                          vertical: 6 * scale,
+                          horizontal: 6 * scale, // Reduced from 8
+                          vertical: 3 * scale, // Reduced from 4
                         ),
                         decoration: BoxDecoration(
                           color: primaryColor,
@@ -57,7 +66,7 @@ class CorporatePoster extends PosterTemplate {
                           'TUYỂN DỤNG',
                           style: GoogleFonts.roboto(
                             color: Colors.white,
-                            fontSize: 10 * scale,
+                            fontSize: 9 * scale, // Reduced from 10
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.0,
                           ),
@@ -69,7 +78,7 @@ class CorporatePoster extends PosterTemplate {
                         (text, s) => Text(
                           text,
                           style: GoogleFonts.roboto(
-                            fontSize: 12 * scale,
+                            fontSize: 10 * scale, // Reduced from 12
                             color: Colors.grey[600],
                           ),
                           textScaler: TextScaler.linear(s),
@@ -88,7 +97,8 @@ class CorporatePoster extends PosterTemplate {
                     (text, s) => Text(
                       text,
                       style: GoogleFonts.robotoSlab(
-                        fontSize: 28 * scale, // Reduced from 32
+                        fontSize:
+                            20 * scale, // Reduced from 24 (and 28, 32 prev)
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                         height: 1.1,
@@ -105,7 +115,8 @@ class CorporatePoster extends PosterTemplate {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8 * scale),
                       child: SizedBox(
-                        height: 150 * scale,
+                        height:
+                            90 * scale, // Reduced from 100 (and 120, 150 prev)
                         width: double.infinity,
                         child: Image.network(
                           data.imageUrls.first,
@@ -114,8 +125,7 @@ class CorporatePoster extends PosterTemplate {
                       ),
                     ),
 
-                  SizedBox(height: 24 * scale),
-
+                  SizedBox(height: 12 * scale), // Reduced from 16
                   // Info Grid
                   Column(
                     children: [
@@ -127,7 +137,7 @@ class CorporatePoster extends PosterTemplate {
                         scale,
                         id: 'salary',
                       ),
-                      SizedBox(height: 12 * scale),
+                      SizedBox(height: 8 * scale), // Reduced from 12
                       _buildCorporateBox(
                         'ĐỊA CHỈ',
                         data.location
@@ -142,14 +152,15 @@ class CorporatePoster extends PosterTemplate {
                     ],
                   ),
 
-                  SizedBox(height: 24 * scale),
-
+                  SizedBox(
+                    height: 10 * scale,
+                  ), // Reduced from 12 // Reduced from 16
                   // Requirements List
                   if (data.requirements.isNotEmpty) ...[
                     Text(
                       'YÊU CẦU',
                       style: GoogleFonts.roboto(
-                        fontSize: 12 * scale,
+                        fontSize: 10 * scale, // Reduced from 12
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[500],
                       ),
@@ -157,7 +168,9 @@ class CorporatePoster extends PosterTemplate {
                     Divider(),
                     ...data.requirements.asMap().entries.map(
                       (entry) => Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4 * scale),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 2 * scale,
+                        ), // Reduced from 4
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -173,7 +186,7 @@ class CorporatePoster extends PosterTemplate {
                                 (text, s) => Text(
                                   text,
                                   style: GoogleFonts.roboto(
-                                    fontSize: 14 * scale,
+                                    fontSize: 12 * scale, // Reduced from 14
                                     color: Colors.black87,
                                   ),
                                   textScaler: TextScaler.linear(s),
@@ -193,7 +206,7 @@ class CorporatePoster extends PosterTemplate {
                     Text(
                       'QUYỀN LỢI',
                       style: GoogleFonts.roboto(
-                        fontSize: 12 * scale,
+                        fontSize: 10 * scale, // Reduced from 12
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[500],
                       ),
@@ -201,7 +214,9 @@ class CorporatePoster extends PosterTemplate {
                     Divider(),
                     ...data.benefits.asMap().entries.map(
                       (entry) => Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4 * scale),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 2 * scale,
+                        ), // Reduced from 4
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -217,7 +232,7 @@ class CorporatePoster extends PosterTemplate {
                                 (text, s) => Text(
                                   text,
                                   style: GoogleFonts.roboto(
-                                    fontSize: 14 * scale,
+                                    fontSize: 12 * scale, // Reduced from 14
                                     color: Colors.black87,
                                   ),
                                   textScaler: TextScaler.linear(s),
@@ -239,7 +254,7 @@ class CorporatePoster extends PosterTemplate {
         // Footer
         Container(
           color: primaryColor,
-          padding: EdgeInsets.all(24 * scale),
+          padding: EdgeInsets.all(12 * scale), // Reduced from 16
           child: Row(
             children: [
               Expanded(
@@ -265,7 +280,7 @@ class CorporatePoster extends PosterTemplate {
                       (text, s) => Text(
                         data.contactInfo,
                         style: GoogleFonts.roboto(
-                          fontSize: 12 * scale,
+                          fontSize: 10 * scale, // Reduced from 12
                           color: Colors.white70,
                         ),
                         textScaler: TextScaler.linear(s),
@@ -291,7 +306,7 @@ class CorporatePoster extends PosterTemplate {
     String? id,
   }) {
     return Container(
-      padding: EdgeInsets.all(12 * scale),
+      padding: EdgeInsets.all(6 * scale), // Reduced from 8
       width: double.infinity,
       decoration: BoxDecoration(
         color: bg,
@@ -303,7 +318,7 @@ class CorporatePoster extends PosterTemplate {
           Text(
             title,
             style: GoogleFonts.roboto(
-              fontSize: 10 * scale,
+              fontSize: 9 * scale, // Reduced from 10
               fontWeight: FontWeight.bold,
               color: Colors.grey[600],
             ),
@@ -315,7 +330,7 @@ class CorporatePoster extends PosterTemplate {
                   (text, s) => Text(
                     text,
                     style: GoogleFonts.roboto(
-                      fontSize: 14 * scale,
+                      fontSize: 12 * scale, // Reduced from 14
                       fontWeight: FontWeight.bold,
                       color: textColor,
                     ),
@@ -328,7 +343,7 @@ class CorporatePoster extends PosterTemplate {
               : Text(
                   value,
                   style: GoogleFonts.roboto(
-                    fontSize: 14 * scale,
+                    fontSize: 12 * scale, // Reduced from 14
                     fontWeight: FontWeight.bold,
                     color: textColor,
                   ),

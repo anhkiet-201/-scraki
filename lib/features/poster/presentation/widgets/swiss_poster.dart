@@ -29,8 +29,8 @@ class SwissPoster extends PosterTemplate {
           Container(
             color: primaryColor,
             padding: EdgeInsets.symmetric(
-              horizontal: 24 * scale,
-              vertical: 20 * scale,
+              horizontal: 14 * scale, // Reduced from 20
+              vertical: 10 * scale, // Reduced from 16
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +40,7 @@ class SwissPoster extends PosterTemplate {
                   (text, s) => Text(
                     text,
                     style: GoogleFonts.inter(
-                      fontSize: 36 * scale, // Reduced from 40
+                      fontSize: 26 * scale, // Reduced from 32 (and 36 prev)
                       fontWeight: FontWeight.w900,
                       color: secondaryColor,
                       height: 0.9,
@@ -59,7 +59,7 @@ class SwissPoster extends PosterTemplate {
                   (t, s) => Text(
                     t,
                     style: GoogleFonts.inter(
-                      fontSize: 16 * scale,
+                      fontSize: 13 * scale, // Reduced from 16
                       fontWeight: FontWeight.bold,
                       color: secondaryColor.withValues(alpha: 0.9),
                     ),
@@ -74,7 +74,7 @@ class SwissPoster extends PosterTemplate {
           // 2. Main Body Content
           Expanded(
             child: Padding(
-              padding: EdgeInsets.all(24 * scale),
+              padding: EdgeInsets.all(14 * scale), // Reduced from 20
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -84,7 +84,7 @@ class SwissPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.inter(
-                        fontSize: 30 * scale, // Reduced from 34
+                        fontSize: 22 * scale, // Reduced from 26 (and 30 prev)
                         fontWeight: FontWeight.w800,
                         color: textColor,
                         height: 1.1,
@@ -97,8 +97,7 @@ class SwissPoster extends PosterTemplate {
                     defaultText: data.jobTitle,
                   ),
 
-                  SizedBox(height: 20 * scale),
-
+                  SizedBox(height: 8 * scale), // Reduced from 12
                   // Divider
                   Container(
                     width: double.infinity,
@@ -106,8 +105,7 @@ class SwissPoster extends PosterTemplate {
                     color: primaryColor,
                   ),
 
-                  SizedBox(height: 20 * scale),
-
+                  SizedBox(height: 12 * scale), // Reduced from 20
                   // 3. Grid Layout (Meta Info Left, Details Right)
                   Expanded(
                     child: Row(
@@ -129,7 +127,7 @@ class SwissPoster extends PosterTemplate {
                                 (t, s) => Text(
                                   t,
                                   style: GoogleFonts.inter(
-                                    fontSize: 15 * scale,
+                                    fontSize: 12 * scale, // Reduced from 15
                                     fontWeight: FontWeight.bold,
                                     color: textColor,
                                   ),
@@ -148,7 +146,7 @@ class SwissPoster extends PosterTemplate {
                                 (t, s) => Text(
                                   t,
                                   style: GoogleFonts.inter(
-                                    fontSize: 15 * scale,
+                                    fontSize: 12 * scale, // Reduced from 15
                                     fontWeight: FontWeight.w600,
                                     color: textColor,
                                   ),
@@ -181,8 +179,7 @@ class SwissPoster extends PosterTemplate {
                           ),
                         ),
 
-                        SizedBox(width: 20 * scale),
-
+                        SizedBox(width: 16 * scale), // Reduced from 20
                         // Col 2: Detailed Lists (2/3 width)
                         Expanded(
                           flex: 5,
@@ -245,7 +242,7 @@ class SwissPoster extends PosterTemplate {
       child: Text(
         text,
         style: GoogleFonts.inter(
-          fontSize: 11 * scale,
+          fontSize: 9 * scale, // Reduced from 11
           fontWeight: FontWeight.w900,
           color: color,
           letterSpacing: 0.5,
@@ -268,7 +265,7 @@ class SwissPoster extends PosterTemplate {
           Text(
             '• ',
             style: TextStyle(
-              fontSize: 14 * scale,
+              fontSize: 10 * scale, // Reduced from 12
               color: const Color(0xFFE30613), // Red bullet
               fontWeight: FontWeight.bold,
             ),
@@ -279,7 +276,7 @@ class SwissPoster extends PosterTemplate {
               (t, s) => Text(
                 t,
                 style: GoogleFonts.inter(
-                  fontSize: 13 * scale,
+                  fontSize: 11 * scale, // Reduced from 13
                   color: color,
                   height: 1.3,
                   fontWeight: FontWeight.w500,
