@@ -18,8 +18,8 @@ abstract class PosterTemplate extends StatelessWidget {
   const PosterTemplate({
     super.key,
     required this.data,
-    this.width = 375,
-    this.height = 667,
+    this.width = 360,
+    this.height = 640,
     this.customizationStore,
   });
 
@@ -37,8 +37,8 @@ abstract class PosterTemplate extends StatelessWidget {
 
         // Calculate scale factor using the limiting dimension to ensure fit
         // Base reference: 375 x 667
-        final double scaleX = w / 375.0;
-        final double scaleY = h / 667.0;
+        final double scaleX = w / 360.0;
+        final double scaleY = h / 640.0;
         final double scale = (scaleX < scaleY) ? scaleX : scaleY;
 
         return Container(

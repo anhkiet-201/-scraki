@@ -43,6 +43,8 @@ class PosterPanel extends StatefulWidget {
 class _PosterPanelState extends State<PosterPanel> {
   int _selectedTemplateIndex = 0;
 
+  final double _aspectRatio = 9 / 16;
+
   final List<String> _templateNames = [
     'Modern',
     'Minimalist',
@@ -125,7 +127,7 @@ class _PosterPanelState extends State<PosterPanel> {
         children: [
           FloatingToolBoxCard(
             height: 75,
-            width: widget.height * (9 / 19),
+            width: (widget.height - 87) * _aspectRatio,
             child: widget.isGenerating || widget.posterData == null
                 ? const SizedBox()
                 : TemplateSelector(
@@ -136,7 +138,7 @@ class _PosterPanelState extends State<PosterPanel> {
                   ),
           ),
           FloatingToolBoxCard(
-            width: widget.height * (9 / 19),
+            width: (widget.height - 87) * _aspectRatio,
             height: widget.height - 87,
             child: widget.isGenerating
                 ? GeminiSkeletonLayout()
@@ -213,9 +215,7 @@ class _PosterPanelState extends State<PosterPanel> {
                               child: RepaintBoundary(
                                 key: widget.posterKey,
                                 child: AspectRatio(
-                                  aspectRatio:
-                                      (widget.height * (9 / 19)) /
-                                      (widget.height - 87),
+                                  aspectRatio: _aspectRatio,
                                   child: posterWidget,
                                 ),
                               ),
@@ -249,16 +249,12 @@ class _PosterPanelState extends State<PosterPanel> {
                             childWhenDragging: Opacity(
                               opacity: 0.5,
                               child: AspectRatio(
-                                aspectRatio:
-                                    (widget.height * (9 / 19)) /
-                                    (widget.height - 87),
+                                aspectRatio: _aspectRatio,
                                 child: posterWidget,
                               ),
                             ),
                             child: AspectRatio(
-                              aspectRatio:
-                                  (widget.height * (9 / 19)) /
-                                  (widget.height - 87),
+                              aspectRatio: _aspectRatio,
                               child: posterWidget,
                             ),
                           ),
