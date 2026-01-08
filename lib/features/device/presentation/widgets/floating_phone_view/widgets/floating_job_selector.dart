@@ -190,7 +190,7 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                                 children: [
                                   Text(
                                     job.jobTitle,
-                                    maxLines: 1,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -203,11 +203,11 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          job.companyName,
+                                          job.location,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 12,
                                             color: onSurface.withValues(
                                               alpha: 0.9,
                                             ),
