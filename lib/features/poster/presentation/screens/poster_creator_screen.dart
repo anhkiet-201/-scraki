@@ -378,7 +378,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                           return const SizedBox(
                             width: 360, // ~9:16 base width
                             child: AspectRatio(
-                              aspectRatio: 9 / 16,
+                              aspectRatio: 0.7,
                               child: GeminiPosterSkeleton(),
                             ),
                           );
@@ -411,7 +411,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '1080 x 1920 px (9:16)',
+                  '360 x 514 px (0.7:1)',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
