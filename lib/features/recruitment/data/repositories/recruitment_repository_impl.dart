@@ -104,9 +104,12 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
       You are a professional recruitment poster designer. Extract and CREATE the following information from this job description.
       Return strictly valid JSON.
       
+      VARIATION INSTRUCTION: Generate a simplified but UNIQUE variation of the content. Avoid repeating the exact same phrasing from previous outputs if possible. Be creative with the 'catchyHeadline' and 'tikTokCaption'.
+      Request ID: ${DateTime.now().millisecondsSinceEpoch}
+      
       CRITICAL COMPLIANCE RULES:
       1. Ensure content complies with Community Standards and Local Laws.
-      2. PREVENT SCAM FLAGGING: Do NOT use phrases like "Việc nhẹ lương cao", "Kiếm tiền dễ dàng", "Không cần kinh nghiệm lương khủng", or massive unverifiable promises.
+      2. PREVENT SCAM FLAGGING: Do NOT use phrases like "Việc nhẹ lương cao", "Kiếm tiền dễ dàng", "Không cần kinh nghiệm lương khủng", "Gấp", "Số lượng lớn", "Nhanh chóng" or massive unverifiable promises.
       3. Tone: Professional, Authentic, Trustworthy, and Enthusiastic.
       
       Fields:
