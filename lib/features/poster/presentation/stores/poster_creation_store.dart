@@ -14,10 +14,7 @@ abstract class _PosterCreationStore with Store {
   final ParseJobTextUseCase _parseJobTextUseCase;
   final FetchJobsUseCase _fetchJobsUseCase;
 
-  _PosterCreationStore(
-    this._parseJobTextUseCase,
-    this._fetchJobsUseCase,
-  );
+  _PosterCreationStore(this._parseJobTextUseCase, this._fetchJobsUseCase);
 
   /// Current step in the wizard
   // 0: Input/Selection
@@ -83,10 +80,14 @@ abstract class _PosterCreationStore with Store {
     isLoading = false;
   }
 
+  /// The raw job data used to generate the current poster.
+  PosterData? _selectedRawJob;
+
   @action
   Future<void> selectJob(PosterData job) async {
     isLoading = true;
     errorMessage = null;
+    _selectedRawJob = job;
 
     try {
       // 2. Parse AI content
@@ -118,6 +119,13 @@ abstract class _PosterCreationStore with Store {
   }
 
   @action
+  Future<void> regenerate() async {
+    if (_selectedRawJob != null) {
+      await selectJob(_selectedRawJob!);
+    }
+  }
+
+  @action
   void updatePosterData(PosterData newData) {
     currentPosterData = newData;
   }
@@ -126,6 +134,7 @@ abstract class _PosterCreationStore with Store {
   void reset() {
     currentStep = 0;
     currentPosterData = null;
+    _selectedRawJob = null;
     errorMessage = null;
     isLoading = false;
   }

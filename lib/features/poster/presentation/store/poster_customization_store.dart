@@ -53,6 +53,14 @@ abstract class _PosterCustomizationStore with Store {
     }
   }
 
+  @action
+  void reset() {
+    selectedFieldId = null;
+    selectedDefaultText = null;
+    textScales.clear();
+    textOverrides.clear();
+  }
+
   double getScale(String id) => textScales[id] ?? 1.0;
 
   String? getText(String id) => textOverrides[id];

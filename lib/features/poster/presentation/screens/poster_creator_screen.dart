@@ -490,12 +490,54 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'Thiết kế',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Thiết kế',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              // Regenerate Button
+              Observer(
+                builder: (_) {
+                  final canRegenerate = _posterStore.currentPosterData != null;
+                  return Tooltip(
+                    message: 'Tạo lại nội dung',
+                    child: InkWell(
+                      onTap: canRegenerate
+                          ? () {
+                              _customizationStore.reset(); // Reset edits
+                              _posterStore.regenerate();
+                            }
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: _posterStore.isLoading
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              )
+                            : Icon(
+                                Icons.auto_awesome,
+                                size: 18,
+                                color: canRegenerate
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outlineVariant,
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
         const Divider(height: 1),
