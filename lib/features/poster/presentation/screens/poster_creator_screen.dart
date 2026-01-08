@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
@@ -513,6 +514,17 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
 
               const SizedBox(height: 32),
 
+              // Caption Recommendation
+              _buildSectionHeader(
+                theme,
+                Icons.lightbulb_outline_rounded,
+                'Gợi ý Caption',
+              ),
+              const SizedBox(height: 16),
+              _buildCaptionBox(theme),
+
+              const SizedBox(height: 32),
+
               _buildSectionHeader(theme, Icons.tune_rounded, 'Tùy chỉnh'),
               const SizedBox(height: 16),
               _buildCustomizationPanel(theme),
@@ -552,6 +564,114 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCaptionBox(ThemeData theme) {
+    return Observer(
+      builder: (_) {
+        final posterData = _posterStore.currentPosterData;
+        final caption = posterData?.tikTokCaption;
+
+        if (posterData == null) {
+          return _buildInfoBox(theme, 'Chọn công việc để xem gợi ý caption.');
+        }
+
+        if (caption == null || caption.isEmpty) {
+          return _buildInfoBox(
+            theme,
+            'Không có gợi ý caption cho công việc này.',
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'NỘI DUNG',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Sao chép',
+                      child: InkWell(
+                        onTap: () {
+                          // Note: Clipboard requires 'flutter/services.dart'
+                          // I'll assume it's available or add import if needed.
+                          // It is usually exported by material, but explicit import is better.
+                          // Actually, Clipboard is in services.
+                          // I will add import if it fails, but let's try.
+                          // Actually, I should use the helper method _copyToClipboard if I had one,
+                          // but I'll write logic here.
+                          // Wait, Clipboard class needs 'package:flutter/services.dart'.
+                          // It is NOT in material.dart.
+                          // I should check imports. 'scraki/features/poster/presentation/screens/poster_creator_screen.dart' has imports at top.
+                          // I will check imports in next step if this fails or just add logic.
+                          // For now, I will use a simple method call that I will implement if needed or just inline code.
+                          _copyCaption(context, caption);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.copy_rounded,
+                            size: 14,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Content
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
+                child: SelectableText(
+                  caption,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    height: 1.5,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _copyCaption(BuildContext context, String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã sao chép caption!'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
