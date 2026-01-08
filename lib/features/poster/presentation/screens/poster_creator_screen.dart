@@ -376,7 +376,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
 
                         if (isLoading) {
                           return const SizedBox(
-                            width: 360, // ~9:16 base width
+                            width: 480, // ~9:16 base width
                             child: AspectRatio(
                               aspectRatio: 0.7,
                               child: GeminiPosterSkeleton(),
@@ -411,7 +411,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '360 x 514 px (0.7:1)',
+                  '480 x 685 px (0.7:1)',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -426,7 +426,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
 
   Widget _buildPosterCanvas(PosterData posterData) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 400),
+      constraints: const BoxConstraints(maxWidth: 480),
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
@@ -1020,44 +1020,78 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     switch (_selectedTemplateIndex) {
       case 0:
         return ModernPoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 1:
         return MinimalistPoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 2:
-        return BoldPoster(data: data, customizationStore: _customizationStore);
+        return BoldPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 3:
         return CorporatePoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 4:
         return CreativePoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 5:
-        return TechPoster(data: data, customizationStore: _customizationStore);
+        return TechPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 6:
         return ElegantPoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 7:
         return PlayfulPoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
       case 8:
-        return RetroPoster(data: data, customizationStore: _customizationStore);
+        return RetroPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
       case 9:
-        return SwissPoster(data: data, customizationStore: _customizationStore);
+        return SwissPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
       default:
         return ModernPoster(
+          width: 480,
+          height: 685,
           data: data,
           customizationStore: _customizationStore,
         );
