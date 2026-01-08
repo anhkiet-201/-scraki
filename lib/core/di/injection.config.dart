@@ -33,6 +33,14 @@ import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
+import '../../features/poster/data/repositories/poster_repository_impl.dart'
+    as _i424;
+import '../../features/poster/domain/repositories/i_poster_repository.dart'
+    as _i391;
+import '../../features/poster/domain/usecases/save_poster_usecase.dart'
+    as _i706;
+import '../../features/poster/presentation/store/poster_customization_store.dart'
+    as _i621;
 import '../../features/poster/presentation/stores/poster_creation_store.dart'
     as _i876;
 import '../../features/recruitment/data/repositories/recruitment_repository_impl.dart'
@@ -58,6 +66,9 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    gh.factory<_i621.PosterCustomizationStore>(
+      () => _i621.PosterCustomizationStore(),
+    );
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
@@ -71,6 +82,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
+    );
+    gh.lazySingleton<_i391.IPosterRepository>(
+      () => _i424.PosterRepositoryImpl(),
     );
     gh.lazySingleton<_i510.DeviceGroupRepository>(
       () => _i454.DeviceGroupRepositoryImpl(),
@@ -96,6 +110,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
+    );
+    gh.factory<_i706.SavePosterUseCase>(
+      () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),

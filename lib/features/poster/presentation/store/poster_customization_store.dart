@@ -1,7 +1,9 @@
+import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 
 part 'poster_customization_store.g.dart';
 
+@injectable
 class PosterCustomizationStore = _PosterCustomizationStore
     with _$PosterCustomizationStore;
 

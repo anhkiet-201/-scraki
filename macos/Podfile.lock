@@ -11,6 +11,8 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
   - wakelock_plus (0.0.1):
     - FlutterMacOS
 
@@ -21,6 +23,7 @@ DEPENDENCIES:
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
   - wakelock_plus (from `Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos`)
 
 EXTERNAL SOURCES:
@@ -36,6 +39,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
   wakelock_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos
 
@@ -46,6 +51,7 @@ SPEC CHECKSUMS:
   media_kit_video: fa6564e3799a0a28bff39442334817088b7ca758
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
+  url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
   wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
 
 PODFILE CHECKSUM: 2c32cf9952c2f31bf5580a0c6fa555aee8e647ea

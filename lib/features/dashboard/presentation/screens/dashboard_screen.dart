@@ -10,6 +10,7 @@ import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.da
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
+import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
 
 class DashboardScreen extends StatelessWidget
     with DeviceManagerStoreMixin, SessionManagerStoreMixin {
@@ -18,7 +19,6 @@ class DashboardScreen extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final dashboardStore = inject<DashboardStore>();
-    final deviceGroupStore = inject<DeviceGroupStore>();
 
     // Ensure devices are loaded when screen is built
     if (deviceManagerStore.devices.isEmpty &&
@@ -33,78 +33,129 @@ class DashboardScreen extends StatelessWidget
           _buildNavigationRail(theme, dashboardStore),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: Column(
-              children: [
-                _buildTopBar(theme, dashboardStore),
-                const GroupHorizontalSelector(),
-                Expanded(
-                  child: Observer(
-                    builder: (_) {
-                      final futureStatus =
-                          deviceManagerStore.loadDevicesFuture?.status;
-                      final errorMessage = deviceManagerStore.errorMessage;
+            child: Observer(
+              builder: (context) => _buildContent(context, dashboardStore),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                      if (futureStatus == FutureStatus.pending &&
-                          deviceManagerStore.devices.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+  Widget _buildContent(BuildContext context, DashboardStore store) {
+    switch (store.selectedIndex) {
+      case 0: // Devices
+        return _buildDevicesContent(context, store);
+      case 1: // Posters
+        return const PosterCreatorScreen();
+      case 2: // Scripts
+        return _buildComingSoon(context, 'Scripts');
+      case 3: // Settings
+        return _buildComingSoon(context, 'Settings');
+      default:
+        return _buildDevicesContent(context, store);
+    }
+  }
 
-                      if (errorMessage != null &&
-                          deviceManagerStore.devices.isEmpty) {
-                        return _buildErrorView(errorMessage);
-                      }
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Stack(
-                            fit: StackFit.expand,
-                            clipBehavior: Clip.none,
-                            children: [
-                              RefreshIndicator(
-                                onRefresh: deviceManagerStore.loadDevices,
-                                child: Observer(
-                                  builder: (_) {
-                                    return DeviceGrid(
-                                      devices: deviceManagerStore.devices
-                                          .toList(), // Pass full list
-                                      visibleSerials:
-                                          deviceGroupStore.visibleSerials,
-                                      onDisconnect: (device) {
-                                        deviceManagerStore.disconnect(
-                                          device.serial,
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                              Observer(
-                                builder: (_) {
-                                  final isVisible =
-                                      sessionManagerStore.isFloatingVisible;
-                                  final serial =
-                                      sessionManagerStore.floatingSerial;
+  Widget _buildDevicesContent(
+    BuildContext context,
+    DashboardStore dashboardStore,
+  ) {
+    final deviceGroupStore = inject<DeviceGroupStore>();
+    final theme = Theme.of(context);
 
-                                  if (!isVisible) {
-                                    return const SizedBox.shrink();
-                                  }
+    return Column(
+      children: [
+        _buildTopBar(theme, dashboardStore),
+        const GroupHorizontalSelector(),
+        Expanded(
+          child: Observer(
+            builder: (_) {
+              final futureStatus = deviceManagerStore.loadDevicesFuture?.status;
+              final errorMessage = deviceManagerStore.errorMessage;
 
-                                  return FloatingPhoneView(
-                                    key: ValueKey('floating_$serial'),
-                                    serial: serial!,
-                                    parentSize: constraints.biggest,
-                                    onClose: () => sessionManagerStore
-                                        .toggleFloating(null),
-                                  );
-                                },
-                              ),
-                            ],
+              if (futureStatus == FutureStatus.pending &&
+                  deviceManagerStore.devices.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (errorMessage != null && deviceManagerStore.devices.isEmpty) {
+                return _buildErrorView(errorMessage);
+              }
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.none,
+                    children: [
+                      RefreshIndicator(
+                        onRefresh: deviceManagerStore.loadDevices,
+                        child: Observer(
+                          builder: (_) {
+                            return DeviceGrid(
+                              devices: deviceManagerStore.devices
+                                  .toList(), // Pass full list
+                              visibleSerials: deviceGroupStore.visibleSerials,
+                              onDisconnect: (device) {
+                                deviceManagerStore.disconnect(device.serial);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      Observer(
+                        builder: (_) {
+                          final isVisible =
+                              sessionManagerStore.isFloatingVisible;
+                          final serial = sessionManagerStore.floatingSerial;
+
+                          if (!isVisible) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return FloatingPhoneView(
+                            key: ValueKey('floating_$serial'),
+                            serial: serial!,
+                            parentSize: constraints.biggest,
+                            onClose: () =>
+                                sessionManagerStore.toggleFloating(null),
                           );
                         },
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComingSoon(BuildContext context, String featureName) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 64,
+            color: theme.colorScheme.primary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            featureName,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming Soon...',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
