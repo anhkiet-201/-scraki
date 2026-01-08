@@ -65,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           Expanded(
             child: PageView(
               controller: _pageController,
+              scrollDirection: Axis.vertical,
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 KeepAlivePage(
