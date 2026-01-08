@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
 import 'package:scraki/core/widgets/skeleton_loader.dart';
@@ -35,6 +36,11 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   late final PosterCustomizationStore _customizationStore;
   late final SavePosterUseCase _savePosterUseCase;
   final GlobalKey _posterKey = GlobalKey();
+
+  // Customization State
+  late final TextEditingController _textEditingController;
+  ReactionDisposer? _textSyncDisposer;
+
   int _selectedTemplateIndex = 0;
   bool _isSaving = false;
 
@@ -57,7 +63,31 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     _posterStore = inject<PosterCreationStore>();
     _customizationStore = inject<PosterCustomizationStore>();
     _savePosterUseCase = inject<SavePosterUseCase>();
+
+    _textEditingController = TextEditingController();
     _posterStore.loadAvailableJobs();
+
+    // Sync text controller with store selection
+    _textSyncDisposer = reaction((_) => _customizationStore.selectedFieldId, (
+      selectedField,
+    ) {
+      if (selectedField != null) {
+        final currentText =
+            _customizationStore.getText(selectedField) ??
+            _customizationStore.selectedDefaultText ??
+            '';
+        if (_textEditingController.text != currentText) {
+          _textEditingController.text = currentText;
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _textEditingController.dispose();
+    _textSyncDisposer?.call();
+    super.dispose();
   }
 
   @override
@@ -159,7 +189,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+              ? theme.colorScheme.primaryContainer.withOpacity(0.2)
               : theme.colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -339,6 +369,10 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                         final posterData = _posterStore.currentPosterData;
                         final isLoading = _posterStore.isLoading;
 
+                        // Observe customization changes to force rebuild preview
+                        // ignore: unused_local_variable
+                        final tick = _customizationStore.selectedFieldId;
+
                         if (isLoading) {
                           return const SizedBox(
                             width: 360, // ~9:16 base width
@@ -395,7 +429,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withOpacity(0.15),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -441,7 +475,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
           'Chọn một công việc từ cột bên trái\nđể bắt đầu thiết kế',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
           ),
         ),
       ],
@@ -493,7 +527,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withOpacity(0.05),
                 offset: const Offset(0, -4),
                 blurRadius: 16,
               ),
@@ -608,7 +642,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
 
         // State 3: Editing
         return Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(8),
@@ -617,63 +650,145 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('Nội dung', style: theme.textTheme.labelMedium),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () {
-                      _customizationStore.resetText();
-                      _customizationStore.updateScale(1.0);
-                    },
-                    icon: const Icon(Icons.refresh, size: 16),
-                    tooltip: 'Đặt lại',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                initialValue:
-                    _customizationStore.getText(selectedField) ??
-                    _customizationStore.selectedDefaultText,
-                onChanged: (val) => _customizationStore.updateText(val),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(),
-                  isDense: true,
+              // Header Row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit_note_rounded,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _getFriendlyName(selectedField),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Đặt lại',
+                      child: InkWell(
+                        onTap: () {
+                          _customizationStore.updateScale(1.0);
+                          _customizationStore
+                              .resetText(); // Will trigger store update
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: 3,
-                minLines: 1,
               ),
 
-              const SizedBox(height: 16),
+              // Text Editing Field
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: _AutoSyncTextField(
+                  key: ValueKey('input_$selectedField'),
+                  initialValue:
+                      _customizationStore.getText(selectedField) ??
+                      _customizationStore.selectedDefaultText ??
+                      '',
+                  onChanged: (val) => _customizationStore.updateText(val),
+                ),
+              ),
 
-              Text('Kích thước', style: theme.textTheme.labelMedium),
-              Row(
-                children: [
-                  Expanded(
-                    child: Slider(
-                      value: _customizationStore.getScale(selectedField),
-                      min: 0.5,
-                      max: 2.0,
-                      divisions: 15,
-                      onChanged: (val) => _customizationStore.updateScale(val),
+              // Scale Slider
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'Kích thước',
+                        style: theme.textTheme.labelMedium,
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 40,
-                    child: Text(
-                      '${(_customizationStore.getScale(selectedField) * 100).toInt()}%',
-                      style: theme.textTheme.bodySmall,
-                      textAlign: TextAlign.end,
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove_rounded,
+                            size: 20,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () {
+                            final current = _customizationStore.getScale(
+                              selectedField,
+                            );
+                            final newScale = (current - 0.1).clamp(0.5, 3.0);
+                            _customizationStore.updateScale(newScale);
+                          },
+                          tooltip: 'Giảm cỡ chữ',
+                        ),
+                        Expanded(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: theme.colorScheme.primary,
+                              inactiveTrackColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              thumbColor: theme.colorScheme.primary,
+                              overlayColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.1),
+                              trackHeight: 2,
+                              thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6,
+                                elevation: 2,
+                              ),
+                              overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 16,
+                              ),
+                            ),
+                            child: Slider(
+                              value: _customizationStore.getScale(
+                                selectedField,
+                              ),
+                              min: 0.5,
+                              max: 3.0,
+                              divisions: 25,
+                              label:
+                                  '${(_customizationStore.getScale(selectedField) * 100).toInt()}%',
+                              onChanged: (val) =>
+                                  _customizationStore.updateScale(val),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.add_rounded,
+                            size: 20,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () {
+                            final current = _customizationStore.getScale(
+                              selectedField,
+                            );
+                            final newScale = (current + 0.1).clamp(0.5, 3.0);
+                            _customizationStore.updateScale(newScale);
+                          },
+                          tooltip: 'Tăng cỡ chữ',
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -682,6 +797,34 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     );
   }
 
+  String _getFriendlyName(String scopedId) {
+    final parts = scopedId.split('_');
+    final String id;
+    if (parts.length > 1) {
+      id = parts.sublist(1).join('_');
+    } else {
+      id = scopedId;
+    }
+
+    if (id == 'jobTitle') return 'Chức danh';
+    if (id == 'companyName') return 'Tên công ty';
+    if (id == 'headline') return 'Tiêu đề chính';
+    if (id == 'salary') return 'Mức lương';
+    if (id == 'location') return 'Địa điểm';
+    if (id == 'locationShort') return 'Địa điểm (Ngắn)';
+    if (id == 'contactInfo') return 'Liên hệ';
+    if (id.startsWith('req_')) {
+      final index = int.tryParse(id.split('_').last) ?? 0;
+      return 'Yêu cầu ${index + 1}';
+    }
+    if (id.startsWith('ben_')) {
+      final index = int.tryParse(id.split('_').last) ?? 0;
+      return 'Quyền lợi ${index + 1}';
+    }
+    return id;
+  }
+
+  // ... [Other methods unchanged]
   Widget _buildInfoBox(ThemeData theme, String text) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -711,7 +854,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     );
   }
 
-  // [Keep _buildPosterWidget switch case]
   Widget _buildPosterWidget(PosterData data) {
     switch (_selectedTemplateIndex) {
       case 0:
@@ -760,7 +902,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     }
   }
 
-  // [Keep Save logic]
   Widget _buildSaveButton(ThemeData theme) {
     return Observer(
       builder: (_) {
@@ -792,7 +933,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   }
 
   Future<void> _handleSavePoster() async {
-    // ... [Keep existing save logic] ...
     final posterData = _posterStore.currentPosterData;
     if (posterData == null) return;
 
@@ -870,6 +1010,67 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
               )
             : null,
       ),
+    );
+  }
+}
+
+/// A TextField that initializes its controller with [initialValue]
+/// and updates when [initialValue] changes via [didUpdateWidget].
+class _AutoSyncTextField extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _AutoSyncTextField({
+    super.key,
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  State<_AutoSyncTextField> createState() => _AutoSyncTextFieldState();
+}
+
+class _AutoSyncTextFieldState extends State<_AutoSyncTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutoSyncTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync if initialValue differs from current text (e.g. Reset or external change)
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+      // Reset selection to end
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      decoration: const InputDecoration(
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(),
+        isDense: true,
+        hintText: 'Nhập nội dung...',
+      ),
+      maxLines: 3,
+      minLines: 1,
     );
   }
 }
