@@ -34,7 +34,7 @@ class ElegantPoster extends PosterTemplate {
           // Top Ornament
           Icon(Icons.stars, color: goldColor, size: 24 * scale),
           SizedBox(height: 16 * scale),
-    
+
           // Hiring Headline
           wrapEditable(
             'headline',
@@ -51,7 +51,7 @@ class ElegantPoster extends PosterTemplate {
             ),
             defaultText: data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
           ),
-    
+
           SizedBox(height: 16 * scale),
           Divider(
             color: goldColor,
@@ -60,7 +60,7 @@ class ElegantPoster extends PosterTemplate {
             endIndent: 80 * scale,
           ),
           SizedBox(height: 16 * scale),
-    
+
           // Job Title
           wrapEditable(
             'jobTitle',
@@ -68,7 +68,7 @@ class ElegantPoster extends PosterTemplate {
               t,
               textAlign: TextAlign.center,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 32 * scale,
+                fontSize: 28 * scale, // Reduced from 32
                 fontWeight: FontWeight.w700,
                 color: itemsColor,
                 height: 1.1,
@@ -80,9 +80,9 @@ class ElegantPoster extends PosterTemplate {
             ),
             defaultText: data.jobTitle,
           ),
-    
+
           SizedBox(height: 8 * scale),
-    
+
           // Company Name
           wrapEditable(
             'companyName',
@@ -98,9 +98,9 @@ class ElegantPoster extends PosterTemplate {
             ),
             defaultText: data.companyName,
           ),
-    
+
           SizedBox(height: 32 * scale),
-    
+
           // Info Row (Salary | Location)
           Container(
             padding: EdgeInsets.symmetric(vertical: 12 * scale),
@@ -143,9 +143,9 @@ class ElegantPoster extends PosterTemplate {
               ],
             ),
           ),
-    
+
           SizedBox(height: 32 * scale),
-    
+
           // Content Columns
           Expanded(
             child: Row(
@@ -176,7 +176,7 @@ class ElegantPoster extends PosterTemplate {
                     ],
                   ),
                 ),
-    
+
                 // Benefits
                 Expanded(
                   child: Column(
@@ -205,7 +205,7 @@ class ElegantPoster extends PosterTemplate {
               ],
             ),
           ),
-    
+
           // Footer / Apply
           Container(
             margin: EdgeInsets.only(top: 20 * scale),
@@ -295,7 +295,7 @@ class ElegantPoster extends PosterTemplate {
       ),
     );
   }
-  
+
   @override
   String get templateId => 'elegant';
 }

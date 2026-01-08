@@ -40,7 +40,7 @@ class SwissPoster extends PosterTemplate {
                   (text, s) => Text(
                     text,
                     style: GoogleFonts.inter(
-                      fontSize: 40 * scale,
+                      fontSize: 36 * scale, // Reduced from 40
                       fontWeight: FontWeight.w900,
                       color: secondaryColor,
                       height: 0.9,
@@ -50,7 +50,8 @@ class SwissPoster extends PosterTemplate {
                     overflow: TextOverflow.ellipsis,
                     textScaler: TextScaler.linear(s),
                   ),
-                  defaultText: data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
+                  defaultText:
+                      data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
                 ),
                 SizedBox(height: 8 * scale),
                 wrapEditable(
@@ -83,7 +84,7 @@ class SwissPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.inter(
-                        fontSize: 34 * scale,
+                        fontSize: 30 * scale, // Reduced from 34
                         fontWeight: FontWeight.w800,
                         color: textColor,
                         height: 1.1,

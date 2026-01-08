@@ -101,7 +101,8 @@ class CreativePoster extends PosterTemplate {
                   textAlign: TextAlign.center,
                   textScaler: TextScaler.linear(s),
                 ),
-                defaultText: data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
+                defaultText:
+                    data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
               ),
 
               SizedBox(height: 10 * scale),
@@ -112,7 +113,7 @@ class CreativePoster extends PosterTemplate {
                   text,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 24 * scale,
+                    fontSize: 22 * scale, // Reduced from 24
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF2D2D2D),
                     height: 1.1,
@@ -314,7 +315,7 @@ class CreativePoster extends PosterTemplate {
       ],
     );
   }
-  
+
   @override
   String get templateId => 'creative';
 }

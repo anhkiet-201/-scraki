@@ -88,7 +88,7 @@ class CorporatePoster extends PosterTemplate {
                     (text, s) => Text(
                       text,
                       style: GoogleFonts.robotoSlab(
-                        fontSize: 32 * scale,
+                        fontSize: 28 * scale, // Reduced from 32
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                         height: 1.1,
@@ -339,7 +339,7 @@ class CorporatePoster extends PosterTemplate {
       ),
     );
   }
-  
+
   @override
   String get templateId => 'corporate';
 }

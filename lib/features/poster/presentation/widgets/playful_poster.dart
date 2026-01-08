@@ -122,8 +122,7 @@ class PlayfulPoster extends PosterTemplate {
                                 ),
                                 textScaler: TextScaler.linear(s),
                               ),
-                              defaultText:
-                                  data.catchyHeadline ?? 'TUYỂN DỤNG',
+                              defaultText: data.catchyHeadline ?? 'TUYỂN DỤNG',
                             ),
                             SizedBox(height: 8 * scale),
                             wrapEditable(
@@ -132,7 +131,9 @@ class PlayfulPoster extends PosterTemplate {
                                 t.toUpperCase(),
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.fredoka(
-                                  fontSize: 40 * scale, // Massive font
+                                  fontSize:
+                                      34 *
+                                      scale, // Massive font reduced from 40
                                   fontWeight: FontWeight.w900,
                                   color: textColor,
                                   height: 1.0,

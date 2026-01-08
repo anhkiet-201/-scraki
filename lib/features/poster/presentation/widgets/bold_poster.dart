@@ -37,7 +37,7 @@ class BoldPoster extends PosterTemplate {
               Text(
                 'TUYỂN\nDỤNG',
                 style: GoogleFonts.oswald(
-                  fontSize: 60 * scale,
+                  fontSize: 54 * scale, // Reduced from 60
                   fontWeight: FontWeight.w900,
                   height: 0.9,
                   color: Colors.black.withValues(alpha: 0.1),
@@ -51,7 +51,7 @@ class BoldPoster extends PosterTemplate {
                     text,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.oswald(
-                      fontSize: 48 * scale,
+                      fontSize: 42 * scale, // Reduced from 48
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                       height: 1.0,
@@ -227,7 +227,7 @@ class BoldPoster extends PosterTemplate {
       ],
     );
   }
-  
+
   @override
   String get templateId => "bold";
 }

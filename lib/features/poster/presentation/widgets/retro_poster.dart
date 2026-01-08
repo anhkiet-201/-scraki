@@ -60,14 +60,15 @@ class RetroPoster extends PosterTemplate {
                     (t, s) => Text(
                       t,
                       style: GoogleFonts.rye(
-                        fontSize: 42 * scale,
+                        fontSize: 36 * scale, // Reduced from 42
                         fontWeight: FontWeight.normal,
                         color: accentColor,
                       ),
                       textScaler: TextScaler.linear(s),
                       textAlign: TextAlign.center,
                     ),
-                    defaultText: data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
+                    defaultText:
+                        data.catchyHeadline?.toUpperCase() ?? 'TUYỂN DỤNG',
                   ),
                 ],
               ),
@@ -89,7 +90,7 @@ class RetroPoster extends PosterTemplate {
                   t,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.abrilFatface(
-                    fontSize: 32 * scale,
+                    fontSize: 28 * scale, // Reduced from 32
                     color: inkColor,
                     height: 1.0,
                   ),

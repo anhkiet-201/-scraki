@@ -98,7 +98,7 @@ class ModernPoster extends PosterTemplate {
                       (text, s) => Text(
                         text,
                         style: GoogleFonts.robotoCondensed(
-                          fontSize: 32 * scale,
+                          fontSize: 30 * scale, // Reduced from 32
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           height: 1.1,
@@ -161,7 +161,9 @@ class ModernPoster extends PosterTemplate {
                               id: 'salary',
                             ),
                           ),
-                          SizedBox(width: 16 * scale),
+                          SizedBox(
+                            width: 12 * scale,
+                          ), // Reduced spacing from 16
                           Expanded(
                             child: _buildModernInfoBox(
                               'ĐỊA ĐIỂM',
@@ -382,7 +384,7 @@ class ModernPoster extends PosterTemplate {
                         14 * scale, // Slightly smaller to prevent overflow
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1E272E),
-                    height: 1.2,
+                    height: 1.1, // Reduced line height from 1.2
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

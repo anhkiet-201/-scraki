@@ -61,7 +61,7 @@ class MinimalistPoster extends PosterTemplate {
             (t, s) => Text(
               t,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 12 * scale,
+                fontSize: 11 * scale, // Reduced from 12
                 fontStyle: FontStyle.italic,
                 color: Colors.grey[600],
               ),
@@ -75,7 +75,7 @@ class MinimalistPoster extends PosterTemplate {
             (t, s) => Text(
               t,
               style: GoogleFonts.playfairDisplay(
-                fontSize: 36 * scale,
+                fontSize: 32 * scale, // Reduced from 36
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
                 height: 1.0,
@@ -225,7 +225,7 @@ class MinimalistPoster extends PosterTemplate {
         Text(
           label,
           style: GoogleFonts.lato(
-            fontSize: 12 * scale,
+            fontSize: 11 * scale, // Reduced from 12
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
             color: Colors.grey[500],
@@ -257,7 +257,7 @@ class MinimalistPoster extends PosterTemplate {
       ],
     );
   }
-  
+
   @override
   String get templateId => 'minimalist';
 }

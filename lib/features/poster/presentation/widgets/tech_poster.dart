@@ -62,7 +62,9 @@ class TechPoster extends PosterTemplate {
                               ),
                               textScaler: TextScaler.linear(s),
                             ),
-                            defaultText: data.catchyHeadline?.toUpperCase() ?? 'ĐANG TUYỂN DỤNG',
+                            defaultText:
+                                data.catchyHeadline?.toUpperCase() ??
+                                'ĐANG TUYỂN DỤNG',
                           ),
                           SizedBox(height: 4 * scale),
                           wrapEditable(
@@ -92,7 +94,7 @@ class TechPoster extends PosterTemplate {
                   (t, s) => Text(
                     t,
                     style: GoogleFonts.orbitron(
-                      fontSize: 32 * scale,
+                      fontSize: 28 * scale, // Reduced from 32
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                       height: 1.1,
