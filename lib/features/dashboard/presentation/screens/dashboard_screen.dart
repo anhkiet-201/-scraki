@@ -12,49 +12,73 @@ import 'package:scraki/features/device/presentation/widgets/device_grid/device_g
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
 import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
 
-class DashboardScreen extends StatelessWidget
-    with DeviceManagerStoreMixin, SessionManagerStoreMixin {
-  DashboardScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final dashboardStore = inject<DashboardStore>();
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen>
+    with DeviceManagerStoreMixin, SessionManagerStoreMixin {
+  late final PageController _pageController;
+  late final DashboardStore _dashboardStore;
+  ReactionDisposer? _selectionDisposer;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardStore = inject<DashboardStore>();
+    _pageController = PageController(
+      initialPage: _dashboardStore.selectedIndex,
+    );
+
+    // Sync store index with page controller
+    _selectionDisposer = reaction((_) => _dashboardStore.selectedIndex, (
+      index,
+    ) {
+      _pageController.jumpToPage(index);
+    });
 
     // Ensure devices are loaded when screen is built
     if (deviceManagerStore.devices.isEmpty &&
         deviceManagerStore.loadDevicesFuture == null) {
       deviceManagerStore.loadDevices();
     }
+  }
 
+  @override
+  void dispose() {
+    _selectionDisposer?.call();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       body: Row(
         children: [
-          _buildNavigationRail(theme, dashboardStore),
+          _buildNavigationRail(theme, _dashboardStore),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: Observer(
-              builder: (context) => _buildContent(context, dashboardStore),
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                KeepAlivePage(
+                  child: _buildDevicesContent(context, _dashboardStore),
+                ),
+                const KeepAlivePage(child: PosterCreatorScreen()),
+                KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
+                KeepAlivePage(child: _buildComingSoon(context, 'Settings')),
+              ],
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildContent(BuildContext context, DashboardStore store) {
-    switch (store.selectedIndex) {
-      case 0: // Devices
-        return _buildDevicesContent(context, store);
-      case 1: // Posters
-        return const PosterCreatorScreen();
-      case 2: // Scripts
-        return _buildComingSoon(context, 'Scripts');
-      case 3: // Settings
-        return _buildComingSoon(context, 'Settings');
-      default:
-        return _buildDevicesContent(context, store);
-    }
   }
 
   Widget _buildDevicesContent(
@@ -168,7 +192,10 @@ class DashboardScreen extends StatelessWidget
       builder: (_) {
         return NavigationRail(
           selectedIndex: store.selectedIndex,
-          onDestinationSelected: store.setSelectedIndex,
+          onDestinationSelected: (index) {
+            store.setSelectedIndex(index);
+            // PageController jump is handled by reaction
+          },
           extended: false,
           leading: Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -269,4 +296,25 @@ class DashboardScreen extends StatelessWidget
       ),
     );
   }
+}
+
+class KeepAlivePage extends StatefulWidget {
+  final Widget child;
+
+  const KeepAlivePage({super.key, required this.child});
+
+  @override
+  State<KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }
