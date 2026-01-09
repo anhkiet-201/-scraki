@@ -4,17 +4,8 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/template_selector.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
-import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
-
-import 'package:scraki/features/poster/presentation/widgets/tech_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/elegant_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/playful_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/retro_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/swiss_poster.dart';
+import 'package:scraki/features/poster/domain/enums/poster_template_type.dart';
+import 'package:scraki/features/poster/presentation/extensions/poster_template_extensions.dart';
 
 class PosterPanel extends StatefulWidget {
   final double height;
@@ -41,81 +32,15 @@ class PosterPanel extends StatefulWidget {
 }
 
 class _PosterPanelState extends State<PosterPanel> {
-  int _selectedTemplateIndex = 0;
+  PosterTemplateType _selectedTemplate = PosterTemplateType.modern;
 
   final double _aspectRatio = 0.7;
 
-  final List<String> _templateNames = [
-    'Modern',
-    'Minimalist',
-    'Bold',
-    'Corporate',
-    'Creative',
-    'Tech',
-    'Elegant',
-    'Playful',
-    'Retro',
-    'Swiss',
-  ];
-
   Widget _buildPosterWidget(PosterData data) {
-    switch (_selectedTemplateIndex) {
-      case 0:
-        return ModernPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 1:
-        return MinimalistPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 2:
-        return BoldPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 3:
-        return CorporatePoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 4:
-        return CreativePoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 5:
-        return TechPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 6:
-        return ElegantPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 7:
-        return PlayfulPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 8:
-        return RetroPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      case 9:
-        return SwissPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-      default:
-        return ModernPoster(
-          data: data,
-          customizationStore: widget.customizationStore,
-        );
-    }
+    return _selectedTemplate.buildWidget(
+      data: data,
+      customizationStore: widget.customizationStore,
+    );
   }
 
   @override
@@ -131,10 +56,16 @@ class _PosterPanelState extends State<PosterPanel> {
             child: widget.isGenerating || widget.posterData == null
                 ? const SizedBox()
                 : TemplateSelector(
-                    selectedIndex: _selectedTemplateIndex,
-                    onSelect: (index) =>
-                        setState(() => _selectedTemplateIndex = index),
-                    templateNames: _templateNames,
+                    selectedIndex: PosterTemplateType.values.indexOf(
+                      _selectedTemplate,
+                    ),
+                    onSelect: (index) => setState(
+                      () =>
+                          _selectedTemplate = PosterTemplateType.values[index],
+                    ),
+                    templateNames: PosterTemplateType.values
+                        .map((e) => e.label)
+                        .toList(),
                   ),
           ),
           FloatingToolBoxCard(

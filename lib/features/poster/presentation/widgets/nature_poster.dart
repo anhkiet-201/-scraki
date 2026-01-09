@@ -16,9 +16,6 @@ class NaturePoster extends PosterTemplate {
     // Colors
     final bgColor = const Color(0xFFF3F6E9); // Lightsage
     final darkGreen = const Color(0xFF2E4F2F);
-    final accentGreen = const Color(
-      0xFF8B0000,
-    ); // Changed accent for better contrast if needed, but keeping green theme mainly
 
     return Container(
       color: bgColor,

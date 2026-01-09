@@ -12,26 +12,9 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/domain/usecases/save_poster_usecase.dart';
 import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
-import 'package:scraki/features/poster/presentation/widgets/abstract_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/elegant_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/geometric_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/high_contrast_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/luxury_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/nature_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/neon_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/playful_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/professional_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/retro_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/swiss_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/tech_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/typography_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/urban_poster.dart';
-import 'package:scraki/features/poster/presentation/widgets/vintage_poster.dart';
+import 'package:scraki/features/poster/domain/enums/poster_template_type.dart';
+import 'package:scraki/features/poster/presentation/extensions/poster_template_extensions.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 /// Desktop Poster Creator Screen (Refactored 3-Column Layout)
@@ -52,31 +35,8 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   late final TextEditingController _textEditingController;
   ReactionDisposer? _textSyncDisposer;
 
-  int _selectedTemplateIndex = 0;
+  PosterTemplateType _selectedTemplate = PosterTemplateType.modern;
   bool _isSaving = false;
-
-  final List<String> _templateNames = [
-    'Modern',
-    'Minimalist',
-    'Bold',
-    'Corporate',
-    'Creative',
-    'Tech',
-    'Elegant',
-    'Playful',
-    'Retro',
-    'Swiss',
-    'High Contrast',
-    'Typography',
-    'Nature',
-    'Urban',
-    'Luxury',
-    'Geometric',
-    'Vintage',
-    'Neon',
-    'Abstract',
-    'Professional',
-  ];
 
   @override
   void initState() {
@@ -353,7 +313,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 const Spacer(),
                 Observer(
                   builder: (_) {
-                    final template = _templateNames[_selectedTemplateIndex];
                     return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -364,7 +323,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        template,
+                        _selectedTemplate.label,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.bold,
@@ -747,13 +706,13 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
         mainAxisSpacing: 12,
         childAspectRatio: 1.0,
       ),
-      itemCount: _templateNames.length,
+      itemCount: PosterTemplateType.values.length,
       itemBuilder: (context, index) {
-        final isSelected = _selectedTemplateIndex == index;
-        final templateName = _templateNames[index];
+        final template = PosterTemplateType.values[index];
+        final isSelected = _selectedTemplate == template;
 
         return InkWell(
-          onTap: () => setState(() => _selectedTemplateIndex = index),
+          onTap: () => setState(() => _selectedTemplate = template),
           borderRadius: BorderRadius.circular(8),
           child: Container(
             decoration: BoxDecoration(
@@ -771,7 +730,6 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Mini preview placeholder could go here
                 Icon(
                   isSelected ? Icons.check_circle : Icons.circle_outlined,
                   size: 24,
@@ -781,7 +739,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  templateName,
+                  template.label,
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontWeight: isSelected
                         ? FontWeight.bold
@@ -1037,155 +995,12 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   }
 
   Widget _buildPosterWidget(PosterData data) {
-    switch (_selectedTemplateIndex) {
-      case 0:
-        return ModernPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 1:
-        return MinimalistPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 2:
-        return BoldPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 3:
-        return CorporatePoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 4:
-        return CreativePoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 5:
-        return TechPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 6:
-        return ElegantPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 7:
-        return PlayfulPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 8:
-        return RetroPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 9:
-        return SwissPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 10:
-        return HighContrastPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 11:
-        return TypographyPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 12:
-        return NaturePoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 13:
-        return UrbanPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 14:
-        return LuxuryPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 15:
-        return GeometricPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 16:
-        return VintagePoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 17:
-        return NeonPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 18:
-        return AbstractPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      case 19:
-        return ProfessionalPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-      default:
-        return ModernPoster(
-          width: 480,
-          height: 685,
-          data: data,
-          customizationStore: _customizationStore,
-        );
-    }
+    return _selectedTemplate.buildWidget(
+      data: data,
+      width: 480,
+      height: 685,
+      customizationStore: _customizationStore,
+    );
   }
 
   Widget _buildSaveButton(ThemeData theme) {
