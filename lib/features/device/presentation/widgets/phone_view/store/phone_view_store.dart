@@ -360,6 +360,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // INPUT HANDLING - Scroll Events
   // ═══════════════════════════════════════════════════════════════
 
+  double _scrollAccumulatorX = 0;
+  double _scrollAccumulatorY = 0;
+
   @action
   void handleScrollEvent(
     String serial,
@@ -370,10 +373,20 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
     final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
 
-    final hScroll = -(event.scrollDelta.dx / 20).round();
-    final vScroll = -(event.scrollDelta.dy / 20).round();
+    // Accumulate scroll deltas to handle precise scrolling (trackpads)
+    const double sensitivity = 15.0;
+
+    _scrollAccumulatorX -= event.scrollDelta.dx * sensitivity;
+    _scrollAccumulatorY -= event.scrollDelta.dy * sensitivity;
+
+    int hScroll = _scrollAccumulatorX.truncate();
+    int vScroll = _scrollAccumulatorY.truncate();
 
     if (hScroll == 0 && vScroll == 0) return;
+
+    // Remove the consumed integer part from accumulator
+    _scrollAccumulatorX -= hScroll;
+    _scrollAccumulatorY -= vScroll;
 
     sendScroll(sessionId, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
   }
@@ -407,11 +420,18 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   void handleKeyboardEvent(String serial, KeyEvent event) {
-    final action = (event is KeyDownEvent)
-        ? 0
-        : (event is KeyUpEvent)
-        ? 1
-        : -1;
+    int action = -1;
+    int repeat = 0;
+
+    if (event is KeyDownEvent) {
+      action = 0; // ACTION_DOWN
+    } else if (event is KeyRepeatEvent) {
+      action =
+          0; // ACTION_DOWN (Repeat is just repeated DOWN events in Android)
+      repeat = 1; // Mark as repeat
+    } else if (event is KeyUpEvent) {
+      action = 1; // ACTION_UP
+    }
 
     if (action == -1) return;
 
@@ -420,7 +440,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         HardwareKeyboard.instance.isMetaPressed ||
         HardwareKeyboard.instance.isControlPressed;
 
-    if (isModified && action == 0) {
+    if (isModified && action == 0 && repeat == 0) {
       if (event.logicalKey == LogicalKeyboardKey.keyV) {
         handlePaste(serial);
         return;
@@ -430,16 +450,29 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     // Send regular key event
     final androidCode = AndroidKeyCodes.getKeyCode(event.logicalKey);
     if (androidCode != AndroidKeyCodes.kUnknown) {
-      sendKey(serial, androidCode, action, metaState: _getAndroidMetaState());
+      sendKey(
+        serial,
+        androidCode,
+        action,
+        repeat: repeat,
+        metaState: _getAndroidMetaState(),
+      );
     }
   }
 
-  void sendKey(String serial, int keyCode, int action, {int metaState = 0}) {
+  void sendKey(
+    String serial,
+    int keyCode,
+    int action, {
+    int repeat = 0,
+    int metaState = 0,
+  }) {
     if (keyCode == 0) return;
 
     final message = KeyControlMessage(
       action: action,
       keyCode: keyCode,
+      repeat: repeat,
       metaState: metaState,
     );
 
