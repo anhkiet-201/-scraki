@@ -12,16 +12,26 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/domain/usecases/save_poster_usecase.dart';
 import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
+import 'package:scraki/features/poster/presentation/widgets/abstract_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/creative_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/elegant_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/geometric_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/high_contrast_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/luxury_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/minimalist_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/modern_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/nature_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/neon_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/playful_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/professional_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/retro_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/swiss_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/tech_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/typography_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/urban_poster.dart';
+import 'package:scraki/features/poster/presentation/widgets/vintage_poster.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Desktop Poster Creator Screen (Refactored 3-Column Layout)
@@ -56,6 +66,16 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     'Playful',
     'Retro',
     'Swiss',
+    'High Contrast',
+    'Typography',
+    'Nature',
+    'Urban',
+    'Luxury',
+    'Geometric',
+    'Vintage',
+    'Neon',
+    'Abstract',
+    'Professional',
   ];
 
   @override
@@ -1083,6 +1103,76 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
         );
       case 9:
         return SwissPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 10:
+        return HighContrastPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 11:
+        return TypographyPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 12:
+        return NaturePoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 13:
+        return UrbanPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 14:
+        return LuxuryPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 15:
+        return GeometricPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 16:
+        return VintagePoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 17:
+        return NeonPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 18:
+        return AbstractPoster(
+          width: 480,
+          height: 685,
+          data: data,
+          customizationStore: _customizationStore,
+        );
+      case 19:
+        return ProfessionalPoster(
           width: 480,
           height: 685,
           data: data,
