@@ -49,24 +49,21 @@ class HighContrastPoster extends PosterTemplate {
                 ),
                 SizedBox(height: 16 * scale), // Reduced spacing
                 // Job Title (Big White)
-                Expanded(
-                  flex: 3,
-                  child: wrapEditable(
-                    'jobTitle',
-                    (text, s) => Text(
-                      text.toUpperCase(),
-                      style: GoogleFonts.oswald(
-                        fontSize: 38 * scale, // Reduced font
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.0,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      textScaler: TextScaler.linear(s),
+                wrapEditable(
+                  'jobTitle',
+                  (text, s) => Text(
+                    text.toUpperCase(),
+                    style: GoogleFonts.oswald(
+                      fontSize: 24 * scale, // Reduced font
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.5,
                     ),
-                    defaultText: data.jobTitle,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle,
                 ),
                 SizedBox(height: 8 * scale),
 
@@ -85,9 +82,9 @@ class HighContrastPoster extends PosterTemplate {
                   defaultText: data.companyName,
                 ),
 
-                SizedBox(height: 20 * scale),
+                SizedBox(height: 10 * scale),
                 Divider(color: Colors.white24, thickness: 2 * scale),
-                SizedBox(height: 20 * scale),
+                SizedBox(height: 10 * scale),
 
                 // Info Grid
                 Row(
@@ -141,11 +138,18 @@ class HighContrastPoster extends PosterTemplate {
                                 child: Column(
                                   children: [
                                     if (data.requirements.isNotEmpty)
-                                      ...data.requirements
-                                          .take(5)
-                                          .map(
-                                            (req) => _buildListItem(req, scale),
-                                          ),
+                                      ...data.requirements.asMap().entries.map((
+                                        entry,
+                                      ) {
+                                        final index = entry.key;
+                                        final req = entry.value;
+                                        return wrapEditable(
+                                          'req_$index',
+                                          (text, s) =>
+                                              _buildListItem(text, scale),
+                                          defaultText: req,
+                                        );
+                                      }),
                                   ],
                                 ),
                               ),
@@ -175,10 +179,19 @@ class HighContrastPoster extends PosterTemplate {
                                   children: [
                                     if (data.benefits.isNotEmpty)
                                       ...data.benefits
+                                          .asMap()
+                                          .entries
                                           .take(5)
-                                          .map(
-                                            (ben) => _buildListItem(ben, scale),
-                                          ),
+                                          .map((entry) {
+                                            final index = entry.key;
+                                            final ben = entry.value;
+                                            return wrapEditable(
+                                              'ben_$index',
+                                              (text, s) =>
+                                                  _buildListItem(text, scale),
+                                              defaultText: ben,
+                                            );
+                                          }),
                                   ],
                                 ),
                               ),

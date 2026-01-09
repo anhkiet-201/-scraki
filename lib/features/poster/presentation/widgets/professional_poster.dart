@@ -57,23 +57,20 @@ class ProfessionalPoster extends PosterTemplate {
                     ),
                   ),
                   SizedBox(height: 10 * scale),
-                  Expanded(
-                    flex: 2,
-                    child: wrapEditable(
-                      'jobTitle',
-                      (text, s) => Text(
-                        text,
-                        style: GoogleFonts.roboto(
-                          fontSize: 28 * scale, // Reduced from 32
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFF333333),
-                          height: 1.1,
-                        ),
-                        maxLines: 3,
-                        textScaler: TextScaler.linear(s),
+                  wrapEditable(
+                    'jobTitle',
+                    (text, s) => Text(
+                      text,
+                      style: GoogleFonts.roboto(
+                        fontSize: 28 * scale, // Reduced from 32
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF333333),
+                        height: 1.1,
                       ),
-                      defaultText: data.jobTitle,
+                      maxLines: 3,
+                      textScaler: TextScaler.linear(s),
                     ),
+                    defaultText: data.jobTitle,
                   ),
 
                   SizedBox(height: 20 * scale),
@@ -125,8 +122,18 @@ class ProfessionalPoster extends PosterTemplate {
                               SizedBox(height: 6 * scale),
                               if (data.requirements.isNotEmpty)
                                 ...data.requirements
+                                    .asMap()
+                                    .entries
                                     .take(3)
-                                    .map((req) => _buildProItem(req, scale)),
+                                    .map((entry) {
+                                      final index = entry.key;
+                                      final req = entry.value;
+                                      return wrapEditable(
+                                        'req_$index',
+                                        (text, s) => _buildProItem(text, scale),
+                                        defaultText: req,
+                                      );
+                                    }),
                             ],
                           ),
                         ),
@@ -144,9 +151,17 @@ class ProfessionalPoster extends PosterTemplate {
                               ),
                               SizedBox(height: 6 * scale),
                               if (data.benefits.isNotEmpty)
-                                ...data.benefits
-                                    .take(3)
-                                    .map((ben) => _buildProItem(ben, scale)),
+                                ...data.benefits.asMap().entries.take(3).map((
+                                  entry,
+                                ) {
+                                  final index = entry.key;
+                                  final ben = entry.value;
+                                  return wrapEditable(
+                                    'ben_$index',
+                                    (text, s) => _buildProItem(text, scale),
+                                    defaultText: ben,
+                                  );
+                                }),
                             ],
                           ),
                         ),

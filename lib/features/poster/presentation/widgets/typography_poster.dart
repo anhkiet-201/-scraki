@@ -23,27 +23,21 @@ class TypographyPoster extends PosterTemplate {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Massive Headline
-          Expanded(
-            flex: 3,
-            child: Container(
-              alignment: Alignment.topLeft,
-              child: wrapEditable(
-                'jobTitle',
-                (text, s) => Text(
-                  text.toUpperCase(),
-                  style: GoogleFonts.anton(
-                    fontSize: 46 * scale, // Reduced from 52
-                    height: 0.9,
-                    color: const Color(0xFF1A1A1A),
-                    letterSpacing: -0.5,
-                  ),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  textScaler: TextScaler.linear(s),
-                ),
-                defaultText: data.jobTitle,
+          wrapEditable(
+            'jobTitle',
+            (text, s) => Text(
+              text.toUpperCase(),
+              style: GoogleFonts.anton(
+                fontSize: 46 * scale, // Reduced from 52
+                height: 1.2,
+                color: const Color(0xFF1A1A1A),
+                letterSpacing: -0.5,
               ),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              textScaler: TextScaler.linear(s),
             ),
+            defaultText: data.jobTitle,
           ),
 
           SizedBox(height: 10 * scale),
@@ -96,11 +90,21 @@ class TypographyPoster extends PosterTemplate {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _buildListSection('YÊU CẦU', data.requirements, scale),
+                  child: _buildListSection(
+                    'YÊU CẦU',
+                    data.requirements,
+                    scale,
+                    'req',
+                  ),
                 ),
                 SizedBox(width: 12 * scale),
                 Expanded(
-                  child: _buildListSection('QUYỀN LỢI', data.benefits, scale),
+                  child: _buildListSection(
+                    'QUYỀN LỢI',
+                    data.benefits,
+                    scale,
+                    'ben',
+                  ),
                 ),
               ],
             ),
@@ -151,7 +155,12 @@ class TypographyPoster extends PosterTemplate {
     );
   }
 
-  Widget _buildListSection(String title, List<String> items, double scale) {
+  Widget _buildListSection(
+    String title,
+    List<String> items,
+    double scale,
+    String idPrefix,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -164,14 +173,18 @@ class TypographyPoster extends PosterTemplate {
           ),
         ),
         SizedBox(height: 4 * scale),
-        if (items.isEmpty) Text('-', style: TextStyle(fontSize: 10 * scale)),
-        ...items
-            .take(4)
-            .map(
-              (item) => Padding(
-                padding: EdgeInsets.only(bottom: 3 * scale),
-                child: Text(
-                  item,
+        if (items.isEmpty)
+          Text('-', style: TextStyle(fontSize: 10 * scale))
+        else
+          ...items.asMap().entries.take(4).map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return Padding(
+              padding: EdgeInsets.only(bottom: 3 * scale),
+              child: wrapEditable(
+                '${idPrefix}_$index',
+                (text, s) => Text(
+                  text,
                   style: GoogleFonts.inter(
                     fontSize: 10 * scale,
                     height: 1.2,
@@ -179,9 +192,12 @@ class TypographyPoster extends PosterTemplate {
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                  textScaler: TextScaler.linear(s),
                 ),
+                defaultText: item,
               ),
-            ),
+            );
+          }),
       ],
     );
   }

@@ -62,25 +62,20 @@ class VintagePoster extends PosterTemplate {
               SizedBox(height: 12 * scale),
 
               // Job Title
-              Expanded(
-                flex: 3,
-                child: Center(
-                  child: wrapEditable(
-                    'jobTitle',
-                    (text, s) => Text(
-                      text.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.ultra(
-                        fontSize: 28 * scale,
-                        color: inkColor,
-                        height: 1.0,
-                      ),
-                      maxLines: 4,
-                      textScaler: TextScaler.linear(s),
-                    ),
-                    defaultText: data.jobTitle,
+              wrapEditable(
+                'jobTitle',
+                (text, s) => Text(
+                  text.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.ultra(
+                    fontSize: 28 * scale,
+                    color: inkColor,
+                    height: 1.0,
                   ),
+                  maxLines: 4,
+                  textScaler: TextScaler.linear(s),
                 ),
+                defaultText: data.jobTitle,
               ),
 
               SizedBox(height: 6 * scale),
@@ -171,12 +166,18 @@ class VintagePoster extends PosterTemplate {
                             ),
                           ),
                           if (data.requirements.isNotEmpty)
-                            ...data.requirements
-                                .take(3)
-                                .map(
-                                  (req) =>
-                                      _buildVintageItem(req, scale, inkColor),
-                                ),
+                            ...data.requirements.asMap().entries.take(3).map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final req = entry.value;
+                              return wrapEditable(
+                                'req_$index',
+                                (text, s) =>
+                                    _buildVintageItem(text, scale, inkColor),
+                                defaultText: req,
+                              );
+                            }),
                         ],
                       ),
                     ),
@@ -193,12 +194,18 @@ class VintagePoster extends PosterTemplate {
                             ),
                           ),
                           if (data.benefits.isNotEmpty)
-                            ...data.benefits
-                                .take(3)
-                                .map(
-                                  (ben) =>
-                                      _buildVintageItem(ben, scale, inkColor),
-                                ),
+                            ...data.benefits.asMap().entries.take(3).map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final ben = entry.value;
+                              return wrapEditable(
+                                'ben_$index',
+                                (text, s) =>
+                                    _buildVintageItem(text, scale, inkColor),
+                                defaultText: ben,
+                              );
+                            }),
                         ],
                       ),
                     ),

@@ -92,26 +92,21 @@ class NaturePoster extends PosterTemplate {
                 SizedBox(height: 16 * scale),
 
                 // Job Title
-                Expanded(
-                  flex: 3,
-                  child: Center(
-                    child: wrapEditable(
-                      'jobTitle',
-                      (text, s) => Text(
-                        text,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 28 * scale, // Reduced from 32
-                          fontWeight: FontWeight.w700,
-                          color: darkGreen,
-                          height: 1.1,
-                        ),
-                        maxLines: 3,
-                        textScaler: TextScaler.linear(s),
-                      ),
-                      defaultText: data.jobTitle,
+                wrapEditable(
+                  'jobTitle',
+                  (text, s) => Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 28 * scale, // Reduced from 32
+                      fontWeight: FontWeight.w700,
+                      color: darkGreen,
+                      height: 1.1,
                     ),
+                    maxLines: 3,
+                    textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle,
                 ),
 
                 SizedBox(height: 8 * scale),
@@ -194,16 +189,22 @@ class NaturePoster extends PosterTemplate {
                             ),
                             SizedBox(height: 6 * scale),
                             if (data.requirements.isNotEmpty)
-                              ...data.requirements
-                                  .take(3)
-                                  .map(
-                                    (req) => _buildListItem(
-                                      req,
-                                      scale,
-                                      darkGreen,
-                                      Icons.eco,
-                                    ),
+                              ...data.requirements.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final req = entry.value;
+                                return wrapEditable(
+                                  'req_$index',
+                                  (text, s) => _buildListItem(
+                                    text,
+                                    scale,
+                                    darkGreen,
+                                    Icons.eco,
                                   ),
+                                  defaultText: req,
+                                );
+                              }),
                           ],
                         ),
                       ),
@@ -223,16 +224,22 @@ class NaturePoster extends PosterTemplate {
                             ),
                             SizedBox(height: 6 * scale),
                             if (data.benefits.isNotEmpty)
-                              ...data.benefits
-                                  .take(3)
-                                  .map(
-                                    (ben) => _buildListItem(
-                                      ben,
-                                      scale,
-                                      darkGreen,
-                                      Icons.wb_sunny_outlined,
-                                    ),
+                              ...data.benefits.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final ben = entry.value;
+                                return wrapEditable(
+                                  'ben_$index',
+                                  (text, s) => _buildListItem(
+                                    text,
+                                    scale,
+                                    darkGreen,
+                                    Icons.wb_sunny_outlined,
                                   ),
+                                  defaultText: ben,
+                                );
+                              }),
                           ],
                         ),
                       ),

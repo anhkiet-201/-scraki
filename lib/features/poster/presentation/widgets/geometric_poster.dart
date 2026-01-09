@@ -66,8 +66,8 @@ class GeometricPoster extends PosterTemplate {
                   defaultText: data.catchyHeadline ?? 'ĐANG TUYỂN DỤNG',
                 ),
                 SizedBox(height: 10 * scale),
-                Expanded(
-                  flex: 2,
+                Padding(
+                  padding: EdgeInsets.only(right: 48 * scale),
                   child: wrapEditable(
                     'jobTitle',
                     (text, s) => Text(
@@ -156,9 +156,16 @@ class GeometricPoster extends PosterTemplate {
                                     SizedBox(height: 4 * scale),
                                     if (data.requirements.isNotEmpty)
                                       ...data.requirements
+                                          .asMap()
+                                          .entries
                                           .take(3)
                                           .map(
-                                            (req) => _buildGeoItem(req, scale),
+                                            (entry) => wrapEditable(
+                                              'req_${entry.key}',
+                                              (text, s) =>
+                                                  _buildGeoItem(text, scale),
+                                              defaultText: entry.value,
+                                            ),
                                           ),
                                   ],
                                 ),
@@ -179,9 +186,16 @@ class GeometricPoster extends PosterTemplate {
                                     SizedBox(height: 4 * scale),
                                     if (data.benefits.isNotEmpty)
                                       ...data.benefits
+                                          .asMap()
+                                          .entries
                                           .take(3)
                                           .map(
-                                            (ben) => _buildGeoItem(ben, scale),
+                                            (entry) => wrapEditable(
+                                              'ben_${entry.key}',
+                                              (text, s) =>
+                                                  _buildGeoItem(text, scale),
+                                              defaultText: entry.value,
+                                            ),
                                           ),
                                   ],
                                 ),

@@ -176,9 +176,17 @@ class LuxuryPoster extends PosterTemplate {
                           ),
                           SizedBox(height: 6 * scale),
                           if (data.requirements.isNotEmpty)
-                            ...data.requirements
-                                .take(3)
-                                .map((req) => _buildLuxuryItem(req, scale)),
+                            ...data.requirements.asMap().entries.take(3).map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final req = entry.value;
+                              return wrapEditable(
+                                'req_$index',
+                                (text, s) => _buildLuxuryItem(text, scale),
+                                defaultText: req,
+                              );
+                            }),
                         ],
                       ),
                     ),
@@ -195,9 +203,17 @@ class LuxuryPoster extends PosterTemplate {
                           ),
                           SizedBox(height: 6 * scale),
                           if (data.benefits.isNotEmpty)
-                            ...data.benefits
-                                .take(3)
-                                .map((ben) => _buildLuxuryItem(ben, scale)),
+                            ...data.benefits.asMap().entries.take(3).map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final ben = entry.value;
+                              return wrapEditable(
+                                'ben_$index',
+                                (text, s) => _buildLuxuryItem(text, scale),
+                                defaultText: ben,
+                              );
+                            }),
                         ],
                       ),
                     ),

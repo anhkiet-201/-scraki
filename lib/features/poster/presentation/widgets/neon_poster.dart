@@ -79,34 +79,23 @@ class NeonPoster extends PosterTemplate {
                 SizedBox(height: 20 * scale),
 
                 // Neon Text
-                Expanded(
-                  flex: 3,
-                  child: Center(
-                    child: wrapEditable(
-                      'jobTitle',
-                      (text, s) => Text(
-                        text.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.monoton(
-                          fontSize: 28 * scale, // Reduced
-                          color: Colors.pinkAccent,
-                          shadows: [
-                            BoxShadow(
-                              color: Colors.pink,
-                              blurRadius: 20 * scale,
-                            ),
-                            BoxShadow(
-                              color: Colors.white,
-                              blurRadius: 2 * scale,
-                            ),
-                          ],
-                        ),
-                        maxLines: 3,
-                        textScaler: TextScaler.linear(s),
-                      ),
-                      defaultText: data.jobTitle,
+                wrapEditable(
+                  'jobTitle',
+                  (text, s) => Text(
+                    text.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.monoton(
+                      fontSize: 28 * scale, // Reduced
+                      color: Colors.pinkAccent,
+                      shadows: [
+                        BoxShadow(color: Colors.pink, blurRadius: 20 * scale),
+                        BoxShadow(color: Colors.white, blurRadius: 2 * scale),
+                      ],
                     ),
+                    maxLines: 3,
+                    textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle,
                 ),
 
                 SizedBox(height: 10 * scale),
@@ -179,9 +168,17 @@ class NeonPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.requirements.isNotEmpty)
-                              ...data.requirements
-                                  .take(3)
-                                  .map((req) => _buildNeonItem(req, scale)),
+                              ...data.requirements.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final req = entry.value;
+                                return wrapEditable(
+                                  'req_$index',
+                                  (text, s) => _buildNeonItem(text, scale),
+                                  defaultText: req,
+                                );
+                              }),
                           ],
                         ),
                       ),
@@ -199,9 +196,17 @@ class NeonPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.benefits.isNotEmpty)
-                              ...data.benefits
-                                  .take(3)
-                                  .map((ben) => _buildNeonItem(ben, scale)),
+                              ...data.benefits.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final ben = entry.value;
+                                return wrapEditable(
+                                  'ben_$index',
+                                  (text, s) => _buildNeonItem(text, scale),
+                                  defaultText: ben,
+                                );
+                              }),
                           ],
                         ),
                       ),

@@ -48,24 +48,21 @@ class AbstractPoster extends PosterTemplate {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 60 * scale),
+                SizedBox(height: 25 * scale),
 
-                Expanded(
-                  flex: 2,
-                  child: wrapEditable(
-                    'jobTitle',
-                    (text, s) => Text(
-                      text,
-                      style: GoogleFonts.abrilFatface(
-                        fontSize: 32 * scale, // Reduced from 38
-                        color: Colors.black87,
-                        height: 1.0,
-                      ),
-                      maxLines: 3,
-                      textScaler: TextScaler.linear(s),
+                wrapEditable(
+                  'jobTitle',
+                  (text, s) => Text(
+                    text,
+                    style: GoogleFonts.abrilFatface(
+                      fontSize: 32 * scale, // Reduced from 38
+                      color: Colors.black87,
+                      height: 1.0,
                     ),
-                    defaultText: data.jobTitle,
+                    maxLines: 3,
+                    textScaler: TextScaler.linear(s),
                   ),
+                  defaultText: data.jobTitle,
                 ),
 
                 SizedBox(height: 8 * scale),
@@ -120,9 +117,17 @@ class AbstractPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.requirements.isNotEmpty)
-                              ...data.requirements
-                                  .take(3)
-                                  .map((req) => _buildAbstractItem(req, scale)),
+                              ...data.requirements.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final req = entry.value;
+                                return wrapEditable(
+                                  'req_$index',
+                                  (text, s) => _buildAbstractItem(text, scale),
+                                  defaultText: req,
+                                );
+                              }),
                           ],
                         ),
                       ),
@@ -139,9 +144,17 @@ class AbstractPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.benefits.isNotEmpty)
-                              ...data.benefits
-                                  .take(3)
-                                  .map((ben) => _buildAbstractItem(ben, scale)),
+                              ...data.benefits.asMap().entries.take(3).map((
+                                entry,
+                              ) {
+                                final index = entry.key;
+                                final ben = entry.value;
+                                return wrapEditable(
+                                  'ben_$index',
+                                  (text, s) => _buildAbstractItem(text, scale),
+                                  defaultText: ben,
+                                );
+                              }),
                           ],
                         ),
                       ),
