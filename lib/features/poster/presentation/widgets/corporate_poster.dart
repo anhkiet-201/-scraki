@@ -156,95 +156,115 @@ class CorporatePoster extends PosterTemplate {
                     height: 10 * scale,
                   ), // Reduced from 12 // Reduced from 16
                   // Requirements List
-                  if (data.requirements.isNotEmpty) ...[
-                    Text(
-                      'YÊU CẦU',
-                      style: GoogleFonts.roboto(
-                        fontSize: 10 * scale, // Reduced from 12
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    Divider(),
-                    ...data.requirements.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 2 * scale,
-                        ), // Reduced from 4
-                        child: Row(
+                  // Side-by-Side Requirements & Benefits
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 16 * scale,
-                              color: accentColor,
-                            ),
-                            SizedBox(width: 8 * scale),
-                            Expanded(
-                              child: wrapEditable(
-                                'req_${entry.key}',
-                                (text, s) => Text(
-                                  text,
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 12 * scale, // Reduced from 14
-                                    color: Colors.black87,
-                                  ),
-                                  textScaler: TextScaler.linear(s),
+                            if (data.requirements.isNotEmpty) ...[
+                              Text(
+                                'YÊU CẦU',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 10 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[500],
                                 ),
-                                defaultText: entry.value,
                               ),
-                            ),
+                              Divider(),
+                              ...data.requirements.asMap().entries.map(
+                                (entry) => Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 2 * scale,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 16 * scale,
+                                        color: accentColor,
+                                      ),
+                                      SizedBox(width: 8 * scale),
+                                      Expanded(
+                                        child: wrapEditable(
+                                          'req_${entry.key}',
+                                          (text, s) => Text(
+                                            text,
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 12 * scale,
+                                              color: Colors.black87,
+                                            ),
+                                            textScaler: TextScaler.linear(s),
+                                          ),
+                                          defaultText: entry.value,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-                    SizedBox(height: 16 * scale),
-                  ],
-
-                  // Benefits List
-                  if (data.benefits.isNotEmpty) ...[
-                    Text(
-                      'QUYỀN LỢI',
-                      style: GoogleFonts.roboto(
-                        fontSize: 10 * scale, // Reduced from 12
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    Divider(),
-                    ...data.benefits.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 2 * scale,
-                        ), // Reduced from 4
-                        child: Row(
+                      SizedBox(width: 8 * scale),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.star,
-                              size: 16 * scale,
-                              color: Colors.orange,
-                            ),
-                            SizedBox(width: 8 * scale),
-                            Expanded(
-                              child: wrapEditable(
-                                'ben_${entry.key}',
-                                (text, s) => Text(
-                                  text,
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 12 * scale, // Reduced from 14
-                                    color: Colors.black87,
-                                  ),
-                                  textScaler: TextScaler.linear(s),
+                            if (data.benefits.isNotEmpty) ...[
+                              Text(
+                                'QUYỀN LỢI',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 10 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[500],
                                 ),
-                                defaultText: entry.value,
                               ),
-                            ),
+                              Divider(),
+                              ...data.benefits.asMap().entries.map(
+                                (entry) => Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 2 * scale,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.star,
+                                        size: 16 * scale,
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(width: 8 * scale),
+                                      Expanded(
+                                        child: wrapEditable(
+                                          'ben_${entry.key}',
+                                          (text, s) => Text(
+                                            text,
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 12 * scale,
+                                              color: Colors.black87,
+                                            ),
+                                            textScaler: TextScaler.linear(s),
+                                          ),
+                                          defaultText: entry.value,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -170,52 +170,73 @@ class CreativePoster extends PosterTemplate {
                       ),
                       SizedBox(height: 12 * scale),
 
-                      if (data.requirements.isNotEmpty) ...[
-                        Text(
-                          'YÊU CẦU',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11 * scale, // Reduced from 12
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        SizedBox(height: 4 * scale),
-                        ...data.requirements.asMap().entries.map(
-                          (entry) => Padding(
-                            padding: EdgeInsets.only(bottom: 4 * scale),
-                            child: _buildCreativeRow(
-                              Icons.star_rounded,
-                              entry.value,
-                              scale,
-                              id: 'req_${entry.key}',
+                      // Side-by-Side Requirements & Benefits
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                if (data.requirements.isNotEmpty) ...[
+                                  Text(
+                                    'YÊU CẦU',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11 * scale,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4 * scale),
+                                  ...data.requirements.asMap().entries.map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: 4 * scale,
+                                      ),
+                                      child: _buildCreativeRow(
+                                        Icons.star_rounded,
+                                        entry.value,
+                                        scale,
+                                        id: 'req_${entry.key}',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                        ),
-                        SizedBox(height: 12 * scale),
-                      ],
-
-                      if (data.benefits.isNotEmpty) ...[
-                        Text(
-                          'PHÚC LỢI',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11 * scale, // Reduced from 12
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        SizedBox(height: 4 * scale),
-                        ...data.benefits.asMap().entries.map(
-                          (entry) => Padding(
-                            padding: EdgeInsets.only(bottom: 4 * scale),
-                            child: _buildCreativeRow(
-                              Icons.favorite_rounded,
-                              entry.value,
-                              scale,
-                              id: 'ben_${entry.key}',
+                          SizedBox(width: 8 * scale),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                if (data.benefits.isNotEmpty) ...[
+                                  Text(
+                                    'PHÚC LỢI',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11 * scale,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4 * scale),
+                                  ...data.benefits.asMap().entries.map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: 4 * scale,
+                                      ),
+                                      child: _buildCreativeRow(
+                                        Icons.favorite_rounded,
+                                        entry.value,
+                                        scale,
+                                        id: 'ben_${entry.key}',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ],
                   ),
                 ),

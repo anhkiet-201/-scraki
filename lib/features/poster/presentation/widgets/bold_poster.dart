@@ -106,21 +106,29 @@ class BoldPoster extends PosterTemplate {
                         id: 'location',
                       ),
                       SizedBox(height: 10 * scale), // Reduced from 12
-                      if (data.requirements.isNotEmpty)
-                        _buildBoldList(
-                          'Yêu cầu',
-                          data.requirements,
-                          scale,
-                          idPrefix: 'req',
-                        ),
-                      SizedBox(height: 10 * scale), // Reduced from 12
-                      if (data.benefits.isNotEmpty)
-                        _buildBoldList(
-                          'Quyền lợi',
-                          data.benefits,
-                          scale,
-                          idPrefix: 'ben',
-                        ),
+                      // Side-by-Side Requirements & Benefits
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildBoldList(
+                              'Yêu cầu',
+                              data.requirements,
+                              scale,
+                              idPrefix: 'req',
+                            ),
+                          ),
+                          SizedBox(width: 12 * scale),
+                          Expanded(
+                            child: _buildBoldList(
+                              'Quyền lợi',
+                              data.benefits,
+                              scale,
+                              idPrefix: 'ben',
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

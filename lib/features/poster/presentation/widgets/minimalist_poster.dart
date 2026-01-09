@@ -108,71 +108,89 @@ class MinimalistPoster extends PosterTemplate {
                     id: 'location',
                   ),
                   SizedBox(height: 16 * scale), // Reduced from 24
-
-                  if (data.requirements.isNotEmpty) ...[
-                    Text(
-                      'Yêu cầu',
-                      style: GoogleFonts.lato(
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    SizedBox(height: 6 * scale), // Reduced from 8
-                    ...data.requirements.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: EdgeInsets.only(bottom: 4 * scale),
-                        child: wrapEditable(
-                          'req_${entry.key}',
-                          (t, s) => Text(
-                            t,
-                            style: GoogleFonts.lato(
-                              fontSize: 13 * scale, // Reduced from 14
-                              color: Colors.black87,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textScaler: TextScaler.linear(s),
-                          ),
-                          defaultText: '• ${entry.value}',
+                  // Side-by-Side
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (data.requirements.isNotEmpty) ...[
+                              Text(
+                                'Yêu cầu',
+                                style: GoogleFonts.lato(
+                                  fontSize: 12 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              SizedBox(height: 6 * scale),
+                              ...data.requirements.asMap().entries.map(
+                                (entry) => Padding(
+                                  padding: EdgeInsets.only(bottom: 4 * scale),
+                                  child: wrapEditable(
+                                    'req_${entry.key}',
+                                    (t, s) => Text(
+                                      t,
+                                      style: GoogleFonts.lato(
+                                        fontSize: 13 * scale,
+                                        color: Colors.black87,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textScaler: TextScaler.linear(s),
+                                    ),
+                                    defaultText: '• ${entry.value}',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    ),
-                    SizedBox(height: 12 * scale), // Reduced from 16
-                  ],
-
-                  if (data.benefits.isNotEmpty) ...[
-                    Text(
-                      'Quyền lợi',
-                      style: GoogleFonts.lato(
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    SizedBox(height: 6 * scale), // Reduced from 8
-                    ...data.benefits.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: EdgeInsets.only(bottom: 4 * scale),
-                        child: wrapEditable(
-                          'ben_${entry.key}',
-                          (t, s) => Text(
-                            t,
-                            style: GoogleFonts.lato(
-                              fontSize: 13 * scale, // Reduced from 14
-                              color: Colors.black87,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textScaler: TextScaler.linear(s),
-                          ),
-                          defaultText: '• ${entry.value}',
+                      SizedBox(width: 8 * scale),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (data.benefits.isNotEmpty) ...[
+                              Text(
+                                'Quyền lợi',
+                                style: GoogleFonts.lato(
+                                  fontSize: 12 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              SizedBox(height: 6 * scale),
+                              ...data.benefits.asMap().entries.map(
+                                (entry) => Padding(
+                                  padding: EdgeInsets.only(bottom: 4 * scale),
+                                  child: wrapEditable(
+                                    'ben_${entry.key}',
+                                    (t, s) => Text(
+                                      t,
+                                      style: GoogleFonts.lato(
+                                        fontSize: 13 * scale,
+                                        color: Colors.black87,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textScaler: TextScaler.linear(s),
+                                    ),
+                                    defaultText: '• ${entry.value}',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
               ),
             ),

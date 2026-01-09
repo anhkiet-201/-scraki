@@ -181,34 +181,51 @@ class ModernPoster extends PosterTemplate {
                       SizedBox(height: 8 * scale), // Reduced from 10
                       Divider(color: Colors.grey[200]),
                       SizedBox(height: 8 * scale), // Reduced from 10
-                      // Requirements
-                      if (data.requirements.isNotEmpty) ...[
-                        _buildSectionTitle('YÊU CẦU', scale),
-                        SizedBox(height: 8 * scale), // Reduced from 12
-                        ...data.requirements.asMap().entries.map(
-                          (entry) => _buildListItem(
-                            entry.value,
-                            scale,
-                            id: 'req_${entry.key}',
+                      // Side-by-Side Requirements & Benefits
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (data.requirements.isNotEmpty) ...[
+                                  _buildSectionTitle('YÊU CẦU', scale),
+                                  SizedBox(height: 8 * scale),
+                                  ...data.requirements.asMap().entries.map(
+                                    (entry) => _buildListItem(
+                                      entry.value,
+                                      scale,
+                                      id: 'req_${entry.key}',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 12 * scale), // Reduced from 16
-                      ],
-
-                      // Benefits
-                      if (data.benefits.isNotEmpty) ...[
-                        _buildSectionTitle('QUYỀN LỢI', scale),
-                        SizedBox(height: 8 * scale), // Reduced from 12
-                        ...data.benefits.asMap().entries.map(
-                          (entry) => _buildListItem(
-                            entry.value,
-                            scale,
-                            icon: Icons.star_border_rounded,
-                            color: Colors.orange,
-                            id: 'ben_${entry.key}',
+                          SizedBox(width: 12 * scale),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (data.benefits.isNotEmpty) ...[
+                                  _buildSectionTitle('QUYỀN LỢI', scale),
+                                  SizedBox(height: 8 * scale),
+                                  ...data.benefits.asMap().entries.map(
+                                    (entry) => _buildListItem(
+                                      entry.value,
+                                      scale,
+                                      icon: Icons.star_border_rounded,
+                                      color: Colors.orange,
+                                      id: 'ben_${entry.key}',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ],
                   ),
 
