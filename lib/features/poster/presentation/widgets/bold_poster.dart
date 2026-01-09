@@ -107,19 +107,19 @@ class BoldPoster extends PosterTemplate {
                       ),
                       SizedBox(height: 10 * scale), // Reduced from 12
                       if (data.requirements.isNotEmpty)
-                        _buildBoldSection(
+                        _buildBoldList(
                           'Yêu cầu',
-                          data.requirements.join('\n• '),
+                          data.requirements,
                           scale,
-                          id: 'requirements',
+                          idPrefix: 'req',
                         ),
                       SizedBox(height: 10 * scale), // Reduced from 12
                       if (data.benefits.isNotEmpty)
-                        _buildBoldSection(
+                        _buildBoldList(
                           'Quyền lợi',
-                          data.benefits.join('\n• '),
+                          data.benefits,
                           scale,
-                          id: 'benefits',
+                          idPrefix: 'ben',
                         ),
                     ],
                   ),
@@ -172,6 +172,53 @@ class BoldPoster extends PosterTemplate {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildBoldList(
+    String title,
+    List<String> items,
+    double scale, {
+    required String idPrefix,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.oswald(
+            fontSize: 12 * scale,
+            fontWeight: FontWeight.bold,
+            color: Colors.blueAccent[700],
+          ),
+        ),
+        Container(
+          width: 40 * scale,
+          height: 1.5 * scale,
+          color: Colors.black,
+          margin: EdgeInsets.symmetric(vertical: 4 * scale),
+        ),
+        if (items.isNotEmpty)
+          ...items.asMap().entries.map(
+            (entry) => Padding(
+              padding: EdgeInsets.only(bottom: 2 * scale),
+              child: wrapEditable(
+                '${idPrefix}_${entry.key}',
+                (text, s) => Text(
+                  text,
+                  style: GoogleFonts.roboto(
+                    fontSize: 12 * scale, // Reduced from 14
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.left,
+                  textScaler: TextScaler.linear(s),
+                ),
+                defaultText: '• ${entry.value}',
+              ),
+            ),
+          ),
       ],
     );
   }
