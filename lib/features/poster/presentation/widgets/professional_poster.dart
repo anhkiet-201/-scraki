@@ -175,7 +175,7 @@ class ProfessionalPoster extends PosterTemplate {
                     child: Column(
                       children: [
                         Text(
-                          'Gửi CV về:',
+                          'Ứng Tuyển:',
                           style: GoogleFonts.roboto(
                             fontSize: 10 * scale,
                             color: const Color(0xFF0056B3),
