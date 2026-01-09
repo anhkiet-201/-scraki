@@ -166,9 +166,7 @@ class VintagePoster extends PosterTemplate {
                             ),
                           ),
                           if (data.requirements.isNotEmpty)
-                            ...data.requirements.asMap().entries.take(3).map((
-                              entry,
-                            ) {
+                            ...data.requirements.asMap().entries.map((entry) {
                               final index = entry.key;
                               final req = entry.value;
                               return wrapEditable(
@@ -194,9 +192,7 @@ class VintagePoster extends PosterTemplate {
                             ),
                           ),
                           if (data.benefits.isNotEmpty)
-                            ...data.benefits.asMap().entries.take(3).map((
-                              entry,
-                            ) {
+                            ...data.benefits.asMap().entries.map((entry) {
                               final index = entry.key;
                               final ben = entry.value;
                               return wrapEditable(

@@ -109,7 +109,7 @@ class BoldPoster extends PosterTemplate {
                       if (data.requirements.isNotEmpty)
                         _buildBoldSection(
                           'Yêu cầu',
-                          data.requirements.take(3).join('\n• '),
+                          data.requirements.join('\n• '),
                           scale,
                           id: 'requirements',
                         ),
@@ -117,7 +117,7 @@ class BoldPoster extends PosterTemplate {
                       if (data.benefits.isNotEmpty)
                         _buildBoldSection(
                           'Quyền lợi',
-                          data.benefits.take(3).join('\n• '),
+                          data.benefits.join('\n• '),
                           scale,
                           id: 'benefits',
                         ),

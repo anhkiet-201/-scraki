@@ -178,20 +178,18 @@ class HighContrastPoster extends PosterTemplate {
                                 child: Column(
                                   children: [
                                     if (data.benefits.isNotEmpty)
-                                      ...data.benefits
-                                          .asMap()
-                                          .entries
-                                          .take(5)
-                                          .map((entry) {
-                                            final index = entry.key;
-                                            final ben = entry.value;
-                                            return wrapEditable(
-                                              'ben_$index',
-                                              (text, s) =>
-                                                  _buildListItem(text, scale),
-                                              defaultText: ben,
-                                            );
-                                          }),
+                                      ...data.benefits.asMap().entries.map((
+                                        entry,
+                                      ) {
+                                        final index = entry.key;
+                                        final ben = entry.value;
+                                        return wrapEditable(
+                                          'ben_$index',
+                                          (text, s) =>
+                                              _buildListItem(text, scale),
+                                          defaultText: ben,
+                                        );
+                                      }),
                                   ],
                                 ),
                               ),

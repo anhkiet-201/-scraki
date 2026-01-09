@@ -144,20 +144,17 @@ class UrbanPoster extends PosterTemplate {
                               ),
                               SizedBox(height: 4 * scale),
                               if (data.requirements.isNotEmpty)
-                                ...data.requirements
-                                    .asMap()
-                                    .entries
-                                    .take(5)
-                                    .map((entry) {
-                                      final index = entry.key;
-                                      final req = entry.value;
-                                      return wrapEditable(
-                                        'req_$index',
-                                        (text, s) =>
-                                            _buildTapeItem(text, scale),
-                                        defaultText: req,
-                                      );
-                                    }),
+                                ...data.requirements.asMap().entries.map((
+                                  entry,
+                                ) {
+                                  final index = entry.key;
+                                  final req = entry.value;
+                                  return wrapEditable(
+                                    'req_$index',
+                                    (text, s) => _buildTapeItem(text, scale),
+                                    defaultText: req,
+                                  );
+                                }),
                             ],
                           ),
                         ),
@@ -177,9 +174,7 @@ class UrbanPoster extends PosterTemplate {
                               ),
                               SizedBox(height: 4 * scale),
                               if (data.benefits.isNotEmpty)
-                                ...data.benefits.asMap().entries.take(5).map((
-                                  entry,
-                                ) {
+                                ...data.benefits.asMap().entries.map((entry) {
                                   final index = entry.key;
                                   final ben = entry.value;
                                   return wrapEditable(

@@ -121,19 +121,17 @@ class ProfessionalPoster extends PosterTemplate {
                               ),
                               SizedBox(height: 6 * scale),
                               if (data.requirements.isNotEmpty)
-                                ...data.requirements
-                                    .asMap()
-                                    .entries
-                                    .take(3)
-                                    .map((entry) {
-                                      final index = entry.key;
-                                      final req = entry.value;
-                                      return wrapEditable(
-                                        'req_$index',
-                                        (text, s) => _buildProItem(text, scale),
-                                        defaultText: req,
-                                      );
-                                    }),
+                                ...data.requirements.asMap().entries.map((
+                                  entry,
+                                ) {
+                                  final index = entry.key;
+                                  final req = entry.value;
+                                  return wrapEditable(
+                                    'req_$index',
+                                    (text, s) => _buildProItem(text, scale),
+                                    defaultText: req,
+                                  );
+                                }),
                             ],
                           ),
                         ),
@@ -150,18 +148,15 @@ class ProfessionalPoster extends PosterTemplate {
                                 ),
                               ),
                               SizedBox(height: 6 * scale),
-                              if (data.benefits.isNotEmpty)
-                                ...data.benefits.asMap().entries.take(3).map((
-                                  entry,
-                                ) {
-                                  final index = entry.key;
-                                  final ben = entry.value;
-                                  return wrapEditable(
-                                    'ben_$index',
-                                    (text, s) => _buildProItem(text, scale),
-                                    defaultText: ben,
-                                  );
-                                }),
+                              ...data.benefits.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final ben = entry.value;
+                                return wrapEditable(
+                                  'ben_$index',
+                                  (text, s) => _buildProItem(text, scale),
+                                  defaultText: ben,
+                                );
+                              }),
                             ],
                           ),
                         ),

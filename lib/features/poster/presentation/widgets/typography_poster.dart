@@ -176,7 +176,7 @@ class TypographyPoster extends PosterTemplate {
         if (items.isEmpty)
           Text('-', style: TextStyle(fontSize: 10 * scale))
         else
-          ...items.asMap().entries.take(4).map((entry) {
+          ...items.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
             return Padding(

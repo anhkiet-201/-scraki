@@ -168,9 +168,7 @@ class NeonPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.requirements.isNotEmpty)
-                              ...data.requirements.asMap().entries.take(3).map((
-                                entry,
-                              ) {
+                              ...data.requirements.asMap().entries.map((entry) {
                                 final index = entry.key;
                                 final req = entry.value;
                                 return wrapEditable(
@@ -196,7 +194,7 @@ class NeonPoster extends PosterTemplate {
                               ),
                             ),
                             if (data.benefits.isNotEmpty)
-                              ...data.benefits.asMap().entries.take(3).map((
+                              ...data.benefits.asMap().entries.map((
                                 entry,
                               ) {
                                 final index = entry.key;

@@ -155,18 +155,14 @@ class GeometricPoster extends PosterTemplate {
                                     ),
                                     SizedBox(height: 4 * scale),
                                     if (data.requirements.isNotEmpty)
-                                      ...data.requirements
-                                          .asMap()
-                                          .entries
-                                          .take(3)
-                                          .map(
-                                            (entry) => wrapEditable(
-                                              'req_${entry.key}',
-                                              (text, s) =>
-                                                  _buildGeoItem(text, scale),
-                                              defaultText: entry.value,
-                                            ),
-                                          ),
+                                      ...data.requirements.asMap().entries.map(
+                                        (entry) => wrapEditable(
+                                          'req_${entry.key}',
+                                          (text, s) =>
+                                              _buildGeoItem(text, scale),
+                                          defaultText: entry.value,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -188,7 +184,6 @@ class GeometricPoster extends PosterTemplate {
                                       ...data.benefits
                                           .asMap()
                                           .entries
-                                          .take(3)
                                           .map(
                                             (entry) => wrapEditable(
                                               'ben_${entry.key}',
