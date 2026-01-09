@@ -16,10 +16,13 @@ Scraki is a powerful Flutter desktop application for mirroring and controlling A
 - **📱 Multi-Device**: Control multiple devices simultaneously in grid or floating mode
 - **📂 Device Grouping**: Organize devices into groups with custom colors and horizontal filtering
 - **✨ Premium UI**: Sophisticated glassmorphism aesthetic with specialized `BoxCard` and `BoxCardMenu` components
+- **🎨 AI Recruitment Posters**: Built-in designer with 20+ templates (Modern, Glassmorphism, Retro...) and real-time text editing.
 
 ## 🏛️ Architecture
 
 Scraki follows **Feature-Based Clean Architecture** with strict **SOLID** principles. For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+For the **Poster Designer** system architecture and template catalog, see [PosterDesign.md](PosterDesign.md).
 
 ### 📦 Tech Stack
 

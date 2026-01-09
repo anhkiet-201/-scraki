@@ -156,6 +156,17 @@ The dashboard layout was optimized to prioritize screen real estate while mainta
 - **Horizontal Group Selector**: Replaced the vertical sidebar with a scrollable horizontal list of chips. This allows the device grid to span the full width of the screen.
 - **Pinpoint Reactivity**: Group selection is managed by `DeviceGroupStore` and uses granular `Observer` widgets to ensure the UI updates instantly without full-screen rebuilds.
 
+### Poster Creation Feature
+
+The Poster system implements a **Template Method Pattern** to support 20+ distinct visual styles while sharing core logic:
+
+- **PosterTemplate**: Abstract base class handling data injection, scaling, and specific widget rendering.
+- **Data-Driven**: Content is decoupled from presentation via `PosterData`.
+- **Real-time Editing**: Uses `PosterCustomizationStore` and unique IDs (`req_0`, `ben_1`) to allow direct text manipulation on the canvas.
+- **Glassmorphism**: Extensive use of `BackdropFilter` and semi-transparent gradients for modern UI styles.
+
+Detailed design documentation: [PosterDesign.md](PosterDesign.md)
+
 ## Dependency Injection
 
 ### Setup (`lib/core/di/`)
