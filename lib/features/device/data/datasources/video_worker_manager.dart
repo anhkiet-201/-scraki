@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/utils/logger.dart';
 
+import 'dart:math';
+
 /// Tin nhắn gửi tới Worker Isolate
 class VideoWorkerCommand {
   final String type; // 'start', 'stop', 'control', 'pause', 'resume'
@@ -37,21 +39,36 @@ typedef VideoWorkerListener = void Function(VideoWorkerEvent);
 
 @lazySingleton
 class VideoWorkerManager {
-  static const int _numWorkers = 4; // Số lượng Isolate trong pool
+  // Logic: Use available cores, but cap at 4 (Efficiency usually drops after 4 parallel heavy decoders on typical P-core counts)
+  // Ensure at least 2 workers for basic concurrency.
+  int get _numWorkers => max(2, min(Platform.numberOfProcessors, 4));
   final List<_WorkerHandle> _workers = [];
   int _nextWorkerIndex = 0;
 
   final Map<String, VideoWorkerListener> _listeners = {};
 
-  Future<void> init() async {
-    if (_workers.isNotEmpty) return;
+  Future<void>? _initFuture;
 
-    logger.i(
-      '[VideoWorkerManager] Initializing pool with $_numWorkers workers',
-    );
-    for (int i = 0; i < _numWorkers; i++) {
-      final handle = await _spawnWorker(i);
-      _workers.add(handle);
+  Future<void> init() {
+    if (_workers.length == _numWorkers) return Future.value();
+    _initFuture ??= _initializeWorkers();
+    return _initFuture!;
+  }
+
+  Future<void> _initializeWorkers() async {
+    try {
+      logger.i(
+        '[VideoWorkerManager] Initializing pool with $_numWorkers workers',
+      );
+      // Fill until full to handle partial initialization or retries
+      while (_workers.length < _numWorkers) {
+        final index = _workers.length;
+        final handle = await _spawnWorker(index);
+        _workers.add(handle);
+      }
+    } catch (e) {
+      _initFuture = null; // Allow retry on failure
+      rethrow;
     }
   }
 
@@ -182,6 +199,7 @@ class VideoWorkerManager {
       worker.isolate.kill();
     }
     _workers.clear();
+    _initFuture = null;
   }
 }
 
@@ -347,6 +365,13 @@ class _IsolateVideoSession {
           print(
             '[Isolate-Video] Player connected. Dumping initial buffer: ${_initialBuffer.length} chunks',
           );
+
+          // Always send config header first to ensure decoder has parameters
+          // even if initial buffer was truncated.
+          if (_configHeader.isNotEmpty) {
+            _playerSocket!.add(_configHeader);
+          }
+
           for (final chunk in _initialBuffer) {
             _playerSocket!.add(chunk);
           }
@@ -411,7 +436,7 @@ class _IsolateVideoSession {
       // Still buffering key info but not forwarding to player when paused
       if (!_anyPlayerConnected) {
         _initialBuffer.add(data);
-        if (_initialBuffer.length > 500) _initialBuffer.removeAt(0);
+        if (_initialBuffer.length > 2000) _initialBuffer.removeAt(0);
       }
       return;
     }
