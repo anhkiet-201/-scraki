@@ -6,15 +6,16 @@ import '../../../poster/domain/entities/poster_data.dart';
 import '../repositories/recruitment_repository.dart';
 
 @lazySingleton
-class FetchJobsUseCase {
+class SearchJobsWithAiUseCase {
   final RecruitmentRepository _repository;
 
-  FetchJobsUseCase(this._repository);
+  SearchJobsWithAiUseCase(this._repository);
 
-  Future<Either<Failure, List<PosterData>>> call({
+  Future<Either<Failure, List<PosterData>>> call(
+    String query, {
     int page = 1,
     int limit = 10,
   }) {
-    return _repository.fetchJobs(page: page, limit: limit);
+    return _repository.searchJobs(query, page: page, limit: limit);
   }
 }

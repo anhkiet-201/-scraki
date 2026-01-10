@@ -4,6 +4,8 @@ import 'package:scraki/features/recruitment/domain/usecases/fetch_jobs_usecase.d
 import 'package:scraki/features/recruitment/domain/usecases/parse_job_text_usecase.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
+import 'package:scraki/features/recruitment/domain/usecases/search_jobs_with_ai_usecase.dart';
+
 part 'poster_creation_store.g.dart';
 
 @lazySingleton
@@ -13,8 +15,13 @@ class PosterCreationStore = _PosterCreationStore with _$PosterCreationStore;
 abstract class _PosterCreationStore with Store {
   final ParseJobTextUseCase _parseJobTextUseCase;
   final FetchJobsUseCase _fetchJobsUseCase;
+  final SearchJobsWithAiUseCase _searchJobsWithAiUseCase;
 
-  _PosterCreationStore(this._parseJobTextUseCase, this._fetchJobsUseCase);
+  _PosterCreationStore(
+    this._parseJobTextUseCase,
+    this._fetchJobsUseCase,
+    this._searchJobsWithAiUseCase,
+  );
 
   /// Current step in the wizard
   // 0: Input/Selection
@@ -45,7 +52,9 @@ abstract class _PosterCreationStore with Store {
   @observable
   bool isLoadMore = false;
 
-  @action
+  @observable
+  String searchKeyword = '';
+
   @action
   Future<void> loadAvailableJobs({bool loadMore = false}) async {
     if (isLoading || isLoadMore) return;
@@ -63,7 +72,9 @@ abstract class _PosterCreationStore with Store {
 
     errorMessage = null;
 
-    final result = await _fetchJobsUseCase(page: page, limit: 10);
+    final result = searchKeyword.isNotEmpty
+        ? await _searchJobsWithAiUseCase(searchKeyword, page: page, limit: 10)
+        : await _fetchJobsUseCase(page: page, limit: 10);
     result.fold(
       (failure) {
         errorMessage = failure.message;

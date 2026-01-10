@@ -4,6 +4,8 @@ import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 
+import 'dart:async';
+
 class FloatingJobSelector extends StatefulWidget {
   final void Function(PosterData) onJobSelected;
   final VoidCallback onCancel;
@@ -26,6 +28,22 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
     super.initState();
     _store = inject<PosterCreationStore>();
     _store.loadAvailableJobs();
+  }
+
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _store.searchKeyword = query;
+      _store.loadAvailableJobs();
+    });
   }
 
   @override
@@ -96,6 +114,51 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                 constraints: const BoxConstraints(),
               ),
             ],
+          ),
+        ),
+
+        // SearchBar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm công việc...',
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  color: onSurface.withValues(alpha: 0.5),
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  size: 20,
+                  color: onSurface.withValues(alpha: 0.5),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                filled: true,
+                fillColor: onSurface.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+              ),
+              style: TextStyle(fontSize: 14, color: onSurface),
+            ),
           ),
         ),
 

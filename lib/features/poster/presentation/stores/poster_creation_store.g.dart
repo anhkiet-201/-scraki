@@ -153,6 +153,24 @@ mixin _$PosterCreationStore on _PosterCreationStore, Store {
     });
   }
 
+  late final _$searchKeywordAtom = Atom(
+    name: '_PosterCreationStore.searchKeyword',
+    context: context,
+  );
+
+  @override
+  String get searchKeyword {
+    _$searchKeywordAtom.reportRead();
+    return super.searchKeyword;
+  }
+
+  @override
+  set searchKeyword(String value) {
+    _$searchKeywordAtom.reportWrite(value, super.searchKeyword, () {
+      super.searchKeyword = value;
+    });
+  }
+
   late final _$loadAvailableJobsAsyncAction = AsyncAction(
     '_PosterCreationStore.loadAvailableJobs',
     context: context,
@@ -236,7 +254,8 @@ currentPosterData: ${currentPosterData},
 availableJobs: ${availableJobs},
 page: ${page},
 hasMore: ${hasMore},
-isLoadMore: ${isLoadMore}
+isLoadMore: ${isLoadMore},
+searchKeyword: ${searchKeyword}
     ''';
   }
 }

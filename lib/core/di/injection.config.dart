@@ -43,6 +43,8 @@ import '../../features/poster/presentation/store/poster_customization_store.dart
     as _i621;
 import '../../features/poster/presentation/stores/poster_creation_store.dart'
     as _i876;
+import '../../features/recruitment/data/datasources/recruitment_remote_data_source.dart'
+    as _i284;
 import '../../features/recruitment/data/repositories/recruitment_repository_impl.dart'
     as _i240;
 import '../../features/recruitment/domain/repositories/recruitment_repository.dart'
@@ -53,6 +55,8 @@ import '../../features/recruitment/domain/usecases/fetch_jobs_usecase.dart'
     as _i420;
 import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
     as _i405;
+import '../../features/recruitment/domain/usecases/search_jobs_with_ai_usecase.dart'
+    as _i545;
 import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
@@ -90,8 +94,29 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.lazySingleton<_i985.DeviceRepository>(
+      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
+    );
+    gh.factory<_i706.SavePosterUseCase>(
+      () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
+    );
+    gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
+      () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
+    );
+    gh.lazySingleton<_i563.DeviceManagerStore>(
+      () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
+    );
     gh.lazySingleton<_i481.RecruitmentRepository>(
-      () => _i240.RecruitmentRepositoryImpl(gh<_i667.DioClient>()),
+      () => _i240.RecruitmentRepositoryImpl(
+        gh<_i284.RecruitmentRemoteDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i246.DeviceGroupStore>(
+      () => _i246.DeviceGroupStore(
+        gh<_i510.DeviceGroupRepository>(),
+        gh<_i563.DeviceManagerStore>(),
+        gh<_i891.DashboardStore>(),
+      ),
     );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
@@ -102,26 +127,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i420.FetchJobsUseCase>(
       () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
     );
+    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
+      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
+    );
     gh.lazySingleton<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i985.DeviceRepository>(
-      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
-    );
-    gh.factory<_i706.SavePosterUseCase>(
-      () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
-    );
-    gh.lazySingleton<_i563.DeviceManagerStore>(
-      () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
-    );
-    gh.lazySingleton<_i246.DeviceGroupStore>(
-      () => _i246.DeviceGroupStore(
-        gh<_i510.DeviceGroupRepository>(),
-        gh<_i563.DeviceManagerStore>(),
-        gh<_i891.DashboardStore>(),
+        gh<_i545.SearchJobsWithAiUseCase>(),
       ),
     );
     return this;

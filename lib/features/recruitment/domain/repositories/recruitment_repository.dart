@@ -12,9 +12,15 @@ abstract class RecruitmentRepository {
   /// Note: This returns a List of dynamic or a specific Job entity, not PosterData directly.
   /// For simplicity in this feature, we might map it to a partial PosterData or a dedicated Job entity.
   /// Let's return a specific entity. But for now, to keep it simple for the Poster feature:
-  Future<Either<Failure, List<PosterData>>> fetchJobsFromApi({
-    int page,
-    int limit,
+  Future<Either<Failure, List<PosterData>>> fetchJobs({
+    int page = 1,
+    int limit = 10,
+  });
+
+  Future<Either<Failure, List<PosterData>>> searchJobs(
+    String query, {
+    int page = 1,
+    int limit = 10,
   });
   Future<Either<Failure, PosterData>> fetchJobDetail(String slug);
 }
