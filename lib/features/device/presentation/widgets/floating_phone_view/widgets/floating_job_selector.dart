@@ -145,110 +145,136 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                 );
               }
 
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _store.availableJobs.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  indent: 64,
-                  endIndent: 16,
-                  color: onSurface.withValues(alpha: 0.1),
-                ),
-                itemBuilder: (context, index) {
-                  final job = _store.availableJobs[index];
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => widget.onJobSelected(job),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+              return NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification scrollInfo) {
+                  if (scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 200 &&
+                      !_store.isLoading &&
+                      !_store.isLoadMore &&
+                      _store.hasMore) {
+                    _store.loadAvailableJobs(loadMore: true);
+                  }
+                  return false;
+                },
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount:
+                      _store.availableJobs.length + (_store.hasMore ? 1 : 0),
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    indent: 64,
+                    endIndent: 16,
+                    color: onSurface.withValues(alpha: 0.1),
+                  ),
+                  itemBuilder: (context, index) {
+                    if (index == _store.availableJobs.length) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 8, bottom: 8),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: colorScheme.tertiary.withValues(
-                                alpha: 0.1,
-                              ),
-                              child: Text(
-                                job.companyName.isNotEmpty
-                                    ? job.companyName[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  color: colorScheme.tertiary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                      );
+                    }
+                    final job = _store.availableJobs[index];
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => widget.onJobSelected(job),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: colorScheme.tertiary
+                                    .withValues(alpha: 0.1),
+                                child: Text(
+                                  job.jobTitle.isNotEmpty
+                                      ? job.jobTitle[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: colorScheme.tertiary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    job.jobTitle,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: onSurface,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      job.jobTitle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: onSurface,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          job.location,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: onSurface.withValues(
-                                              alpha: 0.9,
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            job.location,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: onSurface.withValues(
+                                                alpha: 0.9,
+                                              ),
+                                              fontWeight: FontWeight.w500,
                                             ),
-                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (job.salaryRange.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.3,
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            if (job.salaryRange.isNotEmpty)
-                              Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: Colors.green.withValues(alpha: 0.3),
+                                  child: Text(
+                                    job.salaryRange,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
                                   ),
                                 ),
-                                child: Text(
-                                  job.salaryRange,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               );
             },
           ),

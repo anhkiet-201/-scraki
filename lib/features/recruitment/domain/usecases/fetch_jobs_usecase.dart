@@ -11,7 +11,10 @@ class FetchJobsUseCase {
 
   FetchJobsUseCase(this._repository);
 
-  Future<Either<Failure, List<PosterData>>> call() {
-    return _repository.fetchJobsFromApi();
+  Future<Either<Failure, List<PosterData>>> call({
+    int page = 1,
+    int limit = 10,
+  }) {
+    return _repository.fetchJobsFromApi(page: page, limit: limit);
   }
 }

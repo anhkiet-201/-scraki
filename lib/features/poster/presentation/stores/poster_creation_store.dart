@@ -36,22 +36,53 @@ abstract class _PosterCreationStore with Store {
   @observable
   ObservableList<PosterData> availableJobs = ObservableList<PosterData>();
 
+  @observable
+  int page = 1;
+
+  @observable
+  bool hasMore = true;
+
+  @observable
+  bool isLoadMore = false;
+
   @action
-  Future<void> loadAvailableJobs() async {
-    isLoading = true;
+  @action
+  Future<void> loadAvailableJobs({bool loadMore = false}) async {
+    if (isLoading || isLoadMore) return;
+
+    if (loadMore) {
+      if (!hasMore) return;
+      isLoadMore = true;
+      page++;
+    } else {
+      isLoading = true;
+      page = 1;
+      hasMore = true;
+      availableJobs.clear();
+    }
+
     errorMessage = null;
 
-    final result = await _fetchJobsUseCase();
+    final result = await _fetchJobsUseCase(page: page, limit: 10);
     result.fold(
       (failure) {
         errorMessage = failure.message;
+        if (loadMore) page--; // Rollback page on failure
       },
       (jobs) {
-        availableJobs = ObservableList.of(jobs);
+        if (jobs.isEmpty) {
+          hasMore = false;
+        } else {
+          availableJobs.addAll(jobs);
+          if (jobs.length < 10) {
+            hasMore = false;
+          }
+        }
       },
     );
 
     isLoading = false;
+    isLoadMore = false;
   }
 
   @action

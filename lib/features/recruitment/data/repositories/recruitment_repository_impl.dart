@@ -26,9 +26,15 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
   }
 
   @override
-  Future<Either<Failure, List<PosterData>>> fetchJobsFromApi() async {
+  Future<Either<Failure, List<PosterData>>> fetchJobsFromApi({
+    int page = 1,
+    int limit = 10,
+  }) async {
     try {
-      final response = await _dioClient.get<Map<String, dynamic>>('/jobs');
+      final response = await _dioClient.get<Map<String, dynamic>>(
+        '/jobs/search',
+        queryParameters: {'page': page, 'limit': limit},
+      );
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;

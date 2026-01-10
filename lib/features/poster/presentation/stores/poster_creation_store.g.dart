@@ -99,14 +99,70 @@ mixin _$PosterCreationStore on _PosterCreationStore, Store {
     });
   }
 
+  late final _$pageAtom = Atom(
+    name: '_PosterCreationStore.page',
+    context: context,
+  );
+
+  @override
+  int get page {
+    _$pageAtom.reportRead();
+    return super.page;
+  }
+
+  @override
+  set page(int value) {
+    _$pageAtom.reportWrite(value, super.page, () {
+      super.page = value;
+    });
+  }
+
+  late final _$hasMoreAtom = Atom(
+    name: '_PosterCreationStore.hasMore',
+    context: context,
+  );
+
+  @override
+  bool get hasMore {
+    _$hasMoreAtom.reportRead();
+    return super.hasMore;
+  }
+
+  @override
+  set hasMore(bool value) {
+    _$hasMoreAtom.reportWrite(value, super.hasMore, () {
+      super.hasMore = value;
+    });
+  }
+
+  late final _$isLoadMoreAtom = Atom(
+    name: '_PosterCreationStore.isLoadMore',
+    context: context,
+  );
+
+  @override
+  bool get isLoadMore {
+    _$isLoadMoreAtom.reportRead();
+    return super.isLoadMore;
+  }
+
+  @override
+  set isLoadMore(bool value) {
+    _$isLoadMoreAtom.reportWrite(value, super.isLoadMore, () {
+      super.isLoadMore = value;
+    });
+  }
+
   late final _$loadAvailableJobsAsyncAction = AsyncAction(
     '_PosterCreationStore.loadAvailableJobs',
     context: context,
   );
 
   @override
-  Future<void> loadAvailableJobs() {
-    return _$loadAvailableJobsAsyncAction.run(() => super.loadAvailableJobs());
+  Future<void> loadAvailableJobs({bool loadMore = false}) {
+    return _$loadAvailableJobsAsyncAction.run(
+      () => super.loadAvailableJobs(loadMore: loadMore),
+    );
   }
 
   late final _$parseJobDescriptionAsyncAction = AsyncAction(
@@ -129,6 +185,16 @@ mixin _$PosterCreationStore on _PosterCreationStore, Store {
   @override
   Future<void> selectJob(PosterData job) {
     return _$selectJobAsyncAction.run(() => super.selectJob(job));
+  }
+
+  late final _$regenerateAsyncAction = AsyncAction(
+    '_PosterCreationStore.regenerate',
+    context: context,
+  );
+
+  @override
+  Future<void> regenerate() {
+    return _$regenerateAsyncAction.run(() => super.regenerate());
   }
 
   late final _$_PosterCreationStoreActionController = ActionController(
@@ -167,7 +233,10 @@ currentStep: ${currentStep},
 isLoading: ${isLoading},
 errorMessage: ${errorMessage},
 currentPosterData: ${currentPosterData},
-availableJobs: ${availableJobs}
+availableJobs: ${availableJobs},
+page: ${page},
+hasMore: ${hasMore},
+isLoadMore: ${isLoadMore}
     ''';
   }
 }

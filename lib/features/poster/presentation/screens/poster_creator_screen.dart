@@ -128,7 +128,9 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
           child: Observer(
             builder: (_) {
               final jobs = _posterStore.availableJobs;
-              if (jobs.isEmpty) {
+              final hasMore = _posterStore.hasMore;
+
+              if (jobs.isEmpty && _posterStore.isLoading) {
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: 4,
@@ -139,17 +141,36 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 );
               }
 
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: jobs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final job = jobs[index];
-                  final isSelected =
-                      _posterStore.currentPosterData?.jobTitle == job.jobTitle;
-
-                  return _buildEnhancedJobCard(theme, job, isSelected);
+              return NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification scrollInfo) {
+                  if (scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 200 &&
+                      !_posterStore.isLoading &&
+                      !_posterStore.isLoadMore &&
+                      hasMore) {
+                    _posterStore.loadAvailableJobs(loadMore: true);
+                  }
+                  return false;
                 },
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: jobs.length + (hasMore ? 1 : 0),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    if (index == jobs.length) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 8, bottom: 8),
+                        child: JobCardSkeleton(),
+                      );
+                    }
+                    final job = jobs[index];
+                    final isSelected =
+                        _posterStore.currentPosterData?.jobTitle ==
+                        job.jobTitle;
+
+                    return _buildEnhancedJobCard(theme, job, isSelected);
+                  },
+                ),
               );
             },
           ),
