@@ -183,6 +183,16 @@ mixin _$PosterCreationStore on _PosterCreationStore, Store {
     );
   }
 
+  late final _$searchJobsAsyncAction = AsyncAction(
+    '_PosterCreationStore.searchJobs',
+    context: context,
+  );
+
+  @override
+  Future<void> searchJobs(String query) {
+    return _$searchJobsAsyncAction.run(() => super.searchJobs(query));
+  }
+
   late final _$parseJobDescriptionAsyncAction = AsyncAction(
     '_PosterCreationStore.parseJobDescription',
     context: context,

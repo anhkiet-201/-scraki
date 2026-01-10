@@ -97,6 +97,12 @@ abstract class _PosterCreationStore with Store {
   }
 
   @action
+  Future<void> searchJobs(String query) async {
+    searchKeyword = query;
+    await loadAvailableJobs();
+  }
+
+  @action
   Future<void> parseJobDescription(String text) async {
     if (text.isEmpty) {
       errorMessage = 'Please enter job description';

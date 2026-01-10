@@ -41,8 +41,7 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      _store.searchKeyword = query;
-      _store.loadAvailableJobs();
+      _store.searchJobs(query);
     });
   }
 
