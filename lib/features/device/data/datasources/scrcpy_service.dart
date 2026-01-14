@@ -19,6 +19,8 @@ class ScrcpyService {
 
   ScrcpyService() : _shell = Shell();
 
+  final Map<String, Process> _serverProcesses = {};
+
   static const _serverAssetPath = 'assets/server/scrcpy-server.jar';
   static const _remoteServerPath = '/data/local/tmp/scrcpy-server.jar';
   static const _serverVersion = '3.3.4';
@@ -67,13 +69,19 @@ class ScrcpyService {
       final command =
           'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
       final parts = command.split(' ');
-      Process.start(parts.first, parts.sublist(1)).then((p) {
-        p.stdout
-            .transform(const Utf8Decoder(allowMalformed: true))
-            .listen((data) => logger.d('[Scrcpy-OUT] $data'));
-        p.stderr
-            .transform(const Utf8Decoder(allowMalformed: true))
-            .listen((data) => logger.e('[Scrcpy-ERR] $data'));
+      final process = await Process.start(parts.first, parts.sublist(1));
+      _serverProcesses[deviceSerial] = process;
+
+      process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .listen((data) => logger.d('[Scrcpy-OUT] $data'));
+      process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .listen((data) => logger.e('[Scrcpy-ERR] $data'));
+
+      process.exitCode.then((code) {
+        logger.i('[ScrcpyService] Server process exited with code $code');
+        _serverProcesses.remove(deviceSerial);
       });
 
       await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -89,6 +97,13 @@ class ScrcpyService {
       await _shell.run(
         'adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"',
       );
+
+      // Kill local adb process if tracked
+      if (_serverProcesses.containsKey(serial)) {
+        logger.i('[ScrcpyService] Killing local adb process for $serial');
+        _serverProcesses[serial]?.kill();
+        _serverProcesses.remove(serial);
+      }
     } catch (e) {
       logger.w(
         '[ScrcpyService] Warning: Failed to kill server on $serial',
