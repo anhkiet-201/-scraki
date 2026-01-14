@@ -11,7 +11,7 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/text_scale_slider.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/tool_box_menu.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
 /// Floating Tool Box widget với thiết kế Glassmorphism.
 ///

@@ -3,7 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
 class TextScaleSlider extends StatefulWidget {
   final PosterData? posterData;

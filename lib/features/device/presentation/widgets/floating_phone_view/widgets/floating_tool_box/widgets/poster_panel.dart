@@ -3,9 +3,9 @@ import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/template_selector.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
 import 'package:scraki/features/poster/domain/enums/poster_template_type.dart';
 import 'package:scraki/features/poster/presentation/extensions/poster_template_extensions.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
 class PosterPanel extends StatefulWidget {
   final double height;
