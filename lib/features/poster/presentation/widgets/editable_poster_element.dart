@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
 class EditablePosterElement extends StatelessWidget {
   final String id;

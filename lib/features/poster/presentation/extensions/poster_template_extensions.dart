@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/domain/enums/poster_template_type.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 import 'package:scraki/features/poster/presentation/widgets/abstract_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/bold_poster.dart';
 import 'package:scraki/features/poster/presentation/widgets/corporate_poster.dart';

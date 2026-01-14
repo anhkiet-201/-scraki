@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 import '../../../../features/poster/domain/entities/poster_data.dart';
-import '../store/poster_customization_store.dart';
 import 'editable_poster_element.dart';
 
 /// Abstract base class for all poster templates.
