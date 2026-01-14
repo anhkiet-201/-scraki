@@ -125,6 +125,50 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
             ],
           ),
         ),
+
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: TextField(
+            onChanged: (query) {
+              _uiStore.debouncedSearch(query, () {
+                _posterStore.searchJobs(query);
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm công việc (AI)...',
+              hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              ),
+              prefixIcon: Icon(
+                Icons.smart_toy_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              isDense: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
+                0.3,
+              ),
+              filled: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 1.5,
+                ),
+              ),
+            ),
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
         const Divider(height: 1),
         Expanded(
           child: Observer(
@@ -759,7 +803,9 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isSelected ? Icons.check_circle : Icons.circle_outlined,
+                          isSelected
+                              ? Icons.check_circle
+                              : Icons.circle_outlined,
                           size: 24,
                           color: isSelected
                               ? theme.colorScheme.primary
@@ -782,7 +828,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                     ),
                   ),
                 );
-              }
+              },
             );
           },
         );
