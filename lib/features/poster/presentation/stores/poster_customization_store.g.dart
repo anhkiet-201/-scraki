@@ -131,6 +131,17 @@ mixin _$PosterCustomizationStore on _PosterCustomizationStore, Store {
   }
 
   @override
+  void reset() {
+    final _$actionInfo = _$_PosterCustomizationStoreActionController
+        .startAction(name: '_PosterCustomizationStore.reset');
+    try {
+      return super.reset();
+    } finally {
+      _$_PosterCustomizationStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 selectedFieldId: ${selectedFieldId},
