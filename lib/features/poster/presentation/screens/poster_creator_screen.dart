@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -10,8 +11,9 @@ import 'package:scraki/core/widgets/gemini_poster_skeleton.dart';
 import 'package:scraki/core/widgets/skeleton_loader.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/domain/usecases/save_poster_usecase.dart';
-import 'package:scraki/features/poster/presentation/store/poster_customization_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_creator_store.dart';
 import 'package:scraki/features/poster/domain/enums/poster_template_type.dart';
 import 'package:scraki/features/poster/presentation/extensions/poster_template_extensions.dart';
 
@@ -27,6 +29,7 @@ class PosterCreatorScreen extends StatefulWidget {
 
 class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   late final PosterCreationStore _posterStore;
+  late final PosterCreatorStore _uiStore;
   late final PosterCustomizationStore _customizationStore;
   late final SavePosterUseCase _savePosterUseCase;
   final GlobalKey _posterKey = GlobalKey();
@@ -35,13 +38,11 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   late final TextEditingController _textEditingController;
   ReactionDisposer? _textSyncDisposer;
 
-  PosterTemplateType _selectedTemplate = PosterTemplateType.modern;
-  bool _isSaving = false;
-
   @override
   void initState() {
     super.initState();
     _posterStore = inject<PosterCreationStore>();
+    _uiStore = inject<PosterCreatorStore>();
     _customizationStore = inject<PosterCustomizationStore>();
     _savePosterUseCase = inject<SavePosterUseCase>();
 
@@ -66,6 +67,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
 
   @override
   void dispose() {
+    _uiStore.dispose();
     _textEditingController.dispose();
     _textSyncDisposer?.call();
     super.dispose();
@@ -344,7 +346,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        _selectedTemplate.label,
+                        _uiStore.selectedTemplate.label,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.bold,
@@ -718,62 +720,71 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   }
 
   Widget _buildTemplateGrid(ThemeData theme) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: PosterTemplateType.values.length,
-      itemBuilder: (context, index) {
-        final template = PosterTemplateType.values[index];
-        final isSelected = _selectedTemplate == template;
-
-        return InkWell(
-          onTap: () => setState(() => _selectedTemplate = template),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant,
-                width: isSelected ? 2 : 1,
-              ),
-              color: isSelected
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
-                  : theme.colorScheme.surface,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  size: 24,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  template.label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+    return Observer(
+      builder: (_) {
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.0,
           ),
+          itemCount: PosterTemplateType.values.length,
+          itemBuilder: (context, index) {
+            return Observer(
+              builder: (context) {
+                final template = PosterTemplateType.values[index];
+                final isSelected = _uiStore.selectedTemplate == template;
+                return InkWell(
+                  onTap: () => _uiStore.selectTemplate(template),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outlineVariant,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      color: isSelected
+                          ? theme.colorScheme.primaryContainer.withValues(
+                              alpha: 0.2,
+                            )
+                          : theme.colorScheme.surface,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isSelected ? Icons.check_circle : Icons.circle_outlined,
+                          size: 24,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outline,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          template.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+            );
+          },
         );
       },
     );
@@ -1016,7 +1027,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
   }
 
   Widget _buildPosterWidget(PosterData data) {
-    return _selectedTemplate.buildWidget(
+    return _uiStore.selectedTemplate.buildWidget(
       data: data,
       width: 480,
       height: 685,
@@ -1028,11 +1039,11 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     return Observer(
       builder: (_) {
         final posterData = _posterStore.currentPosterData;
-        final canSave = posterData != null && !_isSaving;
+        final canSave = posterData != null && !_uiStore.isSaving;
 
         return FilledButton.icon(
           onPressed: canSave ? _handleSavePoster : null,
-          icon: _isSaving
+          icon: _uiStore.isSaving
               ? const SizedBox(
                   width: 16,
                   height: 16,
@@ -1042,7 +1053,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                   ),
                 )
               : const Icon(Icons.download_rounded),
-          label: Text(_isSaving ? 'Đang lưu...' : 'Lưu Poster'),
+          label: Text(_uiStore.isSaving ? 'Đang lưu...' : 'Lưu Poster'),
           style: FilledButton.styleFrom(
             minimumSize: const Size(double.infinity, 48),
             shape: RoundedRectangleBorder(
@@ -1058,9 +1069,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     final posterData = _posterStore.currentPosterData;
     if (posterData == null) return;
 
-    setState(() {
-      _isSaving = true;
-    });
+    _uiStore.setSaving(true);
 
     try {
       _customizationStore.selectField(null); // Clear selection
@@ -1102,9 +1111,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
     } catch (e) {
       _showSnackBar('Lỗi: $e', isError: true);
     } finally {
-      setState(() {
-        _isSaving = false;
-      });
+      _uiStore.setSaving(false);
     }
   }
 

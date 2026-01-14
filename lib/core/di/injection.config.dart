@@ -39,10 +39,12 @@ import '../../features/poster/domain/repositories/i_poster_repository.dart'
     as _i391;
 import '../../features/poster/domain/usecases/save_poster_usecase.dart'
     as _i706;
-import '../../features/poster/presentation/store/poster_customization_store.dart'
-    as _i621;
 import '../../features/poster/presentation/stores/poster_creation_store.dart'
     as _i876;
+import '../../features/poster/presentation/stores/poster_creator_store.dart'
+    as _i429;
+import '../../features/poster/presentation/stores/poster_customization_store.dart'
+    as _i90;
 import '../../features/recruitment/data/datasources/recruitment_remote_data_source.dart'
     as _i284;
 import '../../features/recruitment/data/repositories/recruitment_repository_impl.dart'
@@ -70,8 +72,9 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
-    gh.factory<_i621.PosterCustomizationStore>(
-      () => _i621.PosterCustomizationStore(),
+    gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
+    gh.factory<_i90.PosterCustomizationStore>(
+      () => _i90.PosterCustomizationStore(),
     );
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
