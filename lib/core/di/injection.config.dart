@@ -133,7 +133,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
       () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i876.PosterCreationStore>(
+    gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),

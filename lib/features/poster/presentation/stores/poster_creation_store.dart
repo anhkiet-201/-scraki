@@ -8,7 +8,7 @@ import 'package:scraki/features/recruitment/domain/usecases/search_jobs_with_ai_
 
 part 'poster_creation_store.g.dart';
 
-@lazySingleton
+@injectable
 // ignore: library_private_types_in_public_api
 class PosterCreationStore = _PosterCreationStore with _$PosterCreationStore;
 
