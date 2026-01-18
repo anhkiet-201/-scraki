@@ -11,6 +11,7 @@ import 'package:scraki/features/device/presentation/stores/device_group_store.da
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
 import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
+import 'package:scraki/features/video_poster/presentation/pages/video_poster_playground_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -72,6 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: _buildDevicesContent(context, _dashboardStore),
                 ),
                 const KeepAlivePage(child: PosterCreatorScreen()),
+                const KeepAlivePage(child: VideoPosterPlaygroundPage()),
                 KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
                 KeepAlivePage(child: _buildComingSoon(context, 'Settings')),
               ],
@@ -212,6 +214,11 @@ class _DashboardScreenState extends State<DashboardScreen>
               icon: Icon(Icons.post_add),
               selectedIcon: Icon(Icons.post_add_outlined),
               label: Text('Posters'),
+            ),
+            NavigationRailDestination(
+              icon: Icon(Icons.video_library_outlined),
+              selectedIcon: Icon(Icons.video_library),
+              label: Text('Video Posters'),
             ),
             NavigationRailDestination(
               icon: Icon(Icons.terminal_outlined),

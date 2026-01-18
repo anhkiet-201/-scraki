@@ -59,6 +59,12 @@ import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
     as _i405;
 import '../../features/recruitment/domain/usecases/search_jobs_with_ai_usecase.dart'
     as _i545;
+import '../../features/video_poster/data/repositories/ffmpeg_video_processing_repository_impl.dart'
+    as _i1007;
+import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
+    as _i427;
+import '../../features/video_poster/presentation/stores/video_poster_store.dart'
+    as _i618;
 import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
@@ -90,6 +96,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
+    gh.factory<_i427.VideoProcessingRepository>(
+      () => _i1007.FfmpegVideoProcessingRepositoryImpl(),
+    );
     gh.lazySingleton<_i391.IPosterRepository>(
       () => _i424.PosterRepositoryImpl(),
     );
@@ -97,6 +106,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.factory<_i618.VideoPosterStore>(
+      () => _i618.VideoPosterStore(gh<_i427.VideoProcessingRepository>()),
+    );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
     );
@@ -124,14 +136,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
     );
+    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
+      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
+    );
     gh.lazySingleton<_i405.ParseJobTextUseCase>(
       () => _i405.ParseJobTextUseCase(gh<_i481.RecruitmentRepository>()),
     );
     gh.lazySingleton<_i420.FetchJobsUseCase>(
       () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
-      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
     gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
