@@ -22,7 +22,23 @@ mixin _$VideoComposition {
   PosterData get posterData => throw _privateConstructorUsedError;
   Duration get targetDuration => throw _privateConstructorUsedError;
   bool get randomize => throw _privateConstructorUsedError;
-  String get stylePreset => throw _privateConstructorUsedError;
+  String get stylePreset =>
+      throw _privateConstructorUsedError; // Positioning (Relative 0.0 to 1.0)
+  double get titleX => throw _privateConstructorUsedError;
+  double get titleY => throw _privateConstructorUsedError;
+  double get salaryX => throw _privateConstructorUsedError;
+  double get salaryY => throw _privateConstructorUsedError;
+  double get companyX => throw _privateConstructorUsedError;
+  double get companyY => throw _privateConstructorUsedError; // Effects
+  double get saturation => throw _privateConstructorUsedError;
+  double get contrast => throw _privateConstructorUsedError;
+  double get playbackSpeed => throw _privateConstructorUsedError;
+  double get zoomIntensity =>
+      throw _privateConstructorUsedError; // Anti-Reup Randomization
+  double get noiseLevel => throw _privateConstructorUsedError;
+  double get hueShift => throw _privateConstructorUsedError;
+  double get brightnessDelta => throw _privateConstructorUsedError;
+  int get randomSeed => throw _privateConstructorUsedError;
 
   /// Create a copy of VideoComposition
   /// with the given fields replaced by the non-null parameter values.
@@ -45,6 +61,20 @@ abstract class $VideoCompositionCopyWith<$Res> {
     Duration targetDuration,
     bool randomize,
     String stylePreset,
+    double titleX,
+    double titleY,
+    double salaryX,
+    double salaryY,
+    double companyX,
+    double companyY,
+    double saturation,
+    double contrast,
+    double playbackSpeed,
+    double zoomIntensity,
+    double noiseLevel,
+    double hueShift,
+    double brightnessDelta,
+    int randomSeed,
   });
 
   $PosterDataCopyWith<$Res> get posterData;
@@ -71,6 +101,20 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
     Object? targetDuration = null,
     Object? randomize = null,
     Object? stylePreset = null,
+    Object? titleX = null,
+    Object? titleY = null,
+    Object? salaryX = null,
+    Object? salaryY = null,
+    Object? companyX = null,
+    Object? companyY = null,
+    Object? saturation = null,
+    Object? contrast = null,
+    Object? playbackSpeed = null,
+    Object? zoomIntensity = null,
+    Object? noiseLevel = null,
+    Object? hueShift = null,
+    Object? brightnessDelta = null,
+    Object? randomSeed = null,
   }) {
     return _then(
       _value.copyWith(
@@ -98,6 +142,62 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
                 ? _value.stylePreset
                 : stylePreset // ignore: cast_nullable_to_non_nullable
                       as String,
+            titleX: null == titleX
+                ? _value.titleX
+                : titleX // ignore: cast_nullable_to_non_nullable
+                      as double,
+            titleY: null == titleY
+                ? _value.titleY
+                : titleY // ignore: cast_nullable_to_non_nullable
+                      as double,
+            salaryX: null == salaryX
+                ? _value.salaryX
+                : salaryX // ignore: cast_nullable_to_non_nullable
+                      as double,
+            salaryY: null == salaryY
+                ? _value.salaryY
+                : salaryY // ignore: cast_nullable_to_non_nullable
+                      as double,
+            companyX: null == companyX
+                ? _value.companyX
+                : companyX // ignore: cast_nullable_to_non_nullable
+                      as double,
+            companyY: null == companyY
+                ? _value.companyY
+                : companyY // ignore: cast_nullable_to_non_nullable
+                      as double,
+            saturation: null == saturation
+                ? _value.saturation
+                : saturation // ignore: cast_nullable_to_non_nullable
+                      as double,
+            contrast: null == contrast
+                ? _value.contrast
+                : contrast // ignore: cast_nullable_to_non_nullable
+                      as double,
+            playbackSpeed: null == playbackSpeed
+                ? _value.playbackSpeed
+                : playbackSpeed // ignore: cast_nullable_to_non_nullable
+                      as double,
+            zoomIntensity: null == zoomIntensity
+                ? _value.zoomIntensity
+                : zoomIntensity // ignore: cast_nullable_to_non_nullable
+                      as double,
+            noiseLevel: null == noiseLevel
+                ? _value.noiseLevel
+                : noiseLevel // ignore: cast_nullable_to_non_nullable
+                      as double,
+            hueShift: null == hueShift
+                ? _value.hueShift
+                : hueShift // ignore: cast_nullable_to_non_nullable
+                      as double,
+            brightnessDelta: null == brightnessDelta
+                ? _value.brightnessDelta
+                : brightnessDelta // ignore: cast_nullable_to_non_nullable
+                      as double,
+            randomSeed: null == randomSeed
+                ? _value.randomSeed
+                : randomSeed // ignore: cast_nullable_to_non_nullable
+                      as int,
           )
           as $Val,
     );
@@ -130,6 +230,20 @@ abstract class _$$VideoCompositionImplCopyWith<$Res>
     Duration targetDuration,
     bool randomize,
     String stylePreset,
+    double titleX,
+    double titleY,
+    double salaryX,
+    double salaryY,
+    double companyX,
+    double companyY,
+    double saturation,
+    double contrast,
+    double playbackSpeed,
+    double zoomIntensity,
+    double noiseLevel,
+    double hueShift,
+    double brightnessDelta,
+    int randomSeed,
   });
 
   @override
@@ -156,6 +270,20 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
     Object? targetDuration = null,
     Object? randomize = null,
     Object? stylePreset = null,
+    Object? titleX = null,
+    Object? titleY = null,
+    Object? salaryX = null,
+    Object? salaryY = null,
+    Object? companyX = null,
+    Object? companyY = null,
+    Object? saturation = null,
+    Object? contrast = null,
+    Object? playbackSpeed = null,
+    Object? zoomIntensity = null,
+    Object? noiseLevel = null,
+    Object? hueShift = null,
+    Object? brightnessDelta = null,
+    Object? randomSeed = null,
   }) {
     return _then(
       _$VideoCompositionImpl(
@@ -183,6 +311,62 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
             ? _value.stylePreset
             : stylePreset // ignore: cast_nullable_to_non_nullable
                   as String,
+        titleX: null == titleX
+            ? _value.titleX
+            : titleX // ignore: cast_nullable_to_non_nullable
+                  as double,
+        titleY: null == titleY
+            ? _value.titleY
+            : titleY // ignore: cast_nullable_to_non_nullable
+                  as double,
+        salaryX: null == salaryX
+            ? _value.salaryX
+            : salaryX // ignore: cast_nullable_to_non_nullable
+                  as double,
+        salaryY: null == salaryY
+            ? _value.salaryY
+            : salaryY // ignore: cast_nullable_to_non_nullable
+                  as double,
+        companyX: null == companyX
+            ? _value.companyX
+            : companyX // ignore: cast_nullable_to_non_nullable
+                  as double,
+        companyY: null == companyY
+            ? _value.companyY
+            : companyY // ignore: cast_nullable_to_non_nullable
+                  as double,
+        saturation: null == saturation
+            ? _value.saturation
+            : saturation // ignore: cast_nullable_to_non_nullable
+                  as double,
+        contrast: null == contrast
+            ? _value.contrast
+            : contrast // ignore: cast_nullable_to_non_nullable
+                  as double,
+        playbackSpeed: null == playbackSpeed
+            ? _value.playbackSpeed
+            : playbackSpeed // ignore: cast_nullable_to_non_nullable
+                  as double,
+        zoomIntensity: null == zoomIntensity
+            ? _value.zoomIntensity
+            : zoomIntensity // ignore: cast_nullable_to_non_nullable
+                  as double,
+        noiseLevel: null == noiseLevel
+            ? _value.noiseLevel
+            : noiseLevel // ignore: cast_nullable_to_non_nullable
+                  as double,
+        hueShift: null == hueShift
+            ? _value.hueShift
+            : hueShift // ignore: cast_nullable_to_non_nullable
+                  as double,
+        brightnessDelta: null == brightnessDelta
+            ? _value.brightnessDelta
+            : brightnessDelta // ignore: cast_nullable_to_non_nullable
+                  as double,
+        randomSeed: null == randomSeed
+            ? _value.randomSeed
+            : randomSeed // ignore: cast_nullable_to_non_nullable
+                  as int,
       ),
     );
   }
@@ -198,6 +382,20 @@ class _$VideoCompositionImpl implements _VideoComposition {
     this.targetDuration = const Duration(seconds: 20),
     this.randomize = true,
     this.stylePreset = 'default',
+    this.titleX = 0.5,
+    this.titleY = 0.15,
+    this.salaryX = 0.5,
+    this.salaryY = 0.25,
+    this.companyX = 0.5,
+    this.companyY = 0.85,
+    this.saturation = 1.2,
+    this.contrast = 1.0,
+    this.playbackSpeed = 1.0,
+    this.zoomIntensity = 0.0,
+    this.noiseLevel = 0.0,
+    this.hueShift = 0.0,
+    this.brightnessDelta = 0.0,
+    this.randomSeed = 0,
   }) : _sourceVideoPaths = sourceVideoPaths;
 
   @override
@@ -222,10 +420,55 @@ class _$VideoCompositionImpl implements _VideoComposition {
   @override
   @JsonKey()
   final String stylePreset;
+  // Positioning (Relative 0.0 to 1.0)
+  @override
+  @JsonKey()
+  final double titleX;
+  @override
+  @JsonKey()
+  final double titleY;
+  @override
+  @JsonKey()
+  final double salaryX;
+  @override
+  @JsonKey()
+  final double salaryY;
+  @override
+  @JsonKey()
+  final double companyX;
+  @override
+  @JsonKey()
+  final double companyY;
+  // Effects
+  @override
+  @JsonKey()
+  final double saturation;
+  @override
+  @JsonKey()
+  final double contrast;
+  @override
+  @JsonKey()
+  final double playbackSpeed;
+  @override
+  @JsonKey()
+  final double zoomIntensity;
+  // Anti-Reup Randomization
+  @override
+  @JsonKey()
+  final double noiseLevel;
+  @override
+  @JsonKey()
+  final double hueShift;
+  @override
+  @JsonKey()
+  final double brightnessDelta;
+  @override
+  @JsonKey()
+  final int randomSeed;
 
   @override
   String toString() {
-    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, posterData: $posterData, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset)';
+    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, posterData: $posterData, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset, titleX: $titleX, titleY: $titleY, salaryX: $salaryX, salaryY: $salaryY, companyX: $companyX, companyY: $companyY, saturation: $saturation, contrast: $contrast, playbackSpeed: $playbackSpeed, zoomIntensity: $zoomIntensity, noiseLevel: $noiseLevel, hueShift: $hueShift, brightnessDelta: $brightnessDelta, randomSeed: $randomSeed)';
   }
 
   @override
@@ -245,11 +488,35 @@ class _$VideoCompositionImpl implements _VideoComposition {
             (identical(other.randomize, randomize) ||
                 other.randomize == randomize) &&
             (identical(other.stylePreset, stylePreset) ||
-                other.stylePreset == stylePreset));
+                other.stylePreset == stylePreset) &&
+            (identical(other.titleX, titleX) || other.titleX == titleX) &&
+            (identical(other.titleY, titleY) || other.titleY == titleY) &&
+            (identical(other.salaryX, salaryX) || other.salaryX == salaryX) &&
+            (identical(other.salaryY, salaryY) || other.salaryY == salaryY) &&
+            (identical(other.companyX, companyX) ||
+                other.companyX == companyX) &&
+            (identical(other.companyY, companyY) ||
+                other.companyY == companyY) &&
+            (identical(other.saturation, saturation) ||
+                other.saturation == saturation) &&
+            (identical(other.contrast, contrast) ||
+                other.contrast == contrast) &&
+            (identical(other.playbackSpeed, playbackSpeed) ||
+                other.playbackSpeed == playbackSpeed) &&
+            (identical(other.zoomIntensity, zoomIntensity) ||
+                other.zoomIntensity == zoomIntensity) &&
+            (identical(other.noiseLevel, noiseLevel) ||
+                other.noiseLevel == noiseLevel) &&
+            (identical(other.hueShift, hueShift) ||
+                other.hueShift == hueShift) &&
+            (identical(other.brightnessDelta, brightnessDelta) ||
+                other.brightnessDelta == brightnessDelta) &&
+            (identical(other.randomSeed, randomSeed) ||
+                other.randomSeed == randomSeed));
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     const DeepCollectionEquality().hash(_sourceVideoPaths),
@@ -257,7 +524,21 @@ class _$VideoCompositionImpl implements _VideoComposition {
     targetDuration,
     randomize,
     stylePreset,
-  );
+    titleX,
+    titleY,
+    salaryX,
+    salaryY,
+    companyX,
+    companyY,
+    saturation,
+    contrast,
+    playbackSpeed,
+    zoomIntensity,
+    noiseLevel,
+    hueShift,
+    brightnessDelta,
+    randomSeed,
+  ]);
 
   /// Create a copy of VideoComposition
   /// with the given fields replaced by the non-null parameter values.
@@ -279,6 +560,20 @@ abstract class _VideoComposition implements VideoComposition {
     final Duration targetDuration,
     final bool randomize,
     final String stylePreset,
+    final double titleX,
+    final double titleY,
+    final double salaryX,
+    final double salaryY,
+    final double companyX,
+    final double companyY,
+    final double saturation,
+    final double contrast,
+    final double playbackSpeed,
+    final double zoomIntensity,
+    final double noiseLevel,
+    final double hueShift,
+    final double brightnessDelta,
+    final int randomSeed,
   }) = _$VideoCompositionImpl;
 
   @override
@@ -292,7 +587,35 @@ abstract class _VideoComposition implements VideoComposition {
   @override
   bool get randomize;
   @override
-  String get stylePreset;
+  String get stylePreset; // Positioning (Relative 0.0 to 1.0)
+  @override
+  double get titleX;
+  @override
+  double get titleY;
+  @override
+  double get salaryX;
+  @override
+  double get salaryY;
+  @override
+  double get companyX;
+  @override
+  double get companyY; // Effects
+  @override
+  double get saturation;
+  @override
+  double get contrast;
+  @override
+  double get playbackSpeed;
+  @override
+  double get zoomIntensity; // Anti-Reup Randomization
+  @override
+  double get noiseLevel;
+  @override
+  double get hueShift;
+  @override
+  double get brightnessDelta;
+  @override
+  int get randomSeed;
 
   /// Create a copy of VideoComposition
   /// with the given fields replaced by the non-null parameter values.

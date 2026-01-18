@@ -7,4 +7,6 @@ abstract class VideoProcessingRepository {
 
   /// Generates a thumbnail/preview for the composition.
   Future<String?> generatePreview(VideoComposition composition);
+
+  Future<String> extractThumbnail(String videoPath);
 }

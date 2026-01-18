@@ -30,14 +30,52 @@ abstract class _VideoPosterStore with Store {
   @observable
   String? errorMessage;
 
+  // --- Pro Editor State ---
+
+  @observable
+  double titleX = 0.5;
+  @observable
+  double titleY = 0.15;
+
+  @observable
+  double salaryX = 0.5;
+  @observable
+  double salaryY = 0.25;
+
+  @observable
+  double companyX = 0.5;
+  @observable
+  double companyY = 0.85;
+
+  @observable
+  double saturation = 1.2;
+  @observable
+  double contrast = 1.0;
+  @observable
+  double playbackSpeed = 1.0;
+  @observable
+  double zoomIntensity = 0.0;
+
+  @observable
+  bool enableAntiReup = true;
+
+  // --- V4 UX State ---
+  @observable
+  double volume = 1.0;
+  @observable
+  bool applyBlur = false;
+  @observable
+  double blurIntensity = 5.0;
+
+  @observable
+  ObservableMap<String, String> thumbnails = ObservableMap<String, String>();
+
+  // --- Actions ---
+
   @action
   void addSourceVideos(List<String> paths) {
     sourceVideoPaths.addAll(paths);
-  }
-
-  @action
-  void duplicateSourceVideo(String path) {
-    sourceVideoPaths.add(path);
+    _generateThumbnails(paths);
   }
 
   @action
@@ -45,6 +83,76 @@ abstract class _VideoPosterStore with Store {
     if (index >= 0 && index < sourceVideoPaths.length) {
       sourceVideoPaths.removeAt(index);
     }
+  }
+
+  @action
+  void updatePosition(String type, double x, double y) {
+    switch (type) {
+      case 'title':
+        titleX = x;
+        titleY = y;
+        break;
+      case 'salary':
+        salaryX = x;
+        salaryY = y;
+        break;
+      case 'company':
+        companyX = x;
+        companyY = y;
+        break;
+    }
+  }
+
+  @action
+  void updateEffect(String type, double value) {
+    switch (type) {
+      case 'saturation':
+        saturation = value;
+        break;
+      case 'contrast':
+        contrast = value;
+        break;
+      case 'speed':
+        playbackSpeed = value;
+        break;
+      case 'zoom':
+        zoomIntensity = value;
+        break;
+      case 'anti_reup':
+        enableAntiReup = value > 0.5;
+        break;
+      case 'volume':
+        volume = value;
+        break;
+      case 'blur_intensity':
+        blurIntensity = value;
+        break;
+    }
+  }
+
+  @action
+  void toggleBlur(bool value) {
+    applyBlur = value;
+  }
+
+  @action
+  void setPlaybackSpeed(double value) {
+    playbackSpeed = value;
+  }
+
+  @action
+  void setVolume(double value) {
+    volume = value;
+  }
+
+  @action
+  void setApplyBlur(bool value) {
+    applyBlur = value;
+  }
+
+  @action
+  void setBlurIntensity(double value) {
+    blurIntensity = value;
   }
 
   @action
@@ -63,11 +171,27 @@ abstract class _VideoPosterStore with Store {
       isProcessing = true;
       errorMessage = null;
 
+      final random = DateTime.now().millisecondsSinceEpoch;
       final composition = VideoComposition(
         id: const Uuid().v4(),
         sourceVideoPaths: sourceVideoPaths.toList(),
         posterData: selectedPosterData!,
-        // Default options for now, can be exposed to UI later
+        titleX: titleX,
+        titleY: titleY,
+        salaryX: salaryX,
+        salaryY: salaryY,
+        companyX: companyX,
+        companyY: companyY,
+        saturation: saturation,
+        contrast: contrast,
+        playbackSpeed: playbackSpeed,
+        zoomIntensity: zoomIntensity,
+        noiseLevel: enableAntiReup ? 0.05 : 0.0,
+        hueShift: enableAntiReup ? (random % 10 - 5) / 100.0 : 0.0, // +/- 0.05
+        brightnessDelta: enableAntiReup
+            ? (random % 10 - 5) / 200.0
+            : 0.0, // +/- 0.025
+        randomSeed: random,
       );
 
       generatedVideoPath = await _repository.generateVideo(composition);
@@ -75,6 +199,19 @@ abstract class _VideoPosterStore with Store {
       errorMessage = e.toString();
     } finally {
       isProcessing = false;
+    }
+  }
+
+  Future<void> _generateThumbnails(List<String> paths) async {
+    for (final path in paths) {
+      if (!thumbnails.containsKey(path)) {
+        try {
+          final thumb = await _repository.extractThumbnail(path);
+          thumbnails[path] = thumb;
+        } catch (e) {
+          print('Failed to extract thumbnail: $e');
+        }
+      }
     }
   }
 }
