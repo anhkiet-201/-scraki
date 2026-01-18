@@ -20,6 +20,16 @@ class VideoComposition with _$VideoComposition {
     @Default(0.25) double salaryY,
     @Default(0.5) double companyX,
     @Default(0.85) double companyY,
+    @Default(0.1) double requirementsX,
+    @Default(0.4) double requirementsY,
+    @Default(0.1) double benefitsX,
+    @Default(0.6) double benefitsY,
+    @Default(0.5) double contactX,
+    @Default(0.92) double contactY,
+    @Default(0.5) double headlineX,
+    @Default(0.08) double headlineY,
+    @Default(0.5) double locationX,
+    @Default(0.3) double locationY,
 
     // Effects
     @Default(1.2) double saturation,

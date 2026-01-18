@@ -48,6 +48,26 @@ abstract class _VideoPosterStore with Store {
   double companyY = 0.85;
 
   @observable
+  double requirementsX = 0.1;
+  @observable
+  double requirementsY = 0.4;
+
+  @observable
+  double benefitsX = 0.1;
+  @observable
+  double benefitsY = 0.6;
+
+  @observable
+  double contactX = 0.5;
+  @observable
+  double contactY = 0.92;
+
+  @observable
+  double headlineX = 0.5;
+  @observable
+  double headlineY = 0.08;
+
+  @observable
   double saturation = 1.2;
   @observable
   double contrast = 1.0;
@@ -66,6 +86,11 @@ abstract class _VideoPosterStore with Store {
   bool applyBlur = false;
   @observable
   double blurIntensity = 5.0;
+
+  @observable
+  double locationX = 0.5;
+  @observable
+  double locationY = 0.3;
 
   @observable
   ObservableMap<String, String> thumbnails = ObservableMap<String, String>();
@@ -99,6 +124,26 @@ abstract class _VideoPosterStore with Store {
       case 'company':
         companyX = x;
         companyY = y;
+        break;
+      case 'requirements':
+        requirementsX = x;
+        requirementsY = y;
+        break;
+      case 'benefits':
+        benefitsX = x;
+        benefitsY = y;
+        break;
+      case 'contact':
+        contactX = x;
+        contactY = y;
+        break;
+      case 'headline':
+        headlineX = x;
+        headlineY = y;
+        break;
+      case 'location':
+        locationX = x;
+        locationY = y;
         break;
     }
   }
@@ -182,6 +227,16 @@ abstract class _VideoPosterStore with Store {
         salaryY: salaryY,
         companyX: companyX,
         companyY: companyY,
+        requirementsX: requirementsX,
+        requirementsY: requirementsY,
+        benefitsX: benefitsX,
+        benefitsY: benefitsY,
+        contactX: contactX,
+        contactY: contactY,
+        headlineX: headlineX,
+        headlineY: headlineY,
+        locationX: locationX,
+        locationY: locationY,
         saturation: saturation,
         contrast: contrast,
         playbackSpeed: playbackSpeed,

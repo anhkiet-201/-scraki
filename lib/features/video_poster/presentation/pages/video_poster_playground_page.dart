@@ -2,6 +2,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:mobx/mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -11,7 +12,6 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 
 import 'dart:async';
 import 'dart:ui';
-import 'package:blur/blur.dart';
 
 class VideoPosterPlaygroundPage extends StatefulWidget {
   const VideoPosterPlaygroundPage({super.key});
@@ -39,8 +39,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
 
   // --- V4 UX State ---
   int _activeNavIndex = 0; // 0: Job Hub, 1: Media Library, 2: Effects/Content
-  bool _isSidebarOpen = true;
-  bool _isPropertiesOpen = true;
   bool _isFocusMode = false;
 
   // Form Controllers
@@ -57,7 +55,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   final _captionController = TextEditingController(
     text: "#tuyendung #vieclam #flutter",
   );
+  final _requirementsController = TextEditingController(
+    text: "Có kinh nghiệm Flutter\nThành thạo Dart\nBiết sử dụng MobX",
+  );
+  final _benefitsController = TextEditingController(
+    text: "Lương thưởng hấp dẫn\nBảo hiểm đầy đủ\nMôi trường chuyên nghiệp",
+  );
   final _jobSearchController = TextEditingController();
+  ReactionDisposer? _dataSyncDisposer;
 
   @override
   void initState() {
@@ -86,6 +91,24 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
 
     // Sync playlist when videos are added
     _syncPlaylist();
+
+    // Sync AI parsed data to local controllers
+    _dataSyncDisposer = reaction((_) => _creationStore.currentPosterData, (
+      PosterData? data,
+    ) {
+      if (data != null) {
+        _titleController.text = data.jobTitle;
+        _companyController.text = data.companyName;
+        _salaryController.text = data.salaryRange;
+        _locationController.text = data.location;
+        _contactController.text = data.contactInfo;
+        _headlineController.text = data.catchyHeadline ?? "";
+        _captionController.text = data.tikTokCaption ?? "";
+        _requirementsController.text = data.requirements.join('\n');
+        _benefitsController.text = data.benefits.join('\n');
+        _updatePosterData();
+      }
+    });
   }
 
   @override
@@ -101,7 +124,10 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     _contactController.dispose();
     _headlineController.dispose();
     _captionController.dispose();
+    _requirementsController.dispose();
+    _benefitsController.dispose();
     _jobSearchController.dispose();
+    _dataSyncDisposer?.call();
     super.dispose();
   }
 
@@ -115,6 +141,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         contactInfo: _contactController.text,
         catchyHeadline: _headlineController.text,
         tikTokCaption: _captionController.text,
+        requirements: _requirementsController.text
+            .split('\n')
+            .where((s) => s.trim().isNotEmpty)
+            .toList(),
+        benefits: _benefitsController.text
+            .split('\n')
+            .where((s) => s.trim().isNotEmpty)
+            .toList(),
       ),
     );
   }
@@ -174,66 +208,73 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         child: Focus(
           autofocus: true,
           child: Scaffold(
-            body: Stack(
+            body: Column(
               children: [
-                // 1. BACKGROUND PREVIEW (FULL SCREEN)
-                Positioned.fill(
-                  child: Column(
-                    children: [
-                      _buildModernToolbar(),
-                      Expanded(
-                        child: Center(child: _buildInteractivePreview()),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 2. FLOATING PLAYER CONTROLS
-                Positioned(
-                  bottom: 40,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _buildFloatingGlassControls()),
-                ),
-
-                // 3. LEFT DYNAMIC SIDEBAR (UNIFIED)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
+                // 1. TOP TOOLBAR
+                _buildModernToolbar(),
+                Expanded(
                   child: Row(
                     children: [
+                      // 2. LEFT NAV BAR (PERMANENT)
                       _buildUnifiedNavBar(),
-                      _buildCollapsiblePanel(
-                        isOpen: _isSidebarOpen,
-                        width: 300,
-                        child: _activeNavIndex == 0
-                            ? _buildJobHubPanel()
-                            : _buildMediaLibraryPanel(),
+
+                      // 3. LEFT TOOLS PANEL (PERMANENT OR FOCUS-HIDDEN)
+                      if (!_isFocusMode) ...[
+                        SizedBox(
+                          width: 300,
+                          child: _activeNavIndex == 0
+                              ? _buildJobHubPanel()
+                              : _buildMediaLibraryPanel(),
+                        ),
+                        const VerticalDivider(width: 1, color: Colors.white10),
+                      ],
+
+                      // 4. MAIN WORKSPACE (AUTO SCALING)
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black,
+                                child: Center(
+                                  child: _buildInteractivePreview(),
+                                ),
+                              ),
+                            ),
+
+                            // FLOATING PLAYER CONTROLS (OVER VIDEO)
+                            Positioned(
+                              bottom: 40,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: _buildFloatingGlassControls(),
+                              ),
+                            ),
+
+                            // STATUS OVERLAY
+                            Positioned(
+                              top: 20,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: _buildDurationStatusOverlay(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+
+                      // 5. RIGHT PROPERTIES PANEL (PERMANENT OR FOCUS-HIDDEN)
+                      if (!_isFocusMode) ...[
+                        const VerticalDivider(width: 1, color: Colors.white10),
+                        SizedBox(
+                          width: 320,
+                          child: _buildRightPropertiesPanel(),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-
-                // 4. RIGHT PROPERTIES PANEL
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _buildCollapsiblePanel(
-                    isOpen: _isPropertiesOpen,
-                    width: 320,
-                    isRight: true,
-                    child: _buildRightPropertiesPanel(),
-                  ),
-                ),
-
-                // 5. STATUS OVERLAY
-                Positioned(
-                  top: 80,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _buildDurationStatusOverlay()),
                 ),
               ],
             ),
@@ -306,13 +347,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   void _toggleFocusMode() {
     setState(() {
       _isFocusMode = !_isFocusMode;
-      if (_isFocusMode) {
-        _isSidebarOpen = false;
-        _isPropertiesOpen = false;
-      } else {
-        _isSidebarOpen = true;
-        _isPropertiesOpen = true;
-      }
     });
   }
 
@@ -444,25 +478,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   }
 
   Widget _buildNavIcon(int index, IconData icon, String label) {
-    bool active = index == 2
-        ? _isPropertiesOpen
-        : (_activeNavIndex == index && _isSidebarOpen);
+    bool active = (_activeNavIndex == index);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
         onTap: () {
           setState(() {
-            if (index == 2) {
-              _isPropertiesOpen = !_isPropertiesOpen;
-            } else {
-              if (_activeNavIndex == index) {
-                _isSidebarOpen = !_isSidebarOpen;
-              } else {
-                _activeNavIndex = index;
-                _isSidebarOpen = true;
-              }
-              if (_activeNavIndex == 0) _creationStore.loadAvailableJobs();
+            _activeNavIndex = index;
+            if (index != 2) {
+              _isFocusMode = false;
             }
           });
         },
@@ -496,30 +521,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         ),
       ),
     );
-  }
-
-  Widget _buildCollapsiblePanel({
-    required bool isOpen,
-    required double width,
-    required Widget child,
-    bool isRight = false,
-  }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOutCubic,
-      width: isOpen ? width : 0,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F).withValues(alpha: 0.9),
-      ),
-      child: ClipRect(
-        child: OverflowBox(
-          minWidth: width,
-          maxWidth: width,
-          alignment: isRight ? Alignment.topRight : Alignment.topLeft,
-          child: child,
-        ),
-      ),
-    ).frosted(blur: 20, frostColor: const Color(0xFF0F0F0F), frostOpacity: 0.6);
   }
 
   Widget _buildFloatingGlassControls() {
@@ -656,38 +657,46 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 );
               }
-              return ListView.builder(
-                itemCount: _creationStore.availableJobs.length,
-                itemBuilder: (context, index) {
-                  final job = _creationStore.availableJobs[index];
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      job.jobTitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                      "${job.companyName} • ${job.salaryRange}",
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.white38,
-                      ),
-                    ),
-                    onTap: () {
-                      _titleController.text = job.jobTitle;
-                      _salaryController.text = job.salaryRange;
-                      _companyController.text = job.companyName;
-                      _locationController.text = job.location;
-                      _contactController.text = job.contactInfo;
-                      _headlineController.text = job.catchyHeadline ?? "";
-                      _captionController.text = job.tikTokCaption ?? "";
-                      _updatePosterData();
+              return Stack(
+                children: [
+                  ListView.builder(
+                    itemCount: _creationStore.availableJobs.length,
+                    itemBuilder: (context, index) {
+                      final job = _creationStore.availableJobs[index];
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          job.jobTitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "${job.companyName} • ${job.salaryRange}",
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white38,
+                          ),
+                        ),
+                        onTap: () {
+                          _creationStore.selectJob(job);
+                          _updatePosterData();
+                        },
+                      );
                     },
-                  );
-                },
+                  ),
+                  if (_creationStore.isLoading &&
+                      _creationStore.availableJobs.isNotEmpty)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black26,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -835,6 +844,20 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           "TikTok Caption",
           Icons.closed_caption_outlined,
         ),
+        const SizedBox(height: 16),
+        _buildModernTextField(
+          _requirementsController,
+          "Yêu cầu công việc (Mỗi dòng một ý)",
+          Icons.list_alt_rounded,
+          maxLines: null,
+        ),
+        const SizedBox(height: 16),
+        _buildModernTextField(
+          _benefitsController,
+          "Quyền lợi (Mỗi dòng một ý)",
+          Icons.card_giftcard_rounded,
+          maxLines: null,
+        ),
         const SizedBox(height: 32),
         _buildSectionHeader("CÀI ĐẶT VIDEO"),
         Observer(
@@ -934,8 +957,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   Widget _buildModernTextField(
     TextEditingController controller,
     String label,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int? maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -948,6 +972,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           controller: controller,
           onChanged: (_) => _updatePosterData(),
           style: const TextStyle(fontSize: 13),
+          maxLines: maxLines,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 16, color: Colors.white24),
             filled: true,
@@ -1121,7 +1146,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   ),
                   Observer(
                     builder: (_) => _buildOverlayItem(
-                      label: _store.selectedPosterData?.companyName ?? "",
+                      label:
+                          "🏢 ${_store.selectedPosterData?.companyName ?? ""}",
                       x: _store.companyX,
                       y: _store.companyY,
                       type: 'company',
@@ -1132,13 +1158,65 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   ),
                   Observer(
                     builder: (_) => _buildOverlayItem(
-                      label: _store.selectedPosterData?.location ?? "",
-                      x: 10,
-                      y: 80,
+                      label: "📍 ${_store.selectedPosterData?.location ?? ""}",
+                      x: _store.locationX,
+                      y: _store.locationY,
                       type: 'location',
                       constraints: constraints,
                       color: Colors.white54,
                       fontSize: 14,
+                    ),
+                  ),
+                  Observer(
+                    builder: (_) => _buildOverlayItem(
+                      label:
+                          _store.selectedPosterData?.requirements.isNotEmpty ==
+                              true
+                          ? "📋 YÊU CẦU:\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\n")}"
+                          : "",
+                      x: _store.requirementsX,
+                      y: _store.requirementsY,
+                      type: 'requirements',
+                      constraints: constraints,
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Observer(
+                    builder: (_) => _buildOverlayItem(
+                      label:
+                          _store.selectedPosterData?.benefits.isNotEmpty == true
+                          ? "🎁 QUYỀN LỢI:\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\n")}"
+                          : "",
+                      x: _store.benefitsX,
+                      y: _store.benefitsY,
+                      type: 'benefits',
+                      constraints: constraints,
+                      color: Colors.greenAccent,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Observer(
+                    builder: (_) => _buildOverlayItem(
+                      label:
+                          "📞 ${_store.selectedPosterData?.contactInfo ?? ""}",
+                      x: _store.contactX,
+                      y: _store.contactY,
+                      type: 'contact',
+                      constraints: constraints,
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Observer(
+                    builder: (_) => _buildOverlayItem(
+                      label: _store.selectedPosterData?.catchyHeadline ?? "",
+                      x: _store.headlineX,
+                      y: _store.headlineY,
+                      type: 'headline',
+                      constraints: constraints,
+                      color: Colors.yellowAccent,
+                      fontSize: 18,
                     ),
                   ),
                 ],
@@ -1159,57 +1237,53 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     required Color color,
     required double fontSize,
   }) {
-    final left = (x * constraints.maxWidth).clamp(
-      0.0,
-      constraints.maxWidth - 100,
-    );
-    final top = (y * constraints.maxHeight).clamp(
-      0.0,
-      constraints.maxHeight - 40,
-    );
-
-    return Positioned(
-      left: left,
-      top: top,
-      child: GestureDetector(
-        onPanUpdate: (details) {
-          final newX = (x + details.delta.dx / constraints.maxWidth).clamp(
-            0.0,
-            1.0,
-          );
-          final newY = (y + details.delta.dy / constraints.maxHeight).clamp(
-            0.0,
-            1.0,
-          );
-          _store.updatePosition(type, newX, newY);
-        },
-        child: MouseRegion(
-          cursor: SystemMouseCursors.move,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.8),
-                width: 1.5,
+    return Positioned.fill(
+      child: Align(
+        alignment: Alignment(x * 2 - 1, y * 2 - 1),
+        child: GestureDetector(
+          onPanUpdate: (details) {
+            final newX = (x + details.delta.dx / constraints.maxWidth).clamp(
+              0.0,
+              1.0,
+            );
+            final newY = (y + details.delta.dy / constraints.maxHeight).clamp(
+              0.0,
+              1.0,
+            );
+            _store.updatePosition(type, newX, newY);
+          },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.move,
+            child: Container(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.8),
+                  width: 1.5,
+                ),
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(6),
               ),
-              color: Colors.black45,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  const Shadow(
-                    color: Colors.black,
-                    blurRadius: 4,
-                    offset: Offset(1, 1),
-                  ),
-                ],
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    const Shadow(
+                      color: Colors.black,
+                      blurRadius: 4,
+                      offset: Offset(1, 1),
+                    ),
+                  ],
+                ),
+                softWrap: true,
+                textAlign: type == 'requirements' || type == 'benefits'
+                    ? TextAlign.left
+                    : TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),

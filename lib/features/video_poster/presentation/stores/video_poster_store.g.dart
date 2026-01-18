@@ -207,6 +207,150 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$requirementsXAtom = Atom(
+    name: '_VideoPosterStore.requirementsX',
+    context: context,
+  );
+
+  @override
+  double get requirementsX {
+    _$requirementsXAtom.reportRead();
+    return super.requirementsX;
+  }
+
+  @override
+  set requirementsX(double value) {
+    _$requirementsXAtom.reportWrite(value, super.requirementsX, () {
+      super.requirementsX = value;
+    });
+  }
+
+  late final _$requirementsYAtom = Atom(
+    name: '_VideoPosterStore.requirementsY',
+    context: context,
+  );
+
+  @override
+  double get requirementsY {
+    _$requirementsYAtom.reportRead();
+    return super.requirementsY;
+  }
+
+  @override
+  set requirementsY(double value) {
+    _$requirementsYAtom.reportWrite(value, super.requirementsY, () {
+      super.requirementsY = value;
+    });
+  }
+
+  late final _$benefitsXAtom = Atom(
+    name: '_VideoPosterStore.benefitsX',
+    context: context,
+  );
+
+  @override
+  double get benefitsX {
+    _$benefitsXAtom.reportRead();
+    return super.benefitsX;
+  }
+
+  @override
+  set benefitsX(double value) {
+    _$benefitsXAtom.reportWrite(value, super.benefitsX, () {
+      super.benefitsX = value;
+    });
+  }
+
+  late final _$benefitsYAtom = Atom(
+    name: '_VideoPosterStore.benefitsY',
+    context: context,
+  );
+
+  @override
+  double get benefitsY {
+    _$benefitsYAtom.reportRead();
+    return super.benefitsY;
+  }
+
+  @override
+  set benefitsY(double value) {
+    _$benefitsYAtom.reportWrite(value, super.benefitsY, () {
+      super.benefitsY = value;
+    });
+  }
+
+  late final _$contactXAtom = Atom(
+    name: '_VideoPosterStore.contactX',
+    context: context,
+  );
+
+  @override
+  double get contactX {
+    _$contactXAtom.reportRead();
+    return super.contactX;
+  }
+
+  @override
+  set contactX(double value) {
+    _$contactXAtom.reportWrite(value, super.contactX, () {
+      super.contactX = value;
+    });
+  }
+
+  late final _$contactYAtom = Atom(
+    name: '_VideoPosterStore.contactY',
+    context: context,
+  );
+
+  @override
+  double get contactY {
+    _$contactYAtom.reportRead();
+    return super.contactY;
+  }
+
+  @override
+  set contactY(double value) {
+    _$contactYAtom.reportWrite(value, super.contactY, () {
+      super.contactY = value;
+    });
+  }
+
+  late final _$headlineXAtom = Atom(
+    name: '_VideoPosterStore.headlineX',
+    context: context,
+  );
+
+  @override
+  double get headlineX {
+    _$headlineXAtom.reportRead();
+    return super.headlineX;
+  }
+
+  @override
+  set headlineX(double value) {
+    _$headlineXAtom.reportWrite(value, super.headlineX, () {
+      super.headlineX = value;
+    });
+  }
+
+  late final _$headlineYAtom = Atom(
+    name: '_VideoPosterStore.headlineY',
+    context: context,
+  );
+
+  @override
+  double get headlineY {
+    _$headlineYAtom.reportRead();
+    return super.headlineY;
+  }
+
+  @override
+  set headlineY(double value) {
+    _$headlineYAtom.reportWrite(value, super.headlineY, () {
+      super.headlineY = value;
+    });
+  }
+
   late final _$saturationAtom = Atom(
     name: '_VideoPosterStore.saturation',
     context: context,
@@ -348,6 +492,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   set blurIntensity(double value) {
     _$blurIntensityAtom.reportWrite(value, super.blurIntensity, () {
       super.blurIntensity = value;
+    });
+  }
+
+  late final _$locationXAtom = Atom(
+    name: '_VideoPosterStore.locationX',
+    context: context,
+  );
+
+  @override
+  double get locationX {
+    _$locationXAtom.reportRead();
+    return super.locationX;
+  }
+
+  @override
+  set locationX(double value) {
+    _$locationXAtom.reportWrite(value, super.locationX, () {
+      super.locationX = value;
+    });
+  }
+
+  late final _$locationYAtom = Atom(
+    name: '_VideoPosterStore.locationY',
+    context: context,
+  );
+
+  @override
+  double get locationY {
+    _$locationYAtom.reportRead();
+    return super.locationY;
+  }
+
+  @override
+  set locationY(double value) {
+    _$locationYAtom.reportWrite(value, super.locationY, () {
+      super.locationY = value;
     });
   }
 
@@ -518,6 +698,14 @@ salaryX: ${salaryX},
 salaryY: ${salaryY},
 companyX: ${companyX},
 companyY: ${companyY},
+requirementsX: ${requirementsX},
+requirementsY: ${requirementsY},
+benefitsX: ${benefitsX},
+benefitsY: ${benefitsY},
+contactX: ${contactX},
+contactY: ${contactY},
+headlineX: ${headlineX},
+headlineY: ${headlineY},
 saturation: ${saturation},
 contrast: ${contrast},
 playbackSpeed: ${playbackSpeed},
@@ -526,6 +714,8 @@ enableAntiReup: ${enableAntiReup},
 volume: ${volume},
 applyBlur: ${applyBlur},
 blurIntensity: ${blurIntensity},
+locationX: ${locationX},
+locationY: ${locationY},
 thumbnails: ${thumbnails}
     ''';
   }

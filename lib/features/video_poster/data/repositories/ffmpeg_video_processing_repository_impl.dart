@@ -29,6 +29,17 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     final jobTitle = _sanitizeText(composition.posterData.jobTitle);
     final salary = _sanitizeText(composition.posterData.salaryRange);
     final company = _sanitizeText(composition.posterData.companyName);
+    final location = _sanitizeText(composition.posterData.location);
+    final contact = _sanitizeText(composition.posterData.contactInfo);
+    final headline = _sanitizeText(composition.posterData.catchyHeadline ?? "");
+    final requirements = composition.posterData.requirements
+        .map((r) => "• ${_sanitizeText(r)}")
+        .join("\n");
+    final benefits = composition.posterData.benefits
+        .map((b) => "• ${_sanitizeText(b)}")
+        .join("\n");
+
+    const fontPath = '/System/Library/Fonts/Supplemental/Arial.ttf';
 
     // Calculate total duration to handle 15s minimum
     double totalInputDuration = 0;
@@ -85,9 +96,14 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       'hue=h=$hue,'
       'noise=alls=$noise:allf=t,'
       'setpts=1/$compositionSpeed*PTS,'
-      'drawtext=text=\'$jobTitle\':x=(w*${composition.titleX}-text_w/2):y=(h*${composition.titleY}-text_h/2):fontsize=64:fontcolor=white:shadowcolor=black:shadowx=2:shadowy=2,'
-      'drawtext=text=\'$salary\':x=(w*${composition.salaryX}-text_w/2):y=(h*${composition.salaryY}-text_h/2):fontsize=48:fontcolor=yellow,'
-      'drawtext=text=\'$company\':x=(w*${composition.companyX}-text_w/2):y=(h*${composition.companyY}-text_h/2):fontsize=32:fontcolor=white@0.7[vfinal]',
+      'drawtext=fontfile=$fontPath:text=\'$headline\':x=(w*${composition.headlineX}-text_w/2):y=(h*${composition.headlineY}-text_h/2):fontsize=72:fontcolor=white:shadowcolor=black@0.6:shadowx=2:shadowy=2,'
+      'drawtext=fontfile=$fontPath:text=\'$jobTitle\':x=(w*${composition.titleX}-text_w/2):y=(h*${composition.titleY}-text_h/2):fontsize=64:fontcolor=white:shadowcolor=black:shadowx=2:shadowy=2,'
+      'drawtext=fontfile=$fontPath:text=\'$location\':x=(w*${composition.locationX}-text_w/2):y=(h*${composition.locationY}-text_h/2):fontsize=32:fontcolor=white@0.8,'
+      'drawtext=fontfile=$fontPath:text=\'$salary\':x=(w*${composition.salaryX}-text_w/2):y=(h*${composition.salaryY}-text_h/2):fontsize=48:fontcolor=yellow,'
+      'drawtext=fontfile=$fontPath:text=\'$company\':x=(w*${composition.companyX}-text_w/2):y=(h*${composition.companyY}-text_h/2):fontsize=32:fontcolor=white@0.7,'
+      'drawtext=fontfile=$fontPath:text=\'$requirements\':x=(w*${composition.requirementsX}):y=(h*${composition.requirementsY}):fontsize=28:fontcolor=white:line_spacing=5,'
+      'drawtext=fontfile=$fontPath:text=\'$benefits\':x=(w*${composition.benefitsX}):y=(h*${composition.benefitsY}):fontsize=28:fontcolor=white:line_spacing=5,'
+      'drawtext=fontfile=$fontPath:text=\'$contact\':x=(w*${composition.contactX}-text_w/2):y=(h*${composition.contactY}-text_h/2):fontsize=36:fontcolor=white:box=1:boxcolor=black@0.4:boxborderw=8[vfinal]',
     );
 
     final filterComplex = videoFilterParts.join(';');
