@@ -26,20 +26,59 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       throw Exception('No input videos selected');
     }
 
-    final jobTitle = _sanitizeText(composition.posterData.jobTitle);
-    final salary = _sanitizeText(composition.posterData.salaryRange);
-    final company = _sanitizeText(composition.posterData.companyName);
-    final location = _sanitizeText(composition.posterData.location);
-    final contact = _sanitizeText(composition.posterData.contactInfo);
-    final headline = _sanitizeText(composition.posterData.catchyHeadline ?? "");
-    final requirements = composition.posterData.requirements
-        .map((r) => "• ${_sanitizeText(r)}")
-        .join("\n");
-    final benefits = composition.posterData.benefits
-        .map((b) => "• ${_sanitizeText(b)}")
-        .join("\n");
+    const fontPath = '/System/Library/Fonts/Supplemental/Arial Bold.ttf';
 
-    const fontPath = '/System/Library/Fonts/Supplemental/Arial.ttf';
+    // Helper: Manual Text Wrapping for Headline & Title
+    String wrapText(String text, int maxChars) {
+      if (text.length <= maxChars) return text;
+      final words = text.split(' ');
+      final List<String> lines = [];
+      String currentLine = "";
+      for (final word in words) {
+        if ((currentLine + word).length > maxChars) {
+          lines.add(currentLine.trim());
+          currentLine = word + " ";
+        } else {
+          currentLine += word + " ";
+        }
+      }
+      if (currentLine.isNotEmpty) lines.add(currentLine.trim());
+      return lines.join('\n');
+    }
+
+    final jobTitle = _sanitizeTextForFilter(composition.posterData.jobTitle);
+    final salary = _sanitizeTextForFilter(composition.posterData.salaryRange);
+    final company = _sanitizeTextForFilter(composition.posterData.companyName);
+    final location = _sanitizeTextForFilter(composition.posterData.location);
+    final contact = _sanitizeTextForFilter(composition.posterData.contactInfo);
+    final headline = _sanitizeTextForFilter(
+      composition.posterData.catchyHeadline ?? "",
+    );
+
+    // Use \\n (escaped \n) for FFmpeg drawtext multiline
+    final wrappedHeadline = wrapText(headline, 22).replaceAll('\n', r'\n');
+    final wrappedJobTitle = wrapText(jobTitle, 18).replaceAll('\n', r'\n');
+    final wrappedCompany = wrapText(company, 25).replaceAll('\n', r'\n');
+    final wrappedLocation = wrapText(location, 25).replaceAll('\n', r'\n');
+    final wrappedSalary = wrapText(salary, 20).replaceAll('\n', r'\n');
+    final wrappedContact = wrapText(contact, 25).replaceAll('\n', r'\n');
+
+    // Prepare Requirements & Benefits with labels and wrapping
+    final reqItems = composition.posterData.requirements
+        .map(
+          (r) =>
+              "• ${wrapText(_sanitizeTextForFilter(r).replaceAll('\n', ' '), 35).replaceAll('\n', r'\n')}",
+        )
+        .join(r"\n");
+    final wrappedRequirements = "YÊU CẦU:\\n$reqItems";
+
+    final benItems = composition.posterData.benefits
+        .map(
+          (b) =>
+              "• ${wrapText(_sanitizeTextForFilter(b).replaceAll('\n', ' '), 35).replaceAll('\n', r'\n')}",
+        )
+        .join(r"\n");
+    final wrappedBenefits = "QUYỀN LỢI:\\n$benItems";
 
     // Calculate total duration to handle 15s minimum
     double totalInputDuration = 0;
@@ -47,7 +86,6 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       totalInputDuration += await _getVideoDuration(path, ffmpegPath);
     }
 
-    // Apply playback speed factor
     final speed = composition.playbackSpeed;
     double effectiveDuration = totalInputDuration / speed;
 
@@ -56,19 +94,16 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       loopCount = (15.0 / effectiveDuration).ceil();
     }
 
-    // Filter Building
     final List<String> inputs = [];
     final List<String> videoFilterParts = [];
 
     for (int i = 0; i < composition.sourceVideoPaths.length; i++) {
       inputs.addAll(['-i', composition.sourceVideoPaths[i]]);
-      // Scale each input and normalize FPS/Format for reliable concat
       videoFilterParts.add(
         '[$i:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30,format=yuv420p[v$i]',
       );
     }
 
-    // Concatenate all scaled videos with loops if needed
     final int totalConcatNodes =
         composition.sourceVideoPaths.length * loopCount;
     final concatInputs = List.generate(
@@ -83,12 +118,11 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       '${concatInputs}concat=n=$totalConcatNodes:v=1:a=0[vconcat]',
     );
 
-    // Apply global effects, Anti-Reup randomization, and text
     final compositionContrast = composition.contrast;
     final compositionSaturation = composition.saturation;
     final compositionSpeed = composition.playbackSpeed;
-    final noise = composition.noiseLevel * 100; // Scale for ffmpeg
-    final hue = composition.hueShift * 180; // Scale to degrees
+    final noise = composition.noiseLevel * 100;
+    final hue = composition.hueShift * 180;
     final brightness = composition.brightnessDelta;
 
     videoFilterParts.add(
@@ -96,14 +130,14 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       'hue=h=$hue,'
       'noise=alls=$noise:allf=t,'
       'setpts=1/$compositionSpeed*PTS,'
-      'drawtext=fontfile=$fontPath:text=\'$headline\':x=(w*${composition.headlineX}-text_w/2):y=(h*${composition.headlineY}-text_h/2):fontsize=72:fontcolor=white:shadowcolor=black@0.6:shadowx=2:shadowy=2,'
-      'drawtext=fontfile=$fontPath:text=\'$jobTitle\':x=(w*${composition.titleX}-text_w/2):y=(h*${composition.titleY}-text_h/2):fontsize=64:fontcolor=white:shadowcolor=black:shadowx=2:shadowy=2,'
-      'drawtext=fontfile=$fontPath:text=\'$location\':x=(w*${composition.locationX}-text_w/2):y=(h*${composition.locationY}-text_h/2):fontsize=32:fontcolor=white@0.8,'
-      'drawtext=fontfile=$fontPath:text=\'$salary\':x=(w*${composition.salaryX}-text_w/2):y=(h*${composition.salaryY}-text_h/2):fontsize=48:fontcolor=yellow,'
-      'drawtext=fontfile=$fontPath:text=\'$company\':x=(w*${composition.companyX}-text_w/2):y=(h*${composition.companyY}-text_h/2):fontsize=32:fontcolor=white@0.7,'
-      'drawtext=fontfile=$fontPath:text=\'$requirements\':x=(w*${composition.requirementsX}):y=(h*${composition.requirementsY}):fontsize=28:fontcolor=white:line_spacing=5,'
-      'drawtext=fontfile=$fontPath:text=\'$benefits\':x=(w*${composition.benefitsX}):y=(h*${composition.benefitsY}):fontsize=28:fontcolor=white:line_spacing=5,'
-      'drawtext=fontfile=$fontPath:text=\'$contact\':x=(w*${composition.contactX}-text_w/2):y=(h*${composition.contactY}-text_h/2):fontsize=36:fontcolor=white:box=1:boxcolor=black@0.4:boxborderw=8[vfinal]',
+      'drawtext=fontfile=$fontPath:text=\'$wrappedHeadline\':x=(w-text_w)*${composition.headlineX}:y=(h-text_h)*${composition.headlineY}:fontsize=36:fontcolor=0xFFFF00:shadowcolor=0x000000@0.6:shadowx=2:shadowy=2:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=12:line_spacing=5,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedJobTitle\':x=(w-text_w)*${composition.titleX}:y=(h-text_h)*${composition.titleY}:fontsize=52:fontcolor=0xFFFFFF:shadowcolor=0x000000:shadowx=2:shadowy=2:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=12:line_spacing=5,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedLocation\':x=(w-text_w)*${composition.locationX}:y=(h-text_h)*${composition.locationY}:fontsize=28:fontcolor=0xFFFFFF:shadowcolor=0x000000@0.4:shadowx=1:shadowy=1:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=8,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedSalary\':x=(w-text_w)*${composition.salaryX}:y=(h-text_h)*${composition.salaryY}:fontsize=40:fontcolor=0xFFFF00:shadowcolor=0x000000:shadowx=2:shadowy=2:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=10,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedCompany\':x=(w-text_w)*${composition.companyX}:y=(h-text_h)*${composition.companyY}:fontsize=32:fontcolor=0xFFFFFF:shadowcolor=0x000000@0.3:shadowx=1:shadowy=1:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=8,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedRequirements\':x=(w-text_w)*${composition.requirementsX}:y=(h-text_h)*${composition.requirementsY}:fontsize=28:fontcolor=0xFFFFFF:line_spacing=6:shadowcolor=0x000000@0.5:shadowx=1:shadowy=1:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=10,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedBenefits\':x=(w-text_w)*${composition.benefitsX}:y=(h-text_h)*${composition.benefitsY}:fontsize=28:fontcolor=0x69F0AE:line_spacing=6:shadowcolor=0x000000@0.5:shadowx=1:shadowy=1:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=10,'
+      'drawtext=fontfile=$fontPath:text=\'$wrappedContact\':x=(w-text_w)*${composition.contactX}:y=(h-text_h)*${composition.contactY}:fontsize=32:fontcolor=0xFFFFFF:borderw=2:bordercolor=0x6366F1@0.8:box=1:boxcolor=0x000000@0.45:boxborderw=12[vfinal]',
     );
 
     final filterComplex = videoFilterParts.join(';');
@@ -121,9 +155,8 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       'ultrafast',
       '-crf',
       '23',
-      // Duration clamping (15-30s)
       '-t',
-      '30', // Max 30s
+      '30',
       outputPath,
     ];
 
@@ -143,7 +176,6 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     final outputDir = await getTemporaryDirectory();
     final outputPath =
         '${outputDir.path}/thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
     final ffmpegPath = await _findFfmpeg();
     if (ffmpegPath == null) throw Exception('FFmpeg not found');
 
@@ -159,7 +191,6 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       '2',
       outputPath,
     ];
-
     final result = await Process.run(ffmpegPath, args);
     if (result.exitCode == 0) {
       return outputPath;
@@ -169,21 +200,33 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
   }
 
   Future<String?> _findFfmpeg() async {
-    // Check usual locations or use 'which'
     final whichBin = await which('ffmpeg');
     if (whichBin != null) return whichBin;
-
     if (await File('/opt/homebrew/bin/ffmpeg').exists())
       return '/opt/homebrew/bin/ffmpeg';
     if (await File('/usr/local/bin/ffmpeg').exists())
       return '/usr/local/bin/ffmpeg';
-
     return null;
   }
 
-  String _sanitizeText(String text) {
-    // Escape single quotes and colons for ffmpeg drawtext
-    return text.replaceAll("'", "").replaceAll(":", "\\:");
+  String _sanitizeTextForFilter(String text) {
+    if (text.isEmpty) return "";
+    String sanitized = text
+        .replaceAll(RegExp(r'[\x00-\x1F\x7F-\x9F]'), ' ')
+        .trim();
+    sanitized = sanitized.replaceAll(
+      RegExp(
+        r'[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]',
+        unicode: true,
+      ),
+      '',
+    );
+    return sanitized
+        .replaceAll("\\", "\\\\")
+        .replaceAll(":", "\\\\:")
+        .replaceAll(",", "\\\\,")
+        .replaceAll("'", "")
+        .replaceAll("%", "%%");
   }
 
   Future<double> _getVideoDuration(String path, String ffmpegPath) async {
