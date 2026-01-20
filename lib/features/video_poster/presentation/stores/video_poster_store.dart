@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
@@ -206,6 +207,58 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
+  Future<void> generateVideoWithOverlay(Uint8List overlayPng) async {
+    if (sourceVideoPaths.isEmpty || selectedPosterData == null) {
+      errorMessage = "Please add videos and select recruitment info.";
+      return;
+    }
+
+    isProcessing = true;
+    errorMessage = null;
+
+    try {
+      final random = DateTime.now().millisecondsSinceEpoch % 1000;
+
+      final composition = VideoComposition(
+        id: const Uuid().v4(),
+        posterData: selectedPosterData!,
+        sourceVideoPaths: sourceVideoPaths,
+        headlineX: headlineX,
+        headlineY: headlineY,
+        titleX: titleX,
+        titleY: titleY,
+        companyX: companyX,
+        companyY: companyY,
+        locationX: locationX,
+        locationY: locationY,
+        salaryX: salaryX,
+        salaryY: salaryY,
+        contactX: contactX,
+        contactY: contactY,
+        requirementsX: requirementsX,
+        requirementsY: requirementsY,
+        benefitsX: benefitsX,
+        benefitsY: benefitsY,
+        contrast: enableAntiReup ? (1.0 + (random % 15) / 200.0) : 1.0,
+        saturation: enableAntiReup ? (0.5 + (random % 10) / 100.0) : 0.5,
+        noiseLevel: enableAntiReup ? (random % 5) / 100.0 : 0.0,
+        hueShift: enableAntiReup ? (random % 10 - 5) / 100.0 : 0.0,
+        brightnessDelta: enableAntiReup ? (random % 10 - 5) / 200.0 : 0.0,
+        randomSeed: random,
+      );
+
+      generatedVideoPath = await _repository.generateVideo(
+        composition,
+        overlayPng,
+      );
+    } catch (e) {
+      errorMessage = e.toString();
+    } finally {
+      isProcessing = false;
+    }
+  }
+
+  @action
   Future<void> generateVideo() async {
     if (sourceVideoPaths.isEmpty || selectedPosterData == null) {
       errorMessage = "Please add videos and select recruitment info.";
@@ -249,7 +302,11 @@ abstract class _VideoPosterStore with Store {
         randomSeed: random,
       );
 
-      generatedVideoPath = await _repository.generateVideo(composition);
+      // TODO: Replace with actual preview capture in Phase 4
+      generatedVideoPath = await _repository.generateVideo(
+        composition,
+        Uint8List(0), // Temporary placeholder
+      );
     } catch (e) {
       errorMessage = e.toString();
     } finally {

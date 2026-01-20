@@ -1,6 +1,7 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:get_it/get_it.dart';
@@ -62,6 +63,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     text: "Lương thưởng hấp dẫn\nBảo hiểm đầy đủ\nMôi trường chuyên nghiệp",
   );
   final _jobSearchController = TextEditingController();
+  final _previewKey = GlobalKey(); // For capturing preview as PNG
   ReactionDisposer? _dataSyncDisposer;
 
   @override
@@ -151,6 +153,46 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             .toList(),
       ),
     );
+  }
+
+  /// Captures the preview widget as PNG image at 720x1280 resolution
+  Future<Uint8List> _capturePreviewAsPng() async {
+    try {
+      // Get RenderRepaintBoundary from GlobalKey
+      final boundary =
+          _previewKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
+
+      // Calculate pixel ratio to scale preview to video resolution (720x1280)
+      // Assuming preview width is proportional to constraints
+      const targetWidth = 720.0;
+      const targetHeight = 1280.0;
+
+      // Use fixed pixel ratio for 720x1280 target
+      // Since preview is 9:16 aspect ratio, we scale to match video dimensions
+      final image = await boundary.toImage(pixelRatio: 2.0);
+
+      // Convert to PNG bytes
+      final byteData = await image.toByteData(format: ImageByteFormat.png);
+      return byteData!.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Error capturing preview: $e');
+      rethrow;
+    }
+  }
+
+  /// Handles video export by capturing preview and passing to store
+  Future<void> _handleExportVideo() async {
+    try {
+      // Capture preview as PNG
+      final overlayPng = await _capturePreviewAsPng();
+
+      // Pass PNG to store for video generation
+      await _store.generateVideoWithOverlay(overlayPng);
+    } catch (e) {
+      debugPrint('Error during export: $e');
+      // Error will be shown by store
+    }
   }
 
   void _syncPlaylist() {
@@ -1117,12 +1159,15 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                     controller: _controller,
                     controls: (state) => const SizedBox.shrink(),
                   ),
-
+              
                   // TikTok Safe Zone Visualization
                   _buildTikTokSafeZone(),
 
-                  // Interactive Text Overlays
-                  Observer(
+                  RepaintBoundary(
+                    key: _previewKey,
+                    child: Stack(
+                      children: [
+                        Observer(
                     builder: (_) => _buildOverlayItem(
                       label: _store.selectedPosterData?.jobTitle ?? "",
                       x: _store.titleX,
@@ -1158,7 +1203,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   ),
                   Observer(
                     builder: (_) => _buildOverlayItem(
-                      label: "📍 ${_store.selectedPosterData?.location ?? ""}",
+                      label:
+                          "📍 ${_store.selectedPosterData?.location ?? ""}",
                       x: _store.locationX,
                       y: _store.locationY,
                       type: 'location',
@@ -1170,9 +1216,12 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   Observer(
                     builder: (_) => _buildOverlayItem(
                       label:
-                          _store.selectedPosterData?.requirements.isNotEmpty ==
+                          _store
+                                  .selectedPosterData
+                                  ?.requirements
+                                  .isNotEmpty ==
                               true
-                          ? "📋 YÊU CẦU:\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\n")}"
+                          ? "📋 YÊU CẦU:\\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\\n")}"
                           : "",
                       x: _store.requirementsX,
                       y: _store.requirementsY,
@@ -1185,8 +1234,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   Observer(
                     builder: (_) => _buildOverlayItem(
                       label:
-                          _store.selectedPosterData?.benefits.isNotEmpty == true
-                          ? "🎁 QUYỀN LỢI:\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\n")}"
+                          _store.selectedPosterData?.benefits.isNotEmpty ==
+                              true
+                          ? "🎁 QUYỀN LỢI:\\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\\n")}"
                           : "",
                       x: _store.benefitsX,
                       y: _store.benefitsY,
@@ -1219,6 +1269,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                       fontSize: 18,
                     ),
                   ),
+                      ],
+                    ),
+                  ),
+                  // Interactive Text Overlays
+                  
                 ],
               );
             },
@@ -1375,7 +1430,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             builder: (_) => ElevatedButton(
               onPressed: _store.isProcessing
                   ? null
-                  : () => _store.generateVideo(),
+                  : () => _handleExportVideo(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
                 foregroundColor: Colors.white,
