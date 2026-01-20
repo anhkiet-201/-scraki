@@ -549,6 +549,130 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$durationAtom = Atom(
+    name: '_VideoPosterStore.duration',
+    context: context,
+  );
+
+  @override
+  Duration get duration {
+    _$durationAtom.reportRead();
+    return super.duration;
+  }
+
+  @override
+  set duration(Duration value) {
+    _$durationAtom.reportWrite(value, super.duration, () {
+      super.duration = value;
+    });
+  }
+
+  late final _$positionAtom = Atom(
+    name: '_VideoPosterStore.position',
+    context: context,
+  );
+
+  @override
+  Duration get position {
+    _$positionAtom.reportRead();
+    return super.position;
+  }
+
+  @override
+  set position(Duration value) {
+    _$positionAtom.reportWrite(value, super.position, () {
+      super.position = value;
+    });
+  }
+
+  late final _$isPlayingAtom = Atom(
+    name: '_VideoPosterStore.isPlaying',
+    context: context,
+  );
+
+  @override
+  bool get isPlaying {
+    _$isPlayingAtom.reportRead();
+    return super.isPlaying;
+  }
+
+  @override
+  set isPlaying(bool value) {
+    _$isPlayingAtom.reportWrite(value, super.isPlaying, () {
+      super.isPlaying = value;
+    });
+  }
+
+  late final _$activeNavIndexAtom = Atom(
+    name: '_VideoPosterStore.activeNavIndex',
+    context: context,
+  );
+
+  @override
+  int get activeNavIndex {
+    _$activeNavIndexAtom.reportRead();
+    return super.activeNavIndex;
+  }
+
+  @override
+  set activeNavIndex(int value) {
+    _$activeNavIndexAtom.reportWrite(value, super.activeNavIndex, () {
+      super.activeNavIndex = value;
+    });
+  }
+
+  late final _$isFocusModeAtom = Atom(
+    name: '_VideoPosterStore.isFocusMode',
+    context: context,
+  );
+
+  @override
+  bool get isFocusMode {
+    _$isFocusModeAtom.reportRead();
+    return super.isFocusMode;
+  }
+
+  @override
+  set isFocusMode(bool value) {
+    _$isFocusModeAtom.reportWrite(value, super.isFocusMode, () {
+      super.isFocusMode = value;
+    });
+  }
+
+  late final _$capturePreviewAsPngAsyncAction = AsyncAction(
+    '_VideoPosterStore.capturePreviewAsPng',
+    context: context,
+  );
+
+  @override
+  Future<Uint8List> capturePreviewAsPng() {
+    return _$capturePreviewAsPngAsyncAction.run(
+      () => super.capturePreviewAsPng(),
+    );
+  }
+
+  late final _$handleExportVideoAsyncAction = AsyncAction(
+    '_VideoPosterStore.handleExportVideo',
+    context: context,
+  );
+
+  @override
+  Future<void> handleExportVideo() {
+    return _$handleExportVideoAsyncAction.run(() => super.handleExportVideo());
+  }
+
+  late final _$generateVideoWithOverlayAsyncAction = AsyncAction(
+    '_VideoPosterStore.generateVideoWithOverlay',
+    context: context,
+  );
+
+  @override
+  Future<void> generateVideoWithOverlay(Uint8List overlayPng) {
+    return _$generateVideoWithOverlayAsyncAction.run(
+      () => super.generateVideoWithOverlay(overlayPng),
+    );
+  }
+
   late final _$generateVideoAsyncAction = AsyncAction(
     '_VideoPosterStore.generateVideo',
     context: context,
@@ -685,6 +809,90 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void initializePlayer() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.initializePlayer',
+    );
+    try {
+      return super.initializePlayer();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void disposePlayer() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.disposePlayer',
+    );
+    try {
+      return super.disposePlayer();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setActiveNavIndex(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setActiveNavIndex',
+    );
+    try {
+      return super.setActiveNavIndex(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void toggleFocusMode() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleFocusMode',
+    );
+    try {
+      return super.toggleFocusMode();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updatePosterDataFromControllers() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updatePosterDataFromControllers',
+    );
+    try {
+      return super.updatePosterDataFromControllers();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void syncPlaylist() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.syncPlaylist',
+    );
+    try {
+      return super.syncPlaylist();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void playVideo(String path) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.playVideo',
+    );
+    try {
+      return super.playVideo(path);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 sourceVideoPaths: ${sourceVideoPaths},
@@ -716,7 +924,12 @@ applyBlur: ${applyBlur},
 blurIntensity: ${blurIntensity},
 locationX: ${locationX},
 locationY: ${locationY},
-thumbnails: ${thumbnails}
+thumbnails: ${thumbnails},
+duration: ${duration},
+position: ${position},
+isPlaying: ${isPlaying},
+activeNavIndex: ${activeNavIndex},
+isFocusMode: ${isFocusMode}
     ''';
   }
 }

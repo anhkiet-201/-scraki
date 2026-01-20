@@ -1,13 +1,9 @@
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:mobx/mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_text_field.dart';
@@ -19,209 +15,11 @@ import 'package:scraki/features/video_poster/presentation/widgets/controls/durat
 import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 
-import 'dart:async';
-import 'dart:ui';
-import 'dart:typed_data';
+class VideoPosterPlaygroundPage extends StatelessWidget {
+  VideoPosterPlaygroundPage({super.key});
 
-class VideoPosterPlaygroundPage extends StatefulWidget {
-  const VideoPosterPlaygroundPage({super.key});
-
-  @override
-  State<VideoPosterPlaygroundPage> createState() =>
-      _VideoPosterPlaygroundPageState();
-}
-
-class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
-  final _store = GetIt.I<VideoPosterStore>();
-  final _creationStore = GetIt.I<PosterCreationStore>();
-
-  // Player State
-  late final Player _player;
-  late final VideoController _controller;
-
-  // Local Playback State
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-  bool _isPlaying = false;
-  StreamSubscription<Duration>? _durationSub;
-  StreamSubscription<Duration>? _positionSub;
-  StreamSubscription<bool>? _playingSub;
-
-  // --- V4 UX State ---
-  int _activeNavIndex = 0; // 0: Job Hub, 1: Media Library, 2: Effects/Content
-  bool _isFocusMode = false;
-
-  // Form Controllers
-  final _titleController = TextEditingController(
-    text: "Hiring Flutter Developer",
-  );
-  final _salaryController = TextEditingController(text: "\$2000 - \$4000");
-  final _companyController = TextEditingController(text: "Scraki Inc.");
-  final _locationController = TextEditingController(text: "Từ xa");
-  final _contactController = TextEditingController(text: "Tuyển dụng");
-  final _headlineController = TextEditingController(
-    text: "Cơ hội việc làm hấp dẫn!",
-  );
-  final _captionController = TextEditingController(
-    text: "#tuyendung #vieclam #flutter",
-  );
-  final _requirementsController = TextEditingController(
-    text: "Có kinh nghiệm Flutter\nThành thạo Dart\nBiết sử dụng MobX",
-  );
-  final _benefitsController = TextEditingController(
-    text: "Lương thưởng hấp dẫn\nBảo hiểm đầy đủ\nMôi trường chuyên nghiệp",
-  );
-  final _jobSearchController = TextEditingController();
-  final _previewKey = GlobalKey(); // For capturing preview as PNG
-  ReactionDisposer? _dataSyncDisposer;
-
-  @override
-  void initState() {
-    super.initState();
-    _player = Player();
-    _controller = VideoController(
-      _player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-      ),
-    );
-
-    // Listen to playback state
-    _durationSub = _player.stream.duration.listen(
-      (d) => setState(() => _duration = d),
-    );
-    _positionSub = _player.stream.position.listen(
-      (p) => setState(() => _position = p),
-    );
-    _playingSub = _player.stream.playing.listen(
-      (p) => setState(() => _isPlaying = p),
-    );
-
-    // Initial poster data
-    _updatePosterData();
-
-    // Sync playlist when videos are added
-    _syncPlaylist();
-
-    // Sync AI parsed data to local controllers
-    _dataSyncDisposer = reaction((_) => _creationStore.currentPosterData, (
-      PosterData? data,
-    ) {
-      if (data != null) {
-        _titleController.text = data.jobTitle;
-        _companyController.text = data.companyName;
-        _salaryController.text = data.salaryRange;
-        _locationController.text = data.location;
-        _contactController.text = data.contactInfo;
-        _headlineController.text = data.catchyHeadline ?? "";
-        _captionController.text = data.tikTokCaption ?? "";
-        _requirementsController.text = data.requirements.join('\n');
-        _benefitsController.text = data.benefits.join('\n');
-        _updatePosterData();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _durationSub?.cancel();
-    _positionSub?.cancel();
-    _playingSub?.cancel();
-    _player.dispose();
-    _titleController.dispose();
-    _salaryController.dispose();
-    _companyController.dispose();
-    _locationController.dispose();
-    _contactController.dispose();
-    _headlineController.dispose();
-    _captionController.dispose();
-    _requirementsController.dispose();
-    _benefitsController.dispose();
-    _jobSearchController.dispose();
-    _dataSyncDisposer?.call();
-    super.dispose();
-  }
-
-  void _updatePosterData() {
-    _store.selectPosterData(
-      PosterData(
-        jobTitle: _titleController.text,
-        companyName: _companyController.text,
-        location: _locationController.text,
-        salaryRange: _salaryController.text,
-        contactInfo: _contactController.text,
-        catchyHeadline: _headlineController.text,
-        tikTokCaption: _captionController.text,
-        requirements: _requirementsController.text
-            .split('\n')
-            .where((s) => s.trim().isNotEmpty)
-            .toList(),
-        benefits: _benefitsController.text
-            .split('\n')
-            .where((s) => s.trim().isNotEmpty)
-            .toList(),
-      ),
-    );
-  }
-
-  /// Captures the preview widget as PNG image at 720x1280 resolution
-  Future<Uint8List> _capturePreviewAsPng() async {
-    try {
-      // Get RenderRepaintBoundary from GlobalKey
-      final boundary =
-          _previewKey.currentContext!.findRenderObject()
-              as RenderRepaintBoundary;
-
-      // Calculate pixel ratio to scale preview to video resolution (720x1280)
-      // Assuming preview width is proportional to constraints
-      const targetWidth = 720.0;
-      const targetHeight = 1280.0;
-
-      // Use fixed pixel ratio for 720x1280 target
-      // Since preview is 9:16 aspect ratio, we scale to match video dimensions
-      final image = await boundary.toImage(pixelRatio: 2.0);
-
-      // Convert to PNG bytes
-      final byteData = await image.toByteData(format: ImageByteFormat.png);
-      return byteData!.buffer.asUint8List();
-    } catch (e) {
-      debugPrint('Error capturing preview: $e');
-      rethrow;
-    }
-  }
-
-  /// Handles video export by capturing preview and passing to store
-  Future<void> _handleExportVideo() async {
-    try {
-      // Capture preview as PNG
-      final overlayPng = await _capturePreviewAsPng();
-
-      // Pass PNG to store for video generation
-      await _store.generateVideoWithOverlay(overlayPng);
-    } catch (e) {
-      debugPrint('Error during export: $e');
-      // Error will be shown by store
-    }
-  }
-
-  void _syncPlaylist() {
-    if (_store.sourceVideoPaths.isEmpty) return;
-    final medias = _store.sourceVideoPaths.map((p) => Media(p)).toList();
-    _player.open(Playlist(medias));
-    _player.pause(); // Don't auto-play on sync
-  }
-
-  void _playVideo(String path) {
-    // If it's already in the playlist, just jump to it
-    final index = _store.sourceVideoPaths.indexOf(path);
-    if (index != -1) {
-      _player.jump(index);
-      _player.play();
-    } else {
-      _player.open(Media(path));
-      _player.play();
-    }
-  }
+  final store = GetIt.I<VideoPosterStore>();
+  final creationStore = GetIt.I<PosterCreationStore>();
 
   @override
   Widget build(BuildContext context) {
@@ -238,16 +36,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.space): () {
-            if (_player.state.position >= _player.state.duration &&
-                _player.state.duration > Duration.zero) {
-              _player.seek(Duration.zero);
-              _player.play();
+            if (store.player.state.position >= store.player.state.duration &&
+                store.player.state.duration > Duration.zero) {
+              store.player.seek(Duration.zero);
+              store.player.play();
             } else {
-              _player.playOrPause();
+              store.player.playOrPause();
             }
           },
           const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-            _toggleFocusMode();
+            store.toggleFocusMode();
           },
         },
         child: Focus(
@@ -264,71 +62,78 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                       _buildUnifiedNavBar(),
 
                       // 3. LEFT TOOLS PANEL (PERMANENT OR FOCUS-HIDDEN)
-                      if (!_isFocusMode) ...[
-                        SizedBox(
-                          width: 300,
-                          child: _activeNavIndex == 0
-                              ? JobHubPanel(
-                                  store: _creationStore,
-                                  searchController: _jobSearchController,
-                                  onJobSelected: _updatePosterData,
+                      Observer(builder: (_) {
+                        if (!store.isFocusMode) {
+                          return SizedBox(
+                            width: 300,
+                            child: store.activeNavIndex == 0
+                                ? JobHubPanel(
+                                  store: creationStore,
+                                  searchController: store.jobSearchController,
+                                  onJobSelected:
+                                      store.updatePosterDataFromControllers,
                                 )
                               : MediaLibraryPanel(
-                                  store: _store,
-                                  onVideoTap: _playVideo,
-                                  onVideosChanged: _syncPlaylist,
+                                  store: store,
+                                  onVideoTap: store.playVideo,
+                                  onVideosChanged: store.syncPlaylist,
                                 ),
-                        ),
-                        const VerticalDivider(width: 1, color: Colors.white10),
-                      ],
+                        );
+                        }
+                        return const SizedBox.shrink();
+                      }),
 
                       // 4. MAIN WORKSPACE (AUTO SCALING)
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black,
-                                child: Center(
-                                  child: _buildInteractivePreview(),
+                      Observer(
+                        builder: (context) {
+                          return Expanded(
+                            child: Stack(
+                              children: [
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black,
+                                    child: Center(
+                                      child: _buildInteractivePreview(),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-
-                            // FLOATING PLAYER CONTROLS (OVER VIDEO)
-                            Positioned(
-                              bottom: 40,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: FloatingGlassControls(
-                                  isPlaying: _isPlaying,
-                                  position: _position,
-                                  duration: _duration,
-                                  onPlayPause: () => _player.playOrPause(),
-                                  onSeek: (v) => _player.seek(v),
+                          
+                                // FLOATING PLAYER CONTROLS (OVER VIDEO)
+                                Positioned(
+                                  bottom: 40,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: FloatingGlassControls(
+                                      isPlaying: store.isPlaying,
+                                      position: store.position,
+                                      duration: store.duration,
+                                      onPlayPause: () => store.player.playOrPause(),
+                                      onSeek: (v) => store.player.seek(v),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-
-                            // STATUS OVERLAY
-                            Positioned(
-                              top: 20,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: DurationStatusOverlay(
-                                  duration: _duration,
-                                  playbackSpeed: _store.playbackSpeed,
+                          
+                                // STATUS OVERLAY
+                                Positioned(
+                                  top: 20,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: DurationStatusOverlay(
+                                      duration: store.duration,
+                                      playbackSpeed: store.playbackSpeed,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        }
                       ),
 
                       // 5. RIGHT PROPERTIES PANEL (PERMANENT OR FOCUS-HIDDEN)
-                      if (!_isFocusMode) ...[
+                      if (!store.isFocusMode) ...[
                         const VerticalDivider(width: 1, color: Colors.white10),
                         SizedBox(
                           width: 320,
@@ -382,8 +187,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           _buildWorkStepper(),
           const Spacer(),
           _buildActionButton("DỰ ÁN MỚI", Icons.add_rounded, () {
-            _store.sourceVideoPaths.clear();
-            _player.open(Playlist([]));
+            store.sourceVideoPaths.clear();
+            store.player.open(Playlist([]));
           }),
           const SizedBox(width: 12),
           _buildActionButton(
@@ -394,31 +199,25 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           ),
           const SizedBox(width: 12),
           _buildActionButton(
-            _isFocusMode ? "THOÁT TẬP TRUNG" : "CHẾ ĐỘ TẬP TRUNG",
-            _isFocusMode
+            store.isFocusMode ? "THOÁT TẬP TRUNG" : "CHẾ ĐỘ TẬP TRUNG",
+            store.isFocusMode
                 ? Icons.fullscreen_exit_rounded
                 : Icons.fullscreen_rounded,
-            _toggleFocusMode,
-            isOutline: _isFocusMode,
+            store.toggleFocusMode,
+            isOutline: store.isFocusMode,
           ),
         ],
       ),
     );
   }
 
-  void _toggleFocusMode() {
-    setState(() {
-      _isFocusMode = !_isFocusMode;
-    });
-  }
-
   Widget _buildWorkStepper() {
     return Observer(
       builder: (_) {
         int step = 1;
-        if (_store.sourceVideoPaths.isNotEmpty) step = 2;
-        if (_store.isProcessing) step = 3;
-        if (_store.generatedVideoPath != null) step = 4;
+        if (store.sourceVideoPaths.isNotEmpty) step = 2;
+        if (store.isProcessing) step = 3;
+        if (store.generatedVideoPath != null) step = 4;
 
         return Row(
           children: [
@@ -540,48 +339,44 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   }
 
   Widget _buildNavIcon(int index, IconData icon, String label) {
-    bool active = (_activeNavIndex == index);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _activeNavIndex = index;
-            if (index != 2) {
-              _isFocusMode = false;
-            }
-          });
-        },
-        child: Column(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: active ? const Color(0xFF6366F1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: active ? Colors.white : Colors.white38,
-                size: 22,
-              ),
+    return Observer(
+      builder: (context) {
+            bool active = (store.activeNavIndex == index);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: InkWell(
+            onTap: () => store.setActiveNavIndex(index),
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),  
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFF6366F1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: active ? Colors.white : Colors.white38,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: active ? Colors.white : Colors.white24,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.bold,
-                color: active ? Colors.white : Colors.white24,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      }
     );
   }
 
@@ -635,81 +430,82 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   Widget _buildContentTab() {
     return ListView(
       padding: const EdgeInsets.all(20),
+
       children: [
         _buildSectionHeader("CHI TIẾT CÔNG VIỆC"),
         ModernTextField(
-          controller: _titleController,
+          controller: store.titleController,
           label: "Vị trí",
           icon: Icons.work_outline,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _companyController,
+          controller: store.companyController,
           label: "Công ty",
           icon: Icons.business_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _salaryController,
+          controller: store.salaryController,
           label: "Mức lương",
           icon: Icons.payments_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _locationController,
+          controller: store.locationController,
           label: "Địa điểm",
           icon: Icons.location_on_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _contactController,
+          controller: store.contactController,
           label: "Liên hệ",
           icon: Icons.contact_mail_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _headlineController,
+          controller: store.headlineController,
           label: "Tiêu đề phụ",
           icon: Icons.campaign_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _captionController,
+          controller: store.captionController,
           label: "TikTok Caption",
           icon: Icons.closed_caption_outlined,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _requirementsController,
+          controller: store.requirementsController,
           label: "Yêu cầu công việc (Mỗi dòng một ý)",
           icon: Icons.list_alt_rounded,
           maxLines: null,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
         ModernTextField(
-          controller: _benefitsController,
+          controller: store.benefitsController,
           label: "Quyền lợi (Mỗi dòng một ý)",
           icon: Icons.card_giftcard_rounded,
           maxLines: null,
-          onChanged: _updatePosterData,
+          onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 32),
         _buildSectionHeader("CÀI ĐẶT VIDEO"),
         Observer(
           builder: (_) => ModernSlider(
             label: "Tốc độ phát",
-            value: _store.playbackSpeed,
+            value: store.playbackSpeed,
             min: 0.5,
             max: 2.0,
-            onChanged: (v) => _store.setPlaybackSpeed(v),
+            onChanged: (v) => store.setPlaybackSpeed(v),
             suffix: "x",
           ),
         ),
@@ -717,12 +513,12 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         Observer(
           builder: (_) => ModernSlider(
             label: "Âm lượng",
-            value: _store.volume,
+            value: store.volume,
             min: 0.0,
             max: 1.0,
             onChanged: (v) {
-              _store.setVolume(v);
-              _player.setVolume(v * 100);
+              store.setVolume(v);
+              store.player.setVolume(v * 100);
             },
             suffix: "%",
             multiplier: 100,
@@ -744,20 +540,20 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               "Làm mờ nền",
               style: TextStyle(fontSize: 12, color: Colors.white70),
             ),
-            value: _store.applyBlur,
-            onChanged: (v) => _store.setApplyBlur(v),
+            value: store.applyBlur,
+            onChanged: (v) => store.setApplyBlur(v),
             activeThumbColor: const Color(0xFF6366F1),
           ),
         ),
         Observer(
           builder: (_) => ModernSlider(
             label: "Độ mờ",
-            value: _store.blurIntensity,
+            value: store.blurIntensity,
             min: 0.0,
             max: 20.0,
-            onChanged: (v) => _store.setBlurIntensity(v),
+            onChanged: (v) => store.setBlurIntensity(v),
             suffix: "px",
-            enabled: _store.applyBlur,
+            enabled: store.applyBlur,
           ),
         ),
         const SizedBox(height: 32),
@@ -773,8 +569,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               "Vượt qua kiểm tra re-up",
               style: TextStyle(fontSize: 10, color: Colors.white24),
             ),
-            value: _store.enableAntiReup,
-            onChanged: (v) => _store.updateEffect('anti_reup', v ? 1.0 : 0.0),
+            value: store.enableAntiReup,
+            onChanged: (v) => store.updateEffect('anti_reup', v ? 1.0 : 0.0),
             activeThumbColor: const Color(0xFF6366F1),
           ),
         ),
@@ -811,7 +607,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                 children: [
                   // Video Preview
                   Video(
-                    controller: _controller,
+                    controller: store.videoController,
                     controls: (state) => const SizedBox.shrink(),
                   ),
 
@@ -819,121 +615,118 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   const TikTokSafeZone(),
 
                   RepaintBoundary(
-                    key: _previewKey,
+                    key: store.previewKey,
                     child: Stack(
                       children: [
                         Observer(
                           builder: (_) => VideoOverlayItem(
-                            label: _store.selectedPosterData?.jobTitle ?? "",
-                            x: _store.titleX,
-                            y: _store.titleY,
+                            label: store.selectedPosterData?.jobTitle ?? "",
+                            x: store.titleX,
+                            y: store.titleY,
                             type: 'title',
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 26,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
-                            label: _store.selectedPosterData?.salaryRange ?? "",
-                            x: _store.salaryX,
-                            y: _store.salaryY,
+                            label: store.selectedPosterData?.salaryRange ?? "",
+                            x: store.salaryX,
+                            y: store.salaryY,
                             type: 'salary',
                             constraints: constraints,
                             color: Colors.yellow,
                             fontSize: 20,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                "🏢 ${_store.selectedPosterData?.companyName ?? ""}",
-                            x: _store.companyX,
-                            y: _store.companyY,
+                                "🏢 ${store.selectedPosterData?.companyName ?? ""}",
+                            x: store.companyX,
+                            y: store.companyY,
                             type: 'company',
                             constraints: constraints,
                             color: Colors.white70,
                             fontSize: 16,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                "📍 ${_store.selectedPosterData?.location ?? ""}",
-                            x: _store.locationX,
-                            y: _store.locationY,
+                                "📍 ${store.selectedPosterData?.location ?? ""}",
+                            x: store.locationX,
+                            y: store.locationY,
                             type: 'location',
                             constraints: constraints,
                             color: Colors.white54,
                             fontSize: 14,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                _store
+                                store
                                         .selectedPosterData
                                         ?.requirements
                                         .isNotEmpty ==
                                     true
-                                ? "📋 YÊU CẦU:\\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\\n")}"
+                                ? "📋 YÊU CẦU:\\n${store.selectedPosterData!.requirements.map((e) => "• $e").join("\\n")}"
                                 : "",
-                            x: _store.requirementsX,
-                            y: _store.requirementsY,
+                            x: store.requirementsX,
+                            y: store.requirementsY,
                             type: 'requirements',
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 14,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                _store
-                                        .selectedPosterData
-                                        ?.benefits
-                                        .isNotEmpty ==
+                                store.selectedPosterData?.benefits.isNotEmpty ==
                                     true
-                                ? "🎁 QUYỀN LỢI:\\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\\n")}"
+                                ? "🎁 QUYỀN LỢI:\\n${store.selectedPosterData!.benefits.map((e) => "• $e").join("\\n")}"
                                 : "",
-                            x: _store.benefitsX,
-                            y: _store.benefitsY,
+                            x: store.benefitsX,
+                            y: store.benefitsY,
                             type: 'benefits',
                             constraints: constraints,
                             color: Colors.greenAccent,
                             fontSize: 14,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                "📞 ${_store.selectedPosterData?.contactInfo ?? ""}",
-                            x: _store.contactX,
-                            y: _store.contactY,
+                                "📞 ${store.selectedPosterData?.contactInfo ?? ""}",
+                            x: store.contactX,
+                            y: store.contactY,
                             type: 'contact',
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 16,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                         Observer(
                           builder: (_) => VideoOverlayItem(
                             label:
-                                _store.selectedPosterData?.catchyHeadline ?? "",
-                            x: _store.headlineX,
-                            y: _store.headlineY,
+                                store.selectedPosterData?.catchyHeadline ?? "",
+                            x: store.headlineX,
+                            y: store.headlineY,
                             type: 'headline',
                             constraints: constraints,
                             color: Colors.yellowAccent,
                             fontSize: 18,
-                            onPositionUpdate: _store.updatePosition,
+                            onPositionUpdate: store.updatePosition,
                           ),
                         ),
                       ],
@@ -961,9 +754,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         children: [
           Observer(
             builder: (_) => ElevatedButton(
-              onPressed: _store.isProcessing
+              onPressed: store.isProcessing
                   ? null
-                  : () => _handleExportVideo(),
+                  : () => store.handleExportVideo(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
                 foregroundColor: Colors.white,
@@ -973,7 +766,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                 ),
                 elevation: 0,
               ),
-              child: _store.isProcessing
+              child: store.isProcessing
                   ? const SizedBox(
                       height: 20,
                       width: 20,
@@ -993,7 +786,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           ),
           const SizedBox(height: 12),
           Observer(
-            builder: (_) => _store.generatedVideoPath != null
+            builder: (_) => store.generatedVideoPath != null
                 ? Text(
                     "Xuất video thành công",
                     style: TextStyle(

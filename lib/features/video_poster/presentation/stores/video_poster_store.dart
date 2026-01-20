@@ -1,6 +1,12 @@
+import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'dart:ui' as ui;
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
 import 'package:scraki/features/video_poster/domain/repositories/video_processing_repository.dart';
@@ -14,7 +20,9 @@ class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 abstract class _VideoPosterStore with Store {
   final VideoProcessingRepository _repository;
 
-  _VideoPosterStore(this._repository);
+  _VideoPosterStore(this._repository) {
+    initializePlayer();
+  }
 
   @observable
   ObservableList<String> sourceVideoPaths = ObservableList<String>();
@@ -95,6 +103,56 @@ abstract class _VideoPosterStore with Store {
 
   @observable
   ObservableMap<String, String> thumbnails = ObservableMap<String, String>();
+
+  // --- Player & Playback State ---
+  late final Player player;
+  late final VideoController videoController;
+
+  @observable
+  Duration duration = Duration.zero;
+
+  @observable
+  Duration position = Duration.zero;
+
+  @observable
+  bool isPlaying = false;
+
+  // Stream subscriptions (private)
+  StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<bool>? _playingSub;
+
+  // --- Navigation State ---
+  @observable
+  int activeNavIndex = 0; // 0: Job Hub, 1: Media Library, 2: Effects/Content
+
+  @observable
+  bool isFocusMode = false;
+
+  // --- Form Controllers ---
+  final titleController = TextEditingController(
+    text: "Hiring Flutter Developer",
+  );
+  final salaryController = TextEditingController(text: "\$2000 - \$4000");
+  final companyController = TextEditingController(text: "Scraki Inc.");
+  final locationController = TextEditingController(text: "Từ xa");
+  final contactController = TextEditingController(text: "Tuyển dụng");
+  final headlineController = TextEditingController(
+    text: "Cơ hội việc làm hấp dẫn!",
+  );
+  final captionController = TextEditingController(
+    text: "#tuyendung #vieclam #flutter",
+  );
+  final requirementsController = TextEditingController(
+    text: "Có kinh nghiệm Flutter\nThành thạo Dart\nBiết sử dụng MobX",
+  );
+  final benefitsController = TextEditingController(
+    text: "Lương thưởng hấp dẫn\nBảo hiểm đầy đủ\nMôi trường chuyên nghiệp",
+  );
+  final jobSearchController = TextEditingController();
+
+  // Preview capture key
+  final previewKey = GlobalKey();
 
   // --- Actions ---
 
@@ -204,6 +262,140 @@ abstract class _VideoPosterStore with Store {
   @action
   void selectPosterData(PosterData data) {
     selectedPosterData = data;
+  }
+
+  /// Initialize player, controller, and stream listeners
+  @action
+  void initializePlayer() {
+    player = Player();
+    videoController = VideoController(
+      player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
+
+    // Setup stream listeners with runInAction for observable updates
+    _durationSub = player.stream.duration.listen(
+      (d) => runInAction(() => duration = d),
+    );
+    _positionSub = player.stream.position.listen(
+      (p) => runInAction(() => position = p),
+    );
+    _playingSub = player.stream.playing.listen(
+      (p) => runInAction(() => isPlaying = p),
+    );
+
+    // Initial updates
+    updatePosterDataFromControllers();
+    syncPlaylist();
+  }
+
+  /// Dispose player, controller, subscriptions, and form controllers
+  @action
+  void disposePlayer() {
+    _durationSub?.cancel();
+    _positionSub?.cancel();
+    _playingSub?.cancel();
+    player.dispose();
+    titleController.dispose();
+    salaryController.dispose();
+    companyController.dispose();
+    locationController.dispose();
+    contactController.dispose();
+    headlineController.dispose();
+    captionController.dispose();
+    requirementsController.dispose();
+    benefitsController.dispose();
+    jobSearchController.dispose();
+  }
+
+  /// Set active navigation index and reset focus mode if needed
+  @action
+  void setActiveNavIndex(int index) {
+    activeNavIndex = index;
+    if (index != 2) {
+      isFocusMode = false;
+    }
+  }
+
+  /// Toggle focus mode
+  @action
+  void toggleFocusMode() {
+    isFocusMode = !isFocusMode;
+  }
+
+  /// Update poster data from form controllers
+  @action
+  void updatePosterDataFromControllers() {
+    selectPosterData(
+      PosterData(
+        jobTitle: titleController.text,
+        companyName: companyController.text,
+        location: locationController.text,
+        salaryRange: salaryController.text,
+        contactInfo: contactController.text,
+        catchyHeadline: headlineController.text,
+        tikTokCaption: captionController.text,
+        requirements: requirementsController.text
+            .split('\n')
+            .where((s) => s.trim().isNotEmpty)
+            .toList(),
+        benefits: benefitsController.text
+            .split('\n')
+            .where((s) => s.trim().isNotEmpty)
+            .toList(),
+      ),
+    );
+  }
+
+  /// Capture preview widget as PNG at 720x1280 resolution
+  @action
+  Future<Uint8List> capturePreviewAsPng() async {
+    try {
+      final boundary =
+          previewKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData!.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Error capturing preview: $e');
+      rethrow;
+    }
+  }
+
+  /// Handle video export by capturing preview and generating video
+  @action
+  Future<void> handleExportVideo() async {
+    try {
+      final overlayPng = await capturePreviewAsPng();
+      await generateVideoWithOverlay(overlayPng);
+    } catch (e) {
+      debugPrint('Error during export: $e');
+    }
+  }
+
+  /// Sync playlist from source video paths
+  @action
+  void syncPlaylist() {
+    if (sourceVideoPaths.isEmpty) return;
+    final medias = sourceVideoPaths.map((p) => Media(p)).toList();
+    player.open(Playlist(medias));
+    player.pause();
+  }
+
+  /// Play specific video by path
+  @action
+  void playVideo(String path) {
+    final index = sourceVideoPaths.indexOf(path);
+    if (index != -1) {
+      player.jump(index);
+      player.play();
+    } else {
+      player.open(Media(path));
+      player.play();
+    }
   }
 
   @action

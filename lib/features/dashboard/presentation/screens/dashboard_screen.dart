@@ -73,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: _buildDevicesContent(context, _dashboardStore),
                 ),
                 const KeepAlivePage(child: PosterCreatorScreen()),
-                const KeepAlivePage(child: VideoPosterPlaygroundPage()),
+                KeepAlivePage(child: VideoPosterPlaygroundPage()),
                 KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
                 KeepAlivePage(child: _buildComingSoon(context, 'Settings')),
               ],

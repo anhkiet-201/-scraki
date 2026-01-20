@@ -23,6 +23,9 @@ class JobHubPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if(store.availableJobs.isEmpty) {
+      store.loadAvailableJobs();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
