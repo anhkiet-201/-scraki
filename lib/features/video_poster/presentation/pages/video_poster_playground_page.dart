@@ -107,11 +107,12 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                                   child: Center(
                                     child: FloatingGlassControls(
                                       isPlaying: store.isPlaying,
-                                      position: store.position,
-                                      duration: store.duration,
+                                      // Use total timeline position/duration
+                                      position: store.totalPosition,
+                                      duration: store.totalDuration,
                                       onPlayPause: () =>
                                           store.player.playOrPause(),
-                                      onSeek: (v) => store.player.seek(v),
+                                      onSeek: (v) => store.seekTimeline(v),
                                     ),
                                   ),
                                 ),
@@ -617,7 +618,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                         controller: store.videoController,
                         controls: (state) => const SizedBox.shrink(),
                       );
-                    }
+                    },
                   ),
 
                   // TikTok Safe Zone Visualization

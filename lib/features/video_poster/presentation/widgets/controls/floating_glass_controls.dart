@@ -26,8 +26,13 @@ class FloatingGlassControls extends StatelessWidget {
   });
 
   String _formatDuration(Duration d) {
+    if (d == Duration.zero) return "00:00";
+    final hours = d.inHours;
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return "${hours.toString().padLeft(2, '0')}:$minutes:$seconds";
+    }
     return "$minutes:$seconds";
   }
 

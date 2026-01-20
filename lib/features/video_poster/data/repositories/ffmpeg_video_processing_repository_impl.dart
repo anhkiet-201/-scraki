@@ -158,6 +158,25 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     return thumbnailPath;
   }
 
+  @override
+  Future<Duration> getVideoDuration(String videoPath) async {
+    final ffmpegPath = await _findFfmpeg();
+    if (ffmpegPath == null) throw Exception('FFmpeg not found');
+
+    final probe = await Process.run('ffprobe', [
+      '-v',
+      'error',
+      '-show_entries',
+      'format=duration',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      videoPath,
+    ]);
+
+    final seconds = double.tryParse(probe.stdout.toString().trim()) ?? 0;
+    return Duration(milliseconds: (seconds * 1000).toInt());
+  }
+
   Future<String?> _findFfmpeg() async {
     try {
       final result = await Process.run('which', ['ffmpeg']);

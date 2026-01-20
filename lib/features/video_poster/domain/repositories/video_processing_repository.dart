@@ -14,4 +14,7 @@ abstract class VideoProcessingRepository {
   Future<String?> generatePreview(VideoComposition composition);
 
   Future<String> extractThumbnail(String videoPath);
+
+  /// Gets the duration of a video file.
+  Future<Duration> getVideoDuration(String videoPath);
 }

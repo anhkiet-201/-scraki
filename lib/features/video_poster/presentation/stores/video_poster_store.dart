@@ -148,12 +148,20 @@ abstract class _VideoPosterStore with Store {
   Duration position = Duration.zero;
 
   @observable
+  ObservableList<Duration> clipDurations = ObservableList<Duration>();
+
+  @observable
+  int currentPlaylistIndex = 0;
+
+  @observable
   bool isPlaying = false;
 
   // Stream subscriptions (private)
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<bool>? _playingSub;
+  StreamSubscription<double>? _rateSub;
+  StreamSubscription<Playlist>? _playlistSub;
 
   // --- Navigation State ---
   @observable
@@ -181,14 +189,44 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void addSourceVideos(List<String> paths) {
+    // Calculate start index for new items
+    final startIndex = sourceVideoPaths.length;
+
+    // Add paths and placeholder durations
     sourceVideoPaths.addAll(paths);
+    for (int i = 0; i < paths.length; i++) {
+      clipDurations.add(Duration.zero);
+    }
+
     _generateThumbnails(paths);
+    _fetchDurations(paths, startIndex);
+  }
+
+  Future<void> _fetchDurations(List<String> paths, int startIndex) async {
+    for (int i = 0; i < paths.length; i++) {
+      final path = paths[i];
+      final targetIndex = startIndex + i;
+
+      try {
+        final d = await _repository.getVideoDuration(path);
+        // Ensure index is still valid (user might have deleted items)
+        if (targetIndex < clipDurations.length) {
+          runInAction(() => clipDurations[targetIndex] = d);
+        }
+      } catch (e) {
+        print("Error getting duration for $path: $e");
+        // Already zero placeholder, no action needed
+      }
+    }
   }
 
   @action
   void removeSourceVideo(int index) {
     if (index >= 0 && index < sourceVideoPaths.length) {
       sourceVideoPaths.removeAt(index);
+      if (index < clipDurations.length) {
+        clipDurations.removeAt(index);
+      }
     }
   }
 
@@ -241,6 +279,7 @@ abstract class _VideoPosterStore with Store {
         break;
       case 'speed':
         playbackSpeed = value;
+        player.setRate(value);
         break;
       case 'zoom':
         zoomIntensity = value;
@@ -250,6 +289,9 @@ abstract class _VideoPosterStore with Store {
         break;
       case 'volume':
         volume = value;
+        player.setVolume(
+          value * 100,
+        ); // media_kit volume is 0-100? No, check docs. usually 0-100.
         break;
       case 'blur_intensity':
         blurIntensity = value;
@@ -265,11 +307,13 @@ abstract class _VideoPosterStore with Store {
   @action
   void setPlaybackSpeed(double value) {
     playbackSpeed = value;
+    player.setRate(value);
   }
 
   @action
   void setVolume(double value) {
     volume = value;
+    player.setVolume(value * 100);
   }
 
   @action
@@ -308,6 +352,12 @@ abstract class _VideoPosterStore with Store {
     _playingSub = player.stream.playing.listen(
       (p) => runInAction(() => isPlaying = p),
     );
+    _rateSub = player.stream.rate.listen(
+      (r) => runInAction(() => playbackSpeed = r),
+    );
+    _playlistSub = player.stream.playlist.listen(
+      (p) => runInAction(() => currentPlaylistIndex = p.index),
+    );
 
     // Initial updates
     updatePosterDataFromControllers();
@@ -320,6 +370,8 @@ abstract class _VideoPosterStore with Store {
     _durationSub?.cancel();
     _positionSub?.cancel();
     _playingSub?.cancel();
+    _rateSub?.cancel();
+    _playlistSub?.cancel();
     _jobSyncDisposer?.call();
     player.dispose();
     titleController.dispose();
@@ -388,6 +440,66 @@ abstract class _VideoPosterStore with Store {
     } catch (e) {
       debugPrint('Error capturing preview: $e');
       rethrow;
+    }
+  }
+
+  @computed
+  Duration get totalDuration {
+    if (clipDurations.isEmpty) return Duration.zero;
+    return clipDurations.fold(Duration.zero, (prev, curr) => prev + curr);
+  }
+
+  @computed
+  Duration get totalPosition {
+    if (clipDurations.isEmpty) return Duration.zero;
+
+    // Robust check for index sync
+    if (currentPlaylistIndex >= clipDurations.length) {
+      return totalDuration;
+    }
+
+    Duration positionBefore = Duration.zero;
+    for (int i = 0; i < currentPlaylistIndex; i++) {
+      positionBefore += clipDurations[i];
+    }
+    return positionBefore + position;
+  }
+
+  Timer? _seekDebounceTimer;
+
+  @action
+  Future<void> seekTimeline(Duration target) async {
+    if (clipDurations.isEmpty) return;
+
+    Duration temp = Duration.zero;
+    for (int i = 0; i < clipDurations.length; i++) {
+      final clipEnd = temp + clipDurations[i];
+      if (target < clipEnd || i == clipDurations.length - 1) {
+        // Found the clip
+        final seekPos = target - temp;
+
+        if (i == currentPlaylistIndex) {
+          // Same clip: Seek immediately
+          _seekDebounceTimer?.cancel();
+          await player.seek(seekPos);
+        } else {
+          // Different clip: Debounce the jump to prevent rapid switching
+          if (_seekDebounceTimer?.isActive ?? false)
+            _seekDebounceTimer!.cancel();
+
+          _seekDebounceTimer = Timer(
+            const Duration(milliseconds: 150),
+            () async {
+              await player.jump(i);
+              // Wait briefly for player to catch up after jump
+              await Future.delayed(const Duration(milliseconds: 50));
+              await player.seek(seekPos);
+            },
+          );
+        }
+        return;
+      }
+      temp = clipEnd;
     }
   }
 
