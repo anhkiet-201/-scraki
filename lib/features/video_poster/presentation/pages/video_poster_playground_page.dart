@@ -637,122 +637,130 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
 
                   // Virtual Canvas for Overlays
                   Positioned.fill(
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: SizedBox(
-                        width: 720,
-                        height: 1280,
-                        child: RepaintBoundary(
-                          key: store.previewKey,
-                          child: Observer(
-                            builder: (context) {
-                              final posterData = store.selectedPosterData;
-                              if (posterData == null) {
-                                return const SizedBox.shrink();
-                              }
-                              const virtualConstraints = BoxConstraints(
-                                maxWidth: 720,
-                                maxHeight: 1280,
-                              );
-                              return Stack(
-                                children: [
-                                  VideoOverlayItem(
-                                    label: posterData.jobTitle,
-                                    x: store.titleX,
-                                    y: store.titleY,
-                                    type: 'title',
-                                    constraints: virtualConstraints,
-                                    color: Colors.white,
-                                    fontSize: 48, // Standardized 720p size
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label: posterData.salaryRange,
-                                    x: store.salaryX,
-                                    y: store.salaryY,
-                                    type: 'salary',
-                                    constraints: virtualConstraints,
-                                    color: Colors.yellow,
-                                    fontSize: 38,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label: "🏢 ${posterData.companyName}",
-                                    x: store.companyX,
-                                    y: store.companyY,
-                                    type: 'company',
-                                    constraints: virtualConstraints,
-                                    color: Colors.white70,
-                                    fontSize: 32,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label: "📍 ${posterData.location}",
-                                    x: store.locationX,
-                                    y: store.locationY,
-                                    type: 'location',
-                                    constraints: virtualConstraints,
-                                    color: Colors.white54,
-                                    fontSize: 28,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label:
-                                        posterData.requirements.isNotEmpty ==
-                                            true
-                                        ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
-                                        : "",
-                                    x: store.requirementsX,
-                                    y: store.requirementsY,
-                                    type: 'requirements',
-                                    constraints: virtualConstraints,
-                                    color: Colors.white,
-                                    fontSize: 26,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label:
-                                        posterData.benefits.isNotEmpty == true
-                                        ? "🎁 QUYỀN LỢI:\n${posterData.benefits.map((e) => "• $e").join("\n")}"
-                                        : "",
-                                    x: store.benefitsX,
-                                    y: store.benefitsY,
-                                    type: 'benefits',
-                                    constraints: virtualConstraints,
-                                    color: Colors.greenAccent,
-                                    fontSize: 26,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label: "📞 ${posterData.contactInfo}",
-                                    x: store.contactX,
-                                    y: store.contactY,
-                                    type: 'contact',
-                                    constraints: virtualConstraints,
-                                    color: Colors.white,
-                                    fontSize: 30,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                  VideoOverlayItem(
-                                    label: posterData.catchyHeadline ?? "",
-                                    x: store.headlineX,
-                                    y: store.headlineY,
-                                    type: 'headline',
-                                    constraints: virtualConstraints,
-                                    color: Colors.yellowAccent,
-                                    fontSize: 40,
-                                    onPositionUpdate: store.updatePosition,
-                                  ),
-                                ],
-                              );
-                            },
+                    child: Observer(
+                      builder: (context) {
+                        if (store.creationStore.currentPosterData == null) {
+                          return const SizedBox.shrink();
+                        }
+                        return FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: 720,
+                            height: 1280,
+                            child: RepaintBoundary(
+                              key: store.previewKey,
+                              child: Observer(
+                                builder: (context) {
+                                  final posterData = store.selectedPosterData;
+                                  if (posterData == null) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  const virtualConstraints = BoxConstraints(
+                                    maxWidth: 720,
+                                    maxHeight: 1280,
+                                  );
+                                  return Stack(
+                                    children: [
+                                      VideoOverlayItem(
+                                        label: posterData.jobTitle,
+                                        x: store.titleX,
+                                        y: store.titleY,
+                                        type: 'title',
+                                        constraints: virtualConstraints,
+                                        color: Colors.white,
+                                        fontSize: 48, // Standardized 720p size
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label: posterData.salaryRange,
+                                        x: store.salaryX,
+                                        y: store.salaryY,
+                                        type: 'salary',
+                                        constraints: virtualConstraints,
+                                        color: Colors.yellow,
+                                        fontSize: 38,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label: "🏢 ${posterData.companyName}",
+                                        x: store.companyX,
+                                        y: store.companyY,
+                                        type: 'company',
+                                        constraints: virtualConstraints,
+                                        color: Colors.white70,
+                                        fontSize: 32,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label: "📍 ${posterData.location}",
+                                        x: store.locationX,
+                                        y: store.locationY,
+                                        type: 'location',
+                                        constraints: virtualConstraints,
+                                        color: Colors.white54,
+                                        fontSize: 28,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label:
+                                            posterData
+                                                    .requirements
+                                                    .isNotEmpty ==
+                                                true
+                                            ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
+                                            : "",
+                                        x: store.requirementsX,
+                                        y: store.requirementsY,
+                                        type: 'requirements',
+                                        constraints: virtualConstraints,
+                                        color: Colors.white,
+                                        fontSize: 26,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label:
+                                            posterData.benefits.isNotEmpty ==
+                                                true
+                                            ? "🎁 QUYỀN LỢI:\n${posterData.benefits.map((e) => "• $e").join("\n")}"
+                                            : "",
+                                        x: store.benefitsX,
+                                        y: store.benefitsY,
+                                        type: 'benefits',
+                                        constraints: virtualConstraints,
+                                        color: Colors.greenAccent,
+                                        fontSize: 26,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label: "📞 ${posterData.contactInfo}",
+                                        x: store.contactX,
+                                        y: store.contactY,
+                                        type: 'contact',
+                                        constraints: virtualConstraints,
+                                        color: Colors.white,
+                                        fontSize: 30,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                      VideoOverlayItem(
+                                        label: posterData.catchyHeadline ?? "",
+                                        x: store.headlineX,
+                                        y: store.headlineY,
+                                        type: 'headline',
+                                        constraints: virtualConstraints,
+                                        color: Colors.yellowAccent,
+                                        fontSize: 40,
+                                        onPositionUpdate: store.updatePosition,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
-
-                  // Interactive Text Overlays
                 ],
               );
             },
