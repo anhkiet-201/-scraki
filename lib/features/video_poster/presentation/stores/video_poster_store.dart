@@ -518,6 +518,30 @@ abstract class _VideoPosterStore with Store {
       case 'headline':
         headlineController.text = value;
         break;
+      case 'requirements':
+      case 'benefits':
+        // Parse list format back to controller format
+        // Input format: "Header:\n• Item 1\n• Item 2"
+        // Output format: "Item 1\nItem 2"
+        final lines = value.split('\n');
+        final cleanLines = lines
+            .where(
+              (line) =>
+                  !line.startsWith('📋') && // Remove header
+                  !line.startsWith('🎁') && // Remove header
+                  line.trim().isNotEmpty,
+            )
+            .map(
+              (line) => line.replaceAll(RegExp(r'^•\s*'), ''),
+            ) // Remove bullet
+            .toList();
+
+        if (type == 'requirements') {
+          requirementsController.text = cleanLines.join('\n');
+        } else {
+          benefitsController.text = cleanLines.join('\n');
+        }
+        break;
     }
     updatePosterDataFromControllers();
   }

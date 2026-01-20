@@ -84,6 +84,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
         builder: (context) => Align(
           alignment: Alignment(_store.x * 2 - 1, _store.y * 2 - 1),
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: _store.handleSelect,
             onDoubleTap: _store.startEditing,
             onPanStart: (_) {
