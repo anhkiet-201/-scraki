@@ -14,6 +14,8 @@ import 'package:scraki/features/video_poster/presentation/widgets/form/modern_te
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_slider.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok_safe_zone.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
 
 import 'dart:async';
 import 'dart:ui';
@@ -219,12 +221,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     }
   }
 
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
-  }
-
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -295,7 +291,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                               left: 0,
                               right: 0,
                               child: Center(
-                                child: _buildFloatingGlassControls(),
+                                child: FloatingGlassControls(
+                                  isPlaying: _isPlaying,
+                                  position: _position,
+                                  duration: _duration,
+                                  onPlayPause: () => _player.playOrPause(),
+                                  onSeek: (v) => _player.seek(v),
+                                ),
                               ),
                             ),
 
@@ -305,7 +307,10 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                               left: 0,
                               right: 0,
                               child: Center(
-                                child: _buildDurationStatusOverlay(),
+                                child: DurationStatusOverlay(
+                                  duration: _duration,
+                                  playbackSpeed: _store.playbackSpeed,
+                                ),
                               ),
                             ),
                           ],
@@ -565,79 +570,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingGlassControls() {
-    return Container(
-      width: 400,
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                  onPressed: () => _player.playOrPause(),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDuration(_position),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                    color: Colors.white70,
-                  ),
-                ),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 4,
-                      ),
-                      activeTrackColor: const Color(0xFF6366F1),
-                      inactiveTrackColor: Colors.white10,
-                      thumbColor: Colors.white,
-                    ),
-                    child: Slider(
-                      value: _position.inMilliseconds.toDouble().clamp(
-                        0.0,
-                        _duration.inMilliseconds.toDouble(),
-                      ),
-                      max: _duration.inMilliseconds.toDouble(),
-                      onChanged: (v) {
-                        _player.seek(Duration(milliseconds: v.toInt()));
-                      },
-                    ),
-                  ),
-                ),
-                Text(
-                  _formatDuration(_duration),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                    color: Colors.white30,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -1009,52 +941,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           color: Colors.white24,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDurationStatusOverlay() {
-    final effectiveDuration =
-        _duration.inSeconds /
-        (_store.playbackSpeed > 0 ? _store.playbackSpeed : 1.0);
-    String status = "Tối ưu TikTok: Sẵn sàng";
-    Color color = Colors.greenAccent;
-
-    if (effectiveDuration < 15) {
-      status = "Thời lượng: Ngắn (Tự động lặp)";
-      color = Colors.orangeAccent;
-    } else if (effectiveDuration > 30) {
-      status = "Thời lượng: Dài (Tự động cắt)";
-      color = Colors.lightBlueAccent;
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.black.withValues(alpha: 0.5),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                status,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: color.withValues(alpha: 0.8),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
