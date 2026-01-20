@@ -223,9 +223,28 @@ abstract class _VideoPosterStore with Store {
   @action
   void removeSourceVideo(int index) {
     if (index >= 0 && index < sourceVideoPaths.length) {
+      // 1. Pause player first to prevent issues
+      player.pause();
+
+      // 2. Remove from data lists
       sourceVideoPaths.removeAt(index);
       if (index < clipDurations.length) {
         clipDurations.removeAt(index);
+      }
+
+      // 3. Re-sync playlist
+      // This is crucial because the player needs to know the media list changed.
+      // Simply removing from sourceVideoPaths doesn't update the active player playlist.
+      if (sourceVideoPaths.isEmpty) {
+        // If no videos left, stop and clear player
+        player.stop();
+      } else {
+        // Re-open playlist with remaining videos
+        // If we removed the current video, logic effectively resets to start or next video
+        syncPlaylist();
+
+        // Optional: If you want to try and keep position in other videos, it gets complex.
+        // For now, resetting (done by syncPlaylist which usually starts at 0) is safer UX.
       }
     }
   }

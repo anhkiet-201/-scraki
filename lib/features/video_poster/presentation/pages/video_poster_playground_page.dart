@@ -614,6 +614,17 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                   Observer(
                     warnWhenNoObservables: false,
                     builder: (context) {
+                      if (store.sourceVideoPaths.isEmpty) {
+                        return Container(
+                          color: Colors.black,
+                          child: const Center(
+                            child: Text(
+                              "No Video Selected",
+                              style: TextStyle(color: Colors.white24),
+                            ),
+                          ),
+                        );
+                      }
                       return Video(
                         controller: store.videoController,
                         controls: (state) => const SizedBox.shrink(),
