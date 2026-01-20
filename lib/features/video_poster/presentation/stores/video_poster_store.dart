@@ -16,6 +16,7 @@ import 'package:uuid/uuid.dart';
 part 'video_poster_store.g.dart';
 
 @injectable
+// ignore: library_private_types_in_public_api
 class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 
 abstract class _VideoPosterStore with Store {
@@ -53,7 +54,6 @@ abstract class _VideoPosterStore with Store {
         requirementsController.text = data.requirements.join('\n');
         benefitsController.text = data.benefits.join('\n');
       }
-      selectPosterData(data);
     });
   }
 
@@ -163,25 +163,15 @@ abstract class _VideoPosterStore with Store {
   bool isFocusMode = false;
 
   // --- Form Controllers ---
-  final titleController = TextEditingController(
-    text: "",
-  );
+  final titleController = TextEditingController(text: "");
   final salaryController = TextEditingController(text: "");
   final companyController = TextEditingController(text: "");
   final locationController = TextEditingController(text: "");
   final contactController = TextEditingController(text: "");
-  final headlineController = TextEditingController(
-    text: "",
-  );
-  final captionController = TextEditingController(
-    text: "",
-  );
-  final requirementsController = TextEditingController(
-    text: "",
-  );
-  final benefitsController = TextEditingController(
-    text: "",
-  );
+  final headlineController = TextEditingController(text: "");
+  final captionController = TextEditingController(text: "");
+  final requirementsController = TextEditingController(text: "");
+  final benefitsController = TextEditingController(text: "");
   final jobSearchController = TextEditingController();
 
   // Preview capture key
@@ -362,25 +352,27 @@ abstract class _VideoPosterStore with Store {
   /// Update poster data from form controllers
   @action
   void updatePosterDataFromControllers() {
-    // selectPosterData(
-    //   creationStore.currentPosterData ?? PosterData(
-    //     jobTitle: titleController.text,
-    //     companyName: companyController.text,
-    //     location: locationController.text,
-    //     salaryRange: salaryController.text,
-    //     contactInfo: contactController.text,
-    //     catchyHeadline: headlineController.text,
-    //     tikTokCaption: captionController.text,
-    //     requirements: requirementsController.text
-    //         .split('\n')
-    //         .where((s) => s.trim().isNotEmpty)
-    //         .toList(),
-    //     benefits: benefitsController.text
-    //         .split('\n')
-    //         .where((s) => s.trim().isNotEmpty)
-    //         .toList(),
-    //   ),
-    // );
+    // Create PosterData from current controller values
+    final data = PosterData(
+      jobTitle: titleController.text,
+      companyName: companyController.text,
+      location: locationController.text,
+      salaryRange: salaryController.text,
+      contactInfo: contactController.text,
+      catchyHeadline: headlineController.text,
+      tikTokCaption: captionController.text,
+      requirements: requirementsController.text
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .toList(),
+      benefits: benefitsController.text
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .toList(),
+    );
+
+    // Update selected poster data
+    selectPosterData(data);
   }
 
   /// Capture preview widget as PNG at 720x1280 resolution
