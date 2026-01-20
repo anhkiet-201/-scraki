@@ -107,8 +107,8 @@ class JobHubPanel extends StatelessWidget {
                             color: Colors.white38,
                           ),
                         ),
-                        onTap: () {
-                          store.selectJob(job);
+                        onTap: () async {
+                          await store.selectJob(job);
                           onJobSelected();
                         },
                       );

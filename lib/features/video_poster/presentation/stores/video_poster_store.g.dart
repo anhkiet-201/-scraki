@@ -797,7 +797,7 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
-  void selectPosterData(PosterData data) {
+  void selectPosterData(PosterData? data) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.selectPosterData',
     );

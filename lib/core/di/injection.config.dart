@@ -106,9 +106,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
-    gh.factory<_i618.VideoPosterStore>(
-      () => _i618.VideoPosterStore(gh<_i427.VideoProcessingRepository>()),
-    );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
     );
@@ -150,6 +147,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),
         gh<_i545.SearchJobsWithAiUseCase>(),
+      ),
+    );
+    gh.factory<_i618.VideoPosterStore>(
+      () => _i618.VideoPosterStore(
+        gh<_i427.VideoProcessingRepository>(),
+        gh<_i876.PosterCreationStore>(),
       ),
     );
     return this;

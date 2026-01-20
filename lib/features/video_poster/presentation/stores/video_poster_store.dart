@@ -8,6 +8,7 @@ import 'package:mobx/mobx.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
+import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
 import 'package:scraki/features/video_poster/domain/repositories/video_processing_repository.dart';
 import 'package:uuid/uuid.dart';
@@ -19,9 +20,41 @@ class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 
 abstract class _VideoPosterStore with Store {
   final VideoProcessingRepository _repository;
+  final PosterCreationStore creationStore;
 
-  _VideoPosterStore(this._repository) {
-    initializePlayer();
+  // Initialization flag to prevent re-initialization on hot restart
+  bool _isInitialized = false;
+
+  // Reaction disposer
+  ReactionDisposer? _jobSyncDisposer;
+
+  _VideoPosterStore(this._repository, this.creationStore) {
+    if (!_isInitialized) {
+      initializePlayer();
+      _setupJobSyncReaction();
+      _isInitialized = true;
+    }
+  }
+
+  /// Setup reaction to sync job data from PosterCreationStore
+  void _setupJobSyncReaction() {
+    _jobSyncDisposer = reaction((_) => creationStore.currentPosterData, (
+      PosterData? data,
+    ) {
+      if (data != null) {
+        // Sync to controllers
+        titleController.text = data.jobTitle;
+        companyController.text = data.companyName;
+        salaryController.text = data.salaryRange;
+        locationController.text = data.location;
+        contactController.text = data.contactInfo;
+        headlineController.text = data.catchyHeadline ?? "";
+        captionController.text = data.tikTokCaption ?? "";
+        requirementsController.text = data.requirements.join('\n');
+        benefitsController.text = data.benefits.join('\n');
+      }
+      selectPosterData(data);
+    });
   }
 
   @observable
@@ -131,23 +164,23 @@ abstract class _VideoPosterStore with Store {
 
   // --- Form Controllers ---
   final titleController = TextEditingController(
-    text: "Hiring Flutter Developer",
+    text: "",
   );
-  final salaryController = TextEditingController(text: "\$2000 - \$4000");
-  final companyController = TextEditingController(text: "Scraki Inc.");
-  final locationController = TextEditingController(text: "Từ xa");
-  final contactController = TextEditingController(text: "Tuyển dụng");
+  final salaryController = TextEditingController(text: "");
+  final companyController = TextEditingController(text: "");
+  final locationController = TextEditingController(text: "");
+  final contactController = TextEditingController(text: "");
   final headlineController = TextEditingController(
-    text: "Cơ hội việc làm hấp dẫn!",
+    text: "",
   );
   final captionController = TextEditingController(
-    text: "#tuyendung #vieclam #flutter",
+    text: "",
   );
   final requirementsController = TextEditingController(
-    text: "Có kinh nghiệm Flutter\nThành thạo Dart\nBiết sử dụng MobX",
+    text: "",
   );
   final benefitsController = TextEditingController(
-    text: "Lương thưởng hấp dẫn\nBảo hiểm đầy đủ\nMôi trường chuyên nghiệp",
+    text: "",
   );
   final jobSearchController = TextEditingController();
 
@@ -260,7 +293,7 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
-  void selectPosterData(PosterData data) {
+  void selectPosterData(PosterData? data) {
     selectedPosterData = data;
   }
 
@@ -297,6 +330,7 @@ abstract class _VideoPosterStore with Store {
     _durationSub?.cancel();
     _positionSub?.cancel();
     _playingSub?.cancel();
+    _jobSyncDisposer?.call();
     player.dispose();
     titleController.dispose();
     salaryController.dispose();
@@ -328,25 +362,25 @@ abstract class _VideoPosterStore with Store {
   /// Update poster data from form controllers
   @action
   void updatePosterDataFromControllers() {
-    selectPosterData(
-      PosterData(
-        jobTitle: titleController.text,
-        companyName: companyController.text,
-        location: locationController.text,
-        salaryRange: salaryController.text,
-        contactInfo: contactController.text,
-        catchyHeadline: headlineController.text,
-        tikTokCaption: captionController.text,
-        requirements: requirementsController.text
-            .split('\n')
-            .where((s) => s.trim().isNotEmpty)
-            .toList(),
-        benefits: benefitsController.text
-            .split('\n')
-            .where((s) => s.trim().isNotEmpty)
-            .toList(),
-      ),
-    );
+    // selectPosterData(
+    //   creationStore.currentPosterData ?? PosterData(
+    //     jobTitle: titleController.text,
+    //     companyName: companyController.text,
+    //     location: locationController.text,
+    //     salaryRange: salaryController.text,
+    //     contactInfo: contactController.text,
+    //     catchyHeadline: headlineController.text,
+    //     tikTokCaption: captionController.text,
+    //     requirements: requirementsController.text
+    //         .split('\n')
+    //         .where((s) => s.trim().isNotEmpty)
+    //         .toList(),
+    //     benefits: benefitsController.text
+    //         .split('\n')
+    //         .where((s) => s.trim().isNotEmpty)
+    //         .toList(),
+    //   ),
+    // );
   }
 
   /// Capture preview widget as PNG at 720x1280 resolution
