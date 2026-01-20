@@ -611,6 +611,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                 children: [
                   // Video Preview
                   Observer(
+                    warnWhenNoObservables: false,
                     builder: (context) {
                       return Video(
                         controller: store.videoController,
@@ -674,7 +675,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                             ),
                             VideoOverlayItem(
                               label: posterData.requirements.isNotEmpty == true
-                                  ? "📋 YÊU CẦU:\\n${posterData.requirements.map((e) => "• $e").join("\\n")}"
+                                  ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
                                   : "",
                               x: store.requirementsX,
                               y: store.requirementsY,
@@ -686,7 +687,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                             ),
                             VideoOverlayItem(
                               label: posterData.benefits.isNotEmpty == true
-                                  ? "🎁 QUYỀN LỢI:\\n${posterData.benefits.map((e) => "• $e").join("\\n")}"
+                                  ? "🎁 QUYỀN LỢI:\n${posterData.benefits.map((e) => "• $e").join("\n")}"
                                   : "",
                               x: store.benefitsX,
                               y: store.benefitsY,
@@ -743,7 +744,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
         children: [
           Observer(
             builder: (_) => ElevatedButton(
-              onPressed: store.isProcessing
+              onPressed: store.isProcessing || store.sourceVideoPaths.isEmpty
                   ? null
                   : () => store.handleExportVideo(),
               style: ElevatedButton.styleFrom(
