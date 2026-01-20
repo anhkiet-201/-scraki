@@ -156,12 +156,20 @@ abstract class _VideoPosterStore with Store {
   @observable
   bool isPlaying = false;
 
+  @observable
+  int videoWidth = 720;
+
+  @observable
+  int videoHeight = 1280;
+
   // Stream subscriptions (private)
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<double>? _rateSub;
   StreamSubscription<Playlist>? _playlistSub;
+  StreamSubscription<int?>? _widthSub;
+  StreamSubscription<int?>? _heightSub;
 
   // --- Navigation State ---
   @observable
@@ -377,6 +385,12 @@ abstract class _VideoPosterStore with Store {
     _playlistSub = player.stream.playlist.listen((p) {
       runInAction(() => currentPlaylistIndex = p.index);
     });
+    _widthSub = player.stream.width.listen((w) {
+      if (w != null && w > 0) runInAction(() => videoWidth = w);
+    });
+    _heightSub = player.stream.height.listen((h) {
+      if (h != null && h > 0) runInAction(() => videoHeight = h);
+    });
 
     // Initial updates
     updatePosterDataFromControllers();
@@ -391,6 +405,8 @@ abstract class _VideoPosterStore with Store {
     _playingSub?.cancel();
     _rateSub?.cancel();
     _playlistSub?.cancel();
+    _widthSub?.cancel();
+    _heightSub?.cancel();
     _jobSyncDisposer?.call();
     player.dispose();
     titleController.dispose();
@@ -453,7 +469,12 @@ abstract class _VideoPosterStore with Store {
       final boundary =
           previewKey.currentContext!.findRenderObject()
               as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 2.0);
+
+      // Standardize export to 1080p (Full HD)
+      // Virtual Canvas is 720px, so pixelRatio 1.5 = 1080px width
+      const pixelRatio = 1.5;
+
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData!.buffer.asUint8List();
     } catch (e) {

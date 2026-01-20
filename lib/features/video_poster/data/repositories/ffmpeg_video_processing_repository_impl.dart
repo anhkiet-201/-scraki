@@ -74,6 +74,13 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     final int totalVideos = composition.sourceVideoPaths.length * loopCount;
     final int overlayInputIndex = totalVideos;
 
+    // Standardize all input videos to 1080x1920 (1080p Vertical)
+    String scalingFilters = '';
+    for (int i = 0; i < totalVideos; i++) {
+      scalingFilters +=
+          '[$i:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[v$i];';
+    }
+
     // Video composition settings
     final compositionContrast = composition.contrast;
     final compositionSaturation = composition.saturation * 2;
@@ -82,15 +89,16 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     final hue = composition.hueShift * 360;
     final noise = (composition.noiseLevel * 30).toInt();
 
-    // Concatenate videos
+    // Concatenate scaled videos
     String concatFilter = '';
     for (int i = 0; i < totalVideos; i++) {
-      concatFilter += '[$i:v:0]';
+      concatFilter += '[v$i]';
     }
     concatFilter += 'concat=n=$totalVideos:v=1:a=0[vconcat];';
 
     // Apply effects and overlay
     final filterComplex =
+        scalingFilters +
         concatFilter +
         '[vconcat]eq=contrast=$compositionContrast:saturation=$compositionSaturation:brightness=$brightness,' +
         'hue=h=$hue,' +

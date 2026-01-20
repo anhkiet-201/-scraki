@@ -658,6 +658,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$videoWidthAtom = Atom(
+    name: '_VideoPosterStore.videoWidth',
+    context: context,
+  );
+
+  @override
+  int get videoWidth {
+    _$videoWidthAtom.reportRead();
+    return super.videoWidth;
+  }
+
+  @override
+  set videoWidth(int value) {
+    _$videoWidthAtom.reportWrite(value, super.videoWidth, () {
+      super.videoWidth = value;
+    });
+  }
+
+  late final _$videoHeightAtom = Atom(
+    name: '_VideoPosterStore.videoHeight',
+    context: context,
+  );
+
+  @override
+  int get videoHeight {
+    _$videoHeightAtom.reportRead();
+    return super.videoHeight;
+  }
+
+  @override
+  set videoHeight(int value) {
+    _$videoHeightAtom.reportWrite(value, super.videoHeight, () {
+      super.videoHeight = value;
+    });
+  }
+
   late final _$activeNavIndexAtom = Atom(
     name: '_VideoPosterStore.activeNavIndex',
     context: context,
@@ -1007,6 +1043,8 @@ position: ${position},
 clipDurations: ${clipDurations},
 currentPlaylistIndex: ${currentPlaylistIndex},
 isPlaying: ${isPlaying},
+videoWidth: ${videoWidth},
+videoHeight: ${videoHeight},
 activeNavIndex: ${activeNavIndex},
 isFocusMode: ${isFocusMode},
 totalDuration: ${totalDuration},

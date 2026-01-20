@@ -37,6 +37,7 @@ class VideoOverlayItem extends StatelessWidget {
         alignment: Alignment(x * 2 - 1, y * 2 - 1),
         child: GestureDetector(
           onPanUpdate: (details) {
+            // Internal logic still uses constraints for relative movement
             final newX = (x + details.delta.dx / constraints.maxWidth).clamp(
               0.0,
               1.0,
