@@ -10,9 +10,12 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/form/modern_text_field.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/form/modern_slider.dart';
 
 import 'dart:async';
 import 'dart:ui';
+import 'dart:typed_data';
 
 class VideoPosterPlaygroundPage extends StatefulWidget {
   const VideoPosterPlaygroundPage({super.key});
@@ -849,77 +852,90 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       padding: const EdgeInsets.all(20),
       children: [
         _buildSectionHeader("CHI TIẾT CÔNG VIỆC"),
-        _buildModernTextField(_titleController, "Vị trí", Icons.work_outline),
-        const SizedBox(height: 16),
-        _buildModernTextField(
-          _companyController,
-          "Công ty",
-          Icons.business_outlined,
+        ModernTextField(
+          controller: _titleController,
+          label: "Vị trí",
+          icon: Icons.work_outline,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _salaryController,
-          "Mức lương",
-          Icons.payments_outlined,
+        ModernTextField(
+          controller: _companyController,
+          label: "Công ty",
+          icon: Icons.business_outlined,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _locationController,
-          "Địa điểm",
-          Icons.location_on_outlined,
+        ModernTextField(
+          controller: _salaryController,
+          label: "Mức lương",
+          icon: Icons.payments_outlined,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _contactController,
-          "Liên hệ",
-          Icons.contact_mail_outlined,
+        ModernTextField(
+          controller: _locationController,
+          label: "Địa điểm",
+          icon: Icons.location_on_outlined,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _headlineController,
-          "Tiêu đề phụ",
-          Icons.campaign_outlined,
+        ModernTextField(
+          controller: _contactController,
+          label: "Liên hệ",
+          icon: Icons.contact_mail_outlined,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _captionController,
-          "TikTok Caption",
-          Icons.closed_caption_outlined,
+        ModernTextField(
+          controller: _headlineController,
+          label: "Tiêu đề phụ",
+          icon: Icons.campaign_outlined,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _requirementsController,
-          "Yêu cầu công việc (Mỗi dòng một ý)",
-          Icons.list_alt_rounded,
+        ModernTextField(
+          controller: _captionController,
+          label: "TikTok Caption",
+          icon: Icons.closed_caption_outlined,
+          onChanged: _updatePosterData,
+        ),
+        const SizedBox(height: 16),
+        ModernTextField(
+          controller: _requirementsController,
+          label: "Yêu cầu công việc (Mỗi dòng một ý)",
+          icon: Icons.list_alt_rounded,
           maxLines: null,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 16),
-        _buildModernTextField(
-          _benefitsController,
-          "Quyền lợi (Mỗi dòng một ý)",
-          Icons.card_giftcard_rounded,
+        ModernTextField(
+          controller: _benefitsController,
+          label: "Quyền lợi (Mỗi dòng một ý)",
+          icon: Icons.card_giftcard_rounded,
           maxLines: null,
+          onChanged: _updatePosterData,
         ),
         const SizedBox(height: 32),
         _buildSectionHeader("CÀI ĐẶT VIDEO"),
         Observer(
-          builder: (_) => _buildModernSlider(
-            "Tốc độ phát",
-            _store.playbackSpeed,
-            0.5,
-            2.0,
-            (v) => _store.setPlaybackSpeed(v),
+          builder: (_) => ModernSlider(
+            label: "Tốc độ phát",
+            value: _store.playbackSpeed,
+            min: 0.5,
+            max: 2.0,
+            onChanged: (v) => _store.setPlaybackSpeed(v),
             suffix: "x",
           ),
         ),
         const SizedBox(height: 16),
         Observer(
-          builder: (_) => _buildModernSlider(
-            "Âm lượng",
-            _store.volume,
-            0.0,
-            1.0,
-            (v) {
+          builder: (_) => ModernSlider(
+            label: "Âm lượng",
+            value: _store.volume,
+            min: 0.0,
+            max: 1.0,
+            onChanged: (v) {
               _store.setVolume(v);
               _player.setVolume(v * 100);
             },
@@ -949,12 +965,12 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           ),
         ),
         Observer(
-          builder: (_) => _buildModernSlider(
-            "Độ mờ",
-            _store.blurIntensity,
-            0.0,
-            20.0,
-            (v) => _store.setBlurIntensity(v),
+          builder: (_) => ModernSlider(
+            label: "Độ mờ",
+            value: _store.blurIntensity,
+            min: 0.0,
+            max: 20.0,
+            onChanged: (v) => _store.setBlurIntensity(v),
             suffix: "px",
             enabled: _store.applyBlur,
           ),
@@ -993,106 +1009,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           letterSpacing: 1.2,
         ),
       ),
-    );
-  }
-
-  Widget _buildModernTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    int? maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white38),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          onChanged: (_) => _updatePosterData(),
-          style: const TextStyle(fontSize: 13),
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 16, color: Colors.white24),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.02),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.white10),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.white10),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF6366F1)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModernSlider(
-    String label,
-    double value,
-    double min,
-    double max,
-    ValueChanged<double> onChanged, {
-    String suffix = "",
-    double multiplier = 1.0,
-    bool enabled = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: enabled ? Colors.white70 : Colors.white24,
-              ),
-            ),
-            Text(
-              "${(value * multiplier).toStringAsFixed(multiplier == 100 ? 0 : 1)}$suffix",
-              style: TextStyle(
-                fontSize: 11,
-                color: enabled ? const Color(0xFF6366F1) : Colors.white24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 2,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            activeTrackColor: enabled
-                ? const Color(0xFF6366F1)
-                : Colors.white10,
-            inactiveTrackColor: Colors.white10,
-            thumbColor: enabled ? Colors.white : Colors.white12,
-          ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            onChanged: enabled ? onChanged : null,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1159,7 +1075,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                     controller: _controller,
                     controls: (state) => const SizedBox.shrink(),
                   ),
-              
+
                   // TikTok Safe Zone Visualization
                   _buildTikTokSafeZone(),
 
@@ -1168,112 +1084,116 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                     child: Stack(
                       children: [
                         Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label: _store.selectedPosterData?.jobTitle ?? "",
-                      x: _store.titleX,
-                      y: _store.titleY,
-                      type: 'title',
-                      constraints: constraints,
-                      color: Colors.white,
-                      fontSize: 26,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label: _store.selectedPosterData?.salaryRange ?? "",
-                      x: _store.salaryX,
-                      y: _store.salaryY,
-                      type: 'salary',
-                      constraints: constraints,
-                      color: Colors.yellow,
-                      fontSize: 20,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label:
-                          "🏢 ${_store.selectedPosterData?.companyName ?? ""}",
-                      x: _store.companyX,
-                      y: _store.companyY,
-                      type: 'company',
-                      constraints: constraints,
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label:
-                          "📍 ${_store.selectedPosterData?.location ?? ""}",
-                      x: _store.locationX,
-                      y: _store.locationY,
-                      type: 'location',
-                      constraints: constraints,
-                      color: Colors.white54,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label:
-                          _store
-                                  .selectedPosterData
-                                  ?.requirements
-                                  .isNotEmpty ==
-                              true
-                          ? "📋 YÊU CẦU:\\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\\n")}"
-                          : "",
-                      x: _store.requirementsX,
-                      y: _store.requirementsY,
-                      type: 'requirements',
-                      constraints: constraints,
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label:
-                          _store.selectedPosterData?.benefits.isNotEmpty ==
-                              true
-                          ? "🎁 QUYỀN LỢI:\\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\\n")}"
-                          : "",
-                      x: _store.benefitsX,
-                      y: _store.benefitsY,
-                      type: 'benefits',
-                      constraints: constraints,
-                      color: Colors.greenAccent,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label:
-                          "📞 ${_store.selectedPosterData?.contactInfo ?? ""}",
-                      x: _store.contactX,
-                      y: _store.contactY,
-                      type: 'contact',
-                      constraints: constraints,
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) => _buildOverlayItem(
-                      label: _store.selectedPosterData?.catchyHeadline ?? "",
-                      x: _store.headlineX,
-                      y: _store.headlineY,
-                      type: 'headline',
-                      constraints: constraints,
-                      color: Colors.yellowAccent,
-                      fontSize: 18,
-                    ),
-                  ),
+                          builder: (_) => _buildOverlayItem(
+                            label: _store.selectedPosterData?.jobTitle ?? "",
+                            x: _store.titleX,
+                            y: _store.titleY,
+                            type: 'title',
+                            constraints: constraints,
+                            color: Colors.white,
+                            fontSize: 26,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label: _store.selectedPosterData?.salaryRange ?? "",
+                            x: _store.salaryX,
+                            y: _store.salaryY,
+                            type: 'salary',
+                            constraints: constraints,
+                            color: Colors.yellow,
+                            fontSize: 20,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                "🏢 ${_store.selectedPosterData?.companyName ?? ""}",
+                            x: _store.companyX,
+                            y: _store.companyY,
+                            type: 'company',
+                            constraints: constraints,
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                "📍 ${_store.selectedPosterData?.location ?? ""}",
+                            x: _store.locationX,
+                            y: _store.locationY,
+                            type: 'location',
+                            constraints: constraints,
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                _store
+                                        .selectedPosterData
+                                        ?.requirements
+                                        .isNotEmpty ==
+                                    true
+                                ? "📋 YÊU CẦU:\\n${_store.selectedPosterData!.requirements.map((e) => "• $e").join("\\n")}"
+                                : "",
+                            x: _store.requirementsX,
+                            y: _store.requirementsY,
+                            type: 'requirements',
+                            constraints: constraints,
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                _store
+                                        .selectedPosterData
+                                        ?.benefits
+                                        .isNotEmpty ==
+                                    true
+                                ? "🎁 QUYỀN LỢI:\\n${_store.selectedPosterData!.benefits.map((e) => "• $e").join("\\n")}"
+                                : "",
+                            x: _store.benefitsX,
+                            y: _store.benefitsY,
+                            type: 'benefits',
+                            constraints: constraints,
+                            color: Colors.greenAccent,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                "📞 ${_store.selectedPosterData?.contactInfo ?? ""}",
+                            x: _store.contactX,
+                            y: _store.contactY,
+                            type: 'contact',
+                            constraints: constraints,
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Observer(
+                          builder: (_) => _buildOverlayItem(
+                            label:
+                                _store.selectedPosterData?.catchyHeadline ?? "",
+                            x: _store.headlineX,
+                            y: _store.headlineY,
+                            type: 'headline',
+                            constraints: constraints,
+                            color: Colors.yellowAccent,
+                            fontSize: 18,
+                          ),
+                        ),
                       ],
                     ),
                   ),
+
                   // Interactive Text Overlays
-                  
                 ],
               );
             },
