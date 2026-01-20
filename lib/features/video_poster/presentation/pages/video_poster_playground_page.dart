@@ -12,6 +12,8 @@ import 'package:scraki/features/poster/presentation/stores/poster_creation_store
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_text_field.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_slider.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok_safe_zone.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item.dart';
 
 import 'dart:async';
 import 'dart:ui';
@@ -1077,14 +1079,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   ),
 
                   // TikTok Safe Zone Visualization
-                  _buildTikTokSafeZone(),
+                  const TikTokSafeZone(),
 
                   RepaintBoundary(
                     key: _previewKey,
                     child: Stack(
                       children: [
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label: _store.selectedPosterData?.jobTitle ?? "",
                             x: _store.titleX,
                             y: _store.titleY,
@@ -1092,10 +1094,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 26,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label: _store.selectedPosterData?.salaryRange ?? "",
                             x: _store.salaryX,
                             y: _store.salaryY,
@@ -1103,10 +1106,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.yellow,
                             fontSize: 20,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 "🏢 ${_store.selectedPosterData?.companyName ?? ""}",
                             x: _store.companyX,
@@ -1115,10 +1119,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.white70,
                             fontSize: 16,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 "📍 ${_store.selectedPosterData?.location ?? ""}",
                             x: _store.locationX,
@@ -1127,10 +1132,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.white54,
                             fontSize: 14,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 _store
                                         .selectedPosterData
@@ -1145,10 +1151,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 14,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 _store
                                         .selectedPosterData
@@ -1163,10 +1170,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.greenAccent,
                             fontSize: 14,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 "📞 ${_store.selectedPosterData?.contactInfo ?? ""}",
                             x: _store.contactX,
@@ -1175,10 +1183,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.white,
                             fontSize: 16,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                         Observer(
-                          builder: (_) => _buildOverlayItem(
+                          builder: (_) => VideoOverlayItem(
                             label:
                                 _store.selectedPosterData?.catchyHeadline ?? "",
                             x: _store.headlineX,
@@ -1187,6 +1196,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                             constraints: constraints,
                             color: Colors.yellowAccent,
                             fontSize: 18,
+                            onPositionUpdate: _store.updatePosition,
                           ),
                         ),
                       ],
@@ -1197,140 +1207,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                 ],
               );
             },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOverlayItem({
-    required String label,
-    required double x,
-    required double y,
-    required String type,
-    required BoxConstraints constraints,
-    required Color color,
-    required double fontSize,
-  }) {
-    return Positioned.fill(
-      child: Align(
-        alignment: Alignment(x * 2 - 1, y * 2 - 1),
-        child: GestureDetector(
-          onPanUpdate: (details) {
-            final newX = (x + details.delta.dx / constraints.maxWidth).clamp(
-              0.0,
-              1.0,
-            );
-            final newY = (y + details.delta.dy / constraints.maxHeight).clamp(
-              0.0,
-              1.0,
-            );
-            _store.updatePosition(type, newX, newY);
-          },
-          child: MouseRegion(
-            cursor: SystemMouseCursors.move,
-            child: Container(
-              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.8),
-                  width: 1.5,
-                ),
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    const Shadow(
-                      color: Colors.black,
-                      blurRadius: 4,
-                      offset: Offset(1, 1),
-                    ),
-                  ],
-                ),
-                softWrap: true,
-                textAlign: type == 'requirements' || type == 'benefits'
-                    ? TextAlign.left
-                    : TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTikTokSafeZone() {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.symmetric(
-              vertical: BorderSide(
-                color: Colors.white.withValues(alpha: 0.02),
-                width: 20,
-              ),
-              horizontal: BorderSide(
-                color: Colors.white.withValues(alpha: 0.02),
-                width: 80,
-              ),
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 180,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.3),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  alignment: Alignment.bottomCenter,
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    "VÙNG TƯƠNG TÁC TIKTOK",
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: Colors.white.withValues(alpha: 0.2),
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: 60,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.2),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),
