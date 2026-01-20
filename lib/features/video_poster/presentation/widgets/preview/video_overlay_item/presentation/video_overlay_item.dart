@@ -37,6 +37,7 @@ class VideoOverlayItem extends StatefulWidget {
 
 class _VideoOverlayItemState extends State<VideoOverlayItem> {
   bool _isEditing = false;
+  bool _isHovered = false;
   late TextEditingController _controller;
   late FocusNode _focusNode;
 
@@ -71,12 +72,17 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
   void _startEditing() {
     setState(() => _isEditing = true);
     _focusNode.requestFocus();
+    // Professional touch: Auto-select all text on double click
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _controller.text.length,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Standardized accent color for editor UI
     const accentColor = Color(0xFF6366F1);
+    const hoverColor = Color(0xFF818CF8);
 
     return Positioned.fill(
       child: Align(
@@ -84,6 +90,10 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
         child: GestureDetector(
           onTap: () => widget.onSelect(widget.type),
           onDoubleTap: _startEditing,
+          onPanStart: (_) {
+            // Instant selection on pan start for seamlessness
+            if (!widget.isSelected) widget.onSelect(widget.type);
+          },
           onPanUpdate: (details) {
             if (_isEditing) return;
             final newX =
@@ -95,6 +105,8 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
             widget.onPositionUpdate(widget.type, newX, newY);
           },
           child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
             cursor: _isEditing
                 ? SystemMouseCursors.text
                 : SystemMouseCursors.move,
@@ -102,7 +114,9 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
               clipBehavior: Clip.none,
               children: [
                 // Main Content Box
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
                   constraints: BoxConstraints(
                     maxWidth: widget.constraints.maxWidth * 0.8,
                   ),
@@ -112,25 +126,39 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                   ),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: widget.isSelected ? accentColor : Colors.white24,
+                      color: widget.isSelected
+                          ? accentColor
+                          : (_isHovered
+                                ? hoverColor.withValues(alpha: 0.5)
+                                : Colors.white24),
                       width: widget.isSelected ? 2 : 1,
                     ),
-                    color: Colors.black45,
+                    color: Colors.black.withValues(
+                      alpha: _isHovered || widget.isSelected ? 0.6 : 0.4,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: widget.isSelected
                         ? [
                             BoxShadow(
                               color: accentColor.withValues(alpha: 0.3),
-                              blurRadius: 10,
+                              blurRadius: 12,
                             ),
                           ]
-                        : null,
+                        : (_isHovered
+                              ? [
+                                  BoxShadow(
+                                    color: hoverColor.withValues(alpha: 0.1),
+                                    blurRadius: 6,
+                                  ),
+                                ]
+                              : null),
                   ),
                   child: _isEditing
                       ? IntrinsicWidth(
                           child: TextField(
                             controller: _controller,
                             focusNode: _focusNode,
+                            autofocus: true,
                             style: TextStyle(
                               color: widget.color,
                               fontSize: widget.fontSize,
@@ -182,11 +210,12 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                 // Resize Handle
                 if (widget.isSelected && !_isEditing)
                   Positioned(
-                    right: -10,
-                    bottom: -10,
+                    right: -15, // Larger hit area
+                    bottom: -15,
                     child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onPanUpdate: (details) {
-                        // Horizontal drag increases size
+                        // Smooth resizing logic using diagonal distance
                         final delta = details.delta.dx + details.delta.dy;
                         widget.onResize(
                           widget.type,
@@ -194,15 +223,27 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                         );
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.open_in_full_rounded,
-                          size: 14,
-                          color: Colors.white,
+                        padding: const EdgeInsets.all(
+                          8,
+                        ), // Padding for hit area
+                        color: Colors.transparent,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.open_in_full_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -211,23 +252,34 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                 // Selection Label (Type)
                 if (widget.isSelected && !_isEditing)
                   Positioned(
-                    top: -22,
+                    top: -24,
                     left: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        widget.type.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: widget.isSelected ? 1.0 : 0.0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          widget.type.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
