@@ -33,7 +33,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
       ),
       child: CallbackShortcuts(
         bindings: {
-          const SingleActivator(LogicalKeyboardKey.space): () {
+          const SingleActivator(LogicalKeyboardKey.space, control: true): () {
             if (store.player.state.position >= store.player.state.duration &&
                 store.player.state.duration > Duration.zero) {
               store.player.seek(Duration.zero);
@@ -60,26 +60,29 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                       _buildUnifiedNavBar(),
 
                       // 3. LEFT TOOLS PANEL (PERMANENT OR FOCUS-HIDDEN)
-                      Observer(builder: (_) {
-                        if (!store.isFocusMode) {
-                          return SizedBox(
-                            width: 300,
-                            child: store.activeNavIndex == 0
-                                ? JobHubPanel(
-                                  store: store.creationStore,
-                                  searchController: store.jobSearchController,
-                                  onJobSelected:
-                                      store.updatePosterDataFromControllers,
-                                )
-                              : MediaLibraryPanel(
-                                  store: store,
-                                  onVideoTap: store.playVideo,
-                                  onVideosChanged: store.syncPlaylist,
-                                ),
-                        );
-                        }
-                        return const SizedBox.shrink();
-                      }),
+                      Observer(
+                        builder: (_) {
+                          if (!store.isFocusMode) {
+                            return SizedBox(
+                              width: 300,
+                              child: store.activeNavIndex == 0
+                                  ? JobHubPanel(
+                                      store: store.creationStore,
+                                      searchController:
+                                          store.jobSearchController,
+                                      onJobSelected:
+                                          store.updatePosterDataFromControllers,
+                                    )
+                                  : MediaLibraryPanel(
+                                      store: store,
+                                      onVideoTap: store.playVideo,
+                                      onVideosChanged: store.syncPlaylist,
+                                    ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
 
                       // 4. MAIN WORKSPACE (AUTO SCALING)
                       Observer(
@@ -95,7 +98,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                          
+
                                 // FLOATING PLAYER CONTROLS (OVER VIDEO)
                                 Positioned(
                                   bottom: 40,
@@ -106,12 +109,13 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                                       isPlaying: store.isPlaying,
                                       position: store.position,
                                       duration: store.duration,
-                                      onPlayPause: () => store.player.playOrPause(),
+                                      onPlayPause: () =>
+                                          store.player.playOrPause(),
                                       onSeek: (v) => store.player.seek(v),
                                     ),
                                   ),
                                 ),
-                          
+
                                 // STATUS OVERLAY
                                 Positioned(
                                   top: 20,
@@ -127,7 +131,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               ],
                             ),
                           );
-                        }
+                        },
                       ),
 
                       // 5. RIGHT PROPERTIES PANEL (PERMANENT OR FOCUS-HIDDEN)
@@ -339,7 +343,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
   Widget _buildNavIcon(int index, IconData icon, String label) {
     return Observer(
       builder: (context) {
-            bool active = (store.activeNavIndex == index);
+        bool active = (store.activeNavIndex == index);
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: InkWell(
@@ -347,11 +351,13 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
             child: Column(
               children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),  
+                  duration: const Duration(milliseconds: 200),
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: active ? const Color(0xFF6366F1) : Colors.transparent,
+                    color: active
+                        ? const Color(0xFF6366F1)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -374,7 +380,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
             ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -617,10 +623,13 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                     child: Observer(
                       builder: (context) {
                         final posterData = store.selectedPosterData;
+                        if (posterData == null) {
+                          return const SizedBox.shrink();
+                        }
                         return Stack(
                           children: [
                             VideoOverlayItem(
-                              label: posterData?.jobTitle ?? "",
+                              label: posterData.jobTitle,
                               x: store.titleX,
                               y: store.titleY,
                               type: 'title',
@@ -640,8 +649,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  "🏢 ${posterData?.companyName ?? ""}",
+                              label: "🏢 ${posterData?.companyName ?? ""}",
                               x: store.companyX,
                               y: store.companyY,
                               type: 'company',
@@ -651,8 +659,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  "📍 ${posterData?.location ?? ""}",
+                              label: "📍 ${posterData?.location ?? ""}",
                               x: store.locationX,
                               y: store.locationY,
                               type: 'location',
@@ -662,10 +669,9 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  posterData?.requirements.isNotEmpty == true
-                                      ? "📋 YÊU CẦU:\\n${posterData!.requirements.map((e) => "• $e").join("\\n")}"
-                                      : "",
+                              label: posterData?.requirements.isNotEmpty == true
+                                  ? "📋 YÊU CẦU:\\n${posterData!.requirements.map((e) => "• $e").join("\\n")}"
+                                  : "",
                               x: store.requirementsX,
                               y: store.requirementsY,
                               type: 'requirements',
@@ -675,10 +681,9 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  posterData?.benefits.isNotEmpty == true
-                                      ? "🎁 QUYỀN LỢI:\\n${posterData!.benefits.map((e) => "• $e").join("\\n")}"
-                                      : "",
+                              label: posterData?.benefits.isNotEmpty == true
+                                  ? "🎁 QUYỀN LỢI:\\n${posterData!.benefits.map((e) => "• $e").join("\\n")}"
+                                  : "",
                               x: store.benefitsX,
                               y: store.benefitsY,
                               type: 'benefits',
@@ -688,8 +693,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  "📞 ${posterData?.contactInfo ?? ""}",
+                              label: "📞 ${posterData?.contactInfo ?? ""}",
                               x: store.contactX,
                               y: store.contactY,
                               type: 'contact',
@@ -699,8 +703,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label:
-                                  posterData?.catchyHeadline ?? "",
+                              label: posterData?.catchyHeadline ?? "",
                               x: store.headlineX,
                               y: store.headlineY,
                               type: 'headline',
@@ -711,7 +714,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                             ),
                           ],
                         );
-                      }
+                      },
                     ),
                   ),
 
