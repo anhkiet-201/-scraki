@@ -110,6 +110,27 @@ abstract class _VideoPosterStore with Store {
   double headlineY = 0.08;
 
   @observable
+  String? selectedOverlayType;
+
+  // --- Per-overlay Font Sizes (Standardized 720p base) ---
+  @observable
+  double titleFontSize = 48;
+  @observable
+  double salaryFontSize = 38;
+  @observable
+  double companyFontSize = 32;
+  @observable
+  double locationFontSize = 28;
+  @observable
+  double requirementsFontSize = 26;
+  @observable
+  double benefitsFontSize = 26;
+  @observable
+  double contactFontSize = 30;
+  @observable
+  double headlineFontSize = 40;
+
+  @observable
   double saturation = 1.2;
   @observable
   double contrast = 1.0;
@@ -434,6 +455,71 @@ abstract class _VideoPosterStore with Store {
   @action
   void toggleFocusMode() {
     isFocusMode = !isFocusMode;
+  }
+
+  /// Select an overlay type for editing
+  @action
+  void setSelectedOverlayType(String? type) {
+    selectedOverlayType = type;
+  }
+
+  /// Update font size for a specific overlay
+  @action
+  void updateFontSize(String type, double newSize) {
+    // Clamp to reasonable limits
+    final size = newSize.clamp(12.0, 120.0);
+    switch (type) {
+      case 'title':
+        titleFontSize = size;
+        break;
+      case 'salary':
+        salaryFontSize = size;
+        break;
+      case 'company':
+        companyFontSize = size;
+        break;
+      case 'location':
+        locationFontSize = size;
+        break;
+      case 'requirements':
+        requirementsFontSize = size;
+        break;
+      case 'benefits':
+        benefitsFontSize = size;
+        break;
+      case 'contact':
+        contactFontSize = size;
+        break;
+      case 'headline':
+        headlineFontSize = size;
+        break;
+    }
+  }
+
+  /// Update text content from canvas editing
+  @action
+  void updateTextContent(String type, String value) {
+    switch (type) {
+      case 'title':
+        titleController.text = value;
+        break;
+      case 'salary':
+        salaryController.text = value;
+        break;
+      case 'company':
+        companyController.text = value;
+        break;
+      case 'location':
+        locationController.text = value;
+        break;
+      case 'contact':
+        contactController.text = value;
+        break;
+      case 'headline':
+        headlineController.text = value;
+        break;
+    }
+    updatePosterDataFromControllers();
   }
 
   /// Update poster data from form controllers

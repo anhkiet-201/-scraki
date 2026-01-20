@@ -366,6 +366,172 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$selectedOverlayTypeAtom = Atom(
+    name: '_VideoPosterStore.selectedOverlayType',
+    context: context,
+  );
+
+  @override
+  String? get selectedOverlayType {
+    _$selectedOverlayTypeAtom.reportRead();
+    return super.selectedOverlayType;
+  }
+
+  @override
+  set selectedOverlayType(String? value) {
+    _$selectedOverlayTypeAtom.reportWrite(value, super.selectedOverlayType, () {
+      super.selectedOverlayType = value;
+    });
+  }
+
+  late final _$titleFontSizeAtom = Atom(
+    name: '_VideoPosterStore.titleFontSize',
+    context: context,
+  );
+
+  @override
+  double get titleFontSize {
+    _$titleFontSizeAtom.reportRead();
+    return super.titleFontSize;
+  }
+
+  @override
+  set titleFontSize(double value) {
+    _$titleFontSizeAtom.reportWrite(value, super.titleFontSize, () {
+      super.titleFontSize = value;
+    });
+  }
+
+  late final _$salaryFontSizeAtom = Atom(
+    name: '_VideoPosterStore.salaryFontSize',
+    context: context,
+  );
+
+  @override
+  double get salaryFontSize {
+    _$salaryFontSizeAtom.reportRead();
+    return super.salaryFontSize;
+  }
+
+  @override
+  set salaryFontSize(double value) {
+    _$salaryFontSizeAtom.reportWrite(value, super.salaryFontSize, () {
+      super.salaryFontSize = value;
+    });
+  }
+
+  late final _$companyFontSizeAtom = Atom(
+    name: '_VideoPosterStore.companyFontSize',
+    context: context,
+  );
+
+  @override
+  double get companyFontSize {
+    _$companyFontSizeAtom.reportRead();
+    return super.companyFontSize;
+  }
+
+  @override
+  set companyFontSize(double value) {
+    _$companyFontSizeAtom.reportWrite(value, super.companyFontSize, () {
+      super.companyFontSize = value;
+    });
+  }
+
+  late final _$locationFontSizeAtom = Atom(
+    name: '_VideoPosterStore.locationFontSize',
+    context: context,
+  );
+
+  @override
+  double get locationFontSize {
+    _$locationFontSizeAtom.reportRead();
+    return super.locationFontSize;
+  }
+
+  @override
+  set locationFontSize(double value) {
+    _$locationFontSizeAtom.reportWrite(value, super.locationFontSize, () {
+      super.locationFontSize = value;
+    });
+  }
+
+  late final _$requirementsFontSizeAtom = Atom(
+    name: '_VideoPosterStore.requirementsFontSize',
+    context: context,
+  );
+
+  @override
+  double get requirementsFontSize {
+    _$requirementsFontSizeAtom.reportRead();
+    return super.requirementsFontSize;
+  }
+
+  @override
+  set requirementsFontSize(double value) {
+    _$requirementsFontSizeAtom.reportWrite(
+      value,
+      super.requirementsFontSize,
+      () {
+        super.requirementsFontSize = value;
+      },
+    );
+  }
+
+  late final _$benefitsFontSizeAtom = Atom(
+    name: '_VideoPosterStore.benefitsFontSize',
+    context: context,
+  );
+
+  @override
+  double get benefitsFontSize {
+    _$benefitsFontSizeAtom.reportRead();
+    return super.benefitsFontSize;
+  }
+
+  @override
+  set benefitsFontSize(double value) {
+    _$benefitsFontSizeAtom.reportWrite(value, super.benefitsFontSize, () {
+      super.benefitsFontSize = value;
+    });
+  }
+
+  late final _$contactFontSizeAtom = Atom(
+    name: '_VideoPosterStore.contactFontSize',
+    context: context,
+  );
+
+  @override
+  double get contactFontSize {
+    _$contactFontSizeAtom.reportRead();
+    return super.contactFontSize;
+  }
+
+  @override
+  set contactFontSize(double value) {
+    _$contactFontSizeAtom.reportWrite(value, super.contactFontSize, () {
+      super.contactFontSize = value;
+    });
+  }
+
+  late final _$headlineFontSizeAtom = Atom(
+    name: '_VideoPosterStore.headlineFontSize',
+    context: context,
+  );
+
+  @override
+  double get headlineFontSize {
+    _$headlineFontSizeAtom.reportRead();
+    return super.headlineFontSize;
+  }
+
+  @override
+  set headlineFontSize(double value) {
+    _$headlineFontSizeAtom.reportWrite(value, super.headlineFontSize, () {
+      super.headlineFontSize = value;
+    });
+  }
+
   late final _$saturationAtom = Atom(
     name: '_VideoPosterStore.saturation',
     context: context,
@@ -958,6 +1124,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setSelectedOverlayType(String? type) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setSelectedOverlayType',
+    );
+    try {
+      return super.setSelectedOverlayType(type);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateFontSize(String type, double newSize) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateFontSize',
+    );
+    try {
+      return super.updateFontSize(type, newSize);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateTextContent(String type, String value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateTextContent',
+    );
+    try {
+      return super.updateTextContent(type, value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void updatePosterDataFromControllers() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updatePosterDataFromControllers',
@@ -1027,6 +1229,15 @@ contactX: ${contactX},
 contactY: ${contactY},
 headlineX: ${headlineX},
 headlineY: ${headlineY},
+selectedOverlayType: ${selectedOverlayType},
+titleFontSize: ${titleFontSize},
+salaryFontSize: ${salaryFontSize},
+companyFontSize: ${companyFontSize},
+locationFontSize: ${locationFontSize},
+requirementsFontSize: ${requirementsFontSize},
+benefitsFontSize: ${benefitsFontSize},
+contactFontSize: ${contactFontSize},
+headlineFontSize: ${headlineFontSize},
 saturation: ${saturation},
 contrast: ${contrast},
 playbackSpeed: ${playbackSpeed},
