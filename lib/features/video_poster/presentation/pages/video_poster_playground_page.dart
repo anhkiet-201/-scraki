@@ -610,9 +610,13 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   // Video Preview
-                  Video(
-                    controller: store.videoController,
-                    controls: (state) => const SizedBox.shrink(),
+                  Observer(
+                    builder: (context) {
+                      return Video(
+                        controller: store.videoController,
+                        controls: (state) => const SizedBox.shrink(),
+                      );
+                    }
                   ),
 
                   // TikTok Safe Zone Visualization
@@ -639,7 +643,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: posterData?.salaryRange ?? "",
+                              label: posterData.salaryRange,
                               x: store.salaryX,
                               y: store.salaryY,
                               type: 'salary',
@@ -649,7 +653,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: "🏢 ${posterData?.companyName ?? ""}",
+                              label: "🏢 ${posterData.companyName}",
                               x: store.companyX,
                               y: store.companyY,
                               type: 'company',
@@ -659,7 +663,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: "📍 ${posterData?.location ?? ""}",
+                              label: "📍 ${posterData.location}",
                               x: store.locationX,
                               y: store.locationY,
                               type: 'location',
@@ -669,8 +673,8 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: posterData?.requirements.isNotEmpty == true
-                                  ? "📋 YÊU CẦU:\\n${posterData!.requirements.map((e) => "• $e").join("\\n")}"
+                              label: posterData.requirements.isNotEmpty == true
+                                  ? "📋 YÊU CẦU:\\n${posterData.requirements.map((e) => "• $e").join("\\n")}"
                                   : "",
                               x: store.requirementsX,
                               y: store.requirementsY,
@@ -681,8 +685,8 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: posterData?.benefits.isNotEmpty == true
-                                  ? "🎁 QUYỀN LỢI:\\n${posterData!.benefits.map((e) => "• $e").join("\\n")}"
+                              label: posterData.benefits.isNotEmpty == true
+                                  ? "🎁 QUYỀN LỢI:\\n${posterData.benefits.map((e) => "• $e").join("\\n")}"
                                   : "",
                               x: store.benefitsX,
                               y: store.benefitsY,
@@ -693,7 +697,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: "📞 ${posterData?.contactInfo ?? ""}",
+                              label: "📞 ${posterData.contactInfo}",
                               x: store.contactX,
                               y: store.contactY,
                               type: 'contact',
@@ -703,7 +707,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                               onPositionUpdate: store.updatePosition,
                             ),
                             VideoOverlayItem(
-                              label: posterData?.catchyHeadline ?? "",
+                              label: posterData.catchyHeadline ?? "",
                               x: store.headlineX,
                               y: store.headlineY,
                               type: 'headline',
