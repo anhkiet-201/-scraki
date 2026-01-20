@@ -16,6 +16,8 @@ import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 
 import 'dart:async';
 import 'dart:ui';
@@ -266,8 +268,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                         SizedBox(
                           width: 300,
                           child: _activeNavIndex == 0
-                              ? _buildJobHubPanel()
-                              : _buildMediaLibraryPanel(),
+                              ? JobHubPanel(
+                                  store: _creationStore,
+                                  searchController: _jobSearchController,
+                                  onJobSelected: _updatePosterData,
+                                )
+                              : MediaLibraryPanel(
+                                  store: _store,
+                                  onVideoTap: _playVideo,
+                                  onVideosChanged: _syncPlaylist,
+                                ),
                         ),
                         const VerticalDivider(width: 1, color: Colors.white10),
                       ],
@@ -572,165 +582,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildJobHubPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "CÔNG VIỆC",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                onPressed: () => _creationStore.loadAvailableJobs(),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          child: TextField(
-            controller: _jobSearchController,
-            onSubmitted: (v) => _creationStore.searchJobs(v),
-            style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              hintText: "Tìm kiếm công việc...",
-              hintStyle: const TextStyle(color: Colors.white24),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                size: 18,
-                color: Colors.white24,
-              ),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
-        const Divider(height: 1, color: Colors.white10),
-        Expanded(
-          child: Observer(
-            builder: (_) {
-              if (_creationStore.isLoading &&
-                  _creationStore.availableJobs.isEmpty) {
-                return const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                );
-              }
-              return Stack(
-                children: [
-                  ListView.builder(
-                    itemCount: _creationStore.availableJobs.length,
-                    itemBuilder: (context, index) {
-                      final job = _creationStore.availableJobs[index];
-                      return ListTile(
-                        dense: true,
-                        title: Text(
-                          job.jobTitle,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "${job.companyName} • ${job.salaryRange}",
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white38,
-                          ),
-                        ),
-                        onTap: () {
-                          _creationStore.selectJob(job);
-                          _updatePosterData();
-                        },
-                      );
-                    },
-                  ),
-                  if (_creationStore.isLoading &&
-                      _creationStore.availableJobs.isNotEmpty)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black26,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMediaLibraryPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            "TÀI NGUYÊN",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-        const Divider(height: 1, color: Colors.white10),
-        Expanded(
-          child: DropTarget(
-            onDragDone: (details) {
-              final paths = details.files.map((e) => e.path).toList();
-              _store.addSourceVideos(paths);
-              _syncPlaylist();
-            },
-            child: Observer(
-              builder: (_) => ListView.builder(
-                itemCount: _store.sourceVideoPaths.length,
-                itemBuilder: (context, index) {
-                  final path = _store.sourceVideoPaths[index];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.movie_outlined, size: 16),
-                    title: Text(
-                      path.split('/').last,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                    onTap: () => _playVideo(path),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close, size: 14),
-                      onPressed: () => _store.removeSourceVideo(index),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
