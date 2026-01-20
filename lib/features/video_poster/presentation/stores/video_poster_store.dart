@@ -552,6 +552,13 @@ abstract class _VideoPosterStore with Store {
   @action
   Future<Uint8List> capturePreviewAsPng() async {
     try {
+      // Deselect all overlays to hide handles/borders before capture
+      final previousSelection = selectedOverlayType;
+      setSelectedOverlayType(null);
+
+      // Wait for UI to update and remove handles
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
       final boundary =
           previewKey.currentContext!.findRenderObject()
               as RenderRepaintBoundary;
@@ -562,6 +569,10 @@ abstract class _VideoPosterStore with Store {
 
       final image = await boundary.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      // Restore previous selection after capture
+      setSelectedOverlayType(previousSelection);
+
       return byteData!.buffer.asUint8List();
     } catch (e) {
       debugPrint('Error capturing preview: $e');

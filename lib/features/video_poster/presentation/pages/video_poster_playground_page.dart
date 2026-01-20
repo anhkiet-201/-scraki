@@ -8,7 +8,7 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_text_field.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/modern_slider.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok_safe_zone.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/presentation/video_overlay_item.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/video_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub_panel.dart';
