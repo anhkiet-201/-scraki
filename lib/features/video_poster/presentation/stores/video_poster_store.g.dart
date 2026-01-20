@@ -9,6 +9,21 @@ part of 'video_poster_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoPosterStore on _VideoPosterStore, Store {
+  Computed<Duration>? _$totalDurationComputed;
+
+  @override
+  Duration get totalDuration => (_$totalDurationComputed ??= Computed<Duration>(
+    () => super.totalDuration,
+    name: '_VideoPosterStore.totalDuration',
+  )).value;
+  Computed<Duration>? _$totalPositionComputed;
+
+  @override
+  Duration get totalPosition => (_$totalPositionComputed ??= Computed<Duration>(
+    () => super.totalPosition,
+    name: '_VideoPosterStore.totalPosition',
+  )).value;
+
   late final _$sourceVideoPathsAtom = Atom(
     name: '_VideoPosterStore.sourceVideoPaths',
     context: context,
@@ -585,6 +600,46 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$clipDurationsAtom = Atom(
+    name: '_VideoPosterStore.clipDurations',
+    context: context,
+  );
+
+  @override
+  ObservableList<Duration> get clipDurations {
+    _$clipDurationsAtom.reportRead();
+    return super.clipDurations;
+  }
+
+  @override
+  set clipDurations(ObservableList<Duration> value) {
+    _$clipDurationsAtom.reportWrite(value, super.clipDurations, () {
+      super.clipDurations = value;
+    });
+  }
+
+  late final _$currentPlaylistIndexAtom = Atom(
+    name: '_VideoPosterStore.currentPlaylistIndex',
+    context: context,
+  );
+
+  @override
+  int get currentPlaylistIndex {
+    _$currentPlaylistIndexAtom.reportRead();
+    return super.currentPlaylistIndex;
+  }
+
+  @override
+  set currentPlaylistIndex(int value) {
+    _$currentPlaylistIndexAtom.reportWrite(
+      value,
+      super.currentPlaylistIndex,
+      () {
+        super.currentPlaylistIndex = value;
+      },
+    );
+  }
+
   late final _$isPlayingAtom = Atom(
     name: '_VideoPosterStore.isPlaying',
     context: context,
@@ -649,6 +704,16 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     return _$capturePreviewAsPngAsyncAction.run(
       () => super.capturePreviewAsPng(),
     );
+  }
+
+  late final _$seekTimelineAsyncAction = AsyncAction(
+    '_VideoPosterStore.seekTimeline',
+    context: context,
+  );
+
+  @override
+  Future<void> seekTimeline(Duration target) {
+    return _$seekTimelineAsyncAction.run(() => super.seekTimeline(target));
   }
 
   late final _$handleExportVideoAsyncAction = AsyncAction(
@@ -881,6 +946,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void playVideoAtIndex(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.playVideoAtIndex',
+    );
+    try {
+      return super.playVideoAtIndex(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void playVideo(String path) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.playVideo',
@@ -927,9 +1004,13 @@ locationY: ${locationY},
 thumbnails: ${thumbnails},
 duration: ${duration},
 position: ${position},
+clipDurations: ${clipDurations},
+currentPlaylistIndex: ${currentPlaylistIndex},
 isPlaying: ${isPlaying},
 activeNavIndex: ${activeNavIndex},
-isFocusMode: ${isFocusMode}
+isFocusMode: ${isFocusMode},
+totalDuration: ${totalDuration},
+totalPosition: ${totalPosition}
     ''';
   }
 }

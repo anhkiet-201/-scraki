@@ -12,7 +12,7 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 /// - Video selection callback
 class MediaLibraryPanel extends StatelessWidget {
   final VideoPosterStore store;
-  final ValueChanged<String> onVideoTap;
+  final ValueChanged<int> onVideoTap;
   final VoidCallback onVideosChanged;
 
   const MediaLibraryPanel({
@@ -50,19 +50,40 @@ class MediaLibraryPanel extends StatelessWidget {
               builder: (_) => ListView.builder(
                 itemCount: store.sourceVideoPaths.length,
                 itemBuilder: (context, index) {
-                  final path = store.sourceVideoPaths[index];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.movie_outlined, size: 16),
-                    title: Text(
-                      path.split('/').last,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                    onTap: () => onVideoTap(path),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close, size: 14),
-                      onPressed: () => store.removeSourceVideo(index),
-                    ),
+                  return Observer(
+                    builder: (context) {
+                      final path = store.sourceVideoPaths[index];
+                      final isPlaying = index == store.currentPlaylistIndex;
+                      return ListTile(
+                        dense: true,
+                        selected: isPlaying,
+                        selectedTileColor: Colors.white.withValues(alpha: 0.1),
+                        leading: Icon(
+                          Icons.movie_outlined,
+                          size: 16,
+                          color: isPlaying
+                              ? Colors.greenAccent
+                              : Colors.white70,
+                        ),
+                        title: Text(
+                          path.split('/').last,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isPlaying
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isPlaying
+                                ? Colors.greenAccent
+                                : Colors.white,
+                          ),
+                        ),
+                        onTap: () => onVideoTap(index),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 14),
+                          onPressed: () => store.removeSourceVideo(index),
+                        ),
+                      );
+                    },
                   );
                 },
               ),

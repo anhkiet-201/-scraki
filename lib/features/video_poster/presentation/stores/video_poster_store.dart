@@ -374,9 +374,9 @@ abstract class _VideoPosterStore with Store {
     _rateSub = player.stream.rate.listen(
       (r) => runInAction(() => playbackSpeed = r),
     );
-    _playlistSub = player.stream.playlist.listen(
-      (p) => runInAction(() => currentPlaylistIndex = p.index),
-    );
+    _playlistSub = player.stream.playlist.listen((p) {
+      runInAction(() => currentPlaylistIndex = p.index);
+    });
 
     // Initial updates
     updatePosterDataFromControllers();
@@ -511,7 +511,7 @@ abstract class _VideoPosterStore with Store {
             () async {
               await player.jump(i);
               // Wait briefly for player to catch up after jump
-              await Future.delayed(const Duration(milliseconds: 50));
+              await Future<void>.delayed(const Duration(milliseconds: 50));
               await player.seek(seekPos);
             },
           );
@@ -537,18 +537,35 @@ abstract class _VideoPosterStore with Store {
   @action
   void syncPlaylist() {
     if (sourceVideoPaths.isEmpty) return;
+
+    // Preserve current index if it's still valid
+    int savedIndex = currentPlaylistIndex;
+    if (savedIndex >= sourceVideoPaths.length) {
+      savedIndex = 0;
+    }
+
+    debugPrint('syncPlaylist: opening playlist with index $savedIndex');
     final medias = sourceVideoPaths.map((p) => Media(p)).toList();
-    player.open(Playlist(medias));
+    player.open(Playlist(medias, index: savedIndex));
     player.pause();
   }
 
   /// Play specific video by path
   @action
+  void playVideoAtIndex(int index) {
+    if (index >= 0 && index < sourceVideoPaths.length) {
+      currentPlaylistIndex = index; // Optimistic update
+      player.jump(index);
+      player.play();
+    }
+  }
+
+  /// Play specific video by path (Deprecated, finds first occurrence)
+  @action
   void playVideo(String path) {
     final index = sourceVideoPaths.indexOf(path);
     if (index != -1) {
-      player.jump(index);
-      player.play();
+      playVideoAtIndex(index);
     } else {
       player.open(Media(path));
       player.play();

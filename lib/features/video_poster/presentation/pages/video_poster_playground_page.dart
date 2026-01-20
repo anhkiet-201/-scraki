@@ -75,7 +75,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
                                     )
                                   : MediaLibraryPanel(
                                       store: store,
-                                      onVideoTap: store.playVideo,
+                                      onVideoTap: store.playVideoAtIndex,
                                       onVideosChanged: store.syncPlaylist,
                                     ),
                             );
