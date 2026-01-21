@@ -32,22 +32,36 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       throw Exception('No input videos selected');
     }
 
-    // Check for audio streams
-    bool hasAudio = false;
+    // 1. Probe all inputs for Audio and Duration
+    List<double> inputDurations = [];
+    List<bool> inputHasAudio = [];
+    double totalInputDuration = 0;
 
-    // Attempt to find ffprobe: assume it's in the same directory as ffmpeg
+    // Attempt to find ffprobe
     final ffmpegDir = File(ffmpegPath).parent.path;
     final ffprobePath = '$ffmpegDir/ffprobe';
+    final ffprobeExecutable = await File(ffprobePath).exists()
+        ? ffprobePath
+        : 'ffprobe';
 
-    // Check first video for audio (simplification)
-    if (composition.sourceVideoPaths.isNotEmpty) {
+    for (final path in composition.sourceVideoPaths) {
+      double dur = 5.0; // default
+      bool hasIdxAudio = false;
       try {
-        // Fallback to just 'ffprobe' if constructed path doesn't exist (though usually it does)
-        final executable = await File(ffprobePath).exists()
-            ? ffprobePath
-            : 'ffprobe';
+        // Probe duration
+        final durResult = await Process.run(ffprobeExecutable, [
+          '-v',
+          'error',
+          '-show_entries',
+          'format=duration',
+          '-of',
+          'default=noprint_wrappers=1:nokey=1',
+          path,
+        ]).timeout(const Duration(seconds: 2));
+        dur = double.tryParse(durResult.stdout.toString().trim()) ?? 5.0;
 
-        final audioProbe = await Process.run(executable, [
+        // Probe audio stream
+        final audResult = await Process.run(ffprobeExecutable, [
           '-v',
           'error',
           '-select_streams',
@@ -56,51 +70,18 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
           'stream=codec_name',
           '-of',
           'default=noprint_wrappers=1:nokey=1',
-          composition.sourceVideoPaths.first,
-        ]).timeout(const Duration(seconds: 5));
-
-        hasAudio = audioProbe.stdout.toString().trim().isNotEmpty;
-      } catch (e) {
-        debugPrint('Warning: Failed to probe audio: $e. Assuming no audio.');
-        hasAudio = false;
-      }
-    }
-
-    // Recalculate duration to be safe (previous logic relied on ffprobe too)
-    // We should safely calculate duration as well.
-
-    // Calculate total duration to handle 15s minimum
-    double totalInputDuration = 0;
-    try {
-      final executable = await File(ffprobePath).exists()
-          ? ffprobePath
-          : 'ffprobe';
-      for (final path in composition.sourceVideoPaths) {
-        final probe = await Process.run(executable, [
-          '-v',
-          'error',
-          '-show_entries',
-          'format=duration',
-          '-of',
-          'default=noprint_wrappers=1:nokey=1',
           path,
-        ]).timeout(const Duration(seconds: 5));
-
-        final dur = double.tryParse(probe.stdout.toString().trim()) ?? 0;
-        totalInputDuration += dur;
+        ]).timeout(const Duration(seconds: 2));
+        hasIdxAudio = audResult.stdout.toString().trim().isNotEmpty;
+      } catch (e) {
+        debugPrint('Probe failed for $path: $e');
       }
-    } catch (e) {
-      debugPrint(
-        'Warning: Failed to probe duration: $e. Using fallback duration.',
-      );
-      // If probe fails, we can't easily guess duration.
-      // Default to 15s if everything fails, or user provided targetDuration?
-      // Let's assume 5s per clip as fallback
-      totalInputDuration = composition.sourceVideoPaths.length * 5.0;
+      inputDurations.add(dur);
+      inputHasAudio.add(hasIdxAudio);
+      totalInputDuration += dur;
     }
 
-    // If target duration is set in config (e.g. from Anti-Reup service), use it.
-    // Otherwise, ensure at least 15s duration.
+    // Determine target duration and loop count
     final double finalDuration;
     if (composition.antiReupConfig.targetDuration != null) {
       finalDuration = composition.antiReupConfig.targetDuration!;
@@ -108,18 +89,18 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       finalDuration = totalInputDuration < 15.0 ? 15.0 : totalInputDuration;
     }
 
+    // Safety check just in case totalInputDuration is 0
+    if (totalInputDuration <= 0) totalInputDuration = 15.0;
+
     final loopCount = (finalDuration / totalInputDuration).ceil();
 
-    // Save overlay PNG to temp file
+    // Setup Temp Overlay ... (omitted, assuming existing code is fine, verified in diff)
     final tempDir = await getTemporaryDirectory();
-
     final overlayFile = File('${tempDir.path}/overlay_${composition.id}.png');
-
     try {
       if (!tempDir.existsSync()) {
         tempDir.createSync(recursive: true);
       }
-
       if (overlayFile.existsSync()) {
         overlayFile.deleteSync();
       }
@@ -129,10 +110,10 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       throw Exception('Failed to write overlay: $e');
     }
 
-    // Build FFmpeg arguments
+    // Build FFmpeg Inputs
     final List<String> inputs = [];
 
-    // Add all source videos (looped if needed)
+    // Source videos are repeated by loopCount
     for (int i = 0; i < loopCount; i++) {
       for (final videoPath in composition.sourceVideoPaths) {
         inputs.add('-i');
@@ -140,63 +121,102 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       }
     }
 
-    // Add overlay PNG as input
     inputs.add('-i');
-    inputs.add(overlayFile.path);
+    inputs.add(overlayFile.path); // Overlay is input N (where N = totalVideos)
 
-    // Build filter complex
     final int totalVideos = composition.sourceVideoPaths.length * loopCount;
     final int overlayInputIndex = totalVideos;
 
-    // Standardize all input videos to 1080x1920 (1080p Vertical)
-    String scalingFilters = '';
+    // Check if we need audio handling
+    // If ANY input has audio, we should output audio.
+    // If an input lacks audio, we must fill it with silence.
+    final bool globalHasAudio = inputHasAudio.contains(true);
+
+    // Calculate how many silent segments we need
+    int silenceNeededCount = 0;
+    if (globalHasAudio) {
+      for (int i = 0; i < loopCount; i++) {
+        for (bool hasA in inputHasAudio) {
+          if (!hasA) silenceNeededCount++;
+        }
+      }
+    }
+
+    // If we need silence, add anullsrc as an extra input
+    int silenceInputIndex = -1;
+    if (silenceNeededCount > 0) {
+      inputs.add('-f');
+      inputs.add('lavfi');
+      inputs.add('-i');
+      inputs.add('anullsrc=cl=stereo:r=44100');
+      silenceInputIndex = totalVideos + 1; // After overlay
+    }
+
+    // --- Filter Complex Construction ---
+    String filterComplex = '';
+
+    // 1. Scale all video inputs
     for (int i = 0; i < totalVideos; i++) {
-      scalingFilters +=
+      filterComplex +=
           '[$i:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[v$i];';
     }
+
+    // 2. Prepare Audio (Split silence if needed)
+    if (silenceNeededCount > 0 && silenceInputIndex != -1) {
+      // Split the single anullsrc input into N streams: [s0][s1]...
+      String splits = '';
+      for (int s = 0; s < silenceNeededCount; s++) splits += '[sil_raw$s]';
+      filterComplex +=
+          '[$silenceInputIndex:a]asplit=$silenceNeededCount$splits;';
+    }
+
+    // 3. Concat Preparation
+    String concatFilter = '';
+    int currentSilenceIndex = 0;
+
+    // Flatten the loop into a linear sequence for filter mapping
+    for (int i = 0; i < loopCount; i++) {
+      for (int j = 0; j < composition.sourceVideoPaths.length; j++) {
+        int streamIndex = (i * composition.sourceVideoPaths.length) + j;
+
+        // Video always exists
+        concatFilter += '[v$streamIndex]';
+
+        if (globalHasAudio) {
+          if (inputHasAudio[j]) {
+            // Use original audio
+            concatFilter += '[$streamIndex:a]';
+          } else {
+            // Use generated silence
+            // Trim silence to match video duration
+            double dur = inputDurations[j];
+            // [sil_rawX] -> atrim -> [a_segX]
+            filterComplex +=
+                '[sil_raw$currentSilenceIndex]atrim=duration=$dur,asetpts=PTS-STARTPTS[a_seg$streamIndex];';
+            concatFilter += '[a_seg$streamIndex]';
+            currentSilenceIndex++;
+          }
+        }
+      }
+    }
+
+    // 4. Concat Command
+    final audioOut = globalHasAudio ? 'a=1' : 'a=0';
+    final audioLabel = globalHasAudio ? '[aconcat]' : '';
+    concatFilter += 'concat=n=$totalVideos:v=1:$audioOut[vconcat]$audioLabel;';
+
+    filterComplex += concatFilter;
+
+    // ... Rest of the filter chain (Service, Overlay, Trim) ...
 
     // Video composition settings
     final compositionContrast = composition.contrast;
     final compositionSaturation = composition.saturation * 2;
 
-    // Service for Anti-Reup filters
-    // Ideally injected, but instantiated here for quick integration without running build_runner yet
+    // Reuse Service Code (injected) - Ensure we define antiReupService
     final antiReupService = GetIt.I<AntiReupService>();
     final (antiReupVideoFilters, antiReupAudioFilters) = antiReupService
         .generateFilters(composition.antiReupConfig);
-
-    // Concatenate scaled videos with AUDIO (if present)
-    String concatFilter = '';
-    for (int i = 0; i < totalVideos; i++) {
-      // Only map audio if present
-      if (hasAudio) {
-        concatFilter += '[v$i][$i:a]';
-      } else {
-        concatFilter += '[v$i]';
-      }
-    }
-    // Set a=1 only if we have audio
-    final audioOut = hasAudio ? 'a=1' : 'a=0';
-    final audioLabel = hasAudio ? '[aconcat]' : '';
-    concatFilter += 'concat=n=$totalVideos:v=1:$audioOut[vconcat]$audioLabel;';
-
-    // Apply effects and overlay
-    // 1. Base Style (Eq, Hue, Scale)
-    // 2. Anti-Reup Filters (Speed, Noise) handled by service string
-
-    // Construct Video Filter Chain
-    // [vconcat] -> Base Style -> [vstyled]
-    // [vstyled] -> Anti Reup -> [vprocessed]
-    // [vprocessed] -> Overlay -> [vfinal]
-
-    // Simplify: Just use one filter complex string
-    // If Anti-Reup filters are empty, we just skip that stage
-
-    // [vconcat] -> Eq/Sat -> [vstyled]
-    // [vstyled] -> AntiReup (if any) -> [vprocessed]
-    // [vprocessed] -> Overlay -> [vfinal]
-
-    String filterComplex = '$scalingFilters$concatFilter';
 
     // 1. Base Style
     filterComplex +=
@@ -212,24 +232,22 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     // 3. Overlay
     filterComplex += '$nextVideoLabel[$overlayInputIndex:v]overlay=0:0[vfinal]';
 
-    // 4. Audio
+    // 4. Audio Processing
+    // WARNING: 'hasAudio' variable from original code needs to be replaced by 'globalHasAudio'
+    bool hasAudio = globalHasAudio;
+
     if (hasAudio && antiReupAudioFilters.isNotEmpty) {
       filterComplex += ';[aconcat]$antiReupAudioFilters[afinal_tmp]';
     } else if (hasAudio) {
-      // If no audio filters but has audio, just alias it
       filterComplex += ';[aconcat]anull[afinal_tmp]';
     }
 
-    // 5. Hard Duration Enforce (Trim)
-    // -t is usually enough, but trim ensures the filter chain produces strictly the right amount
-    // preventing trailing frames or sync issues.
+    // 5. Trim Logic (preserved from previous fix)
     String finalVideoMap = '[vfinal]';
     String finalAudioMap = hasAudio ? '[afinal_tmp]' : '';
 
     if (composition.antiReupConfig.targetDuration != null) {
       final d = composition.antiReupConfig.targetDuration!;
-      // CRITICAL: Must reset timestamps (setpts) after trim, otherwise duration metadata
-      // might be inconsistent or players might get confused.
       filterComplex +=
           ';[vfinal]trim=duration=$d,setpts=PTS-STARTPTS[vtrimmed];';
       finalVideoMap = '[vtrimmed]';
@@ -240,10 +258,7 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
         finalAudioMap = '[atrimmed]';
       }
     } else {
-      // Just map pass-through if no strict target
       if (hasAudio) {
-        // ensure afinal exists
-        // Logic above handled afinal_tmp
         finalAudioMap = '[afinal_tmp]';
       }
     }
