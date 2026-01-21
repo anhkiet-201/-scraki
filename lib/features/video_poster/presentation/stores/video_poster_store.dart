@@ -783,8 +783,11 @@ abstract class _VideoPosterStore with Store {
     try {
       final random = DateTime.now().millisecondsSinceEpoch % 1000;
 
-      // Use the config currently in the store.
-      // If randomized, it was generated when toggled ON.
+      // If randomized, regenerate config NOW to ensure every export has a unique hash.
+      if (antiReupConfig.isRandomized) {
+        antiReupConfig = _antiReupService.maximizeStealth()
+            .copyWith(targetDuration: antiReupConfig.targetDuration);
+      }
       final finalConfig = antiReupConfig;
 
       final composition = VideoComposition(
