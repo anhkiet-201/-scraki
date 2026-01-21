@@ -214,8 +214,43 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
 
     // 4. Audio
     if (hasAudio && antiReupAudioFilters.isNotEmpty) {
-      filterComplex += ';[aconcat]$antiReupAudioFilters[afinal]';
+      filterComplex += ';[aconcat]$antiReupAudioFilters[afinal_tmp]';
+    } else if (hasAudio) {
+      // If no audio filters but has audio, just alias it
+      filterComplex += ';[aconcat]anull[afinal_tmp]';
     }
+
+    // 5. Hard Duration Enforce (Trim)
+    // -t is usually enough, but trim ensures the filter chain produces strictly the right amount
+    // preventing trailing frames or sync issues.
+    String finalVideoMap = '[vfinal]';
+    String finalAudioMap = hasAudio ? '[afinal_tmp]' : '';
+
+    if (composition.antiReupConfig.targetDuration != null) {
+      final d = composition.antiReupConfig.targetDuration!;
+      // CRITICAL: Must reset timestamps (setpts) after trim, otherwise duration metadata
+      // might be inconsistent or players might get confused.
+      filterComplex +=
+          ';[vfinal]trim=duration=$d,setpts=PTS-STARTPTS[vtrimmed];';
+      finalVideoMap = '[vtrimmed]';
+
+      if (hasAudio) {
+        filterComplex +=
+            '[afinal_tmp]atrim=duration=$d,asetpts=PTS-STARTPTS[atrimmed];';
+        finalAudioMap = '[atrimmed]';
+      }
+    } else {
+      // Just map pass-through if no strict target
+      if (hasAudio) {
+        // ensure afinal exists
+        // Logic above handled afinal_tmp
+        finalAudioMap = '[afinal_tmp]';
+      }
+    }
+
+    debugPrint(
+      'Exporting with finalDuration: $finalDuration (Target: ${composition.antiReupConfig.targetDuration})',
+    );
 
     final args = [
       '-y',
@@ -223,16 +258,8 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       '-filter_complex',
       filterComplex,
       '-map',
-      '[vfinal]',
-      if (hasAudio) ...[
-        if (antiReupAudioFilters.isNotEmpty) ...[
-          '-map',
-          '[afinal]',
-        ] else ...[
-          '-map',
-          '[aconcat]',
-        ],
-      ],
+      finalVideoMap,
+      if (hasAudio) ...['-map', finalAudioMap],
       '-t',
       finalDuration.toString(),
       '-c:v',

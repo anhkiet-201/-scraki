@@ -15,10 +15,30 @@ import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/anti_reup_settings_panel.dart';
 
-class VideoPosterPlaygroundPage extends StatelessWidget {
-  VideoPosterPlaygroundPage({super.key});
+class VideoPosterPlaygroundPage extends StatefulWidget {
+  const VideoPosterPlaygroundPage({super.key});
 
-  final store = GetIt.I<VideoPosterStore>();
+  @override
+  State<VideoPosterPlaygroundPage> createState() =>
+      _VideoPosterPlaygroundPageState();
+}
+
+class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
+  late final VideoPosterStore store;
+
+  @override
+  void initState() {
+    super.initState();
+    store = GetIt.I<VideoPosterStore>();
+  }
+
+  @override
+  void dispose() {
+    // CRITICAL: Dispose the player to prevent "Callback invoked after it has been deleted"
+    // crashes on hot restart or navigation.
+    store.disposePlayer();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

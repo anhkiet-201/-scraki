@@ -40,6 +40,11 @@ abstract class _VideoPosterStore with Store {
     if (!_isInitialized) {
       initializePlayer();
       _setupJobSyncReaction();
+
+      // Initialize with 'Maximize Stealth' (Random Config) by default
+      // This ensures strict duration enforcement (15-25s) is active out-of-the-box.
+      antiReupConfig = _antiReupService.maximizeStealth();
+
       _isInitialized = true;
     }
   }
