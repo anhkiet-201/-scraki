@@ -48,6 +48,11 @@ mixin _$AntiReupConfig {
   /// Whether to strip all metadata from the source file
   bool get stripMetadata => throw _privateConstructorUsedError;
 
+  /// Force output duration directly (in seconds).
+  /// If null, duration is determined by source video * speedMultiplier.
+  /// If set, video will be trimmed or looped to match this duration.
+  double? get targetDuration => throw _privateConstructorUsedError;
+
   /// Serializes this AntiReupConfig to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -73,6 +78,7 @@ abstract class $AntiReupConfigCopyWith<$Res> {
     double colorShiftIntensity,
     bool enableAudioPitchShift,
     bool stripMetadata,
+    double? targetDuration,
   });
 }
 
@@ -98,6 +104,7 @@ class _$AntiReupConfigCopyWithImpl<$Res, $Val extends AntiReupConfig>
     Object? colorShiftIntensity = null,
     Object? enableAudioPitchShift = null,
     Object? stripMetadata = null,
+    Object? targetDuration = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -129,6 +136,10 @@ class _$AntiReupConfigCopyWithImpl<$Res, $Val extends AntiReupConfig>
                 ? _value.stripMetadata
                 : stripMetadata // ignore: cast_nullable_to_non_nullable
                       as bool,
+            targetDuration: freezed == targetDuration
+                ? _value.targetDuration
+                : targetDuration // ignore: cast_nullable_to_non_nullable
+                      as double?,
           )
           as $Val,
     );
@@ -152,6 +163,7 @@ abstract class _$$AntiReupConfigImplCopyWith<$Res>
     double colorShiftIntensity,
     bool enableAudioPitchShift,
     bool stripMetadata,
+    double? targetDuration,
   });
 }
 
@@ -176,6 +188,7 @@ class __$$AntiReupConfigImplCopyWithImpl<$Res>
     Object? colorShiftIntensity = null,
     Object? enableAudioPitchShift = null,
     Object? stripMetadata = null,
+    Object? targetDuration = freezed,
   }) {
     return _then(
       _$AntiReupConfigImpl(
@@ -207,6 +220,10 @@ class __$$AntiReupConfigImplCopyWithImpl<$Res>
             ? _value.stripMetadata
             : stripMetadata // ignore: cast_nullable_to_non_nullable
                   as bool,
+        targetDuration: freezed == targetDuration
+            ? _value.targetDuration
+            : targetDuration // ignore: cast_nullable_to_non_nullable
+                  as double?,
       ),
     );
   }
@@ -223,6 +240,7 @@ class _$AntiReupConfigImpl implements _AntiReupConfig {
     this.colorShiftIntensity = 0.05,
     this.enableAudioPitchShift = true,
     this.stripMetadata = true,
+    this.targetDuration,
   });
 
   factory _$AntiReupConfigImpl.fromJson(Map<String, dynamic> json) =>
@@ -269,9 +287,15 @@ class _$AntiReupConfigImpl implements _AntiReupConfig {
   @JsonKey()
   final bool stripMetadata;
 
+  /// Force output duration directly (in seconds).
+  /// If null, duration is determined by source video * speedMultiplier.
+  /// If set, video will be trimmed or looped to match this duration.
+  @override
+  final double? targetDuration;
+
   @override
   String toString() {
-    return 'AntiReupConfig(isRandomized: $isRandomized, speedMultiplier: $speedMultiplier, enableVisualNoise: $enableVisualNoise, noiseLevel: $noiseLevel, colorShiftIntensity: $colorShiftIntensity, enableAudioPitchShift: $enableAudioPitchShift, stripMetadata: $stripMetadata)';
+    return 'AntiReupConfig(isRandomized: $isRandomized, speedMultiplier: $speedMultiplier, enableVisualNoise: $enableVisualNoise, noiseLevel: $noiseLevel, colorShiftIntensity: $colorShiftIntensity, enableAudioPitchShift: $enableAudioPitchShift, stripMetadata: $stripMetadata, targetDuration: $targetDuration)';
   }
 
   @override
@@ -292,7 +316,9 @@ class _$AntiReupConfigImpl implements _AntiReupConfig {
             (identical(other.enableAudioPitchShift, enableAudioPitchShift) ||
                 other.enableAudioPitchShift == enableAudioPitchShift) &&
             (identical(other.stripMetadata, stripMetadata) ||
-                other.stripMetadata == stripMetadata));
+                other.stripMetadata == stripMetadata) &&
+            (identical(other.targetDuration, targetDuration) ||
+                other.targetDuration == targetDuration));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -306,6 +332,7 @@ class _$AntiReupConfigImpl implements _AntiReupConfig {
     colorShiftIntensity,
     enableAudioPitchShift,
     stripMetadata,
+    targetDuration,
   );
 
   /// Create a copy of AntiReupConfig
@@ -334,6 +361,7 @@ abstract class _AntiReupConfig implements AntiReupConfig {
     final double colorShiftIntensity,
     final bool enableAudioPitchShift,
     final bool stripMetadata,
+    final double? targetDuration,
   }) = _$AntiReupConfigImpl;
 
   factory _AntiReupConfig.fromJson(Map<String, dynamic> json) =
@@ -372,6 +400,12 @@ abstract class _AntiReupConfig implements AntiReupConfig {
   /// Whether to strip all metadata from the source file
   @override
   bool get stripMetadata;
+
+  /// Force output duration directly (in seconds).
+  /// If null, duration is determined by source video * speedMultiplier.
+  /// If set, video will be trimmed or looped to match this duration.
+  @override
+  double? get targetDuration;
 
   /// Create a copy of AntiReupConfig
   /// with the given fields replaced by the non-null parameter values.

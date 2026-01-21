@@ -595,6 +595,13 @@ abstract class _VideoPosterStore with Store {
 
   @computed
   Duration get totalDuration {
+    // If Anti-Reup has a target duration (randomized or manual), that is the output duration.
+    if (antiReupConfig.targetDuration != null) {
+      return Duration(
+        milliseconds: (antiReupConfig.targetDuration! * 1000).toInt(),
+      );
+    }
+
     if (clipDurations.isEmpty) return Duration.zero;
     return clipDurations.fold(Duration.zero, (prev, curr) => prev + curr);
   }
@@ -685,7 +692,18 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void toggleRandomizeAntiReup(bool value) {
-    antiReupConfig = antiReupConfig.copyWith(isRandomized: value);
+    if (value) {
+      // Generate random configuration immediately so the UI (and duration)
+      // reflects exactly what will be exported.
+      antiReupConfig = _antiReupService.maximizeStealth();
+    } else {
+      // Turn off randomization but keep current values (or reset? usually keep is better UX)
+      // Removing targetDuration implies reverting to source length
+      antiReupConfig = antiReupConfig.copyWith(
+        isRandomized: false,
+        targetDuration: null,
+      );
+    }
   }
 
   @action
@@ -760,10 +778,9 @@ abstract class _VideoPosterStore with Store {
     try {
       final random = DateTime.now().millisecondsSinceEpoch % 1000;
 
-      // Get config: if randomized, generate fresh one. Else use current UI state.
-      final finalConfig = antiReupConfig.isRandomized
-          ? _antiReupService.maximizeStealth()
-          : antiReupConfig;
+      // Use the config currently in the store.
+      // If randomized, it was generated when toggled ON.
+      final finalConfig = antiReupConfig;
 
       final composition = VideoComposition(
         id: const Uuid().v4(),
@@ -796,61 +813,6 @@ abstract class _VideoPosterStore with Store {
       generatedVideoPath = await _repository.generateVideo(
         composition,
         overlayPng,
-      );
-    } catch (e) {
-      errorMessage = e.toString();
-    } finally {
-      isProcessing = false;
-    }
-  }
-
-  @action
-  Future<void> generateVideo() async {
-    if (sourceVideoPaths.isEmpty || selectedPosterData == null) {
-      errorMessage = "Please add videos and select recruitment info.";
-      return;
-    }
-
-    try {
-      isProcessing = true;
-      errorMessage = null;
-
-      final random = DateTime.now().millisecondsSinceEpoch;
-      // Get config: if randomized, generate fresh one. Else use current UI state.
-      final finalConfig = antiReupConfig.isRandomized
-          ? _antiReupService.maximizeStealth()
-          : antiReupConfig;
-
-      final composition = VideoComposition(
-        id: const Uuid().v4(),
-        sourceVideoPaths: sourceVideoPaths.toList(),
-        posterData: selectedPosterData!,
-        titleX: titleX,
-        titleY: titleY,
-        salaryX: salaryX,
-        salaryY: salaryY,
-        companyX: companyX,
-        companyY: companyY,
-        requirementsX: requirementsX,
-        requirementsY: requirementsY,
-        benefitsX: benefitsX,
-        benefitsY: benefitsY,
-        contactX: contactX,
-        contactY: contactY,
-        headlineX: headlineX,
-        headlineY: headlineY,
-        locationX: locationX,
-        locationY: locationY,
-        saturation: saturation,
-        contrast: contrast,
-        playbackSpeed: playbackSpeed,
-        zoomIntensity: zoomIntensity,
-        antiReupConfig: finalConfig,
-        randomSeed: random,
-      );
-      generatedVideoPath = await _repository.generateVideo(
-        composition,
-        Uint8List(0), // Temporary placeholder
       );
     } catch (e) {
       errorMessage = e.toString();

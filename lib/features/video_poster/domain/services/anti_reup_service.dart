@@ -18,6 +18,10 @@ class AntiReupService {
     // Color: 0.02 to 0.07
     final color = 0.02 + _random.nextDouble() * 0.05;
 
+    // Random duration between 15s and 25s
+    // 15.0 + (0.0 to 10.0)
+    final duration = 15.0 + _random.nextDouble() * 10.0;
+
     return AntiReupConfig(
       isRandomized: true,
       speedMultiplier: double.parse(speed.toStringAsFixed(3)),
@@ -26,6 +30,7 @@ class AntiReupService {
       colorShiftIntensity: double.parse(color.toStringAsFixed(3)),
       enableAudioPitchShift: true,
       stripMetadata: true,
+      targetDuration: double.parse(duration.toStringAsFixed(1)),
     );
   }
 

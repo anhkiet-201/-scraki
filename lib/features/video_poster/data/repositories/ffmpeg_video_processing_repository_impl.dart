@@ -99,10 +99,16 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       totalInputDuration = composition.sourceVideoPaths.length * 5.0;
     }
 
-    final targetDuration = totalInputDuration < 15.0
-        ? 15.0
-        : totalInputDuration;
-    final loopCount = (targetDuration / totalInputDuration).ceil();
+    // If target duration is set in config (e.g. from Anti-Reup service), use it.
+    // Otherwise, ensure at least 15s duration.
+    final double finalDuration;
+    if (composition.antiReupConfig.targetDuration != null) {
+      finalDuration = composition.antiReupConfig.targetDuration!;
+    } else {
+      finalDuration = totalInputDuration < 15.0 ? 15.0 : totalInputDuration;
+    }
+
+    final loopCount = (finalDuration / totalInputDuration).ceil();
 
     // Save overlay PNG to temp file
     final tempDir = await getTemporaryDirectory();
@@ -228,7 +234,7 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
         ],
       ],
       '-t',
-      targetDuration.toString(),
+      finalDuration.toString(),
       '-c:v',
       'libx264',
       '-preset',

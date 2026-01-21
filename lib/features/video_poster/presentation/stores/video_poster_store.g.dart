@@ -940,16 +940,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
-  late final _$generateVideoAsyncAction = AsyncAction(
-    '_VideoPosterStore.generateVideo',
-    context: context,
-  );
-
-  @override
-  Future<void> generateVideo() {
-    return _$generateVideoAsyncAction.run(() => super.generateVideo());
-  }
-
   late final _$_VideoPosterStoreActionController = ActionController(
     name: '_VideoPosterStore',
     context: context,

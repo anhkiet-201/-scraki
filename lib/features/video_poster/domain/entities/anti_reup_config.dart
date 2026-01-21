@@ -32,6 +32,11 @@ class AntiReupConfig with _$AntiReupConfig {
 
     /// Whether to strip all metadata from the source file
     @Default(true) bool stripMetadata,
+
+    /// Force output duration directly (in seconds).
+    /// If null, duration is determined by source video * speedMultiplier.
+    /// If set, video will be trimmed or looped to match this duration.
+    double? targetDuration,
   }) = _AntiReupConfig;
 
   factory AntiReupConfig.fromJson(Map<String, dynamic> json) =>

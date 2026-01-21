@@ -108,7 +108,7 @@ class AntiReupSettingsPanel extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
                       isRandom
-                          ? "Hệ thống tự động biến đổi thông số video để tạo chuỗi mã hoá duy nhất."
+                          ? "Hệ thống tự động biến đổi thông số và độ dài video (15-25s) để tạo mã hoá duy nhất."
                           : "Tự điều chỉnh các thông số kỹ thuật.",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),

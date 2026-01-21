@@ -16,6 +16,7 @@ _$AntiReupConfigImpl _$$AntiReupConfigImplFromJson(Map<String, dynamic> json) =>
           (json['colorShiftIntensity'] as num?)?.toDouble() ?? 0.05,
       enableAudioPitchShift: json['enableAudioPitchShift'] as bool? ?? true,
       stripMetadata: json['stripMetadata'] as bool? ?? true,
+      targetDuration: (json['targetDuration'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$$AntiReupConfigImplToJson(
@@ -28,4 +29,5 @@ Map<String, dynamic> _$$AntiReupConfigImplToJson(
   'colorShiftIntensity': instance.colorShiftIntensity,
   'enableAudioPitchShift': instance.enableAudioPitchShift,
   'stripMetadata': instance.stripMetadata,
+  'targetDuration': instance.targetDuration,
 };
