@@ -9,6 +9,21 @@ part of 'video_poster_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoPosterStore on _VideoPosterStore, Store {
+  Computed<Duration>? _$totalDurationComputed;
+
+  @override
+  Duration get totalDuration => (_$totalDurationComputed ??= Computed<Duration>(
+    () => super.totalDuration,
+    name: '_VideoPosterStore.totalDuration',
+  )).value;
+  Computed<Duration>? _$totalPositionComputed;
+
+  @override
+  Duration get totalPosition => (_$totalPositionComputed ??= Computed<Duration>(
+    () => super.totalPosition,
+    name: '_VideoPosterStore.totalPosition',
+  )).value;
+
   late final _$sourceVideoPathsAtom = Atom(
     name: '_VideoPosterStore.sourceVideoPaths',
     context: context,
@@ -351,6 +366,172 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$selectedOverlayTypeAtom = Atom(
+    name: '_VideoPosterStore.selectedOverlayType',
+    context: context,
+  );
+
+  @override
+  String? get selectedOverlayType {
+    _$selectedOverlayTypeAtom.reportRead();
+    return super.selectedOverlayType;
+  }
+
+  @override
+  set selectedOverlayType(String? value) {
+    _$selectedOverlayTypeAtom.reportWrite(value, super.selectedOverlayType, () {
+      super.selectedOverlayType = value;
+    });
+  }
+
+  late final _$titleFontSizeAtom = Atom(
+    name: '_VideoPosterStore.titleFontSize',
+    context: context,
+  );
+
+  @override
+  double get titleFontSize {
+    _$titleFontSizeAtom.reportRead();
+    return super.titleFontSize;
+  }
+
+  @override
+  set titleFontSize(double value) {
+    _$titleFontSizeAtom.reportWrite(value, super.titleFontSize, () {
+      super.titleFontSize = value;
+    });
+  }
+
+  late final _$salaryFontSizeAtom = Atom(
+    name: '_VideoPosterStore.salaryFontSize',
+    context: context,
+  );
+
+  @override
+  double get salaryFontSize {
+    _$salaryFontSizeAtom.reportRead();
+    return super.salaryFontSize;
+  }
+
+  @override
+  set salaryFontSize(double value) {
+    _$salaryFontSizeAtom.reportWrite(value, super.salaryFontSize, () {
+      super.salaryFontSize = value;
+    });
+  }
+
+  late final _$companyFontSizeAtom = Atom(
+    name: '_VideoPosterStore.companyFontSize',
+    context: context,
+  );
+
+  @override
+  double get companyFontSize {
+    _$companyFontSizeAtom.reportRead();
+    return super.companyFontSize;
+  }
+
+  @override
+  set companyFontSize(double value) {
+    _$companyFontSizeAtom.reportWrite(value, super.companyFontSize, () {
+      super.companyFontSize = value;
+    });
+  }
+
+  late final _$locationFontSizeAtom = Atom(
+    name: '_VideoPosterStore.locationFontSize',
+    context: context,
+  );
+
+  @override
+  double get locationFontSize {
+    _$locationFontSizeAtom.reportRead();
+    return super.locationFontSize;
+  }
+
+  @override
+  set locationFontSize(double value) {
+    _$locationFontSizeAtom.reportWrite(value, super.locationFontSize, () {
+      super.locationFontSize = value;
+    });
+  }
+
+  late final _$requirementsFontSizeAtom = Atom(
+    name: '_VideoPosterStore.requirementsFontSize',
+    context: context,
+  );
+
+  @override
+  double get requirementsFontSize {
+    _$requirementsFontSizeAtom.reportRead();
+    return super.requirementsFontSize;
+  }
+
+  @override
+  set requirementsFontSize(double value) {
+    _$requirementsFontSizeAtom.reportWrite(
+      value,
+      super.requirementsFontSize,
+      () {
+        super.requirementsFontSize = value;
+      },
+    );
+  }
+
+  late final _$benefitsFontSizeAtom = Atom(
+    name: '_VideoPosterStore.benefitsFontSize',
+    context: context,
+  );
+
+  @override
+  double get benefitsFontSize {
+    _$benefitsFontSizeAtom.reportRead();
+    return super.benefitsFontSize;
+  }
+
+  @override
+  set benefitsFontSize(double value) {
+    _$benefitsFontSizeAtom.reportWrite(value, super.benefitsFontSize, () {
+      super.benefitsFontSize = value;
+    });
+  }
+
+  late final _$contactFontSizeAtom = Atom(
+    name: '_VideoPosterStore.contactFontSize',
+    context: context,
+  );
+
+  @override
+  double get contactFontSize {
+    _$contactFontSizeAtom.reportRead();
+    return super.contactFontSize;
+  }
+
+  @override
+  set contactFontSize(double value) {
+    _$contactFontSizeAtom.reportWrite(value, super.contactFontSize, () {
+      super.contactFontSize = value;
+    });
+  }
+
+  late final _$headlineFontSizeAtom = Atom(
+    name: '_VideoPosterStore.headlineFontSize',
+    context: context,
+  );
+
+  @override
+  double get headlineFontSize {
+    _$headlineFontSizeAtom.reportRead();
+    return super.headlineFontSize;
+  }
+
+  @override
+  set headlineFontSize(double value) {
+    _$headlineFontSizeAtom.reportWrite(value, super.headlineFontSize, () {
+      super.headlineFontSize = value;
+    });
+  }
+
   late final _$saturationAtom = Atom(
     name: '_VideoPosterStore.saturation',
     context: context,
@@ -420,24 +601,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   set zoomIntensity(double value) {
     _$zoomIntensityAtom.reportWrite(value, super.zoomIntensity, () {
       super.zoomIntensity = value;
-    });
-  }
-
-  late final _$enableAntiReupAtom = Atom(
-    name: '_VideoPosterStore.enableAntiReup',
-    context: context,
-  );
-
-  @override
-  bool get enableAntiReup {
-    _$enableAntiReupAtom.reportRead();
-    return super.enableAntiReup;
-  }
-
-  @override
-  set enableAntiReup(bool value) {
-    _$enableAntiReupAtom.reportWrite(value, super.enableAntiReup, () {
-      super.enableAntiReup = value;
     });
   }
 
@@ -549,14 +712,232 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
-  late final _$generateVideoAsyncAction = AsyncAction(
-    '_VideoPosterStore.generateVideo',
+  late final _$durationAtom = Atom(
+    name: '_VideoPosterStore.duration',
     context: context,
   );
 
   @override
-  Future<void> generateVideo() {
-    return _$generateVideoAsyncAction.run(() => super.generateVideo());
+  Duration get duration {
+    _$durationAtom.reportRead();
+    return super.duration;
+  }
+
+  @override
+  set duration(Duration value) {
+    _$durationAtom.reportWrite(value, super.duration, () {
+      super.duration = value;
+    });
+  }
+
+  late final _$positionAtom = Atom(
+    name: '_VideoPosterStore.position',
+    context: context,
+  );
+
+  @override
+  Duration get position {
+    _$positionAtom.reportRead();
+    return super.position;
+  }
+
+  @override
+  set position(Duration value) {
+    _$positionAtom.reportWrite(value, super.position, () {
+      super.position = value;
+    });
+  }
+
+  late final _$clipDurationsAtom = Atom(
+    name: '_VideoPosterStore.clipDurations',
+    context: context,
+  );
+
+  @override
+  ObservableList<Duration> get clipDurations {
+    _$clipDurationsAtom.reportRead();
+    return super.clipDurations;
+  }
+
+  @override
+  set clipDurations(ObservableList<Duration> value) {
+    _$clipDurationsAtom.reportWrite(value, super.clipDurations, () {
+      super.clipDurations = value;
+    });
+  }
+
+  late final _$currentPlaylistIndexAtom = Atom(
+    name: '_VideoPosterStore.currentPlaylistIndex',
+    context: context,
+  );
+
+  @override
+  int get currentPlaylistIndex {
+    _$currentPlaylistIndexAtom.reportRead();
+    return super.currentPlaylistIndex;
+  }
+
+  @override
+  set currentPlaylistIndex(int value) {
+    _$currentPlaylistIndexAtom.reportWrite(
+      value,
+      super.currentPlaylistIndex,
+      () {
+        super.currentPlaylistIndex = value;
+      },
+    );
+  }
+
+  late final _$isPlayingAtom = Atom(
+    name: '_VideoPosterStore.isPlaying',
+    context: context,
+  );
+
+  @override
+  bool get isPlaying {
+    _$isPlayingAtom.reportRead();
+    return super.isPlaying;
+  }
+
+  @override
+  set isPlaying(bool value) {
+    _$isPlayingAtom.reportWrite(value, super.isPlaying, () {
+      super.isPlaying = value;
+    });
+  }
+
+  late final _$videoWidthAtom = Atom(
+    name: '_VideoPosterStore.videoWidth',
+    context: context,
+  );
+
+  @override
+  int get videoWidth {
+    _$videoWidthAtom.reportRead();
+    return super.videoWidth;
+  }
+
+  @override
+  set videoWidth(int value) {
+    _$videoWidthAtom.reportWrite(value, super.videoWidth, () {
+      super.videoWidth = value;
+    });
+  }
+
+  late final _$videoHeightAtom = Atom(
+    name: '_VideoPosterStore.videoHeight',
+    context: context,
+  );
+
+  @override
+  int get videoHeight {
+    _$videoHeightAtom.reportRead();
+    return super.videoHeight;
+  }
+
+  @override
+  set videoHeight(int value) {
+    _$videoHeightAtom.reportWrite(value, super.videoHeight, () {
+      super.videoHeight = value;
+    });
+  }
+
+  late final _$activeNavIndexAtom = Atom(
+    name: '_VideoPosterStore.activeNavIndex',
+    context: context,
+  );
+
+  @override
+  int get activeNavIndex {
+    _$activeNavIndexAtom.reportRead();
+    return super.activeNavIndex;
+  }
+
+  @override
+  set activeNavIndex(int value) {
+    _$activeNavIndexAtom.reportWrite(value, super.activeNavIndex, () {
+      super.activeNavIndex = value;
+    });
+  }
+
+  late final _$isFocusModeAtom = Atom(
+    name: '_VideoPosterStore.isFocusMode',
+    context: context,
+  );
+
+  @override
+  bool get isFocusMode {
+    _$isFocusModeAtom.reportRead();
+    return super.isFocusMode;
+  }
+
+  @override
+  set isFocusMode(bool value) {
+    _$isFocusModeAtom.reportWrite(value, super.isFocusMode, () {
+      super.isFocusMode = value;
+    });
+  }
+
+  late final _$antiReupConfigAtom = Atom(
+    name: '_VideoPosterStore.antiReupConfig',
+    context: context,
+  );
+
+  @override
+  AntiReupConfig get antiReupConfig {
+    _$antiReupConfigAtom.reportRead();
+    return super.antiReupConfig;
+  }
+
+  @override
+  set antiReupConfig(AntiReupConfig value) {
+    _$antiReupConfigAtom.reportWrite(value, super.antiReupConfig, () {
+      super.antiReupConfig = value;
+    });
+  }
+
+  late final _$capturePreviewAsPngAsyncAction = AsyncAction(
+    '_VideoPosterStore.capturePreviewAsPng',
+    context: context,
+  );
+
+  @override
+  Future<Uint8List> capturePreviewAsPng() {
+    return _$capturePreviewAsPngAsyncAction.run(
+      () => super.capturePreviewAsPng(),
+    );
+  }
+
+  late final _$seekTimelineAsyncAction = AsyncAction(
+    '_VideoPosterStore.seekTimeline',
+    context: context,
+  );
+
+  @override
+  Future<void> seekTimeline(Duration target) {
+    return _$seekTimelineAsyncAction.run(() => super.seekTimeline(target));
+  }
+
+  late final _$handleExportVideoAsyncAction = AsyncAction(
+    '_VideoPosterStore.handleExportVideo',
+    context: context,
+  );
+
+  @override
+  Future<void> handleExportVideo() {
+    return _$handleExportVideoAsyncAction.run(() => super.handleExportVideo());
+  }
+
+  late final _$generateVideoWithOverlayAsyncAction = AsyncAction(
+    '_VideoPosterStore.generateVideoWithOverlay',
+    context: context,
+  );
+
+  @override
+  Future<void> generateVideoWithOverlay(Uint8List overlayPng) {
+    return _$generateVideoWithOverlayAsyncAction.run(
+      () => super.generateVideoWithOverlay(overlayPng),
+    );
   }
 
   late final _$_VideoPosterStoreActionController = ActionController(
@@ -595,18 +976,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.updatePosition(type, x, y);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updateEffect(String type, double value) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updateEffect',
-    );
-    try {
-      return super.updateEffect(type, value);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -673,12 +1042,180 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
-  void selectPosterData(PosterData data) {
+  void selectPosterData(PosterData? data) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.selectPosterData',
     );
     try {
       return super.selectPosterData(data);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void initializePlayer() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.initializePlayer',
+    );
+    try {
+      return super.initializePlayer();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void disposePlayer() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.disposePlayer',
+    );
+    try {
+      return super.disposePlayer();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setActiveNavIndex(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setActiveNavIndex',
+    );
+    try {
+      return super.setActiveNavIndex(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void toggleFocusMode() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleFocusMode',
+    );
+    try {
+      return super.toggleFocusMode();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setSelectedOverlayType(String? type) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setSelectedOverlayType',
+    );
+    try {
+      return super.setSelectedOverlayType(type);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateFontSize(String type, double newSize) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateFontSize',
+    );
+    try {
+      return super.updateFontSize(type, newSize);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateTextContent(String type, String value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateTextContent',
+    );
+    try {
+      return super.updateTextContent(type, value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updatePosterDataFromControllers() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updatePosterDataFromControllers',
+    );
+    try {
+      return super.updatePosterDataFromControllers();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateEffect(String type, double value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateEffect',
+    );
+    try {
+      return super.updateEffect(type, value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void toggleRandomizeAntiReup(bool value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleRandomizeAntiReup',
+    );
+    try {
+      return super.toggleRandomizeAntiReup(value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateAntiReupConfig(AntiReupConfig config) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateAntiReupConfig',
+    );
+    try {
+      return super.updateAntiReupConfig(config);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void syncPlaylist() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.syncPlaylist',
+    );
+    try {
+      return super.syncPlaylist();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void playVideoAtIndex(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.playVideoAtIndex',
+    );
+    try {
+      return super.playVideoAtIndex(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void playVideo(String path) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.playVideo',
+    );
+    try {
+      return super.playVideo(path);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -706,17 +1243,37 @@ contactX: ${contactX},
 contactY: ${contactY},
 headlineX: ${headlineX},
 headlineY: ${headlineY},
+selectedOverlayType: ${selectedOverlayType},
+titleFontSize: ${titleFontSize},
+salaryFontSize: ${salaryFontSize},
+companyFontSize: ${companyFontSize},
+locationFontSize: ${locationFontSize},
+requirementsFontSize: ${requirementsFontSize},
+benefitsFontSize: ${benefitsFontSize},
+contactFontSize: ${contactFontSize},
+headlineFontSize: ${headlineFontSize},
 saturation: ${saturation},
 contrast: ${contrast},
 playbackSpeed: ${playbackSpeed},
 zoomIntensity: ${zoomIntensity},
-enableAntiReup: ${enableAntiReup},
 volume: ${volume},
 applyBlur: ${applyBlur},
 blurIntensity: ${blurIntensity},
 locationX: ${locationX},
 locationY: ${locationY},
-thumbnails: ${thumbnails}
+thumbnails: ${thumbnails},
+duration: ${duration},
+position: ${position},
+clipDurations: ${clipDurations},
+currentPlaylistIndex: ${currentPlaylistIndex},
+isPlaying: ${isPlaying},
+videoWidth: ${videoWidth},
+videoHeight: ${videoHeight},
+activeNavIndex: ${activeNavIndex},
+isFocusMode: ${isFocusMode},
+antiReupConfig: ${antiReupConfig},
+totalDuration: ${totalDuration},
+totalPosition: ${totalPosition}
     ''';
   }
 }

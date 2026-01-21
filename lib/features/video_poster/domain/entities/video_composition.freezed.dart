@@ -44,10 +44,8 @@ mixin _$VideoComposition {
   double get contrast => throw _privateConstructorUsedError;
   double get playbackSpeed => throw _privateConstructorUsedError;
   double get zoomIntensity =>
-      throw _privateConstructorUsedError; // Anti-Reup Randomization
-  double get noiseLevel => throw _privateConstructorUsedError;
-  double get hueShift => throw _privateConstructorUsedError;
-  double get brightnessDelta => throw _privateConstructorUsedError;
+      throw _privateConstructorUsedError; // Anti-Reup Configuration
+  AntiReupConfig get antiReupConfig => throw _privateConstructorUsedError;
   int get randomSeed => throw _privateConstructorUsedError;
 
   /// Create a copy of VideoComposition
@@ -91,13 +89,12 @@ abstract class $VideoCompositionCopyWith<$Res> {
     double contrast,
     double playbackSpeed,
     double zoomIntensity,
-    double noiseLevel,
-    double hueShift,
-    double brightnessDelta,
+    AntiReupConfig antiReupConfig,
     int randomSeed,
   });
 
   $PosterDataCopyWith<$Res> get posterData;
+  $AntiReupConfigCopyWith<$Res> get antiReupConfig;
 }
 
 /// @nodoc
@@ -141,9 +138,7 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
     Object? contrast = null,
     Object? playbackSpeed = null,
     Object? zoomIntensity = null,
-    Object? noiseLevel = null,
-    Object? hueShift = null,
-    Object? brightnessDelta = null,
+    Object? antiReupConfig = null,
     Object? randomSeed = null,
   }) {
     return _then(
@@ -252,18 +247,10 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
                 ? _value.zoomIntensity
                 : zoomIntensity // ignore: cast_nullable_to_non_nullable
                       as double,
-            noiseLevel: null == noiseLevel
-                ? _value.noiseLevel
-                : noiseLevel // ignore: cast_nullable_to_non_nullable
-                      as double,
-            hueShift: null == hueShift
-                ? _value.hueShift
-                : hueShift // ignore: cast_nullable_to_non_nullable
-                      as double,
-            brightnessDelta: null == brightnessDelta
-                ? _value.brightnessDelta
-                : brightnessDelta // ignore: cast_nullable_to_non_nullable
-                      as double,
+            antiReupConfig: null == antiReupConfig
+                ? _value.antiReupConfig
+                : antiReupConfig // ignore: cast_nullable_to_non_nullable
+                      as AntiReupConfig,
             randomSeed: null == randomSeed
                 ? _value.randomSeed
                 : randomSeed // ignore: cast_nullable_to_non_nullable
@@ -280,6 +267,16 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
   $PosterDataCopyWith<$Res> get posterData {
     return $PosterDataCopyWith<$Res>(_value.posterData, (value) {
       return _then(_value.copyWith(posterData: value) as $Val);
+    });
+  }
+
+  /// Create a copy of VideoComposition
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $AntiReupConfigCopyWith<$Res> get antiReupConfig {
+    return $AntiReupConfigCopyWith<$Res>(_value.antiReupConfig, (value) {
+      return _then(_value.copyWith(antiReupConfig: value) as $Val);
     });
   }
 }
@@ -320,14 +317,14 @@ abstract class _$$VideoCompositionImplCopyWith<$Res>
     double contrast,
     double playbackSpeed,
     double zoomIntensity,
-    double noiseLevel,
-    double hueShift,
-    double brightnessDelta,
+    AntiReupConfig antiReupConfig,
     int randomSeed,
   });
 
   @override
   $PosterDataCopyWith<$Res> get posterData;
+  @override
+  $AntiReupConfigCopyWith<$Res> get antiReupConfig;
 }
 
 /// @nodoc
@@ -370,9 +367,7 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
     Object? contrast = null,
     Object? playbackSpeed = null,
     Object? zoomIntensity = null,
-    Object? noiseLevel = null,
-    Object? hueShift = null,
-    Object? brightnessDelta = null,
+    Object? antiReupConfig = null,
     Object? randomSeed = null,
   }) {
     return _then(
@@ -481,18 +476,10 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
             ? _value.zoomIntensity
             : zoomIntensity // ignore: cast_nullable_to_non_nullable
                   as double,
-        noiseLevel: null == noiseLevel
-            ? _value.noiseLevel
-            : noiseLevel // ignore: cast_nullable_to_non_nullable
-                  as double,
-        hueShift: null == hueShift
-            ? _value.hueShift
-            : hueShift // ignore: cast_nullable_to_non_nullable
-                  as double,
-        brightnessDelta: null == brightnessDelta
-            ? _value.brightnessDelta
-            : brightnessDelta // ignore: cast_nullable_to_non_nullable
-                  as double,
+        antiReupConfig: null == antiReupConfig
+            ? _value.antiReupConfig
+            : antiReupConfig // ignore: cast_nullable_to_non_nullable
+                  as AntiReupConfig,
         randomSeed: null == randomSeed
             ? _value.randomSeed
             : randomSeed // ignore: cast_nullable_to_non_nullable
@@ -532,9 +519,7 @@ class _$VideoCompositionImpl implements _VideoComposition {
     this.contrast = 1.0,
     this.playbackSpeed = 1.0,
     this.zoomIntensity = 0.0,
-    this.noiseLevel = 0.0,
-    this.hueShift = 0.0,
-    this.brightnessDelta = 0.0,
+    this.antiReupConfig = const AntiReupConfig(),
     this.randomSeed = 0,
   }) : _sourceVideoPaths = sourceVideoPaths;
 
@@ -622,23 +607,17 @@ class _$VideoCompositionImpl implements _VideoComposition {
   @override
   @JsonKey()
   final double zoomIntensity;
-  // Anti-Reup Randomization
+  // Anti-Reup Configuration
   @override
   @JsonKey()
-  final double noiseLevel;
-  @override
-  @JsonKey()
-  final double hueShift;
-  @override
-  @JsonKey()
-  final double brightnessDelta;
+  final AntiReupConfig antiReupConfig;
   @override
   @JsonKey()
   final int randomSeed;
 
   @override
   String toString() {
-    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, posterData: $posterData, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset, titleX: $titleX, titleY: $titleY, salaryX: $salaryX, salaryY: $salaryY, companyX: $companyX, companyY: $companyY, requirementsX: $requirementsX, requirementsY: $requirementsY, benefitsX: $benefitsX, benefitsY: $benefitsY, contactX: $contactX, contactY: $contactY, headlineX: $headlineX, headlineY: $headlineY, locationX: $locationX, locationY: $locationY, saturation: $saturation, contrast: $contrast, playbackSpeed: $playbackSpeed, zoomIntensity: $zoomIntensity, noiseLevel: $noiseLevel, hueShift: $hueShift, brightnessDelta: $brightnessDelta, randomSeed: $randomSeed)';
+    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, posterData: $posterData, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset, titleX: $titleX, titleY: $titleY, salaryX: $salaryX, salaryY: $salaryY, companyX: $companyX, companyY: $companyY, requirementsX: $requirementsX, requirementsY: $requirementsY, benefitsX: $benefitsX, benefitsY: $benefitsY, contactX: $contactX, contactY: $contactY, headlineX: $headlineX, headlineY: $headlineY, locationX: $locationX, locationY: $locationY, saturation: $saturation, contrast: $contrast, playbackSpeed: $playbackSpeed, zoomIntensity: $zoomIntensity, antiReupConfig: $antiReupConfig, randomSeed: $randomSeed)';
   }
 
   @override
@@ -695,12 +674,8 @@ class _$VideoCompositionImpl implements _VideoComposition {
                 other.playbackSpeed == playbackSpeed) &&
             (identical(other.zoomIntensity, zoomIntensity) ||
                 other.zoomIntensity == zoomIntensity) &&
-            (identical(other.noiseLevel, noiseLevel) ||
-                other.noiseLevel == noiseLevel) &&
-            (identical(other.hueShift, hueShift) ||
-                other.hueShift == hueShift) &&
-            (identical(other.brightnessDelta, brightnessDelta) ||
-                other.brightnessDelta == brightnessDelta) &&
+            (identical(other.antiReupConfig, antiReupConfig) ||
+                other.antiReupConfig == antiReupConfig) &&
             (identical(other.randomSeed, randomSeed) ||
                 other.randomSeed == randomSeed));
   }
@@ -734,9 +709,7 @@ class _$VideoCompositionImpl implements _VideoComposition {
     contrast,
     playbackSpeed,
     zoomIntensity,
-    noiseLevel,
-    hueShift,
-    brightnessDelta,
+    antiReupConfig,
     randomSeed,
   ]);
 
@@ -780,9 +753,7 @@ abstract class _VideoComposition implements VideoComposition {
     final double contrast,
     final double playbackSpeed,
     final double zoomIntensity,
-    final double noiseLevel,
-    final double hueShift,
-    final double brightnessDelta,
+    final AntiReupConfig antiReupConfig,
     final int randomSeed,
   }) = _$VideoCompositionImpl;
 
@@ -837,13 +808,9 @@ abstract class _VideoComposition implements VideoComposition {
   @override
   double get playbackSpeed;
   @override
-  double get zoomIntensity; // Anti-Reup Randomization
+  double get zoomIntensity; // Anti-Reup Configuration
   @override
-  double get noiseLevel;
-  @override
-  double get hueShift;
-  @override
-  double get brightnessDelta;
+  AntiReupConfig get antiReupConfig;
   @override
   int get randomSeed;
 
