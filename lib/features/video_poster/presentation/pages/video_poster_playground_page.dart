@@ -633,6 +633,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                       }
                       return Video(
                         controller: store.videoController,
+                        fit: BoxFit.cover,
                         controls: (state) => const SizedBox.shrink(),
                       );
                     },
