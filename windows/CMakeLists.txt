@@ -67,6 +67,16 @@ install(FILES ${FFMPEG_DLLS}
   DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# Add FFmpeg executables to the install step
+install(FILES "${FFMPEG_BINARY_DIRS}/ffmpeg.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime
+  OPTIONAL)
+install(FILES "${FFMPEG_BINARY_DIRS}/ffprobe.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime
+  OPTIONAL)
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.

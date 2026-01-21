@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
 import 'package:scraki/features/video_poster/domain/repositories/video_processing_repository.dart';
@@ -39,17 +40,19 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
 
     // Attempt to find ffprobe
     final ffmpegDir = File(ffmpegPath).parent.path;
-    final ffprobePath = '$ffmpegDir/ffprobe';
-    final ffprobeExecutable = await File(ffprobePath).exists()
-        ? ffprobePath
-        : 'ffprobe';
+    final ffprobeExecutable = Platform.isWindows
+        ? p.join(ffmpegDir, 'ffprobe.exe')
+        : p.join(ffmpegDir, 'ffprobe');
+
+    final ffprobeExists = await File(ffprobeExecutable).exists();
+    final ffprobePath = ffprobeExists ? ffprobeExecutable : 'ffprobe';
 
     for (final path in composition.sourceVideoPaths) {
       double dur = 5.0; // default
       bool hasIdxAudio = false;
       try {
         // Probe duration
-        final durResult = await Process.run(ffprobeExecutable, [
+        final durResult = await Process.run(ffprobePath, [
           '-v',
           'error',
           '-show_entries',
@@ -61,7 +64,7 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
         dur = double.tryParse(durResult.stdout.toString().trim()) ?? 5.0;
 
         // Probe audio stream
-        final audResult = await Process.run(ffprobeExecutable, [
+        final audResult = await Process.run(ffprobePath, [
           '-v',
           'error',
           '-select_streams',
@@ -96,7 +99,9 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
 
     // Setup Temp Overlay ... (omitted, assuming existing code is fine, verified in diff)
     final tempDir = await getTemporaryDirectory();
-    final overlayFile = File('${tempDir.path}/overlay_${composition.id}.png');
+    final overlayFile = File(
+      p.join(tempDir.path, 'overlay_${composition.id}.png'),
+    );
     try {
       if (!tempDir.existsSync()) {
         tempDir.createSync(recursive: true);
@@ -165,7 +170,9 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     if (silenceNeededCount > 0 && silenceInputIndex != -1) {
       // Split the single anullsrc input into N streams: [s0][s1]...
       String splits = '';
-      for (int s = 0; s < silenceNeededCount; s++) splits += '[sil_raw$s]';
+      for (int s = 0; s < silenceNeededCount; s++) {
+        splits += '[sil_raw$s]';
+      }
       filterComplex +=
           '[$silenceInputIndex:a]asplit=$silenceNeededCount$splits;';
     }
@@ -320,8 +327,10 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     }
 
     final tempDir = await getTemporaryDirectory();
-    final thumbnailPath =
-        '${tempDir.path}/thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final thumbnailPath = p.join(
+      tempDir.path,
+      'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
 
     await Process.run(ffmpegPath, [
       '-i',
@@ -358,12 +367,55 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
   }
 
   Future<String?> _findFfmpeg() async {
-    try {
-      final result = await Process.run('which', ['ffmpeg']);
-      if (result.exitCode == 0) {
-        return result.stdout.toString().trim();
+    // 1. Try bundled FFmpeg first (Windows/macOS)
+    final bundledPath = await _getBundledFfmpegPath();
+    if (bundledPath != null && await File(bundledPath).exists()) {
+      debugPrint('Using bundled FFmpeg: $bundledPath');
+      return bundledPath;
+    }
+
+    // 2. Try system PATH (Unix-like)
+    if (Platform.isMacOS || Platform.isLinux) {
+      try {
+        final result = await Process.run('which', ['ffmpeg']);
+        if (result.exitCode == 0) {
+          final path = result.stdout.toString().trim();
+          debugPrint('Using system FFmpeg: $path');
+          return path;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Try Windows common locations
+    if (Platform.isWindows) {
+      final commonPaths = [
+        r'C:\ffmpeg\bin\ffmpeg.exe',
+        r'C:\Program Files\ffmpeg\bin\ffmpeg.exe',
+      ];
+
+      for (final path in commonPaths) {
+        if (await File(path).exists()) {
+          debugPrint('Using system FFmpeg: $path');
+          return path;
+        }
       }
-    } catch (_) {}
+    }
+
+    return null;
+  }
+
+  Future<String?> _getBundledFfmpegPath() async {
+    if (Platform.isWindows) {
+      // Windows: FFmpeg is bundled alongside the executable
+      final exePath = Platform.resolvedExecutable;
+      final exeDir = File(exePath).parent.path;
+      return p.join(exeDir, 'ffmpeg.exe');
+    } else if (Platform.isMacOS) {
+      // macOS: FFmpeg is in the app bundle Resources folder
+      final exePath = Platform.resolvedExecutable;
+      final resourcesDir = File(exePath).parent.parent.path;
+      return p.join(resourcesDir, 'Resources', 'ffmpeg');
+    }
     return null;
   }
 }
