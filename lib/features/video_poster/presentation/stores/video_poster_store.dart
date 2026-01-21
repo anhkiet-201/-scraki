@@ -11,6 +11,8 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
 import 'package:scraki/features/video_poster/domain/repositories/video_processing_repository.dart';
+import 'package:scraki/features/video_poster/domain/services/anti_reup_service.dart';
+import 'package:scraki/features/video_poster/domain/entities/anti_reup_config.dart';
 import 'package:uuid/uuid.dart';
 
 part 'video_poster_store.g.dart';
@@ -22,6 +24,7 @@ class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 abstract class _VideoPosterStore with Store {
   final VideoProcessingRepository _repository;
   final PosterCreationStore creationStore;
+  final AntiReupService _antiReupService;
 
   // Initialization flag to prevent re-initialization on hot restart
   bool _isInitialized = false;
@@ -29,7 +32,11 @@ abstract class _VideoPosterStore with Store {
   // Reaction disposer
   ReactionDisposer? _jobSyncDisposer;
 
-  _VideoPosterStore(this._repository, this.creationStore) {
+  _VideoPosterStore(
+    this._repository,
+    this.creationStore,
+    this._antiReupService,
+  ) {
     if (!_isInitialized) {
       initializePlayer();
       _setupJobSyncReaction();
@@ -140,8 +147,6 @@ abstract class _VideoPosterStore with Store {
   double zoomIntensity = 0.0;
 
   @observable
-  bool enableAntiReup = true;
-
   // --- V4 UX State ---
   @observable
   double volume = 1.0;
@@ -243,7 +248,7 @@ abstract class _VideoPosterStore with Store {
           runInAction(() => clipDurations[targetIndex] = d);
         }
       } catch (e) {
-        print("Error getting duration for $path: $e");
+        debugPrint("Error getting duration for $path: $e");
         // Already zero placeholder, no action needed
       }
     }
@@ -312,37 +317,6 @@ abstract class _VideoPosterStore with Store {
       case 'location':
         locationX = x;
         locationY = y;
-        break;
-    }
-  }
-
-  @action
-  void updateEffect(String type, double value) {
-    switch (type) {
-      case 'saturation':
-        saturation = value;
-        break;
-      case 'contrast':
-        contrast = value;
-        break;
-      case 'speed':
-        playbackSpeed = value;
-        player.setRate(value);
-        break;
-      case 'zoom':
-        zoomIntensity = value;
-        break;
-      case 'anti_reup':
-        enableAntiReup = value > 0.5;
-        break;
-      case 'volume':
-        volume = value;
-        player.setVolume(
-          value * 100,
-        ); // media_kit volume is 0-100? No, check docs. usually 0-100.
-        break;
-      case 'blur_intensity':
-        blurIntensity = value;
         break;
     }
   }
@@ -576,6 +550,17 @@ abstract class _VideoPosterStore with Store {
   @action
   Future<Uint8List> capturePreviewAsPng() async {
     try {
+      // Safety check: if preview is not mounted, return empty or throw clear error
+      if (previewKey.currentContext == null) {
+        debugPrint(
+          'Warning: previewKey.currentContext is null. UI likely not rendered.',
+        );
+        // If no poster data selected, we can't generate overlay.
+        // Return empty list which repo handles as "no overlay" or throw specific error?
+        // Let's throw a user-friendly error string that handleExportVideo can catch.
+        throw 'Please select a Job Position to generate overlay.';
+      }
+
       // Deselect all overlays to hide handles/borders before capture
       final previousSelection = selectedOverlayType;
       setSelectedOverlayType(null);
@@ -583,9 +568,11 @@ abstract class _VideoPosterStore with Store {
       // Wait for UI to update and remove handles
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
-      final boundary =
-          previewKey.currentContext!.findRenderObject()
-              as RenderRepaintBoundary;
+      final renderObject = previewKey.currentContext?.findRenderObject();
+      if (renderObject == null || renderObject is! RenderRepaintBoundary) {
+        throw 'Preview render object not found.';
+      }
+      final boundary = renderObject;
 
       // Standardize export to 1080p (Full HD)
       // Virtual Canvas is 720px, so pixelRatio 1.5 = 1080px width
@@ -597,7 +584,9 @@ abstract class _VideoPosterStore with Store {
       // Restore previous selection after capture
       setSelectedOverlayType(previousSelection);
 
-      return byteData!.buffer.asUint8List();
+      if (byteData == null) throw 'Failed to encode overlay image.';
+
+      return byteData.buffer.asUint8List();
     } catch (e) {
       debugPrint('Error capturing preview: $e');
       rethrow;
@@ -645,8 +634,9 @@ abstract class _VideoPosterStore with Store {
           await player.seek(seekPos);
         } else {
           // Different clip: Debounce the jump to prevent rapid switching
-          if (_seekDebounceTimer?.isActive ?? false)
+          if (_seekDebounceTimer?.isActive ?? false) {
             _seekDebounceTimer!.cancel();
+          }
 
           _seekDebounceTimer = Timer(
             const Duration(milliseconds: 150),
@@ -664,6 +654,45 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
+  @observable
+  AntiReupConfig antiReupConfig = const AntiReupConfig(); // Use Config object
+
+  @action
+  void updateEffect(String type, double value) {
+    switch (type) {
+      case 'saturation':
+        saturation = value;
+        break;
+      case 'contrast':
+        contrast = value;
+        break;
+      case 'speed':
+        playbackSpeed = value;
+        player.setRate(value);
+        break;
+      case 'zoom':
+        zoomIntensity = value;
+        break;
+      case 'volume':
+        volume = value;
+        player.setVolume(value * 100);
+        break;
+      case 'blur_intensity':
+        blurIntensity = value;
+        break;
+    }
+  }
+
+  @action
+  void toggleRandomizeAntiReup(bool value) {
+    antiReupConfig = antiReupConfig.copyWith(isRandomized: value);
+  }
+
+  @action
+  void updateAntiReupConfig(AntiReupConfig config) {
+    antiReupConfig = config;
+  }
+
   /// Handle video export by capturing preview and generating video
   @action
   Future<void> handleExportVideo() async {
@@ -672,6 +701,10 @@ abstract class _VideoPosterStore with Store {
       await generateVideoWithOverlay(overlayPng);
     } catch (e) {
       debugPrint('Error during export: $e');
+      runInAction(() {
+        errorMessage = e.toString();
+        isProcessing = false;
+      });
     }
   }
 
@@ -727,6 +760,11 @@ abstract class _VideoPosterStore with Store {
     try {
       final random = DateTime.now().millisecondsSinceEpoch % 1000;
 
+      // Get config: if randomized, generate fresh one. Else use current UI state.
+      final finalConfig = antiReupConfig.isRandomized
+          ? _antiReupService.maximizeStealth()
+          : antiReupConfig;
+
       final composition = VideoComposition(
         id: const Uuid().v4(),
         posterData: selectedPosterData!,
@@ -747,11 +785,11 @@ abstract class _VideoPosterStore with Store {
         requirementsY: requirementsY,
         benefitsX: benefitsX,
         benefitsY: benefitsY,
-        contrast: enableAntiReup ? (1.0 + (random % 15) / 200.0) : 1.0,
-        saturation: enableAntiReup ? (0.5 + (random % 10) / 100.0) : 0.5,
-        noiseLevel: enableAntiReup ? (random % 5) / 100.0 : 0.0,
-        hueShift: enableAntiReup ? (random % 10 - 5) / 100.0 : 0.0,
-        brightnessDelta: enableAntiReup ? (random % 10 - 5) / 200.0 : 0.0,
+        contrast: contrast,
+        saturation: saturation,
+        playbackSpeed: playbackSpeed,
+        zoomIntensity: zoomIntensity,
+        antiReupConfig: finalConfig, // Pass the config
         randomSeed: random,
       );
 
@@ -778,6 +816,11 @@ abstract class _VideoPosterStore with Store {
       errorMessage = null;
 
       final random = DateTime.now().millisecondsSinceEpoch;
+      // Get config: if randomized, generate fresh one. Else use current UI state.
+      final finalConfig = antiReupConfig.isRandomized
+          ? _antiReupService.maximizeStealth()
+          : antiReupConfig;
+
       final composition = VideoComposition(
         id: const Uuid().v4(),
         sourceVideoPaths: sourceVideoPaths.toList(),
@@ -802,15 +845,9 @@ abstract class _VideoPosterStore with Store {
         contrast: contrast,
         playbackSpeed: playbackSpeed,
         zoomIntensity: zoomIntensity,
-        noiseLevel: enableAntiReup ? 0.05 : 0.0,
-        hueShift: enableAntiReup ? (random % 10 - 5) / 100.0 : 0.0, // +/- 0.05
-        brightnessDelta: enableAntiReup
-            ? (random % 10 - 5) / 200.0
-            : 0.0, // +/- 0.025
+        antiReupConfig: finalConfig,
         randomSeed: random,
       );
-
-      // TODO: Replace with actual preview capture in Phase 4
       generatedVideoPath = await _repository.generateVideo(
         composition,
         Uint8List(0), // Temporary placeholder
@@ -829,7 +866,7 @@ abstract class _VideoPosterStore with Store {
           final thumb = await _repository.extractThumbnail(path);
           thumbnails[path] = thumb;
         } catch (e) {
-          print('Failed to extract thumbnail: $e');
+          debugPrint('Failed to extract thumbnail: $e');
         }
       }
     }

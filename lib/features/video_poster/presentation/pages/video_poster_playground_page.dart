@@ -13,6 +13,7 @@ import 'package:scraki/features/video_poster/presentation/widgets/controls/float
 import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/anti_reup_settings_panel.dart';
 
 class VideoPosterPlaygroundPage extends StatelessWidget {
   VideoPosterPlaygroundPage({super.key});
@@ -563,22 +564,7 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
         ),
         const SizedBox(height: 32),
         _buildSectionHeader("CHỐNG QUÉT BẢN QUYỀN"),
-        Observer(
-          builder: (_) => SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              "Dấu ấn AI",
-              style: TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-            subtitle: const Text(
-              "Vượt qua kiểm tra re-up",
-              style: TextStyle(fontSize: 10, color: Colors.white24),
-            ),
-            value: store.enableAntiReup,
-            onChanged: (v) => store.updateEffect('anti_reup', v ? 1.0 : 0.0),
-            activeThumbColor: const Color(0xFF6366F1),
-          ),
-        ),
+        AntiReupSettingsPanel(store: store),
       ],
     );
   }
@@ -851,7 +837,10 @@ class VideoPosterPlaygroundPage extends StatelessWidget {
         children: [
           Observer(
             builder: (_) => ElevatedButton(
-              onPressed: store.isProcessing || store.sourceVideoPaths.isEmpty
+              onPressed:
+                  store.isProcessing ||
+                      store.sourceVideoPaths.isEmpty ||
+                      store.selectedPosterData == null
                   ? null
                   : () => store.handleExportVideo(),
               style: ElevatedButton.styleFrom(

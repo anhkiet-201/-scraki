@@ -604,24 +604,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
-  late final _$enableAntiReupAtom = Atom(
-    name: '_VideoPosterStore.enableAntiReup',
-    context: context,
-  );
-
-  @override
-  bool get enableAntiReup {
-    _$enableAntiReupAtom.reportRead();
-    return super.enableAntiReup;
-  }
-
-  @override
-  set enableAntiReup(bool value) {
-    _$enableAntiReupAtom.reportWrite(value, super.enableAntiReup, () {
-      super.enableAntiReup = value;
-    });
-  }
-
   late final _$volumeAtom = Atom(
     name: '_VideoPosterStore.volume',
     context: context,
@@ -896,6 +878,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$antiReupConfigAtom = Atom(
+    name: '_VideoPosterStore.antiReupConfig',
+    context: context,
+  );
+
+  @override
+  AntiReupConfig get antiReupConfig {
+    _$antiReupConfigAtom.reportRead();
+    return super.antiReupConfig;
+  }
+
+  @override
+  set antiReupConfig(AntiReupConfig value) {
+    _$antiReupConfigAtom.reportWrite(value, super.antiReupConfig, () {
+      super.antiReupConfig = value;
+    });
+  }
+
   late final _$capturePreviewAsPngAsyncAction = AsyncAction(
     '_VideoPosterStore.capturePreviewAsPng',
     context: context,
@@ -986,18 +986,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.updatePosition(type, x, y);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updateEffect(String type, double value) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updateEffect',
-    );
-    try {
-      return super.updateEffect(type, value);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -1172,6 +1160,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void updateEffect(String type, double value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateEffect',
+    );
+    try {
+      return super.updateEffect(type, value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void toggleRandomizeAntiReup(bool value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleRandomizeAntiReup',
+    );
+    try {
+      return super.toggleRandomizeAntiReup(value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateAntiReupConfig(AntiReupConfig config) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateAntiReupConfig',
+    );
+    try {
+      return super.updateAntiReupConfig(config);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void syncPlaylist() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.syncPlaylist',
@@ -1242,7 +1266,6 @@ saturation: ${saturation},
 contrast: ${contrast},
 playbackSpeed: ${playbackSpeed},
 zoomIntensity: ${zoomIntensity},
-enableAntiReup: ${enableAntiReup},
 volume: ${volume},
 applyBlur: ${applyBlur},
 blurIntensity: ${blurIntensity},
@@ -1258,6 +1281,7 @@ videoWidth: ${videoWidth},
 videoHeight: ${videoHeight},
 activeNavIndex: ${activeNavIndex},
 isFocusMode: ${isFocusMode},
+antiReupConfig: ${antiReupConfig},
 totalDuration: ${totalDuration},
 totalPosition: ${totalPosition}
     ''';

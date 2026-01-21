@@ -63,6 +63,8 @@ import '../../features/video_poster/data/repositories/ffmpeg_video_processing_re
     as _i1007;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
     as _i427;
+import '../../features/video_poster/domain/services/anti_reup_service.dart'
+    as _i154;
 import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
 import '../network/dio_client.dart' as _i667;
@@ -86,6 +88,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
+    gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
     gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
@@ -153,6 +156,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i618.VideoPosterStore(
         gh<_i427.VideoProcessingRepository>(),
         gh<_i876.PosterCreationStore>(),
+        gh<_i154.AntiReupService>(),
       ),
     );
     return this;
