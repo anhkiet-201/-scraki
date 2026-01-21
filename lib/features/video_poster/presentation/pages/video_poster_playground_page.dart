@@ -473,13 +473,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.salaryController,
-          label: "Mức lương",
-          icon: Icons.payments_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
+        // ModernTextField(
+        //   controller: store.salaryController,
+        //   label: "Mức lương",
+        //   icon: Icons.payments_outlined,
+        //   onChanged: store.updatePosterDataFromControllers,
+        // ),
+        // const SizedBox(height: 16),
         ModernTextField(
           controller: store.locationController,
           label: "Địa điểm",
@@ -494,13 +494,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.headlineController,
-          label: "Tiêu đề phụ",
-          icon: Icons.campaign_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
+        // ModernTextField(
+        //   controller: store.headlineController,
+        //   label: "Tiêu đề phụ",
+        //   icon: Icons.campaign_outlined,
+        //   onChanged: store.updatePosterDataFromControllers,
+        // ),
+        // const SizedBox(height: 16),
         ModernTextField(
           controller: store.captionController,
           label: "TikTok Caption",
@@ -508,14 +508,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           onChanged: store.updatePosterDataFromControllers,
         ),
         const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.requirementsController,
-          label: "Yêu cầu công việc (Mỗi dòng một ý)",
-          icon: Icons.list_alt_rounded,
-          maxLines: null,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
+        // ModernTextField(
+        //   controller: store.requirementsController,
+        //   label: "Yêu cầu công việc (Mỗi dòng một ý)",
+        //   icon: Icons.list_alt_rounded,
+        //   maxLines: null,
+        //   onChanged: store.updatePosterDataFromControllers,
+        // ),
+        // const SizedBox(height: 16),
         ModernTextField(
           controller: store.benefitsController,
           label: "Quyền lợi (Mỗi dòng một ý)",
@@ -690,24 +690,24 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           onResize: store.updateFontSize,
                                           onTextChange: store.updateTextContent,
                                         ),
-                                        VideoOverlayItem(
-                                          label: posterData.salaryRange,
-                                          x: store.salaryX,
-                                          y: store.salaryY,
-                                          type: 'salary',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'salary',
-                                          constraints: virtualConstraints,
-                                          color: Colors.yellow,
-                                          fontSize: store.salaryFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
+                                        // VideoOverlayItem(
+                                        //   label: posterData.salaryRange,
+                                        //   x: store.salaryX,
+                                        //   y: store.salaryY,
+                                        //   type: 'salary',
+                                        //   isSelected:
+                                        //       store.selectedOverlayType ==
+                                        //       'salary',
+                                        //   constraints: virtualConstraints,
+                                        //   color: Colors.yellow,
+                                        //   fontSize: store.salaryFontSize,
+                                        //   onPositionUpdate:
+                                        //       store.updatePosition,
+                                        //   onSelect:
+                                        //       store.setSelectedOverlayType,
+                                        //   onResize: store.updateFontSize,
+                                        //   onTextChange: store.updateTextContent,
+                                        // ),
                                         VideoOverlayItem(
                                           label: "🏢 ${posterData.companyName}",
                                           x: store.companyX,
@@ -744,30 +744,30 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           onResize: store.updateFontSize,
                                           onTextChange: store.updateTextContent,
                                         ),
-                                        VideoOverlayItem(
-                                          label:
-                                              posterData
-                                                      .requirements
-                                                      .isNotEmpty ==
-                                                  true
-                                              ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
-                                              : "",
-                                          x: store.requirementsX,
-                                          y: store.requirementsY,
-                                          type: 'requirements',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'requirements',
-                                          constraints: virtualConstraints,
-                                          color: Colors.white,
-                                          fontSize: store.requirementsFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
+                                        // VideoOverlayItem(
+                                        //   label:
+                                        //       posterData
+                                        //               .requirements
+                                        //               .isNotEmpty ==
+                                        //           true
+                                        //       ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
+                                        //       : "",
+                                        //   x: store.requirementsX,
+                                        //   y: store.requirementsY,
+                                        //   type: 'requirements',
+                                        //   isSelected:
+                                        //       store.selectedOverlayType ==
+                                        //       'requirements',
+                                        //   constraints: virtualConstraints,
+                                        //   color: Colors.white,
+                                        //   fontSize: store.requirementsFontSize,
+                                        //   onPositionUpdate:
+                                        //       store.updatePosition,
+                                        //   onSelect:
+                                        //       store.setSelectedOverlayType,
+                                        //   onResize: store.updateFontSize,
+                                        //   onTextChange: store.updateTextContent,
+                                        // ),
                                         VideoOverlayItem(
                                           label:
                                               posterData.benefits.isNotEmpty ==
@@ -808,25 +808,25 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           onResize: store.updateFontSize,
                                           onTextChange: store.updateTextContent,
                                         ),
-                                        VideoOverlayItem(
-                                          label:
-                                              posterData.catchyHeadline ?? "",
-                                          x: store.headlineX,
-                                          y: store.headlineY,
-                                          type: 'headline',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'headline',
-                                          constraints: virtualConstraints,
-                                          color: Colors.yellowAccent,
-                                          fontSize: store.headlineFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
+                                        // VideoOverlayItem(
+                                        //   label:
+                                        //       posterData.catchyHeadline ?? "",
+                                        //   x: store.headlineX,
+                                        //   y: store.headlineY,
+                                        //   type: 'headline',
+                                        //   isSelected:
+                                        //       store.selectedOverlayType ==
+                                        //       'headline',
+                                        //   constraints: virtualConstraints,
+                                        //   color: Colors.yellowAccent,
+                                        //   fontSize: store.headlineFontSize,
+                                        //   onPositionUpdate:
+                                        //       store.updatePosition,
+                                        //   onSelect:
+                                        //       store.setSelectedOverlayType,
+                                        //   onResize: store.updateFontSize,
+                                        //   onTextChange: store.updateTextContent,
+                                        // ),
                                       ],
                                     ),
                                   );
