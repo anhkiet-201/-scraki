@@ -211,7 +211,7 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
 
     // Video composition settings
     final compositionContrast = composition.contrast;
-    final compositionSaturation = composition.saturation * 2;
+    final compositionSaturation = composition.saturation;
 
     // Reuse Service Code (injected) - Ensure we define antiReupService
     final antiReupService = GetIt.I<AntiReupService>();
