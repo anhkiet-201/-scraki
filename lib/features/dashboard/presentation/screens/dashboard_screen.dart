@@ -258,23 +258,49 @@ class _DashboardScreenState extends State<DashboardScreen>
           const SizedBox(width: 8),
           Observer(
             builder: (_) {
-              if (deviceManagerStore.isLoading) {
-                return const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(strokeWidth: 2),
+              final isLoading = deviceManagerStore.isLoading;
+              final count = deviceManagerStore.connectedBoxCount;
+
+              return Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.tertiary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: FilledButton.icon(
+                  icon: isLoading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.onTertiary,
+                          ),
+                        )
+                      : const Icon(Icons.cast_connected, size: 20),
+                  label: Text(
+                    isLoading ? 'Connecting...' : 'Connect Boxes ($count/96)',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                );
-              }
-              return IconButton.filled(
-                icon: const Icon(Icons.cast_connected),
-                onPressed: () => deviceManagerStore.connectToBox(),
-                tooltip: 'Connect Box (192.168.x.20)',
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.tertiary,
-                  foregroundColor: theme.colorScheme.onTertiary,
+                  onPressed: isLoading
+                      ? null
+                      : () => deviceManagerStore.connectToBox(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.tertiary,
+                    foregroundColor: theme.colorScheme.onTertiary,
+                    disabledBackgroundColor: theme.colorScheme.tertiary
+                        .withValues(alpha: 0.8),
+                    disabledForegroundColor: theme.colorScheme.onTertiary
+                        .withValues(alpha: 0.8),
+                    elevation: 0, // Handled by Container shadow
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
                 ),
               );
             },

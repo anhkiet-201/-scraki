@@ -149,6 +149,13 @@ abstract class _DeviceManagerStore with Store {
     selectedSerials.clear();
   }
 
+  @computed
+  int get connectedBoxCount => devices
+      .where(
+        (d) => d.serial.startsWith('192.168.') && d.serial.endsWith('.20:5555'),
+      )
+      .length;
+
   /// Kết nối tới các Box trong dải IP 192.168.1.20 -> 192.168.96.20
   @action
   Future<void> connectToBox() async {
@@ -160,23 +167,40 @@ abstract class _DeviceManagerStore with Store {
   }
 
   Future<void> _connectToBoxInternal() async {
-    // 1. Restart ADB
-    logger.i('[DeviceManagerStore] Restarting ADB Server...');
-    final restartResult = await _repository.restartAdb();
+    // 1. Ensure we have the latest list
+    logger.i(
+      '[DeviceManagerStore] Refreshing device list before connecting...',
+    );
+    await _loadDevicesInternal();
 
-    if (restartResult.isLeft()) {
-      runInAction(() => errorMessage = "Failed to restart ADB");
+    // 2. Build target IP list (1-96)
+    final allIps = List.generate(96, (index) => '192.168.${index + 1}.20');
+
+    // 3. Filter out already connected IPs
+    // Device serial usually comes as "192.168.x.20:5555"
+    final currentSerials = devices.map((d) => d.serial).toSet();
+
+    final targets = allIps.where((ip) {
+      final serial = '$ip:5555';
+      return !currentSerials.contains(serial);
+    }).toList();
+
+    if (targets.isEmpty) {
+      logger.i('[DeviceManagerStore] All devices already connected.');
       return;
     }
 
-    // 2. Build IP list
-    final ips = List.generate(96, (index) => '192.168.${index + 1}.20');
+    logger.i(
+      '[DeviceManagerStore] Found ${targets.length} new devices to connect.',
+    );
 
-    // 3. Connect in batches to avoid overwhelming ADB
+    // 4. Connect in batches
     const batchSize = 10;
-    for (var i = 0; i < ips.length; i += batchSize) {
-      final end = (i + batchSize < ips.length) ? i + batchSize : ips.length;
-      final batch = ips.sublist(i, end);
+    for (var i = 0; i < targets.length; i += batchSize) {
+      final end = (i + batchSize < targets.length)
+          ? i + batchSize
+          : targets.length;
+      final batch = targets.sublist(i, end);
 
       logger.i(
         '[DeviceManagerStore] Connecting batch: ${batch.first} - ${batch.last}',
@@ -186,7 +210,7 @@ abstract class _DeviceManagerStore with Store {
       await Future.wait(batch.map((ip) => _repository.connectTcp(ip, 5555)));
     }
 
-    // 4. Reload devices
+    // 5. Final Reload
     await _loadDevicesInternal();
   }
 }

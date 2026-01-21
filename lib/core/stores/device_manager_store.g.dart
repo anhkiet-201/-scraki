@@ -16,6 +16,13 @@ mixin _$DeviceManagerStore on _DeviceManagerStore, Store {
     () => super.isLoading,
     name: '_DeviceManagerStore.isLoading',
   )).value;
+  Computed<int>? _$connectedBoxCountComputed;
+
+  @override
+  int get connectedBoxCount => (_$connectedBoxCountComputed ??= Computed<int>(
+    () => super.connectedBoxCount,
+    name: '_DeviceManagerStore.connectedBoxCount',
+  )).value;
 
   late final _$devicesAtom = Atom(
     name: '_DeviceManagerStore.devices',
@@ -196,7 +203,8 @@ selectedSerials: ${selectedSerials},
 isBroadcastingMode: ${isBroadcastingMode},
 loadDevicesFuture: ${loadDevicesFuture},
 errorMessage: ${errorMessage},
-isLoading: ${isLoading}
+isLoading: ${isLoading},
+connectedBoxCount: ${connectedBoxCount}
     ''';
   }
 }
