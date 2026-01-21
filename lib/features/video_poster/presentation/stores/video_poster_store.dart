@@ -7,6 +7,8 @@ import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:scraki/core/mixins/di_mixin.dart';
+import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
@@ -17,6 +19,9 @@ import 'package:uuid/uuid.dart';
 
 part 'video_poster_store.g.dart';
 
+/// Dashboard tab index for Video Poster
+const int _kVideoEditorTabIndex = 2;
+
 @injectable
 // ignore: library_private_types_in_public_api
 class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
@@ -25,6 +30,7 @@ abstract class _VideoPosterStore with Store {
   final VideoProcessingRepository _repository;
   final PosterCreationStore creationStore;
   final AntiReupService _antiReupService;
+  final DashboardStore _dashboardStore = inject<DashboardStore>();
 
   // Initialization flag to prevent re-initialization on hot restart
   bool _isInitialized = false;
@@ -228,6 +234,11 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void addSourceVideos(List<String> paths) {
+    // Only add videos when on Video Editor tab to prevent conflicts with PhoneView
+    if (paths.isEmpty ||
+        _dashboardStore.selectedIndex != _kVideoEditorTabIndex) {
+      return;
+    }
     // Calculate start index for new items
     final startIndex = sourceVideoPaths.length;
 
@@ -785,8 +796,9 @@ abstract class _VideoPosterStore with Store {
 
       // If randomized, regenerate config NOW to ensure every export has a unique hash.
       if (antiReupConfig.isRandomized) {
-        antiReupConfig = _antiReupService.maximizeStealth()
-            .copyWith(targetDuration: antiReupConfig.targetDuration);
+        antiReupConfig = _antiReupService.maximizeStealth().copyWith(
+          targetDuration: antiReupConfig.targetDuration,
+        );
       }
       final finalConfig = antiReupConfig;
 

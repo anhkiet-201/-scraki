@@ -7,6 +7,7 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/utils/android_key_codes.dart';
 import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_client.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_service.dart';
 import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
@@ -15,6 +16,12 @@ import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
 part 'phone_view_store.g.dart';
+
+/// Dashboard tab indices
+class DashboardTabs {
+  static const int devices = 0; // PhoneView grid/floating
+  static const int videoEditor = 2; // Video Poster Playground
+}
 
 /// Performance profiles for different viewing modes.
 class PerformanceProfiles {
@@ -48,6 +55,7 @@ class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   final ScrcpyService _scrcpyService = getIt<ScrcpyService>();
   final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
+  final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final String serial;
   final bool isFloatingView;
 
@@ -529,6 +537,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   void setDragging(String serial, bool isDragging) {
+    // Only process drag events when on Devices tab (PhoneView dashboard)
+    if (_dashboardStore.selectedIndex != DashboardTabs.devices) return;
+
     if (isDragging) {
       isDraggingFile = true;
     } else {
@@ -538,7 +549,11 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> uploadFiles(String serial, List<String> paths) async {
-    if (paths.isEmpty) return;
+    // Only upload files when on Devices tab to prevent conflicts with Video Poster
+    if (paths.isEmpty ||
+        _dashboardStore.selectedIndex != DashboardTabs.devices) {
+      return;
+    }
 
     runInAction(() => isPushingFile = true);
     try {
