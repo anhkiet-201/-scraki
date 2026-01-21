@@ -861,7 +861,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               onPressed:
                   store.isProcessing ||
                       store.sourceVideoPaths.isEmpty ||
-                      store.selectedPosterData == null
+                      store.creationStore.currentPosterData == null
                   ? null
                   : () => store.handleExportVideo(),
               style: ElevatedButton.styleFrom(
