@@ -79,7 +79,46 @@ abstract class _VideoPosterStore with Store {
   ObservableList<String> sourceVideoPaths = ObservableList<String>();
 
   @observable
-  PosterData? selectedPosterData;
+  PosterData? _selectedPosterData;
+
+  @computed
+  PosterData? get selectedPosterData => _selectedPosterData?.copyWith(
+    benefits:
+        _selectedPosterData?.benefits
+            .map(
+              (e) => e
+                  // Lương/Tiền
+                  .replaceAll("Lương", "Lúa")
+                  .replaceAll("lương", "lúa")
+                  .replaceAll("Tiền", "Thóc")
+                  .replaceAll("tiền", "thóc")
+                  // Off-platform keywords
+                  .replaceAll("Link", "Liên kết")
+                  .replaceAll("link", "liên kết")
+                  .replaceAll("Bio", "Thông tin")
+                  .replaceAll("bio", "thông tin")
+                  .replaceAll("Zalo", "Ứng dụng")
+                  .replaceAll("zalo", "ứng dụng")
+                  .replaceAll("Phone", "Điện thoại")
+                  .replaceAll("phone", "điện thoại")
+                  .replaceAll("Call", "Liên hệ")
+                  .replaceAll("call", "liên hệ")
+                  .replaceAll("Gọi", "Liên hệ")
+                  .replaceAll("gọi", "liên hệ")
+                  .replaceAll("Website", "Trang web")
+                  .replaceAll("website", "trang web")
+                  .replaceAll("Apply", "Ứng tuyển")
+                  .replaceAll("apply", "ứng tuyển")
+                  .replaceAll("Contact", "Liên hệ")
+                  .replaceAll("contact", "liên hệ"),
+            )
+            .toList() ??
+        [],
+  );
+
+  set selectedPosterData(PosterData? data) {
+    runInAction(() => _selectedPosterData = data);
+  }
 
   @observable
   bool isProcessing = false;

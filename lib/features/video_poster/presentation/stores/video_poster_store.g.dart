@@ -9,6 +9,14 @@ part of 'video_poster_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoPosterStore on _VideoPosterStore, Store {
+  Computed<PosterData?>? _$selectedPosterDataComputed;
+
+  @override
+  PosterData? get selectedPosterData =>
+      (_$selectedPosterDataComputed ??= Computed<PosterData?>(
+        () => super.selectedPosterData,
+        name: '_VideoPosterStore.selectedPosterData',
+      )).value;
   Computed<Duration>? _$totalDurationComputed;
 
   @override
@@ -42,21 +50,21 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
-  late final _$selectedPosterDataAtom = Atom(
-    name: '_VideoPosterStore.selectedPosterData',
+  late final _$_selectedPosterDataAtom = Atom(
+    name: '_VideoPosterStore._selectedPosterData',
     context: context,
   );
 
   @override
-  PosterData? get selectedPosterData {
-    _$selectedPosterDataAtom.reportRead();
-    return super.selectedPosterData;
+  PosterData? get _selectedPosterData {
+    _$_selectedPosterDataAtom.reportRead();
+    return super._selectedPosterData;
   }
 
   @override
-  set selectedPosterData(PosterData? value) {
-    _$selectedPosterDataAtom.reportWrite(value, super.selectedPosterData, () {
-      super.selectedPosterData = value;
+  set _selectedPosterData(PosterData? value) {
+    _$_selectedPosterDataAtom.reportWrite(value, super._selectedPosterData, () {
+      super._selectedPosterData = value;
     });
   }
 
@@ -1225,7 +1233,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   String toString() {
     return '''
 sourceVideoPaths: ${sourceVideoPaths},
-selectedPosterData: ${selectedPosterData},
 isProcessing: ${isProcessing},
 generatedVideoPath: ${generatedVideoPath},
 errorMessage: ${errorMessage},
@@ -1272,6 +1279,7 @@ videoHeight: ${videoHeight},
 activeNavIndex: ${activeNavIndex},
 isFocusMode: ${isFocusMode},
 antiReupConfig: ${antiReupConfig},
+selectedPosterData: ${selectedPosterData},
 totalDuration: ${totalDuration},
 totalPosition: ${totalPosition}
     ''';
