@@ -11,6 +11,7 @@ import 'package:scraki/features/device/presentation/stores/device_group_store.da
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
 import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
+import 'package:scraki/features/settings/presentation/screens/settings_screen.dart';
 import 'package:scraki/features/video_poster/presentation/pages/video_poster_playground_page.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const KeepAlivePage(child: PosterCreatorScreen()),
                 KeepAlivePage(child: VideoPosterPlaygroundPage()),
                 KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
-                KeepAlivePage(child: _buildComingSoon(context, 'Settings')),
+                KeepAlivePage(child: SettingsScreen()),
               ],
             ),
           ),
@@ -114,7 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   return Stack(
                     fit: StackFit.expand,
                     clipBehavior: Clip.none,
-                    children: [
+                    children: [ 
                       RefreshIndicator(
                         onRefresh: deviceManagerStore.loadDevices,
                         child: Observer(

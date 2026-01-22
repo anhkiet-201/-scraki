@@ -3,8 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'features/settings/presentation/stores/settings_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +14,15 @@ void main() async {
   await Hive.initFlutter();
   MediaKit.ensureInitialized();
   configureDependencies();
+
+  // Load settings khi khởi động
+  final settingsStore = getIt<SettingsStore>();
+  await settingsStore.loadSettings();
+
+  // Initialize config provider với settings đã load
+  final configProvider = getIt<SettingsConfigProvider>();
+  await configProvider.initialize();
+
   runApp(const MyApp());
 }
 
