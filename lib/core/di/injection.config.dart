@@ -59,6 +59,15 @@ import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
     as _i405;
 import '../../features/recruitment/domain/usecases/search_jobs_with_ai_usecase.dart'
     as _i545;
+import '../../features/settings/data/repositories/settings_repository_impl.dart'
+    as _i955;
+import '../../features/settings/di/settings_module.dart' as _i273;
+import '../../features/settings/domain/repositories/i_settings_repository.dart'
+    as _i657;
+import '../../features/settings/domain/usecases/get_settings_usecase.dart'
+    as _i1029;
+import '../../features/settings/presentation/stores/settings_store.dart'
+    as _i151;
 import '../../features/video_poster/data/repositories/ffmpeg_video_processing_repository_impl.dart'
     as _i1007;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
@@ -67,6 +76,7 @@ import '../../features/video_poster/domain/services/anti_reup_service.dart'
     as _i154;
 import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
+import '../config/settings_config_provider.dart' as _i730;
 import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
@@ -80,6 +90,7 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    final settingsUseCaseModule = _$SettingsUseCaseModule();
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
@@ -109,6 +120,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.lazySingleton<_i657.ISettingsRepository>(
+      () => _i955.SettingsRepositoryImpl(),
+    );
+    gh.factory<_i1029.GetSettingsUseCase>(
+      () => settingsUseCaseModule.getSettingsUseCase(
+        gh<_i657.ISettingsRepository>(),
+      ),
+    );
+    gh.singleton<_i151.SettingsStore>(
+      () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
+    );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
     );
@@ -117,6 +139,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
       () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
+    );
+    gh.singleton<_i730.SettingsConfigProvider>(
+      () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
@@ -164,3 +189,5 @@ extension GetItInjectableX on _i174.GetIt {
 }
 
 class _$RegisterModule extends _i291.RegisterModule {}
+
+class _$SettingsUseCaseModule extends _i273.SettingsUseCaseModule {}
