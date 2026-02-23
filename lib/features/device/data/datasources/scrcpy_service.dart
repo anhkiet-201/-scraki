@@ -116,18 +116,40 @@ class ScrcpyService {
     try {
       for (final path in filePaths) {
         logger.i('[ScrcpyService] Pushing file to $serial: $path');
-        // Push to /sdcard/Download/ which is a standard location
-        await _shell.run('adb -s $serial push "$path" /sdcard/Download/');
+        // Use Process.run directly to avoid shell parsing issues with spaces/special characters
+        final pushResult = await Process.run('adb', [
+          '-s',
+          serial,
+          'push',
+          path,
+          '/sdcard/Download/',
+        ]);
+
+        if (pushResult.exitCode != 0) {
+          throw Exception('adb push failed: ${pushResult.stderr}');
+        }
 
         // Notify MediaScanner to scan the pushed file
-        // Handle both forward and backward slashes for cross-platform compatibility
         final fileName = path.split(RegExp(r'[/\\]')).last;
         final uri = 'file:///sdcard/Download/$fileName';
 
-        // Use quotes around the broadcast command and the URI to ensure correct parsing on Windows/CMD
-        await _shell.run(
-          'adb -s $serial shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d \\"$uri\\""',
-        );
+        final scanResult = await Process.run('adb', [
+          '-s',
+          serial,
+          'shell',
+          'am',
+          'broadcast',
+          '-a',
+          'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+          '-d',
+          uri,
+        ]);
+
+        if (scanResult.exitCode != 0) {
+          logger.w(
+            '[ScrcpyService] MediaScanner failed (non-critical): ${scanResult.stderr}',
+          );
+        }
       }
     } catch (e) {
       logger.e('[ScrcpyService] Failed to push files to $serial', error: e);
