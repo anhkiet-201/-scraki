@@ -80,16 +80,6 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
     });
   }
 
-  late final _$loadGroupsAsyncAction = AsyncAction(
-    '_DeviceGroupStore.loadGroups',
-    context: context,
-  );
-
-  @override
-  Future<void> loadGroups() {
-    return _$loadGroupsAsyncAction.run(() => super.loadGroups());
-  }
-
   late final _$createGroupAsyncAction = AsyncAction(
     '_DeviceGroupStore.createGroup',
     context: context,
@@ -138,6 +128,30 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
     name: '_DeviceGroupStore',
     context: context,
   );
+
+  @override
+  void listenToGroups() {
+    final _$actionInfo = _$_DeviceGroupStoreActionController.startAction(
+      name: '_DeviceGroupStore.listenToGroups',
+    );
+    try {
+      return super.listenToGroups();
+    } finally {
+      _$_DeviceGroupStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _updateGroups(List<DeviceGroupEntity> list) {
+    final _$actionInfo = _$_DeviceGroupStoreActionController.startAction(
+      name: '_DeviceGroupStore._updateGroups',
+    );
+    try {
+      return super._updateGroups(list);
+    } finally {
+      _$_DeviceGroupStoreActionController.endAction(_$actionInfo);
+    }
+  }
 
   @override
   void selectGroup(String? groupId) {

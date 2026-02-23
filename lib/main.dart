@@ -7,9 +7,14 @@ import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'features/settings/presentation/stores/settings_store.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   await dotenv.load(fileName: ".env");
   await Hive.initFlutter();
   MediaKit.ensureInitialized();

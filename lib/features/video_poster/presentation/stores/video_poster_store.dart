@@ -85,36 +85,59 @@ abstract class _VideoPosterStore with Store {
   PosterData? get selectedPosterData => _selectedPosterData?.copyWith(
     benefits:
         _selectedPosterData?.benefits
-            .map(
-              (e) => e
-                  // Lương/Tiền
-                  .replaceAll("Lương", "Lúa")
-                  .replaceAll("lương", "lúa")
-                  .replaceAll("Tiền", "Thóc")
-                  .replaceAll("tiền", "thóc")
-                  // Off-platform keywords
-                  .replaceAll("Link", "Liên kết")
-                  .replaceAll("link", "liên kết")
-                  .replaceAll("Bio", "Thông tin")
-                  .replaceAll("bio", "thông tin")
-                  .replaceAll("Zalo", "Ứng dụng")
-                  .replaceAll("zalo", "ứng dụng")
-                  .replaceAll("Phone", "Điện thoại")
-                  .replaceAll("phone", "điện thoại")
-                  .replaceAll("Call", "Liên hệ")
-                  .replaceAll("call", "liên hệ")
-                  .replaceAll("Gọi", "Liên hệ")
-                  .replaceAll("gọi", "liên hệ")
-                  .replaceAll("Website", "Trang web")
-                  .replaceAll("website", "trang web")
-                  .replaceAll("Apply", "Ứng tuyển")
-                  .replaceAll("apply", "ứng tuyển")
-                  .replaceAll("Contact", "Liên hệ")
-                  .replaceAll("contact", "liên hệ"),
-            )
+            .map((e) => _filterRiskyKeywords(e))
             .toList() ??
         [],
   );
+
+  /// Filters risky keywords from text to avoid TikTok's recruitment scam flags.
+  /// Uses case-insensitive regex for robust matching and replaces with safe synonyms.
+  String _filterRiskyKeywords(String text) {
+    if (text.isEmpty) return text;
+
+    String filtered = text;
+
+    final replacements = {
+      // Money & Salary
+      r'Lương': 'Lúa',
+      r'Tiền': 'Thóc',
+      r'Triệu': 'Củ',
+      r'VNĐ': 'Xu',
+      r'Thu nhập': 'Thu hoạch',
+      r'Hoa hồng': 'Tip',
+
+      // Off-platform & Contact
+      r'Zalo': 'App xanh',
+      r'Telegram': 'Tele',
+      r'Link': 'Liên kết',
+      r'Bio': 'Thông tin',
+      r'Phone': 'Liên hệ',
+      r'SĐT': 'Số hotline',
+      r'Gọi': 'Kết nối',
+      r'Call': 'Kết nối',
+      r'Website': 'Trang chủ',
+      r'Inbox|Inb': 'Nhắn tin',
+
+      // Recruitment & Urgency
+      r'Apply|Ứng tuyển': 'Tham gia',
+      r'Tuyển': 'Mời',
+      r'Việc nhẹ': 'Công việc',
+      r'Lương cao': 'Thu nhập tốt',
+      r'Tại nhà': 'Linh hoạt',
+      r'Gấp|Ngay': 'Liền',
+
+      // Benefits & Perks (User requested)
+      r'Thưởng': 'Quà',
+      r'Bao cơm|Cơm': 'Ăn uống',
+      r'Phụ cấp': 'Hỗ trợ',
+    };
+
+    replacements.forEach((key, value) {
+      filtered = filtered.replaceAll(RegExp(key, caseSensitive: false), value);
+    });
+
+    return filtered;
+  }
 
   set selectedPosterData(PosterData? data) {
     runInAction(() => _selectedPosterData = data);

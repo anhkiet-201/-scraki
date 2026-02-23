@@ -23,6 +23,28 @@ class DeviceGroupModel extends HiveObject {
     );
   }
 
+  factory DeviceGroupModel.fromJson(Map<String, dynamic> json) {
+    return DeviceGroupModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unnamed Group',
+      colorValue: (json['colorValue'] as num?)?.toInt() ?? 0xFF000000,
+      deviceSerials:
+          (json['deviceSerials'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'colorValue': colorValue,
+      'deviceSerials': deviceSerials,
+    };
+  }
+
   DeviceGroupEntity toEntity() {
     return DeviceGroupEntity(
       id: id,

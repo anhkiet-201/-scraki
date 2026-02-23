@@ -772,7 +772,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           label:
                                               posterData.benefits.isNotEmpty ==
                                                   true
-                                              ? "🎁 QUYỀN LỢI:\n${posterData.benefits.map((e) => "• $e").join("\n")}"
+                                              ? "🎁 :\n${posterData.benefits.map((e) => "• $e").join("\n")}"
                                               : "",
                                           x: store.benefitsX,
                                           y: store.benefitsY,

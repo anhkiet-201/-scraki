@@ -1,12 +1,12 @@
+import 'dart:async';
 import 'package:fpdart/fpdart.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:injectable/injectable.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:scraki/features/device/data/models/device_group_model.dart';
 import 'package:scraki/features/device/domain/entities/device_group_entity.dart';
 import 'package:scraki/features/device/domain/repositories/device_group_repository.dart';
 
-@LazySingleton(as: DeviceGroupRepository)
+// Removed @LazySingleton to allow DeviceGroupRepositoryFirebaseImpl to be the main implementation
 class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   static const String boxName = 'device_groups';
   bool _isInitialized = false;
@@ -61,5 +61,10 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   @override
   Future<Either<Failure, Unit>> updateGroup(DeviceGroupEntity group) async {
     return saveGroup(group); // Save handles update if ID exists
+  }
+
+  @override
+  Stream<Either<Failure, List<DeviceGroupEntity>>> watchGroups() async* {
+    yield await getGroups();
   }
 }

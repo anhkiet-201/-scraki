@@ -17,14 +17,16 @@ import '../../features/dashboard/presentation/stores/dashboard_store.dart'
     as _i891;
 import '../../features/device/data/datasources/adb_remote_data_source.dart'
     as _i165;
+import '../../features/device/data/datasources/device_group_remote_data_source.dart'
+    as _i521;
 import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
 import '../../features/device/data/datasources/scrcpy_socket_client.dart'
     as _i607;
 import '../../features/device/data/datasources/video_worker_manager.dart'
     as _i3;
-import '../../features/device/data/repositories/device_group_repository_impl.dart'
-    as _i454;
+import '../../features/device/data/repositories/device_group_repository_firebase_impl.dart'
+    as _i936;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
 import '../../features/device/domain/repositories/device_group_repository.dart'
@@ -110,14 +112,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
+    gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
+      () => _i521.DeviceGroupRemoteDataSourceImpl(),
+    );
     gh.factory<_i427.VideoProcessingRepository>(
       () => _i1007.FfmpegVideoProcessingRepositoryImpl(),
     );
     gh.lazySingleton<_i391.IPosterRepository>(
       () => _i424.PosterRepositoryImpl(),
-    );
-    gh.lazySingleton<_i510.DeviceGroupRepository>(
-      () => _i454.DeviceGroupRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
     gh.lazySingleton<_i657.ISettingsRepository>(
@@ -133,6 +135,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
+    );
+    gh.lazySingleton<_i510.DeviceGroupRepository>(
+      () => _i936.DeviceGroupRepositoryFirebaseImpl(
+        gh<_i521.DeviceGroupRemoteDataSource>(),
+      ),
     );
     gh.factory<_i706.SavePosterUseCase>(
       () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),

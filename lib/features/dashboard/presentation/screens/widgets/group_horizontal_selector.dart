@@ -14,9 +14,9 @@ class GroupHorizontalSelector extends StatelessWidget {
     final store = getIt<DeviceGroupStore>();
     final theme = Theme.of(context);
 
-    // Ensure groups are loaded
-    if (store.groups.isEmpty) {
-      store.loadGroups();
+    // Ensure groups are loaded via stream
+    if (store.groups.isEmpty && store.errorMessage == null) {
+      store.listenToGroups();
     }
 
     return Container(

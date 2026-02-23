@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/error/failures.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
@@ -89,21 +92,43 @@ abstract class _DeviceGroupStore with Store {
     return devices.map((d) => d.serial).toSet();
   }
 
+  StreamSubscription<Either<Failure, List<DeviceGroupEntity>>>?
+  _groupSubscription;
+  bool _isListeningToGroups = false;
+
   @action
-  Future<void> loadGroups() async {
-    final result = await _repository.getGroups();
-    result.fold(
-      (failure) {
-        errorMessage = failure.message;
-        logger.e(
-          '[DeviceGroupStore] Failed to load groups: ${failure.message}',
-        );
-      },
-      (list) {
-        groups.clear();
-        groups.addAll(list);
-      },
-    );
+  void listenToGroups() {
+    if (_isListeningToGroups) return;
+    _isListeningToGroups = true;
+
+    _groupSubscription?.cancel();
+    _groupSubscription = _repository.watchGroups().listen((result) {
+      result.fold(
+        (failure) {
+          errorMessage = failure.message;
+          logger.e(
+            '[DeviceGroupStore] Failed to stream groups: ${failure.message}',
+          );
+        },
+        (list) {
+          logger.i(
+            '[DeviceGroupStore] Received ${list.length} groups from Firebase',
+          );
+          // Wrap in action to mutate observable
+          _updateGroups(list);
+        },
+      );
+    });
+  }
+
+  @action
+  void _updateGroups(List<DeviceGroupEntity> list) {
+    groups.clear();
+    groups.addAll(list);
+  }
+
+  void dispose() {
+    _groupSubscription?.cancel();
   }
 
   @action
@@ -121,8 +146,8 @@ abstract class _DeviceGroupStore with Store {
 
     final result = await _repository.saveGroup(newGroup);
     result.fold((failure) => errorMessage = failure.message, (_) {
-      groups.add(newGroup);
-      logger.i('[DeviceGroupStore] Created group: $name');
+      // Stream updates ui automatically
+      logger.i('[DeviceGroupStore] Created group: $name (Pending sync)');
     });
   }
 
@@ -130,7 +155,7 @@ abstract class _DeviceGroupStore with Store {
   Future<void> deleteGroup(String groupId) async {
     final result = await _repository.deleteGroup(groupId);
     result.fold((failure) => errorMessage = failure.message, (_) {
-      groups.removeWhere((g) => g.id == groupId);
+      // Stream updates ui automatically
       if (selectedGroupId == groupId) {
         selectedGroupId = null;
       }
