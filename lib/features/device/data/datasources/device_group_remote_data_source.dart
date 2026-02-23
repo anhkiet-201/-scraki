@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/models/device_group_model.dart';
@@ -11,53 +11,53 @@ abstract class DeviceGroupRemoteDataSource {
 
 @LazySingleton(as: DeviceGroupRemoteDataSource)
 class DeviceGroupRemoteDataSourceImpl implements DeviceGroupRemoteDataSource {
-  final DatabaseReference _dbRef;
+  final CollectionReference _collection;
 
   DeviceGroupRemoteDataSourceImpl()
-    : _dbRef = FirebaseDatabase.instance.ref().child('device_groups') {
-    // Enable offline persistence for RTDB by default
-    try {
-      FirebaseDatabase.instance.setPersistenceEnabled(true);
-      FirebaseDatabase.instance.setPersistenceCacheSizeBytes(
-        10000000,
-      ); // 10MB cache
-    } catch (e) {
-      logger.w(
-        '[FirebaseRTDB] setPersistenceEnabled error (often expected if already initialized): $e',
-      );
-    }
-  }
+    : _collection = FirebaseFirestore.instance.collection('device_groups');
 
   @override
   Stream<List<DeviceGroupModel>> watchGroups() {
-    return _dbRef.onValue.map((event) {
-      final groups = <DeviceGroupModel>[];
-      if (event.snapshot.value != null) {
-        final data = event.snapshot.value as Map<dynamic, dynamic>;
-        data.forEach((key, value) {
-          try {
-            // Need to convert Map<dynamic, dynamic> to Map<String, dynamic>
-            final mapData = Map<String, dynamic>.from(value as Map);
-            // Assuming DeviceGroupModel has a fromJson factory.
-            // We might need to write a manual parser if mapping is different.
-            groups.add(DeviceGroupModel.fromJson(mapData));
-          } catch (e) {
-            logger.e('[FirebaseRTDB] Error parsing group $key: $e');
+    logger.i('[Firestore] Bắt đầu theo dõi bảng device_groups...');
+
+    return _collection
+        .snapshots()
+        .map((snapshot) {
+          final groups = <DeviceGroupModel>[];
+          for (final doc in snapshot.docs) {
+            try {
+              final data = doc.data() as Map<String, dynamic>;
+              groups.add(DeviceGroupModel.fromJson(data));
+            } catch (e) {
+              logger.e('[Firestore] Error parsing group ${doc.id}: $e');
+            }
           }
+          return groups;
+        })
+        .handleError((Object error) {
+          logger.e('[Firestore] Lỗi stream watchGroups: $error');
         });
-      }
-      return groups;
-    });
   }
 
   @override
   Future<void> saveGroup(DeviceGroupModel group) async {
-    // Map serialization to JSON before saving
-    await _dbRef.child(group.id).set(group.toJson());
+    try {
+      await _collection.doc(group.id).set(group.toJson());
+      logger.i('[Firestore] Saved group ${group.id}');
+    } catch (e) {
+      logger.e('[Firestore] Save group failed: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<void> deleteGroup(String groupId) async {
-    await _dbRef.child(groupId).remove();
+    try {
+      await _collection.doc(groupId).delete();
+      logger.i('[Firestore] Deleted group $groupId');
+    } catch (e) {
+      logger.e('[Firestore] Delete group failed: $e');
+      rethrow;
+    }
   }
 }

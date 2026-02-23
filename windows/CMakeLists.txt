@@ -1,4 +1,5 @@
 # Project-level configuration.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
 cmake_minimum_required(VERSION 3.14)
 project(scraki LANGUAGES CXX)
 
@@ -61,22 +62,6 @@ set(FFMPEG_BINARY_DIRS "${FFMPEG_ROOT}/bin")
 include_directories(${FFMPEG_INCLUDE_DIRS})
 link_directories(${FFMPEG_LIBRARY_DIRS})
 
-# Add FFmpeg DLLs to the install step
-file(GLOB FFMPEG_DLLS "${FFMPEG_BINARY_DIRS}/*.dll")
-install(FILES ${FFMPEG_DLLS}
-  DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  COMPONENT Runtime)
-
-# Add FFmpeg executables to the install step
-install(FILES "${FFMPEG_BINARY_DIRS}/ffmpeg.exe"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  COMPONENT Runtime
-  OPTIONAL)
-install(FILES "${FFMPEG_BINARY_DIRS}/ffprobe.exe"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  COMPONENT Runtime
-  OPTIONAL)
-
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
@@ -90,7 +75,7 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 # Make the "install" step default, as it's required to run.
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX MATCHES "C:/Program Files")
   set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 endif()
 
@@ -111,6 +96,23 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Add FFmpeg DLLs to the install step
+file(GLOB FFMPEG_DLLS "${FFMPEG_BINARY_DIRS}/*.dll")
+install(FILES ${FFMPEG_DLLS}
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
+# Add FFmpeg executables to the install step
+install(FILES "${FFMPEG_BINARY_DIRS}/ffmpeg.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime
+  OPTIONAL)
+install(FILES "${FFMPEG_BINARY_DIRS}/ffprobe.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime
+  OPTIONAL)
+
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
