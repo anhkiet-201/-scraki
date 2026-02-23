@@ -50,7 +50,6 @@ BUILD_DMG_README.md
 .env
 
 # Firebase Secrets
-lib/firebase_options.dart
 **/GoogleService-Info.plist
 **/google-services.json
 firebase_app_id_file.json
