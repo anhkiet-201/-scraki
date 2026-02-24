@@ -3,23 +3,15 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 
-/// Media Library panel for video file management
-///
-/// Features:
-/// - Drag and drop video files
-/// - Video list display
-/// - Remove video functionality
-/// - Video selection callback
+/// Media Library panel — drag-and-drop video file management
 class MediaLibraryPanel extends StatelessWidget {
   final VideoPosterStore store;
   final ValueChanged<int> onVideoTap;
-  final VoidCallback onVideosChanged;
 
   const MediaLibraryPanel({
     super.key,
     required this.store,
     required this.onVideoTap,
-    required this.onVideosChanged,
   });
 
   @override
@@ -44,7 +36,6 @@ class MediaLibraryPanel extends StatelessWidget {
             onDragDone: (details) {
               final paths = details.files.map((e) => e.path).toList();
               store.addSourceVideos(paths);
-              onVideosChanged();
             },
             child: Observer(
               builder: (_) => ListView.builder(
@@ -53,28 +44,25 @@ class MediaLibraryPanel extends StatelessWidget {
                   return Observer(
                     builder: (context) {
                       final path = store.sourceVideoPaths[index];
-                      final isPlaying = index == store.currentPlaylistIndex;
+                      final isActive =
+                          index == store.currentVideoIndex && store.isPlaying;
                       return ListTile(
                         dense: true,
-                        selected: isPlaying,
+                        selected: isActive,
                         selectedTileColor: Colors.white.withValues(alpha: 0.1),
                         leading: Icon(
                           Icons.movie_outlined,
                           size: 16,
-                          color: isPlaying
-                              ? Colors.greenAccent
-                              : Colors.white70,
+                          color: isActive ? Colors.greenAccent : Colors.white70,
                         ),
                         title: Text(
                           path.split('/').last,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: isPlaying
+                            fontWeight: isActive
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            color: isPlaying
-                                ? Colors.greenAccent
-                                : Colors.white,
+                            color: isActive ? Colors.greenAccent : Colors.white,
                           ),
                         ),
                         onTap: () => onVideoTap(index),

@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
-
-import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok_safe_zone.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/video_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/text_properties_panel.dart';
 
@@ -65,9 +61,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               store.player.playOrPause();
             }
           },
-          const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-            store.toggleFocusMode();
-          },
         },
         child: Focus(
           autofocus: true,
@@ -82,20 +75,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                       _buildUnifiedNavBar(),
 
                       // Left panel (media library or text properties)
-                      Observer(
-                        builder: (_) {
-                          if (store.isFocusMode) return const SizedBox.shrink();
-                          return SizedBox(
-                            width: 300,
-                            child: store.activeNavIndex == _kNavText
-                                ? TextPropertiesPanel(store: store)
-                                : MediaLibraryPanel(
-                                    store: store,
-                                    onVideoTap: store.playVideoAtIndex,
-                                    onVideosChanged: store.syncPlaylist,
-                                  ),
-                          );
-                        },
+                      SizedBox(
+                        width: 300,
+                        child: Observer(
+                          builder: (_) => store.activeNavIndex == _kNavText
+                              ? TextPropertiesPanel(store: store)
+                              : MediaLibraryPanel(
+                                  store: store,
+                                  onVideoTap: store.playVideoAtIndex,
+                                ),
+                        ),
                       ),
 
                       // Main workspace
@@ -120,24 +109,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                 child: Center(
                                   child: FloatingGlassControls(
                                     isPlaying: store.isPlaying,
-                                    position: store.totalPosition,
-                                    duration: store.totalDuration,
+                                    position: store.position,
+                                    duration: store.duration,
                                     onPlayPause: () =>
                                         store.player.playOrPause(),
-                                    onSeek: store.seekTimeline,
-                                  ),
-                                ),
-                              ),
-
-                              // Status overlay
-                              Positioned(
-                                top: 20,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: DurationStatusOverlay(
-                                    duration: store.duration,
-                                    playbackSpeed: store.playbackSpeed,
+                                    onSeek: (d) => store.player.seek(d),
                                   ),
                                 ),
                               ),
@@ -191,104 +167,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             ),
           ),
           const Spacer(),
-          _buildWorkStepper(),
-          const Spacer(),
           _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
             store.sourceVideoPaths.clear();
             store.customTexts.clear();
-            store.player.open(Playlist([]));
+            store.player.stop();
           }),
           const SizedBox(width: 12),
-          _buildActionButton(
-            'CÀI ĐẶT',
-            Icons.settings_outlined,
-            () {},
-            isOutline: true,
-          ),
-          const SizedBox(width: 12),
-          Observer(
-            builder: (_) => _buildActionButton(
-              store.isFocusMode ? 'THOÁT TẬP TRUNG' : 'CHẾ ĐỘ TẬP TRUNG',
-              store.isFocusMode
-                  ? Icons.fullscreen_exit_rounded
-                  : Icons.fullscreen_rounded,
-              store.toggleFocusMode,
-              isOutline: store.isFocusMode,
-            ),
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildWorkStepper() {
-    return Observer(
-      builder: (_) {
-        int step = 1;
-        if (store.sourceVideoPaths.isNotEmpty) step = 2;
-        if (store.isProcessing) step = 3;
-        if (store.generatedVideoPath != null) step = 4;
-
-        return Row(
-          children: [
-            _buildStepperItem(1, 'MEDIA', step >= 1),
-            _buildStepperDivider(step >= 2),
-            _buildStepperItem(2, 'TEXT', step >= 2),
-            _buildStepperDivider(step >= 3),
-            _buildStepperItem(3, 'EDIT', step >= 3),
-            _buildStepperDivider(step >= 4),
-            _buildStepperItem(4, 'READY', step >= 4),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStepperItem(int num, String label, bool active) {
-    final color = active ? const Color(0xFF6366F1) : Colors.white24;
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 1.5),
-            color: active ? color.withValues(alpha: 0.1) : Colors.transparent,
-          ),
-          child: Center(
-            child: Text(
-              num.toString(),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-            color: active ? Colors.white70 : Colors.white24,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepperDivider(bool active) {
-    return Container(
-      width: 24,
-      height: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: active
-          ? const Color(0xFF6366F1).withValues(alpha: 0.5)
-          : Colors.white10,
     );
   }
 
@@ -428,9 +314,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                       );
                     },
                   ),
-
-                  // TikTok Safe Zone Visualization
-                  const TikTokSafeZone(),
 
                   // Virtual canvas for free text overlays (720x1280)
                   Positioned.fill(
