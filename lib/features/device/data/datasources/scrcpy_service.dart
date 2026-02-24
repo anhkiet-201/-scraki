@@ -129,20 +129,23 @@ class ScrcpyService {
           throw Exception('adb push failed: ${pushResult.stderr}');
         }
 
-        // Notify MediaScanner to scan the pushed file
+        // Notify MediaScanner to scan the pushed file.
+        // Single-quote the URI so Android sh does not interpret special chars
+        // like spaces, '(', ')' as shell syntax.
+        // Process.run uses CreateProcess on Windows (not cmd.exe), so single-quotes
+        // inside the argument string are passed through to ADB and then to sh correctly.
         final fileName = path.split(RegExp(r'[/\\]')).last;
-        final uri = 'file:///sdcard/Download/$fileName';
+        // Escape any literal single-quotes in the filename using POSIX '\'' trick.
+        final escapedFileName = fileName.replaceAll("'", "'\\''");
+        final uri = 'file:///sdcard/Download/$escapedFileName';
+        final scanCmd =
+            "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d '$uri'";
 
         final scanResult = await Process.run('adb', [
           '-s',
           serial,
           'shell',
-          'am',
-          'broadcast',
-          '-a',
-          'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
-          '-d',
-          uri,
+          scanCmd,
         ]);
 
         if (scanResult.exitCode != 0) {
