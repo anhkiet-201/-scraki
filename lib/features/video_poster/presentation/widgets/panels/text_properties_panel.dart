@@ -64,6 +64,7 @@ class TextPropertiesPanel extends StatelessWidget {
     Color(0xFF48464C), // Neutral-30
     Color(0xFF787579), // Neutral-50
     Color(0xFFE6E1E5), // Neutral-90 (light)
+    Color(0xFFFFFFFF), // Neutral-100
     // Primary container dark
     Color(0xFF21005D), // Primary-4
     Color(0xFF38006B), // Primary-10

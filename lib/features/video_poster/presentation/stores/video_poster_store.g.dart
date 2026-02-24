@@ -85,6 +85,78 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
+  late final _$batchOutputCountAtom = Atom(
+    name: '_VideoPosterStore.batchOutputCount',
+    context: context,
+  );
+
+  @override
+  int get batchOutputCount {
+    _$batchOutputCountAtom.reportRead();
+    return super.batchOutputCount;
+  }
+
+  @override
+  set batchOutputCount(int value) {
+    _$batchOutputCountAtom.reportWrite(value, super.batchOutputCount, () {
+      super.batchOutputCount = value;
+    });
+  }
+
+  late final _$isBatchCreatingAtom = Atom(
+    name: '_VideoPosterStore.isBatchCreating',
+    context: context,
+  );
+
+  @override
+  bool get isBatchCreating {
+    _$isBatchCreatingAtom.reportRead();
+    return super.isBatchCreating;
+  }
+
+  @override
+  set isBatchCreating(bool value) {
+    _$isBatchCreatingAtom.reportWrite(value, super.isBatchCreating, () {
+      super.isBatchCreating = value;
+    });
+  }
+
+  late final _$batchLogsAtom = Atom(
+    name: '_VideoPosterStore.batchLogs',
+    context: context,
+  );
+
+  @override
+  ObservableList<String> get batchLogs {
+    _$batchLogsAtom.reportRead();
+    return super.batchLogs;
+  }
+
+  @override
+  set batchLogs(ObservableList<String> value) {
+    _$batchLogsAtom.reportWrite(value, super.batchLogs, () {
+      super.batchLogs = value;
+    });
+  }
+
+  late final _$batchOutputDirAtom = Atom(
+    name: '_VideoPosterStore.batchOutputDir',
+    context: context,
+  );
+
+  @override
+  String? get batchOutputDir {
+    _$batchOutputDirAtom.reportRead();
+    return super.batchOutputDir;
+  }
+
+  @override
+  set batchOutputDir(String? value) {
+    _$batchOutputDirAtom.reportWrite(value, super.batchOutputDir, () {
+      super.batchOutputDir = value;
+    });
+  }
+
   late final _$playbackSpeedAtom = Atom(
     name: '_VideoPosterStore.playbackSpeed',
     context: context,
@@ -173,6 +245,16 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     _$activeNavIndexAtom.reportWrite(value, super.activeNavIndex, () {
       super.activeNavIndex = value;
     });
+  }
+
+  late final _$createBatchVideosAsyncAction = AsyncAction(
+    '_VideoPosterStore.createBatchVideos',
+    context: context,
+  );
+
+  @override
+  Future<void> createBatchVideos() {
+    return _$createBatchVideosAsyncAction.run(() => super.createBatchVideos());
   }
 
   late final _$capturePreviewAsPngAsyncAction = AsyncAction(
@@ -301,6 +383,30 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setBatchOutputCount(int count) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setBatchOutputCount',
+    );
+    try {
+      return super.setBatchOutputCount(count);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void cancelBatchVideos() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.cancelBatchVideos',
+    );
+    try {
+      return super.cancelBatchVideos();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void addSourceVideos(List<String> paths) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.addSourceVideos',
@@ -379,6 +485,10 @@ sourceVideoPaths: ${sourceVideoPaths},
 currentVideoIndex: ${currentVideoIndex},
 customTexts: ${customTexts},
 selectedCustomTextId: ${selectedCustomTextId},
+batchOutputCount: ${batchOutputCount},
+isBatchCreating: ${isBatchCreating},
+batchLogs: ${batchLogs},
+batchOutputDir: ${batchOutputDir},
 playbackSpeed: ${playbackSpeed},
 duration: ${duration},
 position: ${position},

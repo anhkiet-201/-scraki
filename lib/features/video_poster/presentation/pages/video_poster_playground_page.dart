@@ -8,6 +8,7 @@ import 'package:scraki/features/video_poster/presentation/widgets/preview/video_
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/text_properties_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/batch_video_panel.dart';
 
 /// Nav tab index constants
 const int _kNavMedia = 0;
@@ -69,59 +70,75 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               children: [
                 _buildModernToolbar(),
                 Expanded(
-                  child: Row(
-                    children: [
-                      // Left nav bar
-                      _buildUnifiedNavBar(),
+                  child: Observer(
+                    builder: (context) {
+                      if (store.isBatchCreating) {
+                        // Full-screen batch creation mode
+                        return BatchVideoPanel(store: store);
+                      }
 
-                      // Left panel (media library or text properties)
-                      SizedBox(
-                        width: 300,
-                        child: Observer(
-                          builder: (_) => store.activeNavIndex == _kNavText
-                              ? TextPropertiesPanel(store: store)
-                              : MediaLibraryPanel(
-                                  store: store,
-                                  onVideoTap: store.playVideoAtIndex,
-                                ),
-                        ),
-                      ),
+                      // Normal editor mode
+                      return Row(
+                        children: [
+                          // Left nav bar
+                          _buildUnifiedNavBar(),
 
-                      // Main workspace
-                      Expanded(
-                        child: Observer(
-                          builder: (context) => Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Container(
-                                  color: Colors.black,
-                                  child: Center(
-                                    child: _buildInteractivePreview(),
-                                  ),
-                                ),
-                              ),
-
-                              // Floating player controls
-                              Positioned(
-                                bottom: 40,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: FloatingGlassControls(
-                                    isPlaying: store.isPlaying,
-                                    position: store.position,
-                                    duration: store.duration,
-                                    onPlayPause: () =>
-                                        store.player.playOrPause(),
-                                    onSeek: (d) => store.player.seek(d),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          // Left panel (media library or text properties)
+                          SizedBox(
+                            width: 300,
+                            child: Observer(
+                              builder: (_) => store.activeNavIndex == _kNavText
+                                  ? TextPropertiesPanel(store: store)
+                                  : MediaLibraryPanel(
+                                      store: store,
+                                      onVideoTap: store.playVideoAtIndex,
+                                    ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+
+                          // Main workspace
+                          Expanded(
+                            child: Observer(
+                              builder: (context) => Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Container(
+                                      color: Colors.black,
+                                      child: Center(
+                                        child: _buildInteractivePreview(),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Floating player controls
+                                  Positioned(
+                                    bottom: 40,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: FloatingGlassControls(
+                                        isPlaying: store.isPlaying,
+                                        position: store.position,
+                                        duration: store.duration,
+                                        onPlayPause: () =>
+                                            store.player.playOrPause(),
+                                        onSeek: (d) => store.player.seek(d),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Right panel (Batch Video Creation)
+                          SizedBox(
+                            width: 280,
+                            child: BatchVideoPanel(store: store),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],

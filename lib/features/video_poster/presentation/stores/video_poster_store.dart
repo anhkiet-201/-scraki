@@ -9,6 +9,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video_service.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:uuid/uuid.dart';
 
@@ -133,7 +134,87 @@ abstract class _VideoPosterStore with Store {
     );
   }
 
-  // ─── Effects State ────────────────────────────────────────────────────────
+  // ─── Batch Video Creation ────────────────────────────────────────────────────────
+
+  @observable
+  int batchOutputCount = 10;
+
+  @observable
+  bool isBatchCreating = false;
+
+  @observable
+  ObservableList<String> batchLogs = ObservableList<String>();
+
+  @observable
+  String? batchOutputDir;
+
+  BatchVideoService? _batchService;
+  StreamSubscription<String>? _batchSub;
+
+  @action
+  void setBatchOutputCount(int count) {
+    batchOutputCount = count.clamp(1, 999);
+  }
+
+  @action
+  Future<void> createBatchVideos() async {
+    if (sourceVideoPaths.isEmpty || isBatchCreating) return;
+
+    _batchService = BatchVideoService();
+
+    // 1. Capture text overlay BEFORE setting isBatchCreating=true
+    // Because isBatchCreating=true will hide the RepaintBoundary from the screen
+    Uint8List? overlayBytes;
+    if (customTexts.isNotEmpty) {
+      try {
+        overlayBytes = await capturePreviewAsPng();
+      } catch (e) {
+        batchLogs.add('❌ Lỗi capture text: $e');
+        return;
+      }
+    }
+
+    // 2. Now it's safe to switch UI to full-screen batch mode
+    isBatchCreating = true;
+    batchLogs.clear();
+    batchOutputDir = null;
+
+    if (customTexts.isNotEmpty) {
+      batchLogs.add('🖼️ Đã chụp Text Overlay thành công.');
+    }
+
+    final config = BatchVideoConfig(
+      outputCount: batchOutputCount,
+      overlayBytes: overlayBytes,
+    );
+
+    final stream = _batchService!.createBatchVideos(
+      sourceVideoPaths: List<String>.from(sourceVideoPaths),
+      config: config,
+      onOutputDir: (dir) => runInAction(() => batchOutputDir = dir),
+    );
+
+    _batchSub = stream.listen(
+      (line) => runInAction(() => batchLogs.add(line)),
+      onDone: () => runInAction(() => isBatchCreating = false),
+      onError: (Object e) => runInAction(() {
+        batchLogs.add('❌ Lỗi: $e');
+        isBatchCreating = false;
+      }),
+    );
+  }
+
+  @action
+  void cancelBatchVideos() {
+    _batchService?.cancel();
+    _batchSub?.cancel();
+    _batchSub = null;
+    _batchService = null;
+    isBatchCreating = false;
+    batchLogs.add('🛑 Đã dừng.');
+  }
+
+  // ─── Effects State ─────────────────────────────────────────────────────────────
 
   @observable
   double playbackSpeed = 1.0;
@@ -225,9 +306,10 @@ abstract class _VideoPosterStore with Store {
     );
   }
 
-  /// Dispose player, controller, and subscriptions
+  /// Dispose player, controller, subscriptions, and any running batch job.
   @action
   void disposePlayer() {
+    cancelBatchVideos();
     _durationSub?.cancel();
     _positionSub?.cancel();
     _playingSub?.cancel();
