@@ -190,6 +190,9 @@ class BatchVideoService {
           outputDir: outputDir,
           config: config,
           overlayFile: overlayFile,
+          onLogMsg: (msg) {
+            onLog?.call(msg);
+          },
           onProgress: (percent) {
             final p = (percent * 100).toStringAsFixed(0);
             onLog?.call(
@@ -427,6 +430,7 @@ class BatchVideoService {
     required String outputDir,
     required BatchVideoConfig config,
     void Function(double)? onProgress,
+    void Function(String)? onLogMsg,
     File? overlayFile,
   }) async {
     final random = Random();
@@ -436,32 +440,57 @@ class BatchVideoService {
         config.minFinalDuration +
         random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
 
-    // Shuffle segments (Fisher-Yates)
-    final shuffled = List<String>.from(segments);
-    _shuffleList(shuffled, random);
-
     // Select segments until we hit target duration, avoiding adjacent same-source
     final selected = <String>[];
     int totalDuration = 0;
     String lastVideoId = '';
 
-    for (final seg in shuffled) {
-      if (totalDuration >= targetDuration) break;
+    // Check total distinct sources
+    final uniqueSourceCount = segments
+        .map(
+          (s) => _basename(s).contains('_seg')
+              ? _basename(s).split('_seg').first
+              : _basename(s),
+        )
+        .toSet()
+        .length;
+
+    var availableSegments = List<String>.from(segments);
+    _shuffleList(availableSegments, random);
+
+    while (totalDuration < targetDuration && !_cancelled) {
+      if (availableSegments.isEmpty) {
+        break;
+      }
+
+      // Rút ngẫu nhiên từ pool segment 1 lần (sau khi suffle)
+      final seg = availableSegments.removeLast();
       if (!File(seg).existsSync()) continue;
 
-      // Extract video id from filename (video001_seg002.mp4 → video001)
       final basename = _basename(seg);
       final currentVideoId = basename.contains('_seg')
           ? basename.split('_seg').first
           : basename;
 
-      // Skip if same source as last selected (anti-repetition)
-      if (currentVideoId == lastVideoId && selected.isNotEmpty) continue;
+      // Anti-repetition check (UNLESS we only have 1 source video)
+      if (currentVideoId == lastVideoId &&
+          selected.isNotEmpty &&
+          uniqueSourceCount > 1) {
+        continue;
+      }
 
       final segDur = await _getVideoDuration(seg);
       selected.add(seg);
       totalDuration += segDur;
       lastVideoId = currentVideoId;
+    }
+
+    if (totalDuration < targetDuration) {
+      // Yêu cầu từ USER: Nếu không đủ thời lượng thì báo thất bại, không tái sử dụng segment cũ
+      onLogMsg?.call(
+        '  ⚠️ Video $outputIndex thất bại: Chỉ gom được ${totalDuration}s (cần tối thiểu ${targetDuration}s). Vui lòng thêm video gốc.',
+      );
+      return false;
     }
 
     if (selected.isEmpty) return false;
@@ -510,6 +539,8 @@ class BatchVideoService {
       if (overlayFile != null) {
         // Complex filter approach for text overlay
         ffmpegArgs.addAll([
+          '-loop',
+          '1',
           '-i',
           overlayFile.absolute.path,
           '-filter_complex',
@@ -518,7 +549,7 @@ class BatchVideoService {
               'eq=brightness=$brightnessStr:contrast=$contrastStr,'
               'noise=alls=$noiseStr:allf=t,'
               'setpts=${ptsStr}*PTS[bg];'
-              '[bg][1:v]overlay=0:0[outv];'
+              '[bg][1:v]overlay=0:0:shortest=1[outv];'
               '[0:a]volume=0.05,atempo=$tempoStr[outa]',
           '-map',
           '[outv]',
