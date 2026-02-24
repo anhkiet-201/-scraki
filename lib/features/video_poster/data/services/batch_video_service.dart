@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 
 // ============================================================================
 // BatchVideoService — Cross-platform Dart reimplementation of make-vid.sh
@@ -52,6 +53,7 @@ class BatchVideoService {
     required List<String> sourceVideoPaths,
     required BatchVideoConfig config,
     void Function(String dir)? onOutputDir,
+    void Function(String log)? onLog,
   }) async* {
     _cancelled = false;
     _activeProcesses.clear();
@@ -71,7 +73,35 @@ class BatchVideoService {
         .replaceAll('-', '')
         .replaceAll('T', '_')
         .substring(0, 15);
-    final outputDir = config.outputDir ?? 'output_vids_$timestamp';
+    // Get Desktop directory as default output path
+    String baseOutputDir;
+    if (config.outputDir != null) {
+      baseOutputDir = config.outputDir!;
+    } else {
+      try {
+        // Fallback to current directory if path_provider fails (unlikely on desktop)
+        final desktopPath = await getApplicationDocumentsDirectory()
+            .then(
+              (dir) =>
+                  '${Directory(dir.parent.path).path}${Platform.pathSeparator}Desktop',
+            )
+            .catchError((_) => Directory.current.path);
+
+        // Double check if desktop exists, some OS might have different structure
+        final desktopDir = Directory(desktopPath);
+        if (await desktopDir.exists()) {
+          baseOutputDir = desktopPath;
+        } else {
+          baseOutputDir = Directory.current.path;
+        }
+      } catch (_) {
+        baseOutputDir = Directory.current.path;
+      }
+    }
+
+    final outputDir =
+        '$baseOutputDir${Platform.pathSeparator}output_vids_$timestamp';
+
     final tempDir = Directory(
       '${Directory.systemTemp.path}/scraki_segments_$timestamp',
     );
@@ -117,14 +147,16 @@ class BatchVideoService {
         if (_cancelled) break;
         videoIndex++;
         final duration = await _getVideoDuration(video);
+        yield '  [Video $videoIndex] Đang chuẩn bị cắt...';
+
         final newSegs = await _cutVideoToSegments(
           video: video,
           videoIndex: videoIndex,
           duration: duration,
           config: config,
           tempDir: tempDir.path,
-          onLog: (msg) async* {
-            yield msg;
+          onLog: (msg) {
+            onLog?.call(msg);
           },
         );
         segments.addAll(newSegs);
@@ -158,12 +190,17 @@ class BatchVideoService {
           outputDir: outputDir,
           config: config,
           overlayFile: overlayFile,
+          onProgress: (percent) {
+            final p = (percent * 100).toStringAsFixed(0);
+            onLog?.call(
+              '_PROGRESS_:  [$i/${config.outputCount}] Đang tạo video $i... $p%',
+            );
+          },
         );
         if (success) {
-          successCount++;
-          yield '  [$i/${config.outputCount}] ✓';
+          yield '_UPDATE_  [$i/${config.outputCount}] ✓';
         } else {
-          yield '  [$i/${config.outputCount}] ✗ (thất bại)';
+          yield '_UPDATE_  [$i/${config.outputCount}] ✗ (thất bại)';
         }
       }
 
@@ -230,12 +267,13 @@ class BatchVideoService {
     required int duration,
     required BatchVideoConfig config,
     required String tempDir,
-    required Stream<String> Function(String) onLog,
+    required void Function(String) onLog,
   }) async {
     final random = Random();
     final futures = <Future<String?>>[];
     int currentTime = 0;
     int segmentIndex = 0;
+    int completedSegments = 0;
 
     while (currentTime < duration) {
       if (_cancelled) break;
@@ -257,13 +295,30 @@ class BatchVideoService {
       final segIdx = segmentIndex.toString().padLeft(3, '0');
       final outputPath = '$tempDir/video${vidIdx}_seg$segIdx.mp4';
 
+      final processName = 'V${vidIdx}_S$segIdx';
+
       futures.add(
         _runSegmentCut(
           input: video,
           startSeconds: currentTime,
           duration: actualDuration,
           output: outputPath,
-        ),
+          processName: processName,
+          onProgress: (percent) {
+            // Throttling or custom UI can be done. Since segments are fast,
+            // printing every single percent might flood log, we just yield it in UI buffer
+            // but for simplicity we only yield at specific milestones or let UI handle the single dynamic line
+            // Currently, Store appends lines. We'll wait until full percent progress logic.
+          },
+        ).then((res) {
+          completedSegments++;
+          if (!_cancelled) {
+            onLog(
+              '_PROGRESS_: Đang cắt video $videoIndex: Hoàn thành $completedSegments segment(s)...',
+            );
+          }
+          return res;
+        }),
       );
 
       // Limit to 4 concurrent ffmpeg processes
@@ -277,6 +332,11 @@ class BatchVideoService {
 
     // Wait for remaining
     if (futures.isNotEmpty) await Future.wait(futures);
+
+    // Clear the progress line so it stays as a completed note
+    onLog(
+      '_UPDATE_  [Video $videoIndex] ✓ Hoàn thành cắt $completedSegments segment(s).',
+    );
 
     final results = <String>[];
     // Collect output files in order
@@ -299,12 +359,12 @@ class BatchVideoService {
     required int startSeconds,
     required int duration,
     required String output,
+    String? processName,
+    void Function(double)? onProgress,
   }) async {
     try {
       final process = await Process.start(_ffmpegBin, [
         '-hide_banner',
-        '-loglevel',
-        'error',
         '-y',
         '-ss',
         startSeconds.toString(),
@@ -334,6 +394,23 @@ class BatchVideoService {
         output,
       ]);
       _activeProcesses.add(process);
+
+      // Parse stderr for time=...
+      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+      process.stderr.listen((data) {
+        if (onProgress == null || _cancelled) return;
+        final output = String.fromCharCodes(data);
+        final match = regex.firstMatch(output);
+        if (match != null) {
+          final h = int.parse(match.group(1)!);
+          final m = int.parse(match.group(2)!);
+          final s = double.parse(match.group(3)!);
+          final currentSeconds = h * 3600 + m * 60 + s;
+          final percent = (currentSeconds / duration).clamp(0.0, 1.0);
+          onProgress(percent);
+        }
+      });
+
       final exitCode = await process.exitCode;
       _activeProcesses.remove(process);
       return exitCode == 0 ? output : null;
@@ -349,6 +426,7 @@ class BatchVideoService {
     required List<String> segments,
     required String outputDir,
     required BatchVideoConfig config,
+    void Function(double)? onProgress,
     File? overlayFile,
   }) async {
     final random = Random();
@@ -420,8 +498,6 @@ class BatchVideoService {
     try {
       final List<String> ffmpegArgs = [
         '-hide_banner',
-        '-loglevel',
-        'error',
         '-y',
         '-f',
         'concat',
@@ -496,6 +572,23 @@ class BatchVideoService {
       final process = await Process.start(_ffmpegBin, ffmpegArgs);
 
       _activeProcesses.add(process);
+
+      // Target duration approximate
+      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+      process.stderr.listen((data) {
+        if (onProgress == null || _cancelled) return;
+        final output = String.fromCharCodes(data);
+        final match = regex.firstMatch(output);
+        if (match != null) {
+          final h = int.parse(match.group(1)!);
+          final m = int.parse(match.group(2)!);
+          final s = double.parse(match.group(3)!);
+          final currentSeconds = h * 3600 + m * 60 + s;
+          final percent = (currentSeconds / targetDuration).clamp(0.0, 1.0);
+          onProgress(percent);
+        }
+      });
+
       final exitCode = await process.exitCode;
       _activeProcesses.remove(process);
 

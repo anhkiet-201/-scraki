@@ -72,69 +72,96 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                 Expanded(
                   child: Observer(
                     builder: (context) {
-                      if (store.isBatchCreating) {
-                        // Full-screen batch creation mode
-                        return BatchVideoPanel(store: store);
-                      }
-
-                      // Normal editor mode
-                      return Row(
+                      return Stack(
                         children: [
-                          // Left nav bar
-                          _buildUnifiedNavBar(),
+                          // Base layout
+                          Row(
+                            children: [
+                              // Left nav bar
+                              _buildUnifiedNavBar(),
 
-                          // Left panel (media library or text properties)
-                          SizedBox(
-                            width: 300,
-                            child: Observer(
-                              builder: (_) => store.activeNavIndex == _kNavText
-                                  ? TextPropertiesPanel(store: store)
-                                  : MediaLibraryPanel(
-                                      store: store,
-                                      onVideoTap: store.playVideoAtIndex,
-                                    ),
-                            ),
+                              // Left panel (media library or text properties)
+                              SizedBox(
+                                width: 300,
+                                child: Observer(
+                                  builder: (_) =>
+                                      store.activeNavIndex == _kNavText
+                                      ? TextPropertiesPanel(store: store)
+                                      : MediaLibraryPanel(
+                                          store: store,
+                                          onVideoTap: store.playVideoAtIndex,
+                                        ),
+                                ),
+                              ),
+
+                              // Main workspace
+                              Expanded(
+                                child: Observer(
+                                  builder: (context) => Stack(
+                                    children: [
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.black,
+                                          child: Center(
+                                            child: _buildInteractivePreview(),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // Floating player controls
+                                      Positioned(
+                                        bottom: 40,
+                                        left: 0,
+                                        right: 0,
+                                        child: Center(
+                                          child: FloatingGlassControls(
+                                            isPlaying: store.isPlaying,
+                                            position: store.position,
+                                            duration: store.duration,
+                                            onPlayPause: () =>
+                                                store.player.playOrPause(),
+                                            onSeek: (d) => store.player.seek(d),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // Right panel (Batch Video Creation - base)
+                              SizedBox(
+                                width: 280,
+                                // Need to provide a key to isolate states from the overlay version
+                                child: BatchVideoPanel(
+                                  key: const ValueKey('panel_base'),
+                                  store: store,
+                                ),
+                              ),
+                            ],
                           ),
 
-                          // Main workspace
-                          Expanded(
-                            child: Observer(
-                              builder: (context) => Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: Container(
-                                      color: Colors.black,
-                                      child: Center(
-                                        child: _buildInteractivePreview(),
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Floating player controls
-                                  Positioned(
-                                    bottom: 40,
-                                    left: 0,
-                                    right: 0,
-                                    child: Center(
-                                      child: FloatingGlassControls(
-                                        isPlaying: store.isPlaying,
-                                        position: store.position,
-                                        duration: store.duration,
-                                        onPlayPause: () =>
-                                            store.player.playOrPause(),
-                                        onSeek: (d) => store.player.seek(d),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          // Full-screen overlay for Batch Creating Mode
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOutCubic,
+                            top: 0,
+                            bottom: 0,
+                            // Stretch to full width of the Stack when active
+                            // When inactive, move entirely to the right
+                            left: store.isBatchCreating
+                                ? 0
+                                : MediaQuery.of(context).size.width,
+                            right: store.isBatchCreating
+                                ? 0
+                                : -MediaQuery.of(context).size.width,
+                            child: Material(
+                              elevation: 16,
+                              child: BatchVideoPanel(
+                                key: const ValueKey('panel_overlay'),
+                                store: store,
                               ),
                             ),
-                          ),
-
-                          // Right panel (Batch Video Creation)
-                          SizedBox(
-                            width: 280,
-                            child: BatchVideoPanel(store: store),
                           ),
                         ],
                       );
@@ -184,11 +211,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             ),
           ),
           const Spacer(),
-          _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
-            store.sourceVideoPaths.clear();
-            store.customTexts.clear();
-            store.player.stop();
-          }),
+          Observer(
+            builder: (_) {
+              if (store.isBatchCreating) return const SizedBox.shrink();
+              return _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
+                store.resetProject();
+              });
+            },
+          ),
           const SizedBox(width: 12),
         ],
       ),

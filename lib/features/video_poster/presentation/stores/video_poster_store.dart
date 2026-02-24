@@ -192,16 +192,37 @@ abstract class _VideoPosterStore with Store {
       sourceVideoPaths: List<String>.from(sourceVideoPaths),
       config: config,
       onOutputDir: (dir) => runInAction(() => batchOutputDir = dir),
+      onLog: (line) => runInAction(() => _handleLogUpdate(line)),
     );
 
     _batchSub = stream.listen(
-      (line) => runInAction(() => batchLogs.add(line)),
+      (line) => runInAction(() => _handleLogUpdate(line)),
       onDone: () => runInAction(() => isBatchCreating = false),
       onError: (Object e) => runInAction(() {
         batchLogs.add('❌ Lỗi: $e');
         isBatchCreating = false;
       }),
     );
+  }
+
+  void _handleLogUpdate(String line) {
+    if (line.startsWith('_PROGRESS_:')) {
+      final text = line.replaceFirst('_PROGRESS_:', '');
+      if (batchLogs.isNotEmpty) {
+        batchLogs[batchLogs.length - 1] = text;
+      } else {
+        batchLogs.add(text);
+      }
+    } else if (line.startsWith('_UPDATE_')) {
+      final text = line.replaceFirst('_UPDATE_', '');
+      if (batchLogs.isNotEmpty) {
+        batchLogs[batchLogs.length - 1] = text;
+      } else {
+        batchLogs.add(text);
+      }
+    } else {
+      batchLogs.add(line);
+    }
   }
 
   @action
@@ -315,6 +336,19 @@ abstract class _VideoPosterStore with Store {
     _playingSub?.cancel();
     _rateSub?.cancel();
     player.dispose();
+  }
+
+  /// Start a new project by clearing all inputs and outputs
+  @action
+  void resetProject() {
+    sourceVideoPaths.clear();
+    customTexts.clear();
+    currentVideoIndex = 0;
+    player.stop();
+
+    // Clear batch output data
+    batchLogs.clear();
+    batchOutputDir = null;
   }
 
   @action

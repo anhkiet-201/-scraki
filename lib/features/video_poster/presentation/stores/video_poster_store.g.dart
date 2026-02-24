@@ -455,6 +455,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void resetProject() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.resetProject',
+    );
+    try {
+      return super.resetProject();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setActiveNavIndex(int index) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setActiveNavIndex',
