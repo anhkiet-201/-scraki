@@ -9,8 +9,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
-import 'package:scraki/features/poster/domain/entities/poster_data.dart';
-import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
+import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/video_composition.dart';
 import 'package:scraki/features/video_poster/domain/repositories/video_processing_repository.dart';
 import 'package:scraki/features/video_poster/domain/services/anti_reup_service.dart';
@@ -28,24 +27,15 @@ class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 
 abstract class _VideoPosterStore with Store {
   final VideoProcessingRepository _repository;
-  final PosterCreationStore creationStore;
   final AntiReupService _antiReupService;
   final DashboardStore _dashboardStore = inject<DashboardStore>();
 
   // Initialization flag to prevent re-initialization on hot restart
   bool _isInitialized = false;
 
-  // Reaction disposer
-  ReactionDisposer? _jobSyncDisposer;
-
-  _VideoPosterStore(
-    this._repository,
-    this.creationStore,
-    this._antiReupService,
-  ) {
+  _VideoPosterStore(this._repository, this._antiReupService) {
     if (!_isInitialized) {
       initializePlayer();
-      _setupJobSyncReaction();
 
       // Initialize with 'Maximize Stealth' (Random Config) by default
       // This ensures strict duration enforcement (15-25s) is active out-of-the-box.
@@ -55,93 +45,10 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
-  /// Setup reaction to sync job data from PosterCreationStore
-  void _setupJobSyncReaction() {
-    _jobSyncDisposer = reaction((_) => creationStore.currentPosterData, (
-      PosterData? data,
-    ) {
-      if (data != null) {
-        // Sync to controllers
-        titleController.text = data.jobTitle;
-        companyController.text = data.companyName;
-        salaryController.text = data.salaryRange;
-        locationController.text = data.location;
-        contactController.text = data.contactInfo;
-        headlineController.text = data.catchyHeadline ?? "";
-        captionController.text = data.tikTokCaption ?? "";
-        requirementsController.text = data.requirements.join('\n');
-        benefitsController.text = data.benefits.join('\n');
-      }
-    });
-  }
+  // ─── Source Video State ───────────────────────────────────────────────────
 
   @observable
   ObservableList<String> sourceVideoPaths = ObservableList<String>();
-
-  @observable
-  PosterData? _selectedPosterData;
-
-  @computed
-  PosterData? get selectedPosterData => _selectedPosterData?.copyWith(
-    benefits:
-        _selectedPosterData?.benefits
-            .map((e) => _filterRiskyKeywords(e))
-            .toList() ??
-        [],
-  );
-
-  /// Filters risky keywords from text to avoid TikTok's recruitment scam flags.
-  /// Uses case-insensitive regex for robust matching and replaces with safe synonyms.
-  String _filterRiskyKeywords(String text) {
-    if (text.isEmpty) return text;
-
-    String filtered = text;
-
-    final replacements = {
-      // Money & Salary
-      r'Lương': 'Lúa',
-      r'Tiền': 'Thóc',
-      r'Triệu': 'Củ',
-      r'VNĐ': 'Xu',
-      r'Thu nhập': 'Thu hoạch',
-      r'Hoa hồng': 'Tip',
-
-      // Off-platform & Contact
-      r'Zalo': 'App xanh',
-      r'Telegram': 'Tele',
-      r'Link': 'Liên kết',
-      r'Bio': 'Thông tin',
-      r'Phone': 'Liên hệ',
-      r'SĐT': 'Số hotline',
-      r'Gọi': 'Kết nối',
-      r'Call': 'Kết nối',
-      r'Website': 'Trang chủ',
-      r'Inbox|Inb': 'Nhắn tin',
-
-      // Recruitment & Urgency
-      r'Apply|Ứng tuyển': 'Tham gia',
-      r'Tuyển': 'Mời',
-      r'Việc nhẹ': 'Công việc',
-      r'Lương cao': 'Thu nhập tốt',
-      r'Tại nhà': 'Linh hoạt',
-      r'Gấp|Ngay': 'Liền',
-
-      // Benefits & Perks (User requested)
-      r'Thưởng': 'Quà',
-      r'Bao cơm|Cơm': 'Ăn uống',
-      r'Phụ cấp': 'Hỗ trợ',
-    };
-
-    replacements.forEach((key, value) {
-      filtered = filtered.replaceAll(RegExp(key, caseSensitive: false), value);
-    });
-
-    return filtered;
-  }
-
-  set selectedPosterData(PosterData? data) {
-    runInAction(() => _selectedPosterData = data);
-  }
 
   @observable
   bool isProcessing = false;
@@ -152,63 +59,98 @@ abstract class _VideoPosterStore with Store {
   @observable
   String? errorMessage;
 
-  // --- Pro Editor State ---
+  // ─── Custom Text Overlays ─────────────────────────────────────────────────
 
   @observable
-  double titleX = 0.5;
-  @observable
-  double titleY = 0.15;
+  ObservableList<CustomTextOverlay> customTexts =
+      ObservableList<CustomTextOverlay>();
 
   @observable
-  double salaryX = 0.5;
-  @observable
-  double salaryY = 0.25;
+  String? selectedCustomTextId;
 
-  @observable
-  double companyX = 0.5;
-  @observable
-  double companyY = 0.85;
+  @action
+  void addCustomText() {
+    final id = const Uuid().v4();
+    customTexts.add(
+      CustomTextOverlay(
+        id: id,
+        label: 'Text',
+        // Place new text in the center of the 720x1280 canvas
+        x: 0.5,
+        y: 0.5,
+      ),
+    );
+    // Auto-select the newly created text
+    selectedCustomTextId = id;
+  }
 
-  @observable
-  double requirementsX = 0.1;
-  @observable
-  double requirementsY = 0.4;
+  @action
+  void removeCustomText(String id) {
+    customTexts.removeWhere((t) => t.id == id);
+    if (selectedCustomTextId == id) {
+      selectedCustomTextId = null;
+    }
+  }
 
-  @observable
-  double benefitsX = 0.1;
-  @observable
-  double benefitsY = 0.6;
+  @action
+  void selectCustomText(String? id) {
+    selectedCustomTextId = id;
+  }
 
-  @observable
-  double contactX = 0.5;
-  @observable
-  double contactY = 0.92;
+  @action
+  void updateCustomTextPosition(String id, double x, double y) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(x: x, y: y);
+  }
 
-  @observable
-  double headlineX = 0.5;
-  @observable
-  double headlineY = 0.08;
+  @action
+  void updateCustomTextFontSize(String id, double size) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      fontSize: size.clamp(8.0, 200.0),
+    );
+  }
 
-  @observable
-  String? selectedOverlayType;
+  @action
+  void updateCustomTextLabel(String id, String value) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(label: value);
+  }
 
-  // --- Per-overlay Font Sizes (Standardized 720p base) ---
-  @observable
-  double titleFontSize = 48;
-  @observable
-  double salaryFontSize = 38;
-  @observable
-  double companyFontSize = 32;
-  @observable
-  double locationFontSize = 28;
-  @observable
-  double requirementsFontSize = 26;
-  @observable
-  double benefitsFontSize = 26;
-  @observable
-  double contactFontSize = 30;
-  @observable
-  double headlineFontSize = 40;
+  @action
+  void updateCustomTextStyle(
+    String id, {
+    Color? color,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    TextAlign? textAlign,
+    Color? backgroundColor,
+    bool clearBackgroundColor = false,
+    double? backgroundOpacity,
+    double? backgroundRadius,
+    double? textHeight,
+    bool clearTextHeight = false,
+  }) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      color: color,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      textAlign: textAlign,
+      backgroundColor: backgroundColor,
+      clearBackgroundColor: clearBackgroundColor,
+      backgroundOpacity: backgroundOpacity,
+      backgroundRadius: backgroundRadius,
+      textHeight: textHeight,
+      clearTextHeight: clearTextHeight,
+    );
+  }
+
+  // ─── Effects State ────────────────────────────────────────────────────────
 
   @observable
   double saturation = 1.2;
@@ -218,9 +160,6 @@ abstract class _VideoPosterStore with Store {
   double playbackSpeed = 1.0;
   @observable
   double zoomIntensity = 0.0;
-
-  @observable
-  // --- V4 UX State ---
   @observable
   double volume = 1.0;
   @observable
@@ -228,15 +167,8 @@ abstract class _VideoPosterStore with Store {
   @observable
   double blurIntensity = 5.0;
 
-  @observable
-  double locationX = 0.5;
-  @observable
-  double locationY = 0.3;
+  // ─── Player & Playback State ──────────────────────────────────────────────
 
-  @observable
-  ObservableMap<String, String> thumbnails = ObservableMap<String, String>();
-
-  // --- Player & Playback State ---
   late final Player player;
   late final VideoController videoController;
 
@@ -270,29 +202,26 @@ abstract class _VideoPosterStore with Store {
   StreamSubscription<int?>? _widthSub;
   StreamSubscription<int?>? _heightSub;
 
-  // --- Navigation State ---
+  // ─── Navigation State ─────────────────────────────────────────────────────
+
   @observable
-  int activeNavIndex = 0; // 0: Job Hub, 1: Media Library, 2: Effects/Content
+  int activeNavIndex = 0;
 
   @observable
   bool isFocusMode = false;
 
-  // --- Form Controllers ---
-  final titleController = TextEditingController(text: "");
-  final salaryController = TextEditingController(text: "");
-  final companyController = TextEditingController(text: "");
-  final locationController = TextEditingController(text: "");
-  final contactController = TextEditingController(text: "");
-  final headlineController = TextEditingController(text: "");
-  final captionController = TextEditingController(text: "");
-  final requirementsController = TextEditingController(text: "");
-  final benefitsController = TextEditingController(text: "");
-  final jobSearchController = TextEditingController();
+  // ─── Anti-Reup State ──────────────────────────────────────────────────────
+
+  @observable
+  ObservableMap<String, String> thumbnails = ObservableMap<String, String>();
 
   // Preview capture key
   final previewKey = GlobalKey();
 
-  // --- Actions ---
+  @observable
+  AntiReupConfig antiReupConfig = const AntiReupConfig();
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
 
   @action
   void addSourceVideos(List<String> paths) {
@@ -301,10 +230,8 @@ abstract class _VideoPosterStore with Store {
         _dashboardStore.selectedIndex != _kVideoEditorTabIndex) {
       return;
     }
-    // Calculate start index for new items
     final startIndex = sourceVideoPaths.length;
 
-    // Add paths and placeholder durations
     sourceVideoPaths.addAll(paths);
     for (int i = 0; i < paths.length; i++) {
       clipDurations.add(Duration.zero);
@@ -321,13 +248,11 @@ abstract class _VideoPosterStore with Store {
 
       try {
         final d = await _repository.getVideoDuration(path);
-        // Ensure index is still valid (user might have deleted items)
         if (targetIndex < clipDurations.length) {
           runInAction(() => clipDurations[targetIndex] = d);
         }
       } catch (e) {
         debugPrint("Error getting duration for $path: $e");
-        // Already zero placeholder, no action needed
       }
     }
   }
@@ -335,67 +260,18 @@ abstract class _VideoPosterStore with Store {
   @action
   void removeSourceVideo(int index) {
     if (index >= 0 && index < sourceVideoPaths.length) {
-      // 1. Pause player first to prevent issues
       player.pause();
 
-      // 2. Remove from data lists
       sourceVideoPaths.removeAt(index);
       if (index < clipDurations.length) {
         clipDurations.removeAt(index);
       }
 
-      // 3. Re-sync playlist
-      // This is crucial because the player needs to know the media list changed.
-      // Simply removing from sourceVideoPaths doesn't update the active player playlist.
       if (sourceVideoPaths.isEmpty) {
-        // If no videos left, stop and clear player
         player.stop();
       } else {
-        // Re-open playlist with remaining videos
-        // If we removed the current video, logic effectively resets to start or next video
         syncPlaylist();
-
-        // Optional: If you want to try and keep position in other videos, it gets complex.
-        // For now, resetting (done by syncPlaylist which usually starts at 0) is safer UX.
       }
-    }
-  }
-
-  @action
-  void updatePosition(String type, double x, double y) {
-    switch (type) {
-      case 'title':
-        titleX = x;
-        titleY = y;
-        break;
-      case 'salary':
-        salaryX = x;
-        salaryY = y;
-        break;
-      case 'company':
-        companyX = x;
-        companyY = y;
-        break;
-      case 'requirements':
-        requirementsX = x;
-        requirementsY = y;
-        break;
-      case 'benefits':
-        benefitsX = x;
-        benefitsY = y;
-        break;
-      case 'contact':
-        contactX = x;
-        contactY = y;
-        break;
-      case 'headline':
-        headlineX = x;
-        headlineY = y;
-        break;
-      case 'location':
-        locationX = x;
-        locationY = y;
-        break;
     }
   }
 
@@ -426,11 +302,6 @@ abstract class _VideoPosterStore with Store {
     blurIntensity = value;
   }
 
-  @action
-  void selectPosterData(PosterData? data) {
-    selectedPosterData = data;
-  }
-
   /// Initialize player, controller, and stream listeners
   @action
   void initializePlayer() {
@@ -442,7 +313,6 @@ abstract class _VideoPosterStore with Store {
       ),
     );
 
-    // Setup stream listeners with runInAction for observable updates
     _durationSub = player.stream.duration.listen(
       (d) => runInAction(() => duration = d),
     );
@@ -465,12 +335,10 @@ abstract class _VideoPosterStore with Store {
       if (h != null && h > 0) runInAction(() => videoHeight = h);
     });
 
-    // Initial updates
-    updatePosterDataFromControllers();
     syncPlaylist();
   }
 
-  /// Dispose player, controller, subscriptions, and form controllers
+  /// Dispose player, controller, and subscriptions
   @action
   void disposePlayer() {
     _durationSub?.cancel();
@@ -480,21 +348,9 @@ abstract class _VideoPosterStore with Store {
     _playlistSub?.cancel();
     _widthSub?.cancel();
     _heightSub?.cancel();
-    _jobSyncDisposer?.call();
     player.dispose();
-    titleController.dispose();
-    salaryController.dispose();
-    companyController.dispose();
-    locationController.dispose();
-    contactController.dispose();
-    headlineController.dispose();
-    captionController.dispose();
-    requirementsController.dispose();
-    benefitsController.dispose();
-    jobSearchController.dispose();
   }
 
-  /// Set active navigation index and reset focus mode if needed
   @action
   void setActiveNavIndex(int index) {
     activeNavIndex = index;
@@ -503,164 +359,41 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
-  /// Toggle focus mode
   @action
   void toggleFocusMode() {
     isFocusMode = !isFocusMode;
-  }
-
-  /// Select an overlay type for editing
-  @action
-  void setSelectedOverlayType(String? type) {
-    selectedOverlayType = type;
-  }
-
-  /// Update font size for a specific overlay
-  @action
-  void updateFontSize(String type, double newSize) {
-    // Clamp to reasonable limits
-    final size = newSize.clamp(12.0, 120.0);
-    switch (type) {
-      case 'title':
-        titleFontSize = size;
-        break;
-      case 'salary':
-        salaryFontSize = size;
-        break;
-      case 'company':
-        companyFontSize = size;
-        break;
-      case 'location':
-        locationFontSize = size;
-        break;
-      case 'requirements':
-        requirementsFontSize = size;
-        break;
-      case 'benefits':
-        benefitsFontSize = size;
-        break;
-      case 'contact':
-        contactFontSize = size;
-        break;
-      case 'headline':
-        headlineFontSize = size;
-        break;
-    }
-  }
-
-  /// Update text content from canvas editing
-  @action
-  void updateTextContent(String type, String value) {
-    switch (type) {
-      case 'title':
-        titleController.text = value;
-        break;
-      case 'salary':
-        salaryController.text = value;
-        break;
-      case 'company':
-        companyController.text = value;
-        break;
-      case 'location':
-        locationController.text = value;
-        break;
-      case 'contact':
-        contactController.text = value;
-        break;
-      case 'headline':
-        headlineController.text = value;
-        break;
-      case 'requirements':
-      case 'benefits':
-        // Parse list format back to controller format
-        // Input format: "Header:\n• Item 1\n• Item 2"
-        // Output format: "Item 1\nItem 2"
-        final lines = value.split('\n');
-        final cleanLines = lines
-            .where(
-              (line) =>
-                  !line.startsWith('📋') && // Remove header
-                  !line.startsWith('🎁') && // Remove header
-                  line.trim().isNotEmpty,
-            )
-            .map(
-              (line) => line.replaceAll(RegExp(r'^•\s*'), ''),
-            ) // Remove bullet
-            .toList();
-
-        if (type == 'requirements') {
-          requirementsController.text = cleanLines.join('\n');
-        } else {
-          benefitsController.text = cleanLines.join('\n');
-        }
-        break;
-    }
-    updatePosterDataFromControllers();
-  }
-
-  /// Update poster data from form controllers
-  @action
-  void updatePosterDataFromControllers() {
-    // Create PosterData from current controller values
-    final data = PosterData(
-      jobTitle: titleController.text,
-      companyName: companyController.text,
-      location: locationController.text,
-      salaryRange: salaryController.text,
-      contactInfo: contactController.text,
-      catchyHeadline: headlineController.text,
-      tikTokCaption: captionController.text,
-      requirements: requirementsController.text
-          .split('\n')
-          .where((s) => s.trim().isNotEmpty)
-          .toList(),
-      benefits: benefitsController.text
-          .split('\n')
-          .where((s) => s.trim().isNotEmpty)
-          .toList(),
-    );
-
-    // Update selected poster data
-    selectPosterData(data);
   }
 
   /// Capture preview widget as PNG at 720x1280 resolution
   @action
   Future<Uint8List> capturePreviewAsPng() async {
     try {
-      // Safety check: if preview is not mounted, return empty or throw clear error
       if (previewKey.currentContext == null) {
         debugPrint(
           'Warning: previewKey.currentContext is null. UI likely not rendered.',
         );
-        // If no poster data selected, we can't generate overlay.
-        // Return empty list which repo handles as "no overlay" or throw specific error?
-        // Let's throw a user-friendly error string that handleExportVideo can catch.
-        throw 'Please select a Job Position to generate overlay.';
+        throw 'Please add at least one text or video element before exporting.';
       }
 
-      // Deselect all overlays to hide handles/borders before capture
-      final previousSelection = selectedOverlayType;
-      setSelectedOverlayType(null);
+      // Deselect all overlays to hide handles before capture
+      final previousSelection = selectedCustomTextId;
+      selectCustomText(null);
 
-      // Wait for UI to update and remove handles
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
       final renderObject = previewKey.currentContext?.findRenderObject();
       if (renderObject == null || renderObject is! RenderRepaintBoundary) {
         throw 'Preview render object not found.';
       }
-      final boundary = renderObject;
 
-      // Standardize export to 1080p (Full HD)
-      // Virtual Canvas is 720px, so pixelRatio 1.5 = 1080px width
+      // Standardize export to 1080p — pixel ratio 1.5 on 720px = 1080px
       const pixelRatio = 1.5;
 
-      final image = await boundary.toImage(pixelRatio: pixelRatio);
+      final image = await renderObject.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
-      // Restore previous selection after capture
-      setSelectedOverlayType(previousSelection);
+      // Restore selection
+      selectCustomText(previousSelection);
 
       if (byteData == null) throw 'Failed to encode overlay image.';
 
@@ -673,7 +406,6 @@ abstract class _VideoPosterStore with Store {
 
   @computed
   Duration get totalDuration {
-    // If Anti-Reup has a target duration (randomized or manual), that is the output duration.
     if (antiReupConfig.targetDuration != null) {
       return Duration(
         milliseconds: (antiReupConfig.targetDuration! * 1000).toInt(),
@@ -688,7 +420,6 @@ abstract class _VideoPosterStore with Store {
   Duration get totalPosition {
     if (clipDurations.isEmpty) return Duration.zero;
 
-    // Robust check for index sync
     if (currentPlaylistIndex >= clipDurations.length) {
       return totalDuration;
     }
@@ -710,15 +441,12 @@ abstract class _VideoPosterStore with Store {
     for (int i = 0; i < clipDurations.length; i++) {
       final clipEnd = temp + clipDurations[i];
       if (target < clipEnd || i == clipDurations.length - 1) {
-        // Found the clip
         final seekPos = target - temp;
 
         if (i == currentPlaylistIndex) {
-          // Same clip: Seek immediately
           _seekDebounceTimer?.cancel();
           await player.seek(seekPos);
         } else {
-          // Different clip: Debounce the jump to prevent rapid switching
           if (_seekDebounceTimer?.isActive ?? false) {
             _seekDebounceTimer!.cancel();
           }
@@ -727,7 +455,6 @@ abstract class _VideoPosterStore with Store {
             const Duration(milliseconds: 150),
             () async {
               await player.jump(i);
-              // Wait briefly for player to catch up after jump
               await Future<void>.delayed(const Duration(milliseconds: 50));
               await player.seek(seekPos);
             },
@@ -738,9 +465,6 @@ abstract class _VideoPosterStore with Store {
       temp = clipEnd;
     }
   }
-
-  @observable
-  AntiReupConfig antiReupConfig = const AntiReupConfig(); // Use Config object
 
   @action
   void updateEffect(String type, double value) {
@@ -771,12 +495,8 @@ abstract class _VideoPosterStore with Store {
   @action
   void toggleRandomizeAntiReup(bool value) {
     if (value) {
-      // Generate random configuration immediately so the UI (and duration)
-      // reflects exactly what will be exported.
       antiReupConfig = _antiReupService.maximizeStealth();
     } else {
-      // Turn off randomization but keep current values (or reset? usually keep is better UX)
-      // Removing targetDuration implies reverting to source length
       antiReupConfig = antiReupConfig.copyWith(
         isRandomized: false,
         targetDuration: null,
@@ -789,7 +509,7 @@ abstract class _VideoPosterStore with Store {
     antiReupConfig = config;
   }
 
-  /// Handle video export by capturing preview and generating video
+  /// Handle video export
   @action
   Future<void> handleExportVideo() async {
     try {
@@ -809,29 +529,25 @@ abstract class _VideoPosterStore with Store {
   void syncPlaylist() {
     if (sourceVideoPaths.isEmpty) return;
 
-    // Preserve current index if it's still valid
     int savedIndex = currentPlaylistIndex;
     if (savedIndex >= sourceVideoPaths.length) {
       savedIndex = 0;
     }
 
-    debugPrint('syncPlaylist: opening playlist with index $savedIndex');
     final medias = sourceVideoPaths.map((p) => Media(p)).toList();
     player.open(Playlist(medias, index: savedIndex));
     player.pause();
   }
 
-  /// Play specific video by path
   @action
   void playVideoAtIndex(int index) {
     if (index >= 0 && index < sourceVideoPaths.length) {
-      currentPlaylistIndex = index; // Optimistic update
+      currentPlaylistIndex = index;
       player.jump(index);
       player.play();
     }
   }
 
-  /// Play specific video by path (Deprecated, finds first occurrence)
   @action
   void playVideo(String path) {
     final index = sourceVideoPaths.indexOf(path);
@@ -845,8 +561,8 @@ abstract class _VideoPosterStore with Store {
 
   @action
   Future<void> generateVideoWithOverlay(Uint8List overlayPng) async {
-    if (sourceVideoPaths.isEmpty || selectedPosterData == null) {
-      errorMessage = "Please add videos and select recruitment info.";
+    if (sourceVideoPaths.isEmpty) {
+      errorMessage = 'Please add at least one video.';
       return;
     }
 
@@ -856,7 +572,6 @@ abstract class _VideoPosterStore with Store {
     try {
       final random = DateTime.now().millisecondsSinceEpoch % 1000;
 
-      // If randomized, regenerate config NOW to ensure every export has a unique hash.
       if (antiReupConfig.isRandomized) {
         antiReupConfig = _antiReupService.maximizeStealth().copyWith(
           targetDuration: antiReupConfig.targetDuration,
@@ -864,31 +579,15 @@ abstract class _VideoPosterStore with Store {
       }
       final finalConfig = antiReupConfig;
 
+      // Overlay is captured as PNG from the canvas — no poster data needed.
       final composition = VideoComposition(
         id: const Uuid().v4(),
-        posterData: selectedPosterData!,
-        sourceVideoPaths: sourceVideoPaths,
-        headlineX: headlineX,
-        headlineY: headlineY,
-        titleX: titleX,
-        titleY: titleY,
-        companyX: companyX,
-        companyY: companyY,
-        locationX: locationX,
-        locationY: locationY,
-        salaryX: salaryX,
-        salaryY: salaryY,
-        contactX: contactX,
-        contactY: contactY,
-        requirementsX: requirementsX,
-        requirementsY: requirementsY,
-        benefitsX: benefitsX,
-        benefitsY: benefitsY,
+        sourceVideoPaths: List<String>.from(sourceVideoPaths),
         contrast: contrast,
         saturation: saturation,
         playbackSpeed: playbackSpeed,
         zoomIntensity: zoomIntensity,
-        antiReupConfig: finalConfig, // Pass the config
+        antiReupConfig: finalConfig,
         randomSeed: random,
       );
 

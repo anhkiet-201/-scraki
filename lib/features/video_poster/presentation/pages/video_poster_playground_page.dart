@@ -5,15 +5,17 @@ import 'package:get_it/get_it.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/form/modern_text_field.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/form/modern_slider.dart';
+
 import 'package:scraki/features/video_poster/presentation/widgets/preview/tiktok_safe_zone.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/video_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/duration_status_overlay.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/panels/job_hub_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
-import 'package:scraki/features/video_poster/presentation/widgets/anti_reup_settings_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/text_properties_panel.dart';
+
+/// Nav tab index constants
+const int _kNavMedia = 0;
+const int _kNavText = 1;
 
 class VideoPosterPlaygroundPage extends StatefulWidget {
   const VideoPosterPlaygroundPage({super.key});
@@ -72,98 +74,77 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           child: Scaffold(
             body: Column(
               children: [
-                // 1. TOP TOOLBAR
                 _buildModernToolbar(),
                 Expanded(
                   child: Row(
                     children: [
-                      // 2. LEFT NAV BAR (PERMANENT)
+                      // Left nav bar
                       _buildUnifiedNavBar(),
 
-                      // 3. LEFT TOOLS PANEL (PERMANENT OR FOCUS-HIDDEN)
+                      // Left panel (media library or text properties)
                       Observer(
                         builder: (_) {
-                          if (!store.isFocusMode) {
-                            return SizedBox(
-                              width: 300,
-                              child: store.activeNavIndex == 0
-                                  ? JobHubPanel(
-                                      store: store.creationStore,
-                                      searchController:
-                                          store.jobSearchController,
-                                      onJobSelected:
-                                          store.updatePosterDataFromControllers,
-                                    )
-                                  : MediaLibraryPanel(
-                                      store: store,
-                                      onVideoTap: store.playVideoAtIndex,
-                                      onVideosChanged: store.syncPlaylist,
-                                    ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-
-                      // 4. MAIN WORKSPACE (AUTO SCALING)
-                      Observer(
-                        builder: (context) {
-                          return Expanded(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black,
-                                    child: Center(
-                                      child: _buildInteractivePreview(),
-                                    ),
+                          if (store.isFocusMode) return const SizedBox.shrink();
+                          return SizedBox(
+                            width: 300,
+                            child: store.activeNavIndex == _kNavText
+                                ? TextPropertiesPanel(store: store)
+                                : MediaLibraryPanel(
+                                    store: store,
+                                    onVideoTap: store.playVideoAtIndex,
+                                    onVideosChanged: store.syncPlaylist,
                                   ),
-                                ),
-
-                                // FLOATING PLAYER CONTROLS (OVER VIDEO)
-                                Positioned(
-                                  bottom: 40,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: FloatingGlassControls(
-                                      isPlaying: store.isPlaying,
-                                      // Use total timeline position/duration
-                                      position: store.totalPosition,
-                                      duration: store.totalDuration,
-                                      onPlayPause: () =>
-                                          store.player.playOrPause(),
-                                      onSeek: (v) => store.seekTimeline(v),
-                                    ),
-                                  ),
-                                ),
-
-                                // STATUS OVERLAY
-                                Positioned(
-                                  top: 20,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: DurationStatusOverlay(
-                                      duration: store.duration,
-                                      playbackSpeed: store.playbackSpeed,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           );
                         },
                       ),
 
-                      // 5. RIGHT PROPERTIES PANEL (PERMANENT OR FOCUS-HIDDEN)
-                      if (!store.isFocusMode) ...[
-                        const VerticalDivider(width: 1, color: Colors.white10),
-                        SizedBox(
-                          width: 320,
-                          child: _buildRightPropertiesPanel(),
+                      // Main workspace
+                      Expanded(
+                        child: Observer(
+                          builder: (context) => Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black,
+                                  child: Center(
+                                    child: _buildInteractivePreview(),
+                                  ),
+                                ),
+                              ),
+
+                              // Floating player controls
+                              Positioned(
+                                bottom: 40,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: FloatingGlassControls(
+                                    isPlaying: store.isPlaying,
+                                    position: store.totalPosition,
+                                    duration: store.totalDuration,
+                                    onPlayPause: () =>
+                                        store.player.playOrPause(),
+                                    onSeek: store.seekTimeline,
+                                  ),
+                                ),
+                              ),
+
+                              // Status overlay
+                              Positioned(
+                                top: 20,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: DurationStatusOverlay(
+                                    duration: store.duration,
+                                    playbackSpeed: store.playbackSpeed,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -174,6 +155,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       ),
     );
   }
+
+  // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildModernToolbar() {
     return Container(
@@ -187,9 +170,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 60), // Space for nav bar
+          const SizedBox(width: 60),
           const Text(
-            "SCRAKI",
+            'SCRAKI',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -199,7 +182,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           ),
           const SizedBox(width: 8),
           const Text(
-            "STUDIO",
+            'STUDIO',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w300,
@@ -210,25 +193,28 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           const Spacer(),
           _buildWorkStepper(),
           const Spacer(),
-          _buildActionButton("DỰ ÁN MỚI", Icons.add_rounded, () {
+          _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
             store.sourceVideoPaths.clear();
+            store.customTexts.clear();
             store.player.open(Playlist([]));
           }),
           const SizedBox(width: 12),
           _buildActionButton(
-            "CÀI ĐẶT",
+            'CÀI ĐẶT',
             Icons.settings_outlined,
             () {},
             isOutline: true,
           ),
           const SizedBox(width: 12),
-          _buildActionButton(
-            store.isFocusMode ? "THOÁT TẬP TRUNG" : "CHẾ ĐỘ TẬP TRUNG",
-            store.isFocusMode
-                ? Icons.fullscreen_exit_rounded
-                : Icons.fullscreen_rounded,
-            store.toggleFocusMode,
-            isOutline: store.isFocusMode,
+          Observer(
+            builder: (_) => _buildActionButton(
+              store.isFocusMode ? 'THOÁT TẬP TRUNG' : 'CHẾ ĐỘ TẬP TRUNG',
+              store.isFocusMode
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
+              store.toggleFocusMode,
+              isOutline: store.isFocusMode,
+            ),
           ),
         ],
       ),
@@ -245,13 +231,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
 
         return Row(
           children: [
-            _buildStepperItem(1, "JOB", step >= 1),
+            _buildStepperItem(1, 'MEDIA', step >= 1),
             _buildStepperDivider(step >= 2),
-            _buildStepperItem(2, "ASSETS", step >= 2),
+            _buildStepperItem(2, 'TEXT', step >= 2),
             _buildStepperDivider(step >= 3),
-            _buildStepperItem(3, "EDIT", step >= 3),
+            _buildStepperItem(3, 'EDIT', step >= 3),
             _buildStepperDivider(step >= 4),
-            _buildStepperItem(4, "READY", step >= 4),
+            _buildStepperItem(4, 'READY', step >= 4),
           ],
         );
       },
@@ -340,6 +326,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     );
   }
 
+  // ─── Nav Bar ──────────────────────────────────────────────────────────────
+
   Widget _buildUnifiedNavBar() {
     return Container(
       width: 64,
@@ -352,11 +340,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       child: Column(
         children: [
           const SizedBox(height: 80),
-          _buildNavIcon(0, Icons.hub_outlined, "CÔNG VIỆC"),
-          _buildNavIcon(1, Icons.inventory_2_outlined, "HÌNH/VIDEO"),
-          const Spacer(),
-          _buildNavIcon(2, Icons.tune_rounded, "THUỘC TÍNH"),
-          const SizedBox(height: 20),
+          _buildNavIcon(_kNavMedia, Icons.inventory_2_outlined, 'MEDIA'),
+          const SizedBox(height: 4),
+          _buildNavIcon(_kNavText, Icons.text_fields_rounded, 'TEXT'),
         ],
       ),
     );
@@ -365,7 +351,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   Widget _buildNavIcon(int index, IconData icon, String label) {
     return Observer(
       builder: (context) {
-        bool active = (store.activeNavIndex == index);
+        final active = store.activeNavIndex == index;
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: InkWell(
@@ -406,203 +392,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     );
   }
 
-  Widget _buildRightPropertiesPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            "THÀNH PHẦN",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-        const Divider(height: 1, color: Colors.white10),
-        Expanded(
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                const TabBar(
-                  tabs: [
-                    Tab(text: "NỘI DUNG"),
-                    Tab(text: "HIỆU ỨNG"),
-                  ],
-                  indicatorColor: Color(0xFF6366F1),
-                  labelStyle: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  unselectedLabelColor: Colors.white24,
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [_buildContentTab(), _buildEffectsTab()],
-                  ),
-                ),
-                _buildExportSection(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContentTab() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-
-      children: [
-        _buildSectionHeader("CHI TIẾT CÔNG VIỆC"),
-        ModernTextField(
-          controller: store.titleController,
-          label: "Vị trí",
-          icon: Icons.work_outline,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.companyController,
-          label: "Công ty",
-          icon: Icons.business_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
-        // ModernTextField(
-        //   controller: store.salaryController,
-        //   label: "Mức lương",
-        //   icon: Icons.payments_outlined,
-        //   onChanged: store.updatePosterDataFromControllers,
-        // ),
-        // const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.locationController,
-          label: "Địa điểm",
-          icon: Icons.location_on_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.contactController,
-          label: "Liên hệ",
-          icon: Icons.contact_mail_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
-        // ModernTextField(
-        //   controller: store.headlineController,
-        //   label: "Tiêu đề phụ",
-        //   icon: Icons.campaign_outlined,
-        //   onChanged: store.updatePosterDataFromControllers,
-        // ),
-        // const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.captionController,
-          label: "TikTok Caption",
-          icon: Icons.closed_caption_outlined,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 16),
-        // ModernTextField(
-        //   controller: store.requirementsController,
-        //   label: "Yêu cầu công việc (Mỗi dòng một ý)",
-        //   icon: Icons.list_alt_rounded,
-        //   maxLines: null,
-        //   onChanged: store.updatePosterDataFromControllers,
-        // ),
-        // const SizedBox(height: 16),
-        ModernTextField(
-          controller: store.benefitsController,
-          label: "Quyền lợi (Mỗi dòng một ý)",
-          icon: Icons.card_giftcard_rounded,
-          maxLines: null,
-          onChanged: store.updatePosterDataFromControllers,
-        ),
-        const SizedBox(height: 32),
-        _buildSectionHeader("CÀI ĐẶT VIDEO"),
-        Observer(
-          builder: (_) => ModernSlider(
-            label: "Tốc độ phát",
-            value: store.playbackSpeed,
-            min: 0.5,
-            max: 2.0,
-            onChanged: (v) => store.setPlaybackSpeed(v),
-            suffix: "x",
-          ),
-        ),
-        const SizedBox(height: 16),
-        Observer(
-          builder: (_) => ModernSlider(
-            label: "Âm lượng",
-            value: store.volume,
-            min: 0.0,
-            max: 1.0,
-            onChanged: (v) {
-              store.setVolume(v);
-              store.player.setVolume(v * 100);
-            },
-            suffix: "%",
-            multiplier: 100,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEffectsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _buildSectionHeader("HÌNH ẢNH"),
-        Observer(
-          builder: (_) => SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              "Làm mờ nền",
-              style: TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-            value: store.applyBlur,
-            onChanged: (v) => store.setApplyBlur(v),
-            activeThumbColor: const Color(0xFF6366F1),
-          ),
-        ),
-        Observer(
-          builder: (_) => ModernSlider(
-            label: "Độ mờ",
-            value: store.blurIntensity,
-            min: 0.0,
-            max: 20.0,
-            onChanged: (v) => store.setBlurIntensity(v),
-            suffix: "px",
-            enabled: store.applyBlur,
-          ),
-        ),
-        const SizedBox(height: 32),
-        _buildSectionHeader("CHỐNG QUÉT BẢN QUYỀN"),
-        AntiReupSettingsPanel(store: store),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 10,
-          color: Colors.white24,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
+  // ─── Interactive Preview ──────────────────────────────────────────────────
 
   Widget _buildInteractivePreview() {
     return Container(
@@ -625,7 +415,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                           color: Colors.black,
                           child: const Center(
                             child: Text(
-                              "No Video Selected",
+                              'No Video Selected',
                               style: TextStyle(color: Colors.white24),
                             ),
                           ),
@@ -642,200 +432,84 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   // TikTok Safe Zone Visualization
                   const TikTokSafeZone(),
 
-                  // Virtual Canvas for Overlays
+                  // Virtual canvas for free text overlays (720x1280)
                   Positioned.fill(
-                    child: Observer(
-                      builder: (context) {
-                        if (store.creationStore.currentPosterData == null) {
-                          return const SizedBox.shrink();
-                        }
-                        return FittedBox(
-                          fit: BoxFit.contain,
-                          child: SizedBox(
-                            width: 720,
-                            height: 1280,
-                            child: RepaintBoundary(
-                              key: store.previewKey,
-                              child: Observer(
-                                builder: (context) {
-                                  final posterData = store.selectedPosterData;
-                                  if (posterData == null) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  const virtualConstraints = BoxConstraints(
-                                    maxWidth: 720,
-                                    maxHeight: 1280,
-                                  );
-                                  return GestureDetector(
-                                    onTap: () =>
-                                        store.setSelectedOverlayType(null),
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Stack(
-                                      children: [
-                                        VideoOverlayItem(
-                                          label: posterData.jobTitle,
-                                          x: store.titleX,
-                                          y: store.titleY,
-                                          type: 'title',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'title',
-                                          constraints: virtualConstraints,
-                                          color: Colors.white,
-                                          fontSize: store.titleFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
-                                        // VideoOverlayItem(
-                                        //   label: posterData.salaryRange,
-                                        //   x: store.salaryX,
-                                        //   y: store.salaryY,
-                                        //   type: 'salary',
-                                        //   isSelected:
-                                        //       store.selectedOverlayType ==
-                                        //       'salary',
-                                        //   constraints: virtualConstraints,
-                                        //   color: Colors.yellow,
-                                        //   fontSize: store.salaryFontSize,
-                                        //   onPositionUpdate:
-                                        //       store.updatePosition,
-                                        //   onSelect:
-                                        //       store.setSelectedOverlayType,
-                                        //   onResize: store.updateFontSize,
-                                        //   onTextChange: store.updateTextContent,
-                                        // ),
-                                        VideoOverlayItem(
-                                          label: "🏢 ${posterData.companyName}",
-                                          x: store.companyX,
-                                          y: store.companyY,
-                                          type: 'company',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'company',
-                                          constraints: virtualConstraints,
-                                          color: Colors.white70,
-                                          fontSize: store.companyFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
-                                        VideoOverlayItem(
-                                          label: "📍 ${posterData.location}",
-                                          x: store.locationX,
-                                          y: store.locationY,
-                                          type: 'location',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'location',
-                                          constraints: virtualConstraints,
-                                          color: Colors.white54,
-                                          fontSize: store.locationFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
-                                        // VideoOverlayItem(
-                                        //   label:
-                                        //       posterData
-                                        //               .requirements
-                                        //               .isNotEmpty ==
-                                        //           true
-                                        //       ? "📋 YÊU CẦU:\n${posterData.requirements.map((e) => "• $e").join("\n")}"
-                                        //       : "",
-                                        //   x: store.requirementsX,
-                                        //   y: store.requirementsY,
-                                        //   type: 'requirements',
-                                        //   isSelected:
-                                        //       store.selectedOverlayType ==
-                                        //       'requirements',
-                                        //   constraints: virtualConstraints,
-                                        //   color: Colors.white,
-                                        //   fontSize: store.requirementsFontSize,
-                                        //   onPositionUpdate:
-                                        //       store.updatePosition,
-                                        //   onSelect:
-                                        //       store.setSelectedOverlayType,
-                                        //   onResize: store.updateFontSize,
-                                        //   onTextChange: store.updateTextContent,
-                                        // ),
-                                        VideoOverlayItem(
-                                          label:
-                                              posterData.benefits.isNotEmpty ==
-                                                  true
-                                              ? "🎁 :\n${posterData.benefits.map((e) => "• $e").join("\n")}"
-                                              : "",
-                                          x: store.benefitsX,
-                                          y: store.benefitsY,
-                                          type: 'benefits',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'benefits',
-                                          constraints: virtualConstraints,
-                                          color: Colors.greenAccent,
-                                          fontSize: store.benefitsFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
-                                        VideoOverlayItem(
-                                          label: "📞 ${posterData.contactInfo}",
-                                          x: store.contactX,
-                                          y: store.contactY,
-                                          type: 'contact',
-                                          isSelected:
-                                              store.selectedOverlayType ==
-                                              'contact',
-                                          constraints: virtualConstraints,
-                                          color: Colors.white,
-                                          fontSize: store.contactFontSize,
-                                          onPositionUpdate:
-                                              store.updatePosition,
-                                          onSelect:
-                                              store.setSelectedOverlayType,
-                                          onResize: store.updateFontSize,
-                                          onTextChange: store.updateTextContent,
-                                        ),
-                                        // VideoOverlayItem(
-                                        //   label:
-                                        //       posterData.catchyHeadline ?? "",
-                                        //   x: store.headlineX,
-                                        //   y: store.headlineY,
-                                        //   type: 'headline',
-                                        //   isSelected:
-                                        //       store.selectedOverlayType ==
-                                        //       'headline',
-                                        //   constraints: virtualConstraints,
-                                        //   color: Colors.yellowAccent,
-                                        //   fontSize: store.headlineFontSize,
-                                        //   onPositionUpdate:
-                                        //       store.updatePosition,
-                                        //   onSelect:
-                                        //       store.setSelectedOverlayType,
-                                        //   onResize: store.updateFontSize,
-                                        //   onTextChange: store.updateTextContent,
-                                        // ),
-                                      ],
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: 720,
+                        height: 1280,
+                        child: RepaintBoundary(
+                          key: store.previewKey,
+                          child: Observer(
+                            builder: (context) {
+                              const virtualConstraints = BoxConstraints(
+                                maxWidth: 720,
+                                maxHeight: 1280,
+                              );
+
+                              return GestureDetector(
+                                // Deselect when tapping blank area
+                                onTap: () => store.selectCustomText(null),
+                                behavior: HitTestBehavior.opaque,
+                                child: Stack(
+                                  children: [
+                                    // Transparent background — shows video below
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.transparent,
+                                      ),
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
+
+                                    // Free-form custom text overlays
+                                    ...store.customTexts.map(
+                                      (text) => VideoOverlayItem(
+                                        key: ValueKey(text.id),
+                                        label: text.label,
+                                        x: text.x,
+                                        y: text.y,
+                                        type: text.id,
+                                        constraints: virtualConstraints,
+                                        color: text.color,
+                                        fontSize: text.fontSize,
+                                        textHeight: text.textHeight,
+                                        fontWeight: text.fontWeight,
+                                        fontStyle: text.fontStyle,
+                                        textAlign: text.textAlign,
+                                        backgroundColor: text.backgroundColor,
+                                        backgroundOpacity:
+                                            text.backgroundOpacity,
+                                        backgroundRadius: text.backgroundRadius,
+                                        isSelected:
+                                            store.selectedCustomTextId ==
+                                            text.id,
+                                        onPositionUpdate: (_, x, y) =>
+                                            store.updateCustomTextPosition(
+                                              text.id,
+                                              x,
+                                              y,
+                                            ),
+                                        onSelect: (_) =>
+                                            store.selectCustomText(text.id),
+                                        onResize: (_, size) =>
+                                            store.updateCustomTextFontSize(
+                                              text.id,
+                                              size,
+                                            ),
+                                        onTextChange: (_, val) =>
+                                            store.updateCustomTextLabel(
+                                              text.id,
+                                              val,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -843,68 +517,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             },
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildExportSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.black26,
-        border: Border(top: BorderSide(color: Colors.white10)),
-      ),
-      child: Column(
-        children: [
-          Observer(
-            builder: (_) => ElevatedButton(
-              onPressed:
-                  store.isProcessing ||
-                      store.sourceVideoPaths.isEmpty ||
-                      store.creationStore.currentPosterData == null
-                  ? null
-                  : () => store.handleExportVideo(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: store.isProcessing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      "XUẤT VIDEO",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Observer(
-            builder: (_) => store.generatedVideoPath != null
-                ? Text(
-                    "Xuất video thành công",
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.greenAccent.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
       ),
     );
   }

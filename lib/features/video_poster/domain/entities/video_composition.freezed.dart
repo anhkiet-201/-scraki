@@ -19,27 +19,9 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$VideoComposition {
   String get id => throw _privateConstructorUsedError;
   List<String> get sourceVideoPaths => throw _privateConstructorUsedError;
-  PosterData get posterData => throw _privateConstructorUsedError;
   Duration get targetDuration => throw _privateConstructorUsedError;
   bool get randomize => throw _privateConstructorUsedError;
-  String get stylePreset =>
-      throw _privateConstructorUsedError; // Positioning (Relative 0.0 to 1.0)
-  double get titleX => throw _privateConstructorUsedError;
-  double get titleY => throw _privateConstructorUsedError;
-  double get salaryX => throw _privateConstructorUsedError;
-  double get salaryY => throw _privateConstructorUsedError;
-  double get companyX => throw _privateConstructorUsedError;
-  double get companyY => throw _privateConstructorUsedError;
-  double get requirementsX => throw _privateConstructorUsedError;
-  double get requirementsY => throw _privateConstructorUsedError;
-  double get benefitsX => throw _privateConstructorUsedError;
-  double get benefitsY => throw _privateConstructorUsedError;
-  double get contactX => throw _privateConstructorUsedError;
-  double get contactY => throw _privateConstructorUsedError;
-  double get headlineX => throw _privateConstructorUsedError;
-  double get headlineY => throw _privateConstructorUsedError;
-  double get locationX => throw _privateConstructorUsedError;
-  double get locationY => throw _privateConstructorUsedError; // Effects
+  String get stylePreset => throw _privateConstructorUsedError; // Effects
   double get saturation => throw _privateConstructorUsedError;
   double get contrast => throw _privateConstructorUsedError;
   double get playbackSpeed => throw _privateConstructorUsedError;
@@ -65,26 +47,9 @@ abstract class $VideoCompositionCopyWith<$Res> {
   $Res call({
     String id,
     List<String> sourceVideoPaths,
-    PosterData posterData,
     Duration targetDuration,
     bool randomize,
     String stylePreset,
-    double titleX,
-    double titleY,
-    double salaryX,
-    double salaryY,
-    double companyX,
-    double companyY,
-    double requirementsX,
-    double requirementsY,
-    double benefitsX,
-    double benefitsY,
-    double contactX,
-    double contactY,
-    double headlineX,
-    double headlineY,
-    double locationX,
-    double locationY,
     double saturation,
     double contrast,
     double playbackSpeed,
@@ -93,7 +58,6 @@ abstract class $VideoCompositionCopyWith<$Res> {
     int randomSeed,
   });
 
-  $PosterDataCopyWith<$Res> get posterData;
   $AntiReupConfigCopyWith<$Res> get antiReupConfig;
 }
 
@@ -114,26 +78,9 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
   $Res call({
     Object? id = null,
     Object? sourceVideoPaths = null,
-    Object? posterData = null,
     Object? targetDuration = null,
     Object? randomize = null,
     Object? stylePreset = null,
-    Object? titleX = null,
-    Object? titleY = null,
-    Object? salaryX = null,
-    Object? salaryY = null,
-    Object? companyX = null,
-    Object? companyY = null,
-    Object? requirementsX = null,
-    Object? requirementsY = null,
-    Object? benefitsX = null,
-    Object? benefitsY = null,
-    Object? contactX = null,
-    Object? contactY = null,
-    Object? headlineX = null,
-    Object? headlineY = null,
-    Object? locationX = null,
-    Object? locationY = null,
     Object? saturation = null,
     Object? contrast = null,
     Object? playbackSpeed = null,
@@ -151,10 +98,6 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
                 ? _value.sourceVideoPaths
                 : sourceVideoPaths // ignore: cast_nullable_to_non_nullable
                       as List<String>,
-            posterData: null == posterData
-                ? _value.posterData
-                : posterData // ignore: cast_nullable_to_non_nullable
-                      as PosterData,
             targetDuration: null == targetDuration
                 ? _value.targetDuration
                 : targetDuration // ignore: cast_nullable_to_non_nullable
@@ -167,70 +110,6 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
                 ? _value.stylePreset
                 : stylePreset // ignore: cast_nullable_to_non_nullable
                       as String,
-            titleX: null == titleX
-                ? _value.titleX
-                : titleX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            titleY: null == titleY
-                ? _value.titleY
-                : titleY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            salaryX: null == salaryX
-                ? _value.salaryX
-                : salaryX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            salaryY: null == salaryY
-                ? _value.salaryY
-                : salaryY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            companyX: null == companyX
-                ? _value.companyX
-                : companyX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            companyY: null == companyY
-                ? _value.companyY
-                : companyY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            requirementsX: null == requirementsX
-                ? _value.requirementsX
-                : requirementsX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            requirementsY: null == requirementsY
-                ? _value.requirementsY
-                : requirementsY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            benefitsX: null == benefitsX
-                ? _value.benefitsX
-                : benefitsX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            benefitsY: null == benefitsY
-                ? _value.benefitsY
-                : benefitsY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            contactX: null == contactX
-                ? _value.contactX
-                : contactX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            contactY: null == contactY
-                ? _value.contactY
-                : contactY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            headlineX: null == headlineX
-                ? _value.headlineX
-                : headlineX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            headlineY: null == headlineY
-                ? _value.headlineY
-                : headlineY // ignore: cast_nullable_to_non_nullable
-                      as double,
-            locationX: null == locationX
-                ? _value.locationX
-                : locationX // ignore: cast_nullable_to_non_nullable
-                      as double,
-            locationY: null == locationY
-                ? _value.locationY
-                : locationY // ignore: cast_nullable_to_non_nullable
-                      as double,
             saturation: null == saturation
                 ? _value.saturation
                 : saturation // ignore: cast_nullable_to_non_nullable
@@ -264,16 +143,6 @@ class _$VideoCompositionCopyWithImpl<$Res, $Val extends VideoComposition>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $PosterDataCopyWith<$Res> get posterData {
-    return $PosterDataCopyWith<$Res>(_value.posterData, (value) {
-      return _then(_value.copyWith(posterData: value) as $Val);
-    });
-  }
-
-  /// Create a copy of VideoComposition
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
   $AntiReupConfigCopyWith<$Res> get antiReupConfig {
     return $AntiReupConfigCopyWith<$Res>(_value.antiReupConfig, (value) {
       return _then(_value.copyWith(antiReupConfig: value) as $Val);
@@ -293,26 +162,9 @@ abstract class _$$VideoCompositionImplCopyWith<$Res>
   $Res call({
     String id,
     List<String> sourceVideoPaths,
-    PosterData posterData,
     Duration targetDuration,
     bool randomize,
     String stylePreset,
-    double titleX,
-    double titleY,
-    double salaryX,
-    double salaryY,
-    double companyX,
-    double companyY,
-    double requirementsX,
-    double requirementsY,
-    double benefitsX,
-    double benefitsY,
-    double contactX,
-    double contactY,
-    double headlineX,
-    double headlineY,
-    double locationX,
-    double locationY,
     double saturation,
     double contrast,
     double playbackSpeed,
@@ -321,8 +173,6 @@ abstract class _$$VideoCompositionImplCopyWith<$Res>
     int randomSeed,
   });
 
-  @override
-  $PosterDataCopyWith<$Res> get posterData;
   @override
   $AntiReupConfigCopyWith<$Res> get antiReupConfig;
 }
@@ -343,26 +193,9 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? sourceVideoPaths = null,
-    Object? posterData = null,
     Object? targetDuration = null,
     Object? randomize = null,
     Object? stylePreset = null,
-    Object? titleX = null,
-    Object? titleY = null,
-    Object? salaryX = null,
-    Object? salaryY = null,
-    Object? companyX = null,
-    Object? companyY = null,
-    Object? requirementsX = null,
-    Object? requirementsY = null,
-    Object? benefitsX = null,
-    Object? benefitsY = null,
-    Object? contactX = null,
-    Object? contactY = null,
-    Object? headlineX = null,
-    Object? headlineY = null,
-    Object? locationX = null,
-    Object? locationY = null,
     Object? saturation = null,
     Object? contrast = null,
     Object? playbackSpeed = null,
@@ -380,10 +213,6 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
             ? _value._sourceVideoPaths
             : sourceVideoPaths // ignore: cast_nullable_to_non_nullable
                   as List<String>,
-        posterData: null == posterData
-            ? _value.posterData
-            : posterData // ignore: cast_nullable_to_non_nullable
-                  as PosterData,
         targetDuration: null == targetDuration
             ? _value.targetDuration
             : targetDuration // ignore: cast_nullable_to_non_nullable
@@ -396,70 +225,6 @@ class __$$VideoCompositionImplCopyWithImpl<$Res>
             ? _value.stylePreset
             : stylePreset // ignore: cast_nullable_to_non_nullable
                   as String,
-        titleX: null == titleX
-            ? _value.titleX
-            : titleX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        titleY: null == titleY
-            ? _value.titleY
-            : titleY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        salaryX: null == salaryX
-            ? _value.salaryX
-            : salaryX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        salaryY: null == salaryY
-            ? _value.salaryY
-            : salaryY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        companyX: null == companyX
-            ? _value.companyX
-            : companyX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        companyY: null == companyY
-            ? _value.companyY
-            : companyY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        requirementsX: null == requirementsX
-            ? _value.requirementsX
-            : requirementsX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        requirementsY: null == requirementsY
-            ? _value.requirementsY
-            : requirementsY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        benefitsX: null == benefitsX
-            ? _value.benefitsX
-            : benefitsX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        benefitsY: null == benefitsY
-            ? _value.benefitsY
-            : benefitsY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        contactX: null == contactX
-            ? _value.contactX
-            : contactX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        contactY: null == contactY
-            ? _value.contactY
-            : contactY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        headlineX: null == headlineX
-            ? _value.headlineX
-            : headlineX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        headlineY: null == headlineY
-            ? _value.headlineY
-            : headlineY // ignore: cast_nullable_to_non_nullable
-                  as double,
-        locationX: null == locationX
-            ? _value.locationX
-            : locationX // ignore: cast_nullable_to_non_nullable
-                  as double,
-        locationY: null == locationY
-            ? _value.locationY
-            : locationY // ignore: cast_nullable_to_non_nullable
-                  as double,
         saturation: null == saturation
             ? _value.saturation
             : saturation // ignore: cast_nullable_to_non_nullable
@@ -495,26 +260,9 @@ class _$VideoCompositionImpl implements _VideoComposition {
   const _$VideoCompositionImpl({
     required this.id,
     required final List<String> sourceVideoPaths,
-    required this.posterData,
     this.targetDuration = const Duration(seconds: 20),
     this.randomize = true,
     this.stylePreset = 'default',
-    this.titleX = 0.5,
-    this.titleY = 0.15,
-    this.salaryX = 0.5,
-    this.salaryY = 0.25,
-    this.companyX = 0.5,
-    this.companyY = 0.85,
-    this.requirementsX = 0.1,
-    this.requirementsY = 0.4,
-    this.benefitsX = 0.1,
-    this.benefitsY = 0.6,
-    this.contactX = 0.5,
-    this.contactY = 0.92,
-    this.headlineX = 0.5,
-    this.headlineY = 0.08,
-    this.locationX = 0.5,
-    this.locationY = 0.3,
     this.saturation = 1.2,
     this.contrast = 1.0,
     this.playbackSpeed = 1.0,
@@ -535,8 +283,6 @@ class _$VideoCompositionImpl implements _VideoComposition {
   }
 
   @override
-  final PosterData posterData;
-  @override
   @JsonKey()
   final Duration targetDuration;
   @override
@@ -545,55 +291,6 @@ class _$VideoCompositionImpl implements _VideoComposition {
   @override
   @JsonKey()
   final String stylePreset;
-  // Positioning (Relative 0.0 to 1.0)
-  @override
-  @JsonKey()
-  final double titleX;
-  @override
-  @JsonKey()
-  final double titleY;
-  @override
-  @JsonKey()
-  final double salaryX;
-  @override
-  @JsonKey()
-  final double salaryY;
-  @override
-  @JsonKey()
-  final double companyX;
-  @override
-  @JsonKey()
-  final double companyY;
-  @override
-  @JsonKey()
-  final double requirementsX;
-  @override
-  @JsonKey()
-  final double requirementsY;
-  @override
-  @JsonKey()
-  final double benefitsX;
-  @override
-  @JsonKey()
-  final double benefitsY;
-  @override
-  @JsonKey()
-  final double contactX;
-  @override
-  @JsonKey()
-  final double contactY;
-  @override
-  @JsonKey()
-  final double headlineX;
-  @override
-  @JsonKey()
-  final double headlineY;
-  @override
-  @JsonKey()
-  final double locationX;
-  @override
-  @JsonKey()
-  final double locationY;
   // Effects
   @override
   @JsonKey()
@@ -617,7 +314,7 @@ class _$VideoCompositionImpl implements _VideoComposition {
 
   @override
   String toString() {
-    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, posterData: $posterData, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset, titleX: $titleX, titleY: $titleY, salaryX: $salaryX, salaryY: $salaryY, companyX: $companyX, companyY: $companyY, requirementsX: $requirementsX, requirementsY: $requirementsY, benefitsX: $benefitsX, benefitsY: $benefitsY, contactX: $contactX, contactY: $contactY, headlineX: $headlineX, headlineY: $headlineY, locationX: $locationX, locationY: $locationY, saturation: $saturation, contrast: $contrast, playbackSpeed: $playbackSpeed, zoomIntensity: $zoomIntensity, antiReupConfig: $antiReupConfig, randomSeed: $randomSeed)';
+    return 'VideoComposition(id: $id, sourceVideoPaths: $sourceVideoPaths, targetDuration: $targetDuration, randomize: $randomize, stylePreset: $stylePreset, saturation: $saturation, contrast: $contrast, playbackSpeed: $playbackSpeed, zoomIntensity: $zoomIntensity, antiReupConfig: $antiReupConfig, randomSeed: $randomSeed)';
   }
 
   @override
@@ -630,42 +327,12 @@ class _$VideoCompositionImpl implements _VideoComposition {
               other._sourceVideoPaths,
               _sourceVideoPaths,
             ) &&
-            (identical(other.posterData, posterData) ||
-                other.posterData == posterData) &&
             (identical(other.targetDuration, targetDuration) ||
                 other.targetDuration == targetDuration) &&
             (identical(other.randomize, randomize) ||
                 other.randomize == randomize) &&
             (identical(other.stylePreset, stylePreset) ||
                 other.stylePreset == stylePreset) &&
-            (identical(other.titleX, titleX) || other.titleX == titleX) &&
-            (identical(other.titleY, titleY) || other.titleY == titleY) &&
-            (identical(other.salaryX, salaryX) || other.salaryX == salaryX) &&
-            (identical(other.salaryY, salaryY) || other.salaryY == salaryY) &&
-            (identical(other.companyX, companyX) ||
-                other.companyX == companyX) &&
-            (identical(other.companyY, companyY) ||
-                other.companyY == companyY) &&
-            (identical(other.requirementsX, requirementsX) ||
-                other.requirementsX == requirementsX) &&
-            (identical(other.requirementsY, requirementsY) ||
-                other.requirementsY == requirementsY) &&
-            (identical(other.benefitsX, benefitsX) ||
-                other.benefitsX == benefitsX) &&
-            (identical(other.benefitsY, benefitsY) ||
-                other.benefitsY == benefitsY) &&
-            (identical(other.contactX, contactX) ||
-                other.contactX == contactX) &&
-            (identical(other.contactY, contactY) ||
-                other.contactY == contactY) &&
-            (identical(other.headlineX, headlineX) ||
-                other.headlineX == headlineX) &&
-            (identical(other.headlineY, headlineY) ||
-                other.headlineY == headlineY) &&
-            (identical(other.locationX, locationX) ||
-                other.locationX == locationX) &&
-            (identical(other.locationY, locationY) ||
-                other.locationY == locationY) &&
             (identical(other.saturation, saturation) ||
                 other.saturation == saturation) &&
             (identical(other.contrast, contrast) ||
@@ -681,37 +348,20 @@ class _$VideoCompositionImpl implements _VideoComposition {
   }
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     runtimeType,
     id,
     const DeepCollectionEquality().hash(_sourceVideoPaths),
-    posterData,
     targetDuration,
     randomize,
     stylePreset,
-    titleX,
-    titleY,
-    salaryX,
-    salaryY,
-    companyX,
-    companyY,
-    requirementsX,
-    requirementsY,
-    benefitsX,
-    benefitsY,
-    contactX,
-    contactY,
-    headlineX,
-    headlineY,
-    locationX,
-    locationY,
     saturation,
     contrast,
     playbackSpeed,
     zoomIntensity,
     antiReupConfig,
     randomSeed,
-  ]);
+  );
 
   /// Create a copy of VideoComposition
   /// with the given fields replaced by the non-null parameter values.
@@ -729,26 +379,9 @@ abstract class _VideoComposition implements VideoComposition {
   const factory _VideoComposition({
     required final String id,
     required final List<String> sourceVideoPaths,
-    required final PosterData posterData,
     final Duration targetDuration,
     final bool randomize,
     final String stylePreset,
-    final double titleX,
-    final double titleY,
-    final double salaryX,
-    final double salaryY,
-    final double companyX,
-    final double companyY,
-    final double requirementsX,
-    final double requirementsY,
-    final double benefitsX,
-    final double benefitsY,
-    final double contactX,
-    final double contactY,
-    final double headlineX,
-    final double headlineY,
-    final double locationX,
-    final double locationY,
     final double saturation,
     final double contrast,
     final double playbackSpeed,
@@ -762,45 +395,11 @@ abstract class _VideoComposition implements VideoComposition {
   @override
   List<String> get sourceVideoPaths;
   @override
-  PosterData get posterData;
-  @override
   Duration get targetDuration;
   @override
   bool get randomize;
   @override
-  String get stylePreset; // Positioning (Relative 0.0 to 1.0)
-  @override
-  double get titleX;
-  @override
-  double get titleY;
-  @override
-  double get salaryX;
-  @override
-  double get salaryY;
-  @override
-  double get companyX;
-  @override
-  double get companyY;
-  @override
-  double get requirementsX;
-  @override
-  double get requirementsY;
-  @override
-  double get benefitsX;
-  @override
-  double get benefitsY;
-  @override
-  double get contactX;
-  @override
-  double get contactY;
-  @override
-  double get headlineX;
-  @override
-  double get headlineY;
-  @override
-  double get locationX;
-  @override
-  double get locationY; // Effects
+  String get stylePreset; // Effects
   @override
   double get saturation;
   @override

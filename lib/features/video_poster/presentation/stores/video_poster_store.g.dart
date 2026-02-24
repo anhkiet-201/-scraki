@@ -9,14 +9,6 @@ part of 'video_poster_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoPosterStore on _VideoPosterStore, Store {
-  Computed<PosterData?>? _$selectedPosterDataComputed;
-
-  @override
-  PosterData? get selectedPosterData =>
-      (_$selectedPosterDataComputed ??= Computed<PosterData?>(
-        () => super.selectedPosterData,
-        name: '_VideoPosterStore.selectedPosterData',
-      )).value;
   Computed<Duration>? _$totalDurationComputed;
 
   @override
@@ -47,24 +39,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   set sourceVideoPaths(ObservableList<String> value) {
     _$sourceVideoPathsAtom.reportWrite(value, super.sourceVideoPaths, () {
       super.sourceVideoPaths = value;
-    });
-  }
-
-  late final _$_selectedPosterDataAtom = Atom(
-    name: '_VideoPosterStore._selectedPosterData',
-    context: context,
-  );
-
-  @override
-  PosterData? get _selectedPosterData {
-    _$_selectedPosterDataAtom.reportRead();
-    return super._selectedPosterData;
-  }
-
-  @override
-  set _selectedPosterData(PosterData? value) {
-    _$_selectedPosterDataAtom.reportWrite(value, super._selectedPosterData, () {
-      super._selectedPosterData = value;
     });
   }
 
@@ -122,422 +96,44 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
-  late final _$titleXAtom = Atom(
-    name: '_VideoPosterStore.titleX',
+  late final _$customTextsAtom = Atom(
+    name: '_VideoPosterStore.customTexts',
     context: context,
   );
 
   @override
-  double get titleX {
-    _$titleXAtom.reportRead();
-    return super.titleX;
+  ObservableList<CustomTextOverlay> get customTexts {
+    _$customTextsAtom.reportRead();
+    return super.customTexts;
   }
 
   @override
-  set titleX(double value) {
-    _$titleXAtom.reportWrite(value, super.titleX, () {
-      super.titleX = value;
+  set customTexts(ObservableList<CustomTextOverlay> value) {
+    _$customTextsAtom.reportWrite(value, super.customTexts, () {
+      super.customTexts = value;
     });
   }
 
-  late final _$titleYAtom = Atom(
-    name: '_VideoPosterStore.titleY',
+  late final _$selectedCustomTextIdAtom = Atom(
+    name: '_VideoPosterStore.selectedCustomTextId',
     context: context,
   );
 
   @override
-  double get titleY {
-    _$titleYAtom.reportRead();
-    return super.titleY;
+  String? get selectedCustomTextId {
+    _$selectedCustomTextIdAtom.reportRead();
+    return super.selectedCustomTextId;
   }
 
   @override
-  set titleY(double value) {
-    _$titleYAtom.reportWrite(value, super.titleY, () {
-      super.titleY = value;
-    });
-  }
-
-  late final _$salaryXAtom = Atom(
-    name: '_VideoPosterStore.salaryX',
-    context: context,
-  );
-
-  @override
-  double get salaryX {
-    _$salaryXAtom.reportRead();
-    return super.salaryX;
-  }
-
-  @override
-  set salaryX(double value) {
-    _$salaryXAtom.reportWrite(value, super.salaryX, () {
-      super.salaryX = value;
-    });
-  }
-
-  late final _$salaryYAtom = Atom(
-    name: '_VideoPosterStore.salaryY',
-    context: context,
-  );
-
-  @override
-  double get salaryY {
-    _$salaryYAtom.reportRead();
-    return super.salaryY;
-  }
-
-  @override
-  set salaryY(double value) {
-    _$salaryYAtom.reportWrite(value, super.salaryY, () {
-      super.salaryY = value;
-    });
-  }
-
-  late final _$companyXAtom = Atom(
-    name: '_VideoPosterStore.companyX',
-    context: context,
-  );
-
-  @override
-  double get companyX {
-    _$companyXAtom.reportRead();
-    return super.companyX;
-  }
-
-  @override
-  set companyX(double value) {
-    _$companyXAtom.reportWrite(value, super.companyX, () {
-      super.companyX = value;
-    });
-  }
-
-  late final _$companyYAtom = Atom(
-    name: '_VideoPosterStore.companyY',
-    context: context,
-  );
-
-  @override
-  double get companyY {
-    _$companyYAtom.reportRead();
-    return super.companyY;
-  }
-
-  @override
-  set companyY(double value) {
-    _$companyYAtom.reportWrite(value, super.companyY, () {
-      super.companyY = value;
-    });
-  }
-
-  late final _$requirementsXAtom = Atom(
-    name: '_VideoPosterStore.requirementsX',
-    context: context,
-  );
-
-  @override
-  double get requirementsX {
-    _$requirementsXAtom.reportRead();
-    return super.requirementsX;
-  }
-
-  @override
-  set requirementsX(double value) {
-    _$requirementsXAtom.reportWrite(value, super.requirementsX, () {
-      super.requirementsX = value;
-    });
-  }
-
-  late final _$requirementsYAtom = Atom(
-    name: '_VideoPosterStore.requirementsY',
-    context: context,
-  );
-
-  @override
-  double get requirementsY {
-    _$requirementsYAtom.reportRead();
-    return super.requirementsY;
-  }
-
-  @override
-  set requirementsY(double value) {
-    _$requirementsYAtom.reportWrite(value, super.requirementsY, () {
-      super.requirementsY = value;
-    });
-  }
-
-  late final _$benefitsXAtom = Atom(
-    name: '_VideoPosterStore.benefitsX',
-    context: context,
-  );
-
-  @override
-  double get benefitsX {
-    _$benefitsXAtom.reportRead();
-    return super.benefitsX;
-  }
-
-  @override
-  set benefitsX(double value) {
-    _$benefitsXAtom.reportWrite(value, super.benefitsX, () {
-      super.benefitsX = value;
-    });
-  }
-
-  late final _$benefitsYAtom = Atom(
-    name: '_VideoPosterStore.benefitsY',
-    context: context,
-  );
-
-  @override
-  double get benefitsY {
-    _$benefitsYAtom.reportRead();
-    return super.benefitsY;
-  }
-
-  @override
-  set benefitsY(double value) {
-    _$benefitsYAtom.reportWrite(value, super.benefitsY, () {
-      super.benefitsY = value;
-    });
-  }
-
-  late final _$contactXAtom = Atom(
-    name: '_VideoPosterStore.contactX',
-    context: context,
-  );
-
-  @override
-  double get contactX {
-    _$contactXAtom.reportRead();
-    return super.contactX;
-  }
-
-  @override
-  set contactX(double value) {
-    _$contactXAtom.reportWrite(value, super.contactX, () {
-      super.contactX = value;
-    });
-  }
-
-  late final _$contactYAtom = Atom(
-    name: '_VideoPosterStore.contactY',
-    context: context,
-  );
-
-  @override
-  double get contactY {
-    _$contactYAtom.reportRead();
-    return super.contactY;
-  }
-
-  @override
-  set contactY(double value) {
-    _$contactYAtom.reportWrite(value, super.contactY, () {
-      super.contactY = value;
-    });
-  }
-
-  late final _$headlineXAtom = Atom(
-    name: '_VideoPosterStore.headlineX',
-    context: context,
-  );
-
-  @override
-  double get headlineX {
-    _$headlineXAtom.reportRead();
-    return super.headlineX;
-  }
-
-  @override
-  set headlineX(double value) {
-    _$headlineXAtom.reportWrite(value, super.headlineX, () {
-      super.headlineX = value;
-    });
-  }
-
-  late final _$headlineYAtom = Atom(
-    name: '_VideoPosterStore.headlineY',
-    context: context,
-  );
-
-  @override
-  double get headlineY {
-    _$headlineYAtom.reportRead();
-    return super.headlineY;
-  }
-
-  @override
-  set headlineY(double value) {
-    _$headlineYAtom.reportWrite(value, super.headlineY, () {
-      super.headlineY = value;
-    });
-  }
-
-  late final _$selectedOverlayTypeAtom = Atom(
-    name: '_VideoPosterStore.selectedOverlayType',
-    context: context,
-  );
-
-  @override
-  String? get selectedOverlayType {
-    _$selectedOverlayTypeAtom.reportRead();
-    return super.selectedOverlayType;
-  }
-
-  @override
-  set selectedOverlayType(String? value) {
-    _$selectedOverlayTypeAtom.reportWrite(value, super.selectedOverlayType, () {
-      super.selectedOverlayType = value;
-    });
-  }
-
-  late final _$titleFontSizeAtom = Atom(
-    name: '_VideoPosterStore.titleFontSize',
-    context: context,
-  );
-
-  @override
-  double get titleFontSize {
-    _$titleFontSizeAtom.reportRead();
-    return super.titleFontSize;
-  }
-
-  @override
-  set titleFontSize(double value) {
-    _$titleFontSizeAtom.reportWrite(value, super.titleFontSize, () {
-      super.titleFontSize = value;
-    });
-  }
-
-  late final _$salaryFontSizeAtom = Atom(
-    name: '_VideoPosterStore.salaryFontSize',
-    context: context,
-  );
-
-  @override
-  double get salaryFontSize {
-    _$salaryFontSizeAtom.reportRead();
-    return super.salaryFontSize;
-  }
-
-  @override
-  set salaryFontSize(double value) {
-    _$salaryFontSizeAtom.reportWrite(value, super.salaryFontSize, () {
-      super.salaryFontSize = value;
-    });
-  }
-
-  late final _$companyFontSizeAtom = Atom(
-    name: '_VideoPosterStore.companyFontSize',
-    context: context,
-  );
-
-  @override
-  double get companyFontSize {
-    _$companyFontSizeAtom.reportRead();
-    return super.companyFontSize;
-  }
-
-  @override
-  set companyFontSize(double value) {
-    _$companyFontSizeAtom.reportWrite(value, super.companyFontSize, () {
-      super.companyFontSize = value;
-    });
-  }
-
-  late final _$locationFontSizeAtom = Atom(
-    name: '_VideoPosterStore.locationFontSize',
-    context: context,
-  );
-
-  @override
-  double get locationFontSize {
-    _$locationFontSizeAtom.reportRead();
-    return super.locationFontSize;
-  }
-
-  @override
-  set locationFontSize(double value) {
-    _$locationFontSizeAtom.reportWrite(value, super.locationFontSize, () {
-      super.locationFontSize = value;
-    });
-  }
-
-  late final _$requirementsFontSizeAtom = Atom(
-    name: '_VideoPosterStore.requirementsFontSize',
-    context: context,
-  );
-
-  @override
-  double get requirementsFontSize {
-    _$requirementsFontSizeAtom.reportRead();
-    return super.requirementsFontSize;
-  }
-
-  @override
-  set requirementsFontSize(double value) {
-    _$requirementsFontSizeAtom.reportWrite(
+  set selectedCustomTextId(String? value) {
+    _$selectedCustomTextIdAtom.reportWrite(
       value,
-      super.requirementsFontSize,
+      super.selectedCustomTextId,
       () {
-        super.requirementsFontSize = value;
+        super.selectedCustomTextId = value;
       },
     );
-  }
-
-  late final _$benefitsFontSizeAtom = Atom(
-    name: '_VideoPosterStore.benefitsFontSize',
-    context: context,
-  );
-
-  @override
-  double get benefitsFontSize {
-    _$benefitsFontSizeAtom.reportRead();
-    return super.benefitsFontSize;
-  }
-
-  @override
-  set benefitsFontSize(double value) {
-    _$benefitsFontSizeAtom.reportWrite(value, super.benefitsFontSize, () {
-      super.benefitsFontSize = value;
-    });
-  }
-
-  late final _$contactFontSizeAtom = Atom(
-    name: '_VideoPosterStore.contactFontSize',
-    context: context,
-  );
-
-  @override
-  double get contactFontSize {
-    _$contactFontSizeAtom.reportRead();
-    return super.contactFontSize;
-  }
-
-  @override
-  set contactFontSize(double value) {
-    _$contactFontSizeAtom.reportWrite(value, super.contactFontSize, () {
-      super.contactFontSize = value;
-    });
-  }
-
-  late final _$headlineFontSizeAtom = Atom(
-    name: '_VideoPosterStore.headlineFontSize',
-    context: context,
-  );
-
-  @override
-  double get headlineFontSize {
-    _$headlineFontSizeAtom.reportRead();
-    return super.headlineFontSize;
-  }
-
-  @override
-  set headlineFontSize(double value) {
-    _$headlineFontSizeAtom.reportWrite(value, super.headlineFontSize, () {
-      super.headlineFontSize = value;
-    });
   }
 
   late final _$saturationAtom = Atom(
@@ -663,60 +259,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   set blurIntensity(double value) {
     _$blurIntensityAtom.reportWrite(value, super.blurIntensity, () {
       super.blurIntensity = value;
-    });
-  }
-
-  late final _$locationXAtom = Atom(
-    name: '_VideoPosterStore.locationX',
-    context: context,
-  );
-
-  @override
-  double get locationX {
-    _$locationXAtom.reportRead();
-    return super.locationX;
-  }
-
-  @override
-  set locationX(double value) {
-    _$locationXAtom.reportWrite(value, super.locationX, () {
-      super.locationX = value;
-    });
-  }
-
-  late final _$locationYAtom = Atom(
-    name: '_VideoPosterStore.locationY',
-    context: context,
-  );
-
-  @override
-  double get locationY {
-    _$locationYAtom.reportRead();
-    return super.locationY;
-  }
-
-  @override
-  set locationY(double value) {
-    _$locationYAtom.reportWrite(value, super.locationY, () {
-      super.locationY = value;
-    });
-  }
-
-  late final _$thumbnailsAtom = Atom(
-    name: '_VideoPosterStore.thumbnails',
-    context: context,
-  );
-
-  @override
-  ObservableMap<String, String> get thumbnails {
-    _$thumbnailsAtom.reportRead();
-    return super.thumbnails;
-  }
-
-  @override
-  set thumbnails(ObservableMap<String, String> value) {
-    _$thumbnailsAtom.reportWrite(value, super.thumbnails, () {
-      super.thumbnails = value;
     });
   }
 
@@ -886,6 +428,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$thumbnailsAtom = Atom(
+    name: '_VideoPosterStore.thumbnails',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, String> get thumbnails {
+    _$thumbnailsAtom.reportRead();
+    return super.thumbnails;
+  }
+
+  @override
+  set thumbnails(ObservableMap<String, String> value) {
+    _$thumbnailsAtom.reportWrite(value, super.thumbnails, () {
+      super.thumbnails = value;
+    });
+  }
+
   late final _$antiReupConfigAtom = Atom(
     name: '_VideoPosterStore.antiReupConfig',
     context: context,
@@ -954,6 +514,114 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   );
 
   @override
+  void addCustomText() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.addCustomText',
+    );
+    try {
+      return super.addCustomText();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void removeCustomText(String id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.removeCustomText',
+    );
+    try {
+      return super.removeCustomText(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void selectCustomText(String? id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.selectCustomText',
+    );
+    try {
+      return super.selectCustomText(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextPosition(String id, double x, double y) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextPosition',
+    );
+    try {
+      return super.updateCustomTextPosition(id, x, y);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextFontSize(String id, double size) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextFontSize',
+    );
+    try {
+      return super.updateCustomTextFontSize(id, size);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextLabel(String id, String value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextLabel',
+    );
+    try {
+      return super.updateCustomTextLabel(id, value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextStyle(
+    String id, {
+    ui.Color? color,
+    ui.FontWeight? fontWeight,
+    ui.FontStyle? fontStyle,
+    ui.TextAlign? textAlign,
+    ui.Color? backgroundColor,
+    bool clearBackgroundColor = false,
+    double? backgroundOpacity,
+    double? backgroundRadius,
+    double? textHeight,
+    bool clearTextHeight = false,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextStyle',
+    );
+    try {
+      return super.updateCustomTextStyle(
+        id,
+        color: color,
+        fontWeight: fontWeight,
+        fontStyle: fontStyle,
+        textAlign: textAlign,
+        backgroundColor: backgroundColor,
+        clearBackgroundColor: clearBackgroundColor,
+        backgroundOpacity: backgroundOpacity,
+        backgroundRadius: backgroundRadius,
+        textHeight: textHeight,
+        clearTextHeight: clearTextHeight,
+      );
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void addSourceVideos(List<String> paths) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.addSourceVideos',
@@ -972,18 +640,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.removeSourceVideo(index);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updatePosition(String type, double x, double y) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updatePosition',
-    );
-    try {
-      return super.updatePosition(type, x, y);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -1050,18 +706,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
-  void selectPosterData(PosterData? data) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.selectPosterData',
-    );
-    try {
-      return super.selectPosterData(data);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
   void initializePlayer() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.initializePlayer',
@@ -1104,54 +748,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.toggleFocusMode();
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void setSelectedOverlayType(String? type) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.setSelectedOverlayType',
-    );
-    try {
-      return super.setSelectedOverlayType(type);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updateFontSize(String type, double newSize) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updateFontSize',
-    );
-    try {
-      return super.updateFontSize(type, newSize);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updateTextContent(String type, String value) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updateTextContent',
-    );
-    try {
-      return super.updateTextContent(type, value);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void updatePosterDataFromControllers() {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.updatePosterDataFromControllers',
-    );
-    try {
-      return super.updatePosterDataFromControllers();
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -1236,29 +832,8 @@ sourceVideoPaths: ${sourceVideoPaths},
 isProcessing: ${isProcessing},
 generatedVideoPath: ${generatedVideoPath},
 errorMessage: ${errorMessage},
-titleX: ${titleX},
-titleY: ${titleY},
-salaryX: ${salaryX},
-salaryY: ${salaryY},
-companyX: ${companyX},
-companyY: ${companyY},
-requirementsX: ${requirementsX},
-requirementsY: ${requirementsY},
-benefitsX: ${benefitsX},
-benefitsY: ${benefitsY},
-contactX: ${contactX},
-contactY: ${contactY},
-headlineX: ${headlineX},
-headlineY: ${headlineY},
-selectedOverlayType: ${selectedOverlayType},
-titleFontSize: ${titleFontSize},
-salaryFontSize: ${salaryFontSize},
-companyFontSize: ${companyFontSize},
-locationFontSize: ${locationFontSize},
-requirementsFontSize: ${requirementsFontSize},
-benefitsFontSize: ${benefitsFontSize},
-contactFontSize: ${contactFontSize},
-headlineFontSize: ${headlineFontSize},
+customTexts: ${customTexts},
+selectedCustomTextId: ${selectedCustomTextId},
 saturation: ${saturation},
 contrast: ${contrast},
 playbackSpeed: ${playbackSpeed},
@@ -1266,9 +841,6 @@ zoomIntensity: ${zoomIntensity},
 volume: ${volume},
 applyBlur: ${applyBlur},
 blurIntensity: ${blurIntensity},
-locationX: ${locationX},
-locationY: ${locationY},
-thumbnails: ${thumbnails},
 duration: ${duration},
 position: ${position},
 clipDurations: ${clipDurations},
@@ -1278,8 +850,8 @@ videoWidth: ${videoWidth},
 videoHeight: ${videoHeight},
 activeNavIndex: ${activeNavIndex},
 isFocusMode: ${isFocusMode},
+thumbnails: ${thumbnails},
 antiReupConfig: ${antiReupConfig},
-selectedPosterData: ${selectedPosterData},
 totalDuration: ${totalDuration},
 totalPosition: ${totalPosition}
     ''';
