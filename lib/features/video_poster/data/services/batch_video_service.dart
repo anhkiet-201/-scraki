@@ -307,12 +307,8 @@ class BatchVideoService {
           duration: actualDuration,
           output: outputPath,
           processName: processName,
-          onProgress: (percent) {
-            // Throttling or custom UI can be done. Since segments are fast,
-            // printing every single percent might flood log, we just yield it in UI buffer
-            // but for simplicity we only yield at specific milestones or let UI handle the single dynamic line
-            // Currently, Store appends lines. We'll wait until full percent progress logic.
-          },
+          onProgress: (percent) {},
+          onLogMsg: onLog,
         ).then((res) {
           completedSegments++;
           if (!_cancelled) {
@@ -366,6 +362,7 @@ class BatchVideoService {
     required String output,
     String? processName,
     void Function(double)? onProgress,
+    void Function(String)? onLogMsg,
   }) async {
     // Detect HDR to choose the right vf filter chain
     final colorInfo = await _probeVideoColor(input);
@@ -418,9 +415,12 @@ class BatchVideoService {
         _activeProcesses.add(process);
 
         final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+        // Capture full stderr for error reporting
+        final stderrBuf = StringBuffer();
         process.stderr.listen((data) {
-          if (onProgress == null || _cancelled) return;
           final out = String.fromCharCodes(data);
+          stderrBuf.write(out);
+          if (onProgress == null || _cancelled) return;
           final match = regex.firstMatch(out);
           if (match != null) {
             final h = int.parse(match.group(1)!);
@@ -434,8 +434,29 @@ class BatchVideoService {
 
         final exitCode = await process.exitCode;
         _activeProcesses.remove(process);
-        return exitCode == 0 && File(output).existsSync() ? output : null;
-      } catch (_) {
+
+        if (exitCode != 0 || !File(output).existsSync()) {
+          // Log the last meaningful error lines from ffmpeg stderr
+          final errorLines = stderrBuf
+              .toString()
+              .split('\n')
+              .where(
+                (l) => l.toLowerCase().contains('error') || l.startsWith('  '),
+              )
+              .take(5)
+              .join('\n');
+          if (errorLines.isNotEmpty) {
+            onLogMsg?.call(
+              '  ❌ [${processName ?? _basename(input)}] FFmpeg lỗi:\n$errorLines',
+            );
+          }
+          return null;
+        }
+        return output;
+      } catch (e) {
+        onLogMsg?.call(
+          '  ❌ [${processName ?? _basename(input)}] Exception: $e',
+        );
         return null;
       }
     }
@@ -446,6 +467,9 @@ class BatchVideoService {
     // If HDR tonemapping failed (e.g. zscale not available), retry with
     // simple SDR fallback — colors may be clipped but video will be created.
     if (result == null && hdr) {
+      onLogMsg?.call(
+        '  ⚠️ [${processName ?? _basename(input)}] zscale tonemapping thất bại, thử fallback SDR...',
+      );
       final fallbackFilter = '${baseFilter},format=yuv420p';
       return runWithFilter(fallbackFilter);
     }
@@ -647,12 +671,14 @@ class BatchVideoService {
 
       _activeProcesses.add(process);
 
-      // Target duration approximate
+      // Collect stderr for both progress tracking and error reporting
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+      final stderrBuf = StringBuffer();
       process.stderr.listen((data) {
+        final out = String.fromCharCodes(data);
+        stderrBuf.write(out);
         if (onProgress == null || _cancelled) return;
-        final output = String.fromCharCodes(data);
-        final match = regex.firstMatch(output);
+        final match = regex.firstMatch(out);
         if (match != null) {
           final h = int.parse(match.group(1)!);
           final m = int.parse(match.group(2)!);
@@ -666,8 +692,31 @@ class BatchVideoService {
       final exitCode = await process.exitCode;
       _activeProcesses.remove(process);
 
-      return exitCode == 0 && File(finalOutput).existsSync();
-    } catch (_) {
+      final success = exitCode == 0 && File(finalOutput).existsSync();
+      if (!success) {
+        // Show full stderr so user can diagnose the exact ffmpeg error
+        final rawStderr = stderrBuf.toString();
+        // Filter out progress lines (time=, frame=, fps=, speed=), keep only meaningful lines
+        final errorLines = rawStderr
+            .split('\n')
+            .where(
+              (l) =>
+                  l.isNotEmpty &&
+                  !l.startsWith('frame=') &&
+                  !l.startsWith('fps=') &&
+                  !l.startsWith('size=') &&
+                  !l.trim().startsWith('time=') &&
+                  !l.trim().startsWith('speed='),
+            )
+            .join('\n');
+        onLogMsg?.call(
+          '  ❌ Video $outputIndex thất bại (exit=$exitCode)'
+          '${errorLines.isNotEmpty ? ':\n$errorLines' : '.'}',
+        );
+      }
+      return success;
+    } catch (e, st) {
+      onLogMsg?.call('  ❌ Video $outputIndex exception: $e\n$st');
       return false;
     } finally {
       try {
