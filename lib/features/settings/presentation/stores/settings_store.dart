@@ -32,6 +32,10 @@ abstract class _SettingsStore with Store {
   @computed
   String get posterPhoneNumber => settings?.posterPhoneNumber ?? '';
 
+  @computed
+  String get deviceGroupCollection =>
+      settings?.deviceGroupCollection ?? 'device_groups';
+
   // ===== Actions =====
   @action
   Future<void> loadSettings() async {
@@ -68,6 +72,15 @@ abstract class _SettingsStore with Store {
       settings = SettingsEntity.empty();
     }
     settings = settings!.copyWith(posterPhoneNumber: newPhone);
+    errorMessage = null;
+  }
+
+  @action
+  void updateDeviceGroupCollection(String collection) {
+    if (settings == null) {
+      settings = SettingsEntity.empty();
+    }
+    settings = settings!.copyWith(deviceGroupCollection: collection);
     errorMessage = null;
   }
 

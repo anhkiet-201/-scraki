@@ -17,7 +17,7 @@ class SettingsConfigProvider {
   }
 
   /// Refresh cached settings from repository
-  /// Should be called after settings are saved to upda te the cache
+  /// Should be called after settings are saved to update the cache
   Future<void> refresh() async {
     final result = await _getSettingsUseCase.call();
     result.fold(
@@ -31,4 +31,8 @@ class SettingsConfigProvider {
 
   /// Get poster phone number from cached settings
   String get posterPhoneNumber => _cachedSettings?.posterPhoneNumber ?? '';
+
+  /// Get Firestore collection name for device groups
+  String get deviceGroupCollection =>
+      _cachedSettings?.deviceGroupCollection ?? 'device_groups';
 }

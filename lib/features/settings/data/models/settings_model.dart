@@ -6,14 +6,20 @@ import 'package:scraki/features/settings/domain/entities/settings_entity.dart';
 class SettingsModel extends HiveObject {
   String aiApiKey;
   String posterPhoneNumber;
+  String deviceGroupCollection;
 
-  SettingsModel({required this.aiApiKey, required this.posterPhoneNumber});
+  SettingsModel({
+    required this.aiApiKey,
+    required this.posterPhoneNumber,
+    this.deviceGroupCollection = 'device_groups',
+  });
 
   /// Mapper từ Entity sang Model
   factory SettingsModel.fromEntity(SettingsEntity entity) {
     return SettingsModel(
       aiApiKey: entity.aiApiKey,
       posterPhoneNumber: entity.posterPhoneNumber,
+      deviceGroupCollection: entity.deviceGroupCollection,
     );
   }
 
@@ -22,6 +28,7 @@ class SettingsModel extends HiveObject {
     return SettingsEntity(
       aiApiKey: aiApiKey,
       posterPhoneNumber: posterPhoneNumber,
+      deviceGroupCollection: deviceGroupCollection,
     );
   }
 }
@@ -41,17 +48,21 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
     return SettingsModel(
       aiApiKey: fields[0] as String? ?? '',
       posterPhoneNumber: fields[1] as String? ?? '',
+      // Backward compatible: dữ liệu cũ (2 fields) sẽ fallback về default
+      deviceGroupCollection: fields[2] as String? ?? 'device_groups',
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(2) // Số lượng fields
+      ..writeByte(3) // Tăng lên 3 fields
       ..writeByte(0)
       ..write(obj.aiApiKey)
       ..writeByte(1)
-      ..write(obj.posterPhoneNumber);
+      ..write(obj.posterPhoneNumber)
+      ..writeByte(2)
+      ..write(obj.deviceGroupCollection);
   }
 
   @override

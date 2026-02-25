@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
+import 'package:scraki/core/config/settings_config_provider.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/models/device_group_model.dart';
 
@@ -11,14 +12,19 @@ abstract class DeviceGroupRemoteDataSource {
 
 @LazySingleton(as: DeviceGroupRemoteDataSource)
 class DeviceGroupRemoteDataSourceImpl implements DeviceGroupRemoteDataSource {
-  final CollectionReference _collection;
+  final SettingsConfigProvider _configProvider;
 
-  DeviceGroupRemoteDataSourceImpl()
-    : _collection = FirebaseFirestore.instance.collection('device_groups');
+  DeviceGroupRemoteDataSourceImpl(this._configProvider);
+
+  // Dùng getter thay vì final field để luôn phản ánh collection được chọn trong Settings
+  CollectionReference get _collection => FirebaseFirestore.instance.collection(
+    _configProvider.deviceGroupCollection,
+  );
 
   @override
   Stream<List<DeviceGroupModel>> watchGroups() {
-    logger.i('[Firestore] Bắt đầu theo dõi bảng device_groups...');
+    final collectionName = _configProvider.deviceGroupCollection;
+    logger.i('[Firestore] Bắt đầu theo dõi bảng $collectionName...');
 
     return _collection
         .snapshots()

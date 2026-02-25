@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/mixins/settings_store_mixin.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_api_key_card.dart';
+import 'package:scraki/features/settings/presentation/widgets/settings_collection_card.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_error_banner.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_header_bar.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_phone_card.dart';
@@ -84,6 +85,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                           SettingsPhoneCard(
                             controller: _phoneController,
                             onChanged: settingsStore.updatePhoneNumber,
+                          ),
+                          SettingsCollectionCard(
+                            selectedCollection:
+                                settingsStore.deviceGroupCollection,
+                            onChanged:
+                                settingsStore.updateDeviceGroupCollection,
                           ),
                         ],
                       ),

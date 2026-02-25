@@ -24,6 +24,14 @@ mixin _$SettingsStore on _SettingsStore, Store {
         () => super.posterPhoneNumber,
         name: '_SettingsStore.posterPhoneNumber',
       )).value;
+  Computed<String>? _$deviceGroupCollectionComputed;
+
+  @override
+  String get deviceGroupCollection =>
+      (_$deviceGroupCollectionComputed ??= Computed<String>(
+        () => super.deviceGroupCollection,
+        name: '_SettingsStore.deviceGroupCollection',
+      )).value;
 
   late final _$settingsAtom = Atom(
     name: '_SettingsStore.settings',
@@ -129,13 +137,26 @@ mixin _$SettingsStore on _SettingsStore, Store {
   }
 
   @override
+  void updateDeviceGroupCollection(String collection) {
+    final _$actionInfo = _$_SettingsStoreActionController.startAction(
+      name: '_SettingsStore.updateDeviceGroupCollection',
+    );
+    try {
+      return super.updateDeviceGroupCollection(collection);
+    } finally {
+      _$_SettingsStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 settings: ${settings},
 isLoading: ${isLoading},
 errorMessage: ${errorMessage},
 aiApiKey: ${aiApiKey},
-posterPhoneNumber: ${posterPhoneNumber}
+posterPhoneNumber: ${posterPhoneNumber},
+deviceGroupCollection: ${deviceGroupCollection}
     ''';
   }
 }
