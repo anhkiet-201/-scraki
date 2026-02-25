@@ -357,6 +357,8 @@ class BatchVideoService {
   }
 
   /// Runs a single ffmpeg segment cut. Returns the output path on success, null on failure.
+  /// Automatically detects HDR content and applies tonemapping to ensure all segments
+  /// are normalized to yuv420p + BT.709 for compatible concat.
   Future<String?> _runSegmentCut({
     required String input,
     required int startSeconds,
@@ -365,61 +367,90 @@ class BatchVideoService {
     String? processName,
     void Function(double)? onProgress,
   }) async {
-    try {
-      final process = await Process.start(_ffmpegBin, [
-        '-hide_banner',
-        '-y',
-        '-ss',
-        startSeconds.toString(),
-        '-i',
-        input,
-        '-t',
-        duration.toString(),
-        // Scale to 1080x1920 (9:16), crop to exact size, set 30fps
-        '-vf',
-        'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30',
-        '-af',
-        'volume=0.05',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-crf',
-        '26',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-ar',
-        '44100',
-        '-movflags',
-        '+faststart',
-        output,
-      ]);
-      _activeProcesses.add(process);
+    // Detect HDR to choose the right vf filter chain
+    final colorInfo = await _probeVideoColor(input);
+    final hdr = _isHdr(transfer: colorInfo.transfer, pixFmt: colorInfo.pixFmt);
 
-      // Parse stderr for time=...
-      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-      process.stderr.listen((data) {
-        if (onProgress == null || _cancelled) return;
-        final output = String.fromCharCodes(data);
-        final match = regex.firstMatch(output);
-        if (match != null) {
-          final h = int.parse(match.group(1)!);
-          final m = int.parse(match.group(2)!);
-          final s = double.parse(match.group(3)!);
-          final currentSeconds = h * 3600 + m * 60 + s;
-          final percent = (currentSeconds / duration).clamp(0.0, 1.0);
-          onProgress(percent);
-        }
-      });
+    // Base scale/crop/fps filter common to both paths
+    const baseFilter =
+        'scale=1080:1920:force_original_aspect_ratio=increase,'
+        'crop=1080:1920,'
+        'fps=30';
 
-      final exitCode = await process.exitCode;
-      _activeProcesses.remove(process);
-      return exitCode == 0 ? output : null;
-    } catch (_) {
-      return null;
+    // HDR: convert to linear light → tonemap → BT.709
+    // Requires ffmpeg built with libzimg (standard in most distros).
+    // Falls back to SDR path on failure.
+    final vfFilter = hdr
+        ? '$baseFilter,'
+              'zscale=t=linear:npl=100,'
+              'format=gbrpf32le,'
+              'zscale=p=bt709,'
+              'tonemap=tonemap=hable:desat=0,'
+              'zscale=t=bt709:m=bt709,'
+              'format=yuv420p'
+        : '$baseFilter,format=yuv420p';
+
+    Future<String?> runWithFilter(String vf) async {
+      try {
+        final process = await Process.start(_ffmpegBin, [
+          '-hide_banner',
+          '-y',
+          '-ss', startSeconds.toString(),
+          '-i', input,
+          '-t', duration.toString(),
+          '-vf', vf,
+          '-af', 'volume=0.05',
+          // Force normalized SDR output — critical for concat compatibility
+          '-pix_fmt', 'yuv420p',
+          '-color_range', 'tv',
+          '-colorspace', 'bt709',
+          '-color_primaries', 'bt709',
+          '-color_trc', 'bt709',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-crf', '26',
+          '-c:a', 'aac',
+          '-b:a', '128k',
+          '-ar', '44100',
+          '-movflags', '+faststart',
+          output,
+        ]);
+        _activeProcesses.add(process);
+
+        final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+        process.stderr.listen((data) {
+          if (onProgress == null || _cancelled) return;
+          final out = String.fromCharCodes(data);
+          final match = regex.firstMatch(out);
+          if (match != null) {
+            final h = int.parse(match.group(1)!);
+            final m = int.parse(match.group(2)!);
+            final s = double.parse(match.group(3)!);
+            final currentSeconds = h * 3600 + m * 60 + s;
+            final percent = (currentSeconds / duration).clamp(0.0, 1.0);
+            onProgress(percent);
+          }
+        });
+
+        final exitCode = await process.exitCode;
+        _activeProcesses.remove(process);
+        return exitCode == 0 && File(output).existsSync() ? output : null;
+      } catch (_) {
+        return null;
+      }
     }
+
+    // Attempt with preferred filter (HDR-aware if applicable)
+    final result = await runWithFilter(vfFilter);
+
+    // If HDR tonemapping failed (e.g. zscale not available), retry with
+    // simple SDR fallback — colors may be clipped but video will be created.
+    if (result == null && hdr) {
+      final fallbackFilter = '${baseFilter},format=yuv420p';
+      return runWithFilter(fallbackFilter);
+    }
+
+    return result;
   }
 
   /// Builds a concat list, selects diverse segments, and runs ffmpeg with
@@ -658,5 +689,57 @@ class BatchVideoService {
   /// Cross-platform basename (last path component after / or \).
   String _basename(String path) {
     return path.split(RegExp(r'[/\\]')).last;
+  }
+
+  /// Uses ffprobe to read color_transfer, color_primaries and pix_fmt
+  /// from the first video stream. Returns empty strings on error.
+  Future<({String transfer, String primaries, String pixFmt})> _probeVideoColor(
+    String path,
+  ) async {
+    try {
+      final result = await Process.run(_ffprobeBin, [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=color_transfer,color_primaries,pix_fmt',
+        '-of',
+        'default=noprint_wrappers=1:nokey=0',
+        path,
+      ]);
+      final out = (result.stdout as String);
+      String transfer = '';
+      String primaries = '';
+      String pixFmt = '';
+      for (final line in out.split('\n')) {
+        if (line.startsWith('color_transfer=')) {
+          transfer = line.split('=').last.trim();
+        } else if (line.startsWith('color_primaries=')) {
+          primaries = line.split('=').last.trim();
+        } else if (line.startsWith('pix_fmt=')) {
+          pixFmt = line.split('=').last.trim();
+        }
+      }
+      return (transfer: transfer, primaries: primaries, pixFmt: pixFmt);
+    } catch (_) {
+      return (transfer: '', primaries: '', pixFmt: '');
+    }
+  }
+
+  /// Returns true when the video uses an HDR transfer function (PQ / HLG)
+  /// or a high-bit-depth pixel format (10/12-bit). Both require tonemapping
+  /// before encoding to H.264 yuv420p.
+  bool _isHdr({required String transfer, required String pixFmt}) {
+    // PQ (HDR10, Dolby Vision), HLG, SMPTE 428
+    const hdrTransfers = {'smpte2084', 'arib-std-b67', 'smpte428'};
+    final hdrTransfer = hdrTransfers.contains(transfer);
+    // 10-bit or 12-bit pixel formats exported by HEVC/AV1 cameras
+    final hdrPixFmt =
+        pixFmt.contains('p10') ||
+        pixFmt.contains('p12') ||
+        pixFmt.contains('10le') ||
+        pixFmt.contains('10be');
+    return hdrTransfer || hdrPixFmt;
   }
 }
