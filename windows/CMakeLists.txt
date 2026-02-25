@@ -113,6 +113,16 @@ install(FILES "${FFMPEG_BINARY_DIRS}/ffprobe.exe"
   COMPONENT Runtime
   OPTIONAL)
 
+# Add ADB to the install step (bundled platform-tools — no Android SDK required)
+set(ADB_RESOURCES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources")
+install(FILES
+    "${ADB_RESOURCES_DIR}/adb.exe"
+    "${ADB_RESOURCES_DIR}/AdbWinApi.dll"
+    "${ADB_RESOURCES_DIR}/AdbWinUsbApi.dll"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime
+  OPTIONAL)
+
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")

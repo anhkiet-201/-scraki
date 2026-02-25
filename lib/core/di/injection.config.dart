@@ -80,6 +80,7 @@ import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
 import '../config/settings_config_provider.dart' as _i730;
 import '../network/dio_client.dart' as _i667;
+import '../services/adb_binary_service.dart' as _i408;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
 import 'register_module.dart' as _i291;
@@ -105,14 +106,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
     gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
-    gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
     gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
     gh.lazySingleton<_i607.ScrcpySocketClient>(
       () => _i607.ScrcpySocketClient(),
     );
-    gh.lazySingleton<_i165.IAdbRemoteDataSource>(
-      () => _i165.AdbRemoteDataSourceImpl(),
-    );
+    gh.lazySingleton<_i408.AdbBinaryService>(() => _i408.AdbBinaryService());
     gh.factory<_i427.VideoProcessingRepository>(
       () => _i1007.FfmpegVideoProcessingRepositoryImpl(),
     );
@@ -123,10 +121,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i657.ISettingsRepository>(
       () => _i955.SettingsRepositoryImpl(),
     );
+    gh.lazySingleton<_i165.IAdbRemoteDataSource>(
+      () => _i165.AdbRemoteDataSourceImpl(gh<_i408.AdbBinaryService>()),
+    );
     gh.factory<_i1029.GetSettingsUseCase>(
       () => settingsUseCaseModule.getSettingsUseCase(
         gh<_i657.ISettingsRepository>(),
       ),
+    );
+    gh.lazySingleton<_i972.ScrcpyService>(
+      () => _i972.ScrcpyService(gh<_i408.AdbBinaryService>()),
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),

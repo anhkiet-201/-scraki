@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:process_run/shell.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/services/adb_binary_service.dart';
 import '../../domain/entities/scrcpy_options.dart';
 import '../datasources/scrcpy_client.dart';
 import '../../../../core/utils/logger.dart';
@@ -15,9 +15,9 @@ import '../../../../core/utils/logger.dart';
 /// and cleaning up server processes.
 @lazySingleton
 class ScrcpyService {
-  final Shell _shell;
+  final AdbBinaryService _adb;
 
-  ScrcpyService() : _shell = Shell();
+  ScrcpyService(this._adb);
 
   final Map<String, Process> _serverProcesses = {};
 
@@ -42,8 +42,10 @@ class ScrcpyService {
   Future<void> pushServer(String deviceSerial) async {
     try {
       final localPath = await _getServerPath();
-      await _shell.run(
-        'adb -s $deviceSerial push $localPath $_remoteServerPath',
+      await _adb.push(deviceSerial, localPath, _remoteServerPath);
+    } on AdbException catch (e) {
+      throw ServerException(
+        'Failed to push server to $deviceSerial: ${e.message}',
       );
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
@@ -66,10 +68,17 @@ class ScrcpyService {
 
       final args = options.toArgs(_serverVersion, scid);
 
-      final command =
-          'adb -s $deviceSerial shell CLASSPATH=$_remoteServerPath app_process / com.genymobile.scrcpy.Server ${args.join(' ')}';
-      final parts = command.split(' ');
-      final process = await Process.start(parts.first, parts.sublist(1));
+      // Dùng AdbBinaryService.start để lấy bundled adb path chính xác
+      final process = await _adb.start([
+        '-s',
+        deviceSerial,
+        'shell',
+        'CLASSPATH=$_remoteServerPath',
+        'app_process',
+        '/',
+        'com.genymobile.scrcpy.Server',
+        ...args,
+      ]);
       _serverProcesses[deviceSerial] = process;
 
       process.stdout
@@ -94,11 +103,12 @@ class ScrcpyService {
 
   Future<void> killServer(String serial) async {
     try {
-      await _shell.run(
-        'adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"',
-      );
+      await _adb.shell(serial, [
+        'sh',
+        '-c',
+        'ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true',
+      ]);
 
-      // Kill local adb process if tracked
       if (_serverProcesses.containsKey(serial)) {
         logger.i('[ScrcpyService] Killing local adb process for $serial');
         _serverProcesses[serial]?.kill();
@@ -116,38 +126,17 @@ class ScrcpyService {
     try {
       for (final path in filePaths) {
         logger.i('[ScrcpyService] Pushing file to $serial: $path');
-        // Use Process.run directly to avoid shell parsing issues with spaces/special characters
-        final pushResult = await Process.run('adb', [
-          '-s',
-          serial,
-          'push',
-          path,
-          '/sdcard/Download/',
-        ]);
+        await _adb.push(serial, path, '/sdcard/Download/');
 
-        if (pushResult.exitCode != 0) {
-          throw Exception('adb push failed: ${pushResult.stderr}');
-        }
-
-        // Notify MediaScanner to scan the pushed file.
-        // Single-quote the URI so Android sh does not interpret special chars
-        // like spaces, '(', ')' as shell syntax.
-        // Process.run uses CreateProcess on Windows (not cmd.exe), so single-quotes
-        // inside the argument string are passed through to ADB and then to sh correctly.
+        // Notify MediaScanner
         final fileName = path.split(RegExp(r'[/\\]')).last;
-        // Escape any literal single-quotes in the filename using POSIX '\'' trick.
+        // Escape literal single-quotes trong filename (POSIX '\'')
         final escapedFileName = fileName.replaceAll("'", "'\\''");
         final uri = 'file:///sdcard/Download/$escapedFileName';
         final scanCmd =
             "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d '$uri'";
 
-        final scanResult = await Process.run('adb', [
-          '-s',
-          serial,
-          'shell',
-          scanCmd,
-        ]);
-
+        final scanResult = await _adb.run(['-s', serial, 'shell', scanCmd]);
         if (scanResult.exitCode != 0) {
           logger.w(
             '[ScrcpyService] MediaScanner failed (non-critical): ${scanResult.stderr}',
@@ -161,11 +150,6 @@ class ScrcpyService {
   }
 
   Future<bool> isDeviceConnected(String serial) async {
-    try {
-      final result = await _shell.run('adb -s $serial get-state');
-      return result.outText.trim() == 'device';
-    } catch (_) {
-      return false;
-    }
+    return _adb.isDeviceConnected(serial);
   }
 }

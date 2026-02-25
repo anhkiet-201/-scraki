@@ -1,8 +1,6 @@
-import 'dart:io';
-
 import 'package:injectable/injectable.dart';
-import 'package:process_run/shell.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/services/adb_binary_service.dart';
 
 abstract class IAdbRemoteDataSource {
   Future<String> getConnectedDevicesOutput();
@@ -10,82 +8,62 @@ abstract class IAdbRemoteDataSource {
   Future<void> disconnect(String serial);
   Future<void> restartServer();
 
-  /// Lấy danh sách packages đã cài đặt trên device
-  /// [serial] - Device serial number
-  /// [includeSystemApps] - Nếu true, bao gồm cả system apps. Mặc định false (chỉ user apps)
-  /// Returns: List of package names (e.g., ["com.android.chrome", "com.example.app"])
+  /// Lấy danh sách packages đã cài đặt trên device.
+  /// [includeSystemApps] = false → chỉ lấy user apps.
   Future<List<String>> getInstalledPackages(
     String serial, {
     bool includeSystemApps = false,
   });
 
-  /// Lấy thông tin chi tiết của một package
-  /// [serial] - Device serial number
-  /// [packageName] - Package name của app
-  /// Returns: AppInfo object với label và launch activity
-  /// Throws: ServerException nếu package không tồn tại hoặc lỗi ADB
+  /// Lấy label hiển thị của một package.
   Future<String> getPackageLabel(String serial, String packageName);
 
-  /// Launch app bằng package name
-  /// [serial] - Device serial number
-  /// [packageName] - Package name của app cần mở
-  /// Throws: ServerException nếu không launch được app
+  /// Launch app bằng package name.
   Future<void> launchApp(String serial, String packageName);
 
-  /// Gửi keycode POWER (26) để bật/tắt màn hình
-  /// [serial] - Device serial number
+  /// Gửi keycode POWER (26) để bật/tắt màn hình.
   Future<void> sendPowerKey(String serial);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
 class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
-  final Shell _shell;
-  static const _cmdListDevices = 'adb devices -l';
+  final AdbBinaryService _adb;
 
-  AdbRemoteDataSourceImpl() : _shell = Shell();
+  AdbRemoteDataSourceImpl(this._adb);
 
   @override
   Future<String> getConnectedDevicesOutput() async {
     try {
-      final result = await _shell.run(_cmdListDevices);
-      return result.outText;
+      return await _adb.devicesOutput();
     } catch (e) {
-      throw ServerException('Failed to execute $_cmdListDevices: $e');
+      throw ServerException('Failed to list ADB devices: $e');
     }
   }
 
   @override
   Future<void> connectTcp(String ip, int port) async {
-    // Dùng Process.run thay vì _shell.run vì Shell có internal queue
-    // serialize các lệnh tuần tự — khiến Future.wait không thực sự parallel.
-    // Process.run tạo process độc lập, cho phép nhiều kết nối chạy đồng thời.
     try {
-      final result = await Process.run('adb', ['connect', '$ip:$port']);
-      final output = (result.stdout as String).trim();
-      if (output.contains('unable') || output.contains('failed')) {
-        throw ServerException(output);
-      }
+      await _adb.connectTcp(ip, port);
+    } on AdbException catch (e) {
+      throw ServerException(e.message);
     } catch (e) {
-      if (e is ServerException) rethrow;
       throw ServerException('Failed to connect $ip:$port: $e');
     }
   }
 
   @override
   Future<void> disconnect(String serial) async {
-    final cmd = 'adb disconnect $serial';
     try {
-      await _shell.run(cmd);
+      await _adb.disconnect(serial);
     } catch (e) {
-      throw ServerException('Failed to execute $cmd: $e');
+      throw ServerException('Failed to disconnect $serial: $e');
     }
   }
 
   @override
   Future<void> restartServer() async {
     try {
-      await _shell.run('adb kill-server');
-      await _shell.run('adb start-server');
+      await _adb.restartServer();
     } catch (e) {
       throw ServerException('Failed to restart ADB server: $e');
     }
@@ -96,26 +74,11 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     String serial, {
     bool includeSystemApps = false,
   }) async {
-    // -3 flag để chỉ lấy user-installed apps (third-party)
-    // Không dùng -3 để lấy tất cả packages (bao gồm system)
-    final flag = includeSystemApps ? '' : '-3';
-    final cmd = 'adb -s $serial shell pm list packages $flag';
-
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText.trim();
-
-      if (output.isEmpty) {
-        return [];
-      }
-
-      // Output format: "package:com.example.app\npackage:com.another.app"
-      // Parse và remove prefix "package:"
-      return output
-          .split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .map((line) => line.trim().replaceFirst('package:', ''))
-          .toList();
+      return await _adb.getInstalledPackages(
+        serial,
+        includeSystemApps: includeSystemApps,
+      );
     } catch (e) {
       throw ServerException('Failed to get installed packages: $e');
     }
@@ -123,65 +86,27 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Future<String> getPackageLabel(String serial, String packageName) async {
-    // Sử dụng dumpsys để lấy applicationLabel
-    final cmd =
-        'adb -s $serial shell dumpsys package $packageName | grep -i "applicationLabel"';
-
-    try {
-      final result = await _shell.run(cmd);
-      final output = result.outText.trim();
-
-      if (output.isEmpty) {
-        // Fallback: return package name nếu không tìm được label
-        return packageName;
-      }
-
-      // Output format: "applicationLabel=App Name" hoặc "applicationLabel-en=App Name"
-      // Parse label từ output
-      final match = RegExp(r'applicationLabel[^=]*=(.+)').firstMatch(output);
-      if (match != null && match.group(1) != null) {
-        return match.group(1)!.trim();
-      }
-
-      // Fallback
-      return packageName;
-    } catch (e) {
-      // Nếu lỗi, return package name làm label
-      return packageName;
-    }
+    // Không ném exception — trả về packageName làm fallback
+    return _adb.getPackageLabel(serial, packageName);
   }
 
   @override
   Future<void> launchApp(String serial, String packageName) async {
-    // Sử dụng monkey command để launch app
-    // monkey -p <package> 1 sẽ mở main activity của app
-    final cmd = 'adb -s $serial shell monkey -p $packageName 1';
-
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText;
-
-      // Kiểm tra lỗi thường gặp
-      if (output.contains('monkey: not found') ||
-          output.contains('does not exist') ||
-          output.contains('No activities found')) {
-        throw ServerException('Failed to launch app $packageName: $output');
-      }
+      await _adb.launchApp(serial, packageName);
+    } on AdbException catch (e) {
+      throw ServerException(e.message);
     } catch (e) {
-      if (e is ServerException) rethrow;
       throw ServerException('Failed to launch app $packageName: $e');
     }
   }
 
   @override
   Future<void> sendPowerKey(String serial) async {
-    // KEYCODE_POWER = 26
-    final cmd = 'adb -s $serial shell input keyevent 26';
-
     try {
-      await _shell.run(cmd);
+      await _adb.sendPowerKey(serial);
     } catch (e) {
-      throw ServerException('Failed to send power key: $e');
+      throw ServerException('Failed to send power key to $serial: $e');
     }
   }
 }
