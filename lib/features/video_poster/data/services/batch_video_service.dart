@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 // ============================================================================
@@ -184,15 +185,12 @@ class BatchVideoService {
       for (int i = 1; i <= config.outputCount; i++) {
         if (_cancelled) break;
         yield '  [$i/${config.outputCount}] Đang tạo video $i...';
-        final success = await _createOutputVideo(
+        final result = await _createOutputVideo(
           outputIndex: i,
           segments: segments,
           outputDir: outputDir,
           config: config,
           overlayFile: overlayFile,
-          onLogMsg: (msg) {
-            onLog?.call(msg);
-          },
           onProgress: (percent) {
             final p = (percent * 100).toStringAsFixed(0);
             onLog?.call(
@@ -200,7 +198,12 @@ class BatchVideoService {
             );
           },
         );
-        if (success) {
+        // Yield detail logs BEFORE _UPDATE_ so they're not overwritten
+        for (final log in result.logs) {
+          yield log;
+        }
+        if (result.success) {
+          successCount++;
           yield '_UPDATE_  [$i/${config.outputCount}] ✓';
         } else {
           yield '_UPDATE_  [$i/${config.outputCount}] ✗ (thất bại)';
@@ -479,15 +482,17 @@ class BatchVideoService {
 
   /// Builds a concat list, selects diverse segments, and runs ffmpeg with
   /// randomized anti-reup filters (PTS warp, brightness, contrast, noise).
-  Future<bool> _createOutputVideo({
+  /// Returns a record containing success flag and accumulated log lines that
+  /// the caller can yield through the stream BEFORE the _UPDATE_ line.
+  Future<({bool success, List<String> logs})> _createOutputVideo({
     required int outputIndex,
     required List<String> segments,
     required String outputDir,
     required BatchVideoConfig config,
     void Function(double)? onProgress,
-    void Function(String)? onLogMsg,
     File? overlayFile,
   }) async {
+    final logs = <String>[];
     final random = Random();
 
     // Target duration for this output video
@@ -518,7 +523,7 @@ class BatchVideoService {
         break;
       }
 
-      // Rút ngẫu nhiên từ pool segment 1 lần (sau khi suffle)
+      // Rút ngẫu nhiên từ pool segment 1 lần (sau khi shuffle)
       final seg = availableSegments.removeLast();
       if (!File(seg).existsSync()) continue;
 
@@ -541,14 +546,15 @@ class BatchVideoService {
     }
 
     if (totalDuration < targetDuration) {
-      // Yêu cầu từ USER: Nếu không đủ thời lượng thì báo thất bại, không tái sử dụng segment cũ
-      onLogMsg?.call(
-        '  ⚠️ Video $outputIndex thất bại: Chỉ gom được ${totalDuration}s (cần tối thiểu ${targetDuration}s). Vui lòng thêm video gốc.',
+      logs.add(
+        '  ⚠️ Video $outputIndex: Chỉ gom được ${totalDuration}s (cần ${targetDuration}s). Thêm video gốc.',
       );
-      return false;
+      return (success: false, logs: logs);
     }
 
-    if (selected.isEmpty) return false;
+    if (selected.isEmpty) {
+      return (success: false, logs: logs);
+    }
 
     // Write concat list to a temp file
     final concatFile = File(
@@ -557,18 +563,17 @@ class BatchVideoService {
     final buffer = StringBuffer();
     for (final seg in selected) {
       // Use absolute paths; ffmpeg concat requires forward slashes even on Windows
-      final absPath = File(seg).absolute.path.replaceAll('\\', '/');
+      final absPath = File(seg).absolute.path.replaceAll('\\\\', '/');
       buffer.writeln("file '$absPath'");
     }
     await concatFile.writeAsString(buffer.toString());
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
-    // Replicate make-vid.sh random PTS/tempo/brightness/contrast/noise logic
-    final pts = 0.96 + random.nextDouble() * 0.08; // video speed 0.96x – 1.04x
-    final tempo = 1.0 / pts; // audio tempo inverse of video pts
-    final brightness = (random.nextDouble() * 0.06) - 0.03; // -0.03 to +0.03
-    final contrast = 1.0 + random.nextDouble() * 0.05; // 1.00 to 1.05
-    final noise = 1.0 + random.nextDouble() * 3.0; // noise strength 1-4
+    final pts = 0.96 + random.nextDouble() * 0.08;
+    final tempo = 1.0 / pts;
+    final brightness = (random.nextDouble() * 0.06) - 0.03;
+    final contrast = 1.0 + random.nextDouble() * 0.05;
+    final noise = 1.0 + random.nextDouble() * 3.0;
 
     final brightnessStr = brightness.toStringAsFixed(4);
     final contrastStr = contrast.toStringAsFixed(4);
@@ -592,24 +597,27 @@ class BatchVideoService {
       ];
 
       if (overlayFile != null) {
-        // Complex filter approach for text overlay
         ffmpegArgs.addAll([
           '-loop',
           '1',
           '-i',
           overlayFile.absolute.path,
+          // Only process video in filter_complex — audio handled separately
+          // to avoid crash when source has no audio stream
           '-filter_complex',
           '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
               'crop=1080:1920,'
               'eq=brightness=$brightnessStr:contrast=$contrastStr,'
               'noise=alls=$noiseStr:allf=t,'
               'setpts=${ptsStr}*PTS[bg];'
-              '[bg][1:v]overlay=0:0:shortest=1[outv];'
-              '[0:a]volume=0.05,atempo=$tempoStr[outa]',
+              '[bg][1:v]overlay=0:0:shortest=1[outv]',
           '-map',
           '[outv]',
+          // Optional audio: skipped gracefully if no audio stream exists
           '-map',
-          '[outa]',
+          '0:a?',
+          '-af',
+          'volume=0.05,atempo=$tempoStr',
           '-c:v',
           'libx264',
           '-preset',
@@ -633,7 +641,6 @@ class BatchVideoService {
           finalOutput,
         ]);
       } else {
-        // Simple filter approach without overlay
         ffmpegArgs.addAll([
           '-vf',
           'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
@@ -668,10 +675,9 @@ class BatchVideoService {
       }
 
       final process = await Process.start(_ffmpegBin, ffmpegArgs);
-
       _activeProcesses.add(process);
 
-      // Collect stderr for both progress tracking and error reporting
+      // Collect stderr for progress tracking AND error reporting
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
       final stderrBuf = StringBuffer();
       process.stderr.listen((data) {
@@ -694,10 +700,8 @@ class BatchVideoService {
 
       final success = exitCode == 0 && File(finalOutput).existsSync();
       if (!success) {
-        // Show full stderr so user can diagnose the exact ffmpeg error
-        final rawStderr = stderrBuf.toString();
-        // Filter out progress lines (time=, frame=, fps=, speed=), keep only meaningful lines
-        final errorLines = rawStderr
+        final errorLines = stderrBuf
+            .toString()
             .split('\n')
             .where(
               (l) =>
@@ -709,15 +713,17 @@ class BatchVideoService {
                   !l.trim().startsWith('speed='),
             )
             .join('\n');
-        onLogMsg?.call(
-          '  ❌ Video $outputIndex thất bại (exit=$exitCode)'
-          '${errorLines.isNotEmpty ? ':\n$errorLines' : '.'}',
-        );
+        final msg =
+            '  ❌ Video $outputIndex thất bại (exit=$exitCode)'
+            '${errorLines.isNotEmpty ? ':\n$errorLines' : '.'}';
+        debugPrint('[BatchVideo] $msg');
+        logs.add(msg);
       }
-      return success;
+      return (success: success, logs: logs);
     } catch (e, st) {
-      onLogMsg?.call('  ❌ Video $outputIndex exception: $e\n$st');
-      return false;
+      debugPrint('[BatchVideo] Video $outputIndex exception: $e\n$st');
+      logs.add('  ❌ Video $outputIndex exception: $e\n$st');
+      return (success: false, logs: logs);
     } finally {
       try {
         await concatFile.delete();
