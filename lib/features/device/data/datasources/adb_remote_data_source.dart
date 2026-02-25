@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:injectable/injectable.dart';
 import 'package:process_run/shell.dart';
 import '../../../../core/error/exceptions.dart';
@@ -54,16 +56,18 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Future<void> connectTcp(String ip, int port) async {
-    final cmd = 'adb connect $ip:$port';
+    // Dùng Process.run thay vì _shell.run vì Shell có internal queue
+    // serialize các lệnh tuần tự — khiến Future.wait không thực sự parallel.
+    // Process.run tạo process độc lập, cho phép nhiều kết nối chạy đồng thời.
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText;
-      if (output.runes.contains("unable") || output.contains("failed")) {
+      final result = await Process.run('adb', ['connect', '$ip:$port']);
+      final output = (result.stdout as String).trim();
+      if (output.contains('unable') || output.contains('failed')) {
         throw ServerException(output);
       }
     } catch (e) {
-      if (e is ServerException) rethrow; // rethrow formatted exception
-      throw ServerException('Failed to execute $cmd: $e');
+      if (e is ServerException) rethrow;
+      throw ServerException('Failed to connect $ip:$port: $e');
     }
   }
 

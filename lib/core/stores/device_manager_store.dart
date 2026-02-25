@@ -177,12 +177,9 @@ abstract class _DeviceManagerStore with Store {
     final allIps = List.generate(96, (index) => '192.168.${index + 1}.20');
 
     // 3. Filter out already connected IPs
-    // Device serial usually comes as "192.168.x.20:5555"
     final currentSerials = devices.map((d) => d.serial).toSet();
-
     final targets = allIps.where((ip) {
-      final serial = '$ip:5555';
-      return !currentSerials.contains(serial);
+      return !currentSerials.contains('$ip:5555');
     }).toList();
 
     if (targets.isEmpty) {
@@ -191,26 +188,24 @@ abstract class _DeviceManagerStore with Store {
     }
 
     logger.i(
-      '[DeviceManagerStore] Found ${targets.length} new devices to connect.',
+      '[DeviceManagerStore] Connecting ${targets.length} devices in parallel...',
     );
 
-    // 4. Connect in batches
-    const batchSize = 10;
-    for (var i = 0; i < targets.length; i += batchSize) {
-      final end = (i + batchSize < targets.length)
-          ? i + batchSize
-          : targets.length;
-      final batch = targets.sublist(i, end);
-
-      logger.i(
-        '[DeviceManagerStore] Connecting batch: ${batch.first} - ${batch.last}',
-      );
-
-      // Run batch in parallel but ignore individual failures
-      await Future.wait(batch.map((ip) => _repository.connectTcp(ip, 5555)));
-    }
+    // 4. Connect ALL targets in parallel, each with an individual timeout.
+    // Failures/timeouts are caught per-IP and do not block the others.
+    const connectTimeout = Duration(seconds: 3);
+    await Future.wait(
+      targets.map((ip) async {
+        try {
+          await _repository.connectTcp(ip, 5555).timeout(connectTimeout);
+        } catch (_) {
+          // Ignore individual failures (timeout, unreachable host, etc.)
+        }
+      }),
+    );
 
     // 5. Final Reload
     await _loadDevicesInternal();
+    logger.i('[DeviceManagerStore] Done. $connectedBoxCount boxes connected.');
   }
 }
