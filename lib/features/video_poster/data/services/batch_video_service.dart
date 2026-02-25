@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 // ============================================================================
@@ -34,12 +35,38 @@ class BatchVideoConfig {
 }
 
 class BatchVideoService {
-  // ─── Cross-platform binaries ──────────────────────────────────────────────
+  // ─── Cross-platform binary resolution ───────────────────────────────────
 
-  static String get _ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
+  /// Resolves the path to a named binary (ffmpeg or ffprobe).
+  /// Priority:
+  ///   1. Bundled binary inside the app bundle (macOS: Contents/Resources/)
+  ///   2. System PATH
+  static Future<String> _resolveBinary(String name) async {
+    if (Platform.isMacOS) {
+      // In the macOS .app bundle the executable lives at:
+      //   Contents/MacOS/<app>  →  parent = MacOS  →  parent = Contents
+      final exePath = Platform.resolvedExecutable;
+      final contentsDir = File(exePath).parent.parent.path;
+      final bundled = p.join(contentsDir, 'Resources', name);
+      if (File(bundled).existsSync()) return bundled;
+    }
+    // Fall back to system PATH (useful during `flutter run` debug sessions)
+    return Platform.isWindows ? '$name.exe' : name;
+  }
 
-  static String get _ffprobeBin =>
-      Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
+  // Cache resolved paths after first lookup to avoid repeated I/O
+  String? _ffmpegPath;
+  String? _ffprobePath;
+
+  Future<String> get _ffmpegBin async {
+    _ffmpegPath ??= await _resolveBinary('ffmpeg');
+    return _ffmpegPath!;
+  }
+
+  Future<String> get _ffprobeBin async {
+    _ffprobePath ??= await _resolveBinary('ffprobe');
+    return _ffprobePath!;
+  }
 
   // Track running processes for cancellation
   final List<Process> _activeProcesses = [];
@@ -239,7 +266,8 @@ class BatchVideoService {
 
   Future<bool> _checkFfmpeg() async {
     try {
-      final result = await Process.run(_ffmpegBin, ['-version']);
+      final bin = await _ffmpegBin;
+      final result = await Process.run(bin, ['-version']);
       return result.exitCode == 0;
     } catch (_) {
       return false;
@@ -249,7 +277,8 @@ class BatchVideoService {
   /// Uses ffprobe to get video duration in integer seconds.
   Future<int> _getVideoDuration(String filePath) async {
     try {
-      final result = await Process.run(_ffprobeBin, [
+      final bin = await _ffprobeBin;
+      final result = await Process.run(bin, [
         '-v',
         'error',
         '-show_entries',
@@ -392,7 +421,7 @@ class BatchVideoService {
 
     Future<String?> runWithFilter(String vf) async {
       try {
-        final process = await Process.start(_ffmpegBin, [
+        final process = await Process.start(await _ffmpegBin, [
           '-hide_banner',
           '-y',
           '-ss', startSeconds.toString(),
@@ -674,7 +703,7 @@ class BatchVideoService {
         ]);
       }
 
-      final process = await Process.start(_ffmpegBin, ffmpegArgs);
+      final process = await Process.start(await _ffmpegBin, ffmpegArgs);
       _activeProcesses.add(process);
 
       // Collect stderr for progress tracking AND error reporting
@@ -752,7 +781,7 @@ class BatchVideoService {
     String path,
   ) async {
     try {
-      final result = await Process.run(_ffprobeBin, [
+      final result = await Process.run(await _ffprobeBin, [
         '-v',
         'error',
         '-select_streams',

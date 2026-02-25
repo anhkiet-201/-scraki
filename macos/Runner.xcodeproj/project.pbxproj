@@ -21,6 +21,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		8BF2308D245D4EB3AAF4D405 /* ffprobe in Resources */ = {isa = PBXBuildFile; fileRef = 4C5989EA5CA44E20A82E6DA7 /* ffprobe */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		63B6F5602A124FD8992C245F /* ffmpeg in Resources */ = {isa = PBXBuildFile; fileRef = 2DEBF63BA0B949E8B70D81E2 /* ffmpeg */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		27F0D8560904907E29A14A93 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B37027C5A06B64CE6F55BB2C /* Pods_Runner.framework */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
@@ -64,6 +66,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4C5989EA5CA44E20A82E6DA7 /* ffprobe */ = {isa = PBXFileReference; lastKnownFileType = "compiled"; name = ffprobe; path = "Runner/Resources/ffprobe"; sourceTree = "<group>"; };
+		2DEBF63BA0B949E8B70D81E2 /* ffmpeg */ = {isa = PBXFileReference; lastKnownFileType = "compiled"; name = ffmpeg; path = "Runner/Resources/ffmpeg"; sourceTree = "<group>"; };
 		1AA123368C66127389E98252 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		1DAD1473AC124BC038DAF715 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -158,6 +162,8 @@
 		33CC11242044D66E0003C045 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				4C5989EA5CA44E20A82E6DA7 /* ffprobe */,
+				2DEBF63BA0B949E8B70D81E2 /* ffmpeg */,
 				33CC10F22044A3C60003C045 /* Assets.xcassets */,
 				33CC10F42044A3C60003C045 /* MainMenu.xib */,
 				33CC10F72044A3C60003C045 /* Info.plist */,
@@ -320,6 +326,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8BF2308D245D4EB3AAF4D405 /* ffprobe in Resources */,
+				63B6F5602A124FD8992C245F /* ffmpeg in Resources */,
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 				7CEDD3DB28E2F1F35816699D /* GoogleService-Info.plist in Resources */,

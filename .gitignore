@@ -45,6 +45,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 windows/ffmpeg/
+# macOS bundled static binaries (too large for git, download via scripts/download_ffmpeg_macos.sh)
+macos/Runner/Resources/ffmpeg
+macos/Runner/Resources/ffprobe
 build_dmg.sh
 BUILD_DMG_README.md
 .env
