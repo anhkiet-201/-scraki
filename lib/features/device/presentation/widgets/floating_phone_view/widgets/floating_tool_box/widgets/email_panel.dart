@@ -270,22 +270,49 @@ class _EmailPanelState extends State<EmailPanel> {
                                       ],
                                     ),
                                     trailing: isOtp
-                                        ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
+                                        ? InkWell(
+                                            onTap: () async {
+                                              await _store.sendOtpToDevice(
+                                                widget.deviceSerial,
+                                                msg.otp!,
+                                              );
+                                              if (context.mounted &&
+                                                  _store.errorMessage == null) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Đã gửi OTP ${msg.otp!} qua ADB',
+                                                    ),
+                                                    duration: const Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
-                                            decoration: BoxDecoration(
-                                              color: colorScheme.primary,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
-                                            child: Text(
-                                              msg.otp!,
-                                              style: TextStyle(
-                                                color: colorScheme.onPrimary,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 1.5,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: colorScheme.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              child: Text(
+                                                msg.otp!,
+                                                style: TextStyle(
+                                                  color: colorScheme.onPrimary,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1.5,
+                                                ),
                                               ),
                                             ),
                                           )

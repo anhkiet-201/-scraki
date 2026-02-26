@@ -39,6 +39,11 @@ abstract class IAdbRemoteDataSource {
   /// Dump ui and extract email
   /// [serial] - Device serial number
   Future<String?> dumpUiAndExtractEmail(String serial);
+
+  /// Nhập văn bản vào thiết bị qua ADB
+  /// [serial] - Device serial number
+  /// [text] - Nội dung văn bản
+  Future<void> inputText(String serial, String text);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -226,6 +231,16 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       return match?.group(0);
     } catch (e) {
       throw ServerException('Failed to dump UI and extract email: $e');
+    }
+  }
+
+  @override
+  Future<void> inputText(String serial, String text) async {
+    final cmd = 'adb -s $serial shell input text "$text"';
+    try {
+      await _shell.run(cmd);
+    } catch (e) {
+      throw ServerException('Failed to input text: $e');
     }
   }
 }

@@ -17,4 +17,7 @@ abstract class DeviceRepository {
 
   /// Dump UI and extract email from it.
   Future<Either<Failure, String?>> dumpUiAndExtractEmail(String serial);
+
+  /// Gửi lệnh nhập text qua ADB
+  Future<Either<Failure, Unit>> inputText(String serial, String text);
 }

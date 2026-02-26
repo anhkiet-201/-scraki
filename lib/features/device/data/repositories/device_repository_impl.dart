@@ -73,4 +73,16 @@ class DeviceRepositoryImpl implements DeviceRepository {
       return Left(const AdbFailure('Unexpected error extracting email'));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> inputText(String serial, String text) async {
+    try {
+      await _remoteDataSource.inputText(serial, text);
+      return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(AdbFailure(e.message));
+    } catch (e) {
+      return Left(const AdbFailure('Unexpected error inputting text'));
+    }
+  }
 }

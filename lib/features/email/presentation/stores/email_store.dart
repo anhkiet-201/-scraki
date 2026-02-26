@@ -160,4 +160,25 @@ abstract class _EmailStore with Store {
   void dispose() {
     _emailSubscription?.cancel();
   }
+
+  @action
+  Future<void> sendOtpToDevice(String deviceSerial, String otp) async {
+    try {
+      final either = await _deviceRepository.inputText(deviceSerial, otp);
+      either.fold(
+        (failure) {
+          runInAction(() {
+            errorMessage = 'Lỗi gửi OTP qua ADB: ${failure.message}';
+          });
+        },
+        (_) {
+          // Success, do nothing
+        },
+      );
+    } catch (e) {
+      runInAction(() {
+        errorMessage = 'Lỗi hệ thống khi gửi OTP qua ADB: $e';
+      });
+    }
+  }
 }
