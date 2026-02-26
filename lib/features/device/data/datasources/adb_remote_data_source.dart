@@ -207,14 +207,23 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
         throw ServerException('Failed to dump UI: ${dumpResult.outText}');
       }
 
-      // 2. Cat the file content directly a local file
-      final catResult = await _shell.run(
-        'adb -s $serial shell cat $remotePath',
-      );
-      final content = catResult.outText;
+      // 2. Pull the file to a safe system temp directory
+      final localPath = '${Directory.systemTemp.path}/window_dump_$serial.xml';
 
-      // 3. Clean up remote file
+      await _shell.run('adb -s $serial pull $remotePath $localPath');
+
+      final file = File(localPath);
+      if (!await file.exists()) {
+        throw ServerException(
+          'Dump XML file not found after pull for device $serial',
+        );
+      }
+
+      final content = await file.readAsString();
+
+      // 3. Clean up remote and local file
       try {
+        await file.delete();
         await _shell.run('adb -s $serial shell rm $remotePath');
       } catch (_) {
         // Ignore cleanup errors
