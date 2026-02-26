@@ -61,4 +61,16 @@ class DeviceRepositoryImpl implements DeviceRepository {
       return Left(const AdbFailure('Unexpected error during ADB restart'));
     }
   }
+
+  @override
+  Future<Either<Failure, String?>> dumpUiAndExtractEmail(String serial) async {
+    try {
+      final email = await _remoteDataSource.dumpUiAndExtractEmail(serial);
+      return Right(email);
+    } on ServerException catch (e) {
+      return Left(AdbFailure(e.message));
+    } catch (e) {
+      return Left(const AdbFailure('Unexpected error extracting email'));
+    }
+  }
 }

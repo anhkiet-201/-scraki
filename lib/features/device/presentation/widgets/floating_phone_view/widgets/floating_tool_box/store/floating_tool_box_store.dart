@@ -21,9 +21,14 @@ abstract class _FloatingToolBoxStore with Store {
   @observable
   bool showJobSelector = false;
 
+  /// UI State: Hiển thị/ẩn panel đọc email
+  @observable
+  bool showEmailPanel = false;
+
   /// Bật/tắt hiển thị menu chọn việc làm.
   @action
   void toggleJobSelector() {
+    showEmailPanel = false;
     showJobSelector = !showJobSelector;
   }
 
@@ -31,6 +36,19 @@ abstract class _FloatingToolBoxStore with Store {
   @action
   void hideJobSelector() {
     showJobSelector = false;
+  }
+
+  /// Bật/tắt hiển thị email panel.
+  @action
+  void toggleEmailPanel() {
+    showJobSelector = false;
+    showEmailPanel = !showEmailPanel;
+  }
+
+  /// Ẩn email panel.
+  @action
+  void hideEmailPanel() {
+    showEmailPanel = false;
   }
 
   /// Gửi POWER key để bật/tắt màn hình

@@ -14,4 +14,7 @@ abstract class DeviceRepository {
 
   /// Restarts the ADB server.
   Future<Either<Failure, Unit>> restartAdb();
+
+  /// Dump UI and extract email from it.
+  Future<Either<Failure, String?>> dumpUiAndExtractEmail(String serial);
 }

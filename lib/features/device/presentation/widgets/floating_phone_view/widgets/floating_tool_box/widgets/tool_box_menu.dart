@@ -6,6 +6,7 @@ class ToolBoxMenu extends StatelessWidget {
   final double height;
   final VoidCallback onPowerTap;
   final VoidCallback onPosterTap;
+  final VoidCallback onEmailTap;
 
   const ToolBoxMenu({
     super.key,
@@ -13,6 +14,7 @@ class ToolBoxMenu extends StatelessWidget {
     required this.height,
     required this.onPowerTap,
     required this.onPosterTap,
+    required this.onEmailTap,
   });
 
   @override
@@ -55,6 +57,22 @@ class ToolBoxMenu extends StatelessWidget {
                   icon: Icons.art_track_rounded,
                   label: 'Poster',
                   onTap: onPosterTap,
+                  isError: false,
+                ),
+          const SizedBox(height: 12),
+          isCollapsed
+              ? _buildIconButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.mark_email_read_outlined,
+                  label: 'Email',
+                  onTap: onEmailTap,
+                  isError: false,
+                )
+              : _buildExpandedButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.mark_email_read_outlined,
+                  label: 'Email',
+                  onTap: onEmailTap,
                   isError: false,
                 ),
         ],

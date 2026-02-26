@@ -35,6 +35,10 @@ abstract class IAdbRemoteDataSource {
   /// Gửi keycode POWER (26) để bật/tắt màn hình
   /// [serial] - Device serial number
   Future<void> sendPowerKey(String serial);
+
+  /// Dump ui and extract email
+  /// [serial] - Device serial number
+  Future<String?> dumpUiAndExtractEmail(String serial);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -182,6 +186,52 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       await _shell.run(cmd);
     } catch (e) {
       throw ServerException('Failed to send power key: $e');
+    }
+  }
+
+  @override
+  Future<String?> dumpUiAndExtractEmail(String serial) async {
+    const remotePath = '/sdcard/window_dump.xml';
+    final localPath = 'window_dump_$serial.xml';
+
+    try {
+      // Dump UI on device
+      await _shell.run('adb -s $serial shell uiautomator dump $remotePath');
+
+      // Pull to local
+      await _shell.run('adb -s $serial pull $remotePath $localPath');
+
+      final file = File(localPath);
+      if (!await file.exists()) {
+        throw ServerException(
+          'Dump XML file not found after pull for device $serial',
+        );
+      }
+
+      final content = await file.readAsString();
+
+      // Clean up local and remote files
+      try {
+        await file.delete();
+        await _shell.run('adb -s $serial shell rm $remotePath');
+      } catch (_) {
+        // Ignore cleanup errors
+      }
+
+      // Regex for extracting email pattern within XML tags or attributes
+      final regex = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
+      final match = regex.firstMatch(content);
+
+      return match?.group(0);
+    } catch (e) {
+      // Clean up local if failed
+      final file = File(localPath);
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      throw ServerException('Failed to dump UI and extract email: $e');
     }
   }
 }

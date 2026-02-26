@@ -3,6 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/mixins/settings_store_mixin.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_api_key_card.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_collection_card.dart';
+import 'package:scraki/features/settings/presentation/widgets/settings_email_credential_card.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_error_banner.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_header_bar.dart';
 import 'package:scraki/features/settings/presentation/widgets/settings_phone_card.dart';
@@ -94,6 +95,16 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 32),
+
+                      // Email Credentials Section
+                      const SettingsSectionHeader(
+                        icon: Icons.mark_email_read_outlined,
+                        title: 'Email Automation',
+                      ),
+                      const SizedBox(height: 24),
+                      const SettingsEmailCredentialCard(),
 
                       const SizedBox(height: 32),
 

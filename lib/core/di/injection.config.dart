@@ -35,6 +35,15 @@ import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
+import '../../features/email/data/datasources/credential_remote_data_source.dart'
+    as _i296;
+import '../../features/email/data/datasources/imap_remote_data_source.dart'
+    as _i583;
+import '../../features/email/data/repositories/email_repository_impl.dart'
+    as _i352;
+import '../../features/email/domain/repositories/i_email_repository.dart'
+    as _i482;
+import '../../features/email/presentation/stores/email_store.dart' as _i498;
 import '../../features/poster/data/repositories/poster_repository_impl.dart'
     as _i424;
 import '../../features/poster/domain/repositories/i_poster_repository.dart'
@@ -68,6 +77,8 @@ import '../../features/settings/domain/repositories/i_settings_repository.dart'
     as _i657;
 import '../../features/settings/domain/usecases/get_settings_usecase.dart'
     as _i1029;
+import '../../features/settings/presentation/stores/settings_email_store.dart'
+    as _i1056;
 import '../../features/settings/presentation/stores/settings_store.dart'
     as _i151;
 import '../../features/video_poster/data/repositories/ffmpeg_video_processing_repository_impl.dart'
@@ -120,13 +131,28 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i424.PosterRepositoryImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.lazySingleton<_i583.IImapRemoteDataSource>(
+      () => _i583.ImapRemoteDataSourceImpl(),
+    );
     gh.lazySingleton<_i657.ISettingsRepository>(
       () => _i955.SettingsRepositoryImpl(),
+    );
+    gh.lazySingleton<_i296.ICredentialRemoteDataSource>(
+      () => _i296.CredentialRemoteDataSourceFirebaseImpl(),
     );
     gh.factory<_i1029.GetSettingsUseCase>(
       () => settingsUseCaseModule.getSettingsUseCase(
         gh<_i657.ISettingsRepository>(),
       ),
+    );
+    gh.lazySingleton<_i482.IEmailRepository>(
+      () => _i352.EmailRepositoryImpl(
+        gh<_i296.ICredentialRemoteDataSource>(),
+        gh<_i583.IImapRemoteDataSource>(),
+      ),
+    );
+    gh.factory<_i1056.SettingsEmailStore>(
+      () => _i1056.SettingsEmailStore(gh<_i482.IEmailRepository>()),
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
@@ -136,6 +162,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i706.SavePosterUseCase>(
       () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
+    );
+    gh.factory<_i498.EmailStore>(
+      () => _i498.EmailStore(
+        gh<_i482.IEmailRepository>(),
+        gh<_i985.DeviceRepository>(),
+      ),
     );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
       () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),

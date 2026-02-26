@@ -10,6 +10,7 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/poster_panel.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/text_scale_slider.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/tool_box_menu.dart';
+import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/email_panel.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
@@ -103,6 +104,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               height: widget.height,
               onPowerTap: () => _store.sendPowerButton(widget.serial),
               onPosterTap: () => _store.toggleJobSelector(),
+              onEmailTap: () => _store.toggleEmailPanel(),
             ),
             if (_store.showJobSelector)
               JobSelectorPanel(
@@ -113,6 +115,14 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                 },
                 onCancel: () {
                   _store.hideJobSelector();
+                },
+              )
+            else if (_store.showEmailPanel)
+              EmailPanel(
+                height: widget.height,
+                deviceSerial: widget.serial,
+                onCancel: () {
+                  _store.hideEmailPanel();
                 },
               )
             else if (widget.isGenerating || widget.posterData != null) ...[
