@@ -21,6 +21,7 @@ mixin _$DeviceGroupEntity {
   String get name => throw _privateConstructorUsedError;
   int get colorValue => throw _privateConstructorUsedError;
   List<String> get deviceSerials => throw _privateConstructorUsedError;
+  Map<String, String> get deviceEmails => throw _privateConstructorUsedError;
 
   /// Create a copy of DeviceGroupEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -41,6 +42,7 @@ abstract class $DeviceGroupEntityCopyWith<$Res> {
     String name,
     int colorValue,
     List<String> deviceSerials,
+    Map<String, String> deviceEmails,
   });
 }
 
@@ -63,6 +65,7 @@ class _$DeviceGroupEntityCopyWithImpl<$Res, $Val extends DeviceGroupEntity>
     Object? name = null,
     Object? colorValue = null,
     Object? deviceSerials = null,
+    Object? deviceEmails = null,
   }) {
     return _then(
       _value.copyWith(
@@ -82,6 +85,10 @@ class _$DeviceGroupEntityCopyWithImpl<$Res, $Val extends DeviceGroupEntity>
                 ? _value.deviceSerials
                 : deviceSerials // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            deviceEmails: null == deviceEmails
+                ? _value.deviceEmails
+                : deviceEmails // ignore: cast_nullable_to_non_nullable
+                      as Map<String, String>,
           )
           as $Val,
     );
@@ -102,6 +109,7 @@ abstract class _$$DeviceGroupEntityImplCopyWith<$Res>
     String name,
     int colorValue,
     List<String> deviceSerials,
+    Map<String, String> deviceEmails,
   });
 }
 
@@ -123,6 +131,7 @@ class __$$DeviceGroupEntityImplCopyWithImpl<$Res>
     Object? name = null,
     Object? colorValue = null,
     Object? deviceSerials = null,
+    Object? deviceEmails = null,
   }) {
     return _then(
       _$DeviceGroupEntityImpl(
@@ -142,6 +151,10 @@ class __$$DeviceGroupEntityImplCopyWithImpl<$Res>
             ? _value._deviceSerials
             : deviceSerials // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        deviceEmails: null == deviceEmails
+            ? _value._deviceEmails
+            : deviceEmails // ignore: cast_nullable_to_non_nullable
+                  as Map<String, String>,
       ),
     );
   }
@@ -155,7 +168,9 @@ class _$DeviceGroupEntityImpl extends _DeviceGroupEntity {
     required this.name,
     required this.colorValue,
     required final List<String> deviceSerials,
+    final Map<String, String> deviceEmails = const {},
   }) : _deviceSerials = deviceSerials,
+       _deviceEmails = deviceEmails,
        super._();
 
   @override
@@ -172,9 +187,18 @@ class _$DeviceGroupEntityImpl extends _DeviceGroupEntity {
     return EqualUnmodifiableListView(_deviceSerials);
   }
 
+  final Map<String, String> _deviceEmails;
+  @override
+  @JsonKey()
+  Map<String, String> get deviceEmails {
+    if (_deviceEmails is EqualUnmodifiableMapView) return _deviceEmails;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_deviceEmails);
+  }
+
   @override
   String toString() {
-    return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials)';
+    return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials, deviceEmails: $deviceEmails)';
   }
 
   @override
@@ -189,6 +213,10 @@ class _$DeviceGroupEntityImpl extends _DeviceGroupEntity {
             const DeepCollectionEquality().equals(
               other._deviceSerials,
               _deviceSerials,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._deviceEmails,
+              _deviceEmails,
             ));
   }
 
@@ -199,6 +227,7 @@ class _$DeviceGroupEntityImpl extends _DeviceGroupEntity {
     name,
     colorValue,
     const DeepCollectionEquality().hash(_deviceSerials),
+    const DeepCollectionEquality().hash(_deviceEmails),
   );
 
   /// Create a copy of DeviceGroupEntity
@@ -219,6 +248,7 @@ abstract class _DeviceGroupEntity extends DeviceGroupEntity {
     required final String name,
     required final int colorValue,
     required final List<String> deviceSerials,
+    final Map<String, String> deviceEmails,
   }) = _$DeviceGroupEntityImpl;
   const _DeviceGroupEntity._() : super._();
 
@@ -230,6 +260,8 @@ abstract class _DeviceGroupEntity extends DeviceGroupEntity {
   int get colorValue;
   @override
   List<String> get deviceSerials;
+  @override
+  Map<String, String> get deviceEmails;
 
   /// Create a copy of DeviceGroupEntity
   /// with the given fields replaced by the non-null parameter values.

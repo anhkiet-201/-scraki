@@ -211,4 +211,32 @@ abstract class _DeviceGroupStore with Store {
       selectedGroupId = groupId;
     }
   }
+
+  String? getEmailForDevice(String deviceSerial) {
+    for (final group in groups) {
+      if (group.deviceSerials.contains(deviceSerial)) {
+        return group.deviceEmails[deviceSerial];
+      }
+    }
+    return null;
+  }
+
+  @action
+  Future<void> saveEmailForDevice(String deviceSerial, String email) async {
+    for (final group in groups) {
+      if (group.deviceSerials.contains(deviceSerial)) {
+        if (group.deviceEmails[deviceSerial] != email) {
+          final newEmails = Map<String, String>.from(group.deviceEmails);
+          newEmails[deviceSerial] = email;
+          final updatedGroup = group.copyWith(deviceEmails: newEmails);
+          final result = await _repository.updateGroup(updatedGroup);
+          result.fold((failure) => errorMessage = failure.message, (_) {
+            final index = groups.indexWhere((g) => g.id == group.id);
+            if (index != -1) groups[index] = updatedGroup;
+          });
+        }
+        break; // Update the first matching group only
+      }
+    }
+  }
 }

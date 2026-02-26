@@ -109,6 +109,18 @@ mixin _$EmailStore on _EmailStore, Store {
     return _$startImapStreamAsyncAction.run(() => super.startImapStream(email));
   }
 
+  late final _$sendOtpToDeviceAsyncAction = AsyncAction(
+    '_EmailStore.sendOtpToDevice',
+    context: context,
+  );
+
+  @override
+  Future<void> sendOtpToDevice(String deviceSerial, String otp) {
+    return _$sendOtpToDeviceAsyncAction.run(
+      () => super.sendOtpToDevice(deviceSerial, otp),
+    );
+  }
+
   late final _$_EmailStoreActionController = ActionController(
     name: '_EmailStore',
     context: context,

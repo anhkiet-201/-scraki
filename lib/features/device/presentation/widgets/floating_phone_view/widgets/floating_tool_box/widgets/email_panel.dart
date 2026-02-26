@@ -4,6 +4,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:intl/intl.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
+import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/email/presentation/stores/email_store.dart';
 
 class EmailPanel extends StatefulWidget {
@@ -30,9 +31,16 @@ class _EmailPanelState extends State<EmailPanel> {
   void initState() {
     super.initState();
     _store = getIt<EmailStore>();
+
     // First query firestore/settings implicitly?
     // We assume the caller or another store provides the currently linked email if any.
-    // For now, let's leave controller empty so it can dump XML.
+    final savedEmail = getIt<DeviceGroupStore>().getEmailForDevice(
+      widget.deviceSerial,
+    );
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      _emailController.text = savedEmail;
+      _store.setTargetEmail(savedEmail);
+    }
   }
 
   @override
@@ -129,11 +137,18 @@ class _EmailPanelState extends State<EmailPanel> {
                                           requireDump: requireDump,
                                         )
                                         .then((_) {
-                                          if (_store.targetEmail.isNotEmpty &&
-                                              _emailController.text !=
-                                                  _store.targetEmail) {
-                                            _emailController.text =
-                                                _store.targetEmail;
+                                          if (_store.targetEmail.isNotEmpty) {
+                                            if (_emailController.text !=
+                                                _store.targetEmail) {
+                                              _emailController.text =
+                                                  _store.targetEmail;
+                                            }
+                                            // Save the email to the device's group in Firebase
+                                            getIt<DeviceGroupStore>()
+                                                .saveEmailForDevice(
+                                                  widget.deviceSerial,
+                                                  _store.targetEmail,
+                                                );
                                           }
                                         });
                                   },
