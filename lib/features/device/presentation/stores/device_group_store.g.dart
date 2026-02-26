@@ -124,6 +124,18 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
     );
   }
 
+  late final _$saveEmailForDeviceAsyncAction = AsyncAction(
+    '_DeviceGroupStore.saveEmailForDevice',
+    context: context,
+  );
+
+  @override
+  Future<void> saveEmailForDevice(String deviceSerial, String email) {
+    return _$saveEmailForDeviceAsyncAction.run(
+      () => super.saveEmailForDevice(deviceSerial, email),
+    );
+  }
+
   late final _$_DeviceGroupStoreActionController = ActionController(
     name: '_DeviceGroupStore',
     context: context,

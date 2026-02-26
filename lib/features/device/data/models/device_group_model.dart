@@ -37,9 +37,12 @@ class DeviceGroupModel extends HiveObject {
               .toList() ??
           [],
       deviceEmails:
-          (json['deviceEmails'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, value.toString()),
-          ) ??
+          (json['deviceEmails'] as Map<String, dynamic>?)?.map((key, value) {
+            final originalKey = key
+                .replaceAll('_dot_', '.')
+                .replaceAll('_colon_', ':');
+            return MapEntry(originalKey, value.toString());
+          }) ??
           {},
     );
   }
@@ -50,7 +53,10 @@ class DeviceGroupModel extends HiveObject {
       'name': name,
       'colorValue': colorValue,
       'deviceSerials': deviceSerials,
-      'deviceEmails': deviceEmails,
+      'deviceEmails': deviceEmails.map((key, value) {
+        final safeKey = key.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
+        return MapEntry(safeKey, value);
+      }),
     };
   }
 

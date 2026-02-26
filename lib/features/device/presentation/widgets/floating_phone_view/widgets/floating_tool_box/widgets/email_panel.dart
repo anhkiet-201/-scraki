@@ -131,24 +131,29 @@ class _EmailPanelState extends State<EmailPanel> {
                                     final requireDump = _emailController.text
                                         .trim()
                                         .isEmpty;
+
                                     _store
-                                        .assignEmailToDeviceAndStartStream(
+                                        .assignEmailToDevice(
                                           deviceSerial: widget.deviceSerial,
                                           requireDump: requireDump,
                                         )
-                                        .then((_) {
-                                          if (_store.targetEmail.isNotEmpty) {
-                                            if (_emailController.text !=
-                                                _store.targetEmail) {
-                                              _emailController.text =
-                                                  _store.targetEmail;
-                                            }
+                                        .then((resolvedEmail) {
+                                          if (resolvedEmail != null &&
+                                              resolvedEmail.isNotEmpty) {
+                                            _emailController.text =
+                                                resolvedEmail;
+
                                             // Save the email to the device's group in Firebase
                                             getIt<DeviceGroupStore>()
                                                 .saveEmailForDevice(
                                                   widget.deviceSerial,
-                                                  _store.targetEmail,
+                                                  resolvedEmail,
                                                 );
+
+                                            // Now start the IMAP stream
+                                            _store.startImapStream(
+                                              resolvedEmail,
+                                            );
                                           }
                                         });
                                   },

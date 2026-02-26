@@ -81,18 +81,18 @@ mixin _$EmailStore on _EmailStore, Store {
     });
   }
 
-  late final _$assignEmailToDeviceAndStartStreamAsyncAction = AsyncAction(
-    '_EmailStore.assignEmailToDeviceAndStartStream',
+  late final _$assignEmailToDeviceAsyncAction = AsyncAction(
+    '_EmailStore.assignEmailToDevice',
     context: context,
   );
 
   @override
-  Future<void> assignEmailToDeviceAndStartStream({
+  Future<String?> assignEmailToDevice({
     required String deviceSerial,
     required bool requireDump,
   }) {
-    return _$assignEmailToDeviceAndStartStreamAsyncAction.run(
-      () => super.assignEmailToDeviceAndStartStream(
+    return _$assignEmailToDeviceAsyncAction.run(
+      () => super.assignEmailToDevice(
         deviceSerial: deviceSerial,
         requireDump: requireDump,
       ),

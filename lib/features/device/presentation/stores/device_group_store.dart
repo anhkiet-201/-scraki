@@ -223,20 +223,52 @@ abstract class _DeviceGroupStore with Store {
 
   @action
   Future<void> saveEmailForDevice(String deviceSerial, String email) async {
+    logger.i(
+      '[DeviceGroupStore] Trying to save email "$email" for device "$deviceSerial". Total groups: ${groups.length}',
+    );
+    bool foundDeviceInAnyGroup = false;
+
     for (final group in groups) {
       if (group.deviceSerials.contains(deviceSerial)) {
+        foundDeviceInAnyGroup = true;
+        logger.i(
+          '[DeviceGroupStore] Found device in group: ${group.name}. Current email: ${group.deviceEmails[deviceSerial]}',
+        );
+
         if (group.deviceEmails[deviceSerial] != email) {
+          logger.i(
+            '[DeviceGroupStore] Email changed. Proceeding to update group in Firebase...',
+          );
           final newEmails = Map<String, String>.from(group.deviceEmails);
           newEmails[deviceSerial] = email;
           final updatedGroup = group.copyWith(deviceEmails: newEmails);
           final result = await _repository.updateGroup(updatedGroup);
-          result.fold((failure) => errorMessage = failure.message, (_) {
-            final index = groups.indexWhere((g) => g.id == group.id);
-            if (index != -1) groups[index] = updatedGroup;
-          });
+          result.fold(
+            (failure) {
+              logger.e('[DeviceGroupStore] Lỗi lưu email: ${failure.message}');
+              errorMessage = failure.message;
+            },
+            (_) {
+              logger.i(
+                '[DeviceGroupStore] Saved email $email for device $deviceSerial to group ${group.name}',
+              );
+              final index = groups.indexWhere((g) => g.id == group.id);
+              if (index != -1) groups[index] = updatedGroup;
+            },
+          );
+        } else {
+          logger.i(
+            '[DeviceGroupStore] Email is already assigned to this device in Firebase. Skipping update.',
+          );
         }
         break; // Update the first matching group only
       }
+    }
+
+    if (!foundDeviceInAnyGroup) {
+      logger.w(
+        '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Cannot save email!',
+      );
     }
   }
 }

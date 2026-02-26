@@ -40,7 +40,7 @@ abstract class _EmailStore with Store {
   }
 
   @action
-  Future<void> assignEmailToDeviceAndStartStream({
+  Future<String?> assignEmailToDevice({
     required String deviceSerial,
     required bool requireDump,
   }) async {
@@ -71,17 +71,14 @@ abstract class _EmailStore with Store {
 
         if (errorMessage != null) {
           isLoading = false;
-          return;
+          return null;
         }
       }
 
-      // Save the resolved email to device group via DeviceStore or similar?
-      // -> Will be handled by the caller since EmailStore shouldn't know about Settings device group collection directly to avoid circular dependency.
-      // We will just return successful here or initiate IMAP.
-
-      await startImapStream(resolvedEmail);
+      return resolvedEmail;
     } catch (e) {
       errorMessage = 'Lỗi hệ thống: $e';
+      return null;
     } finally {
       isLoading = false;
     }
