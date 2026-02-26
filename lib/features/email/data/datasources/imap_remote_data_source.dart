@@ -65,128 +65,169 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
   Stream<Either<Failure, EmailMessage>> _streamFromImap({
     required String email,
     required String accessToken,
-  }) async* {
+  }) {
+    late StreamController<Either<Failure, EmailMessage>> controller;
+    bool isCancelled = false;
     SecureSocket? socket;
-    try {
-      socket = await SecureSocket.connect(
-        'outlook.office365.com',
-        993,
-        onBadCertificate: (_) => true,
-      );
 
-      final StreamIterator<String> reader = StreamIterator(
-        socket
-            .cast<List<int>>()
-            .transform(utf8.decoder)
-            .transform(const LineSplitter()),
-      );
+    controller = StreamController<Either<Failure, EmailMessage>>(
+      onCancel: () async {
+        isCancelled = true;
+        try {
+          socket?.write('A05 LOGOUT\r\n');
+          await socket?.close();
+        } catch (_) {}
+        await controller.close();
+      },
+    );
 
-      await reader.moveNext();
+    Future<void> startPolling() async {
+      try {
+        socket = await SecureSocket.connect(
+          'outlook.office365.com',
+          993,
+          onBadCertificate: (_) => true,
+        );
 
-      final xoauth2 = _buildXoauth2(email, accessToken);
-      socket.write('A01 AUTHENTICATE XOAUTH2 $xoauth2\r\n');
+        if (isCancelled) return;
 
-      while (await reader.moveNext()) {
-        final line = reader.current;
-        if (line.startsWith('A01 OK')) break;
-        if (line.startsWith('A01 NO') || line.startsWith('A01 BAD')) {
-          yield Left(ApiFailure('IMAP Auth Failed: $line'));
-          return;
-        }
-        if (line.startsWith('+')) {
-          socket.write('\r\n');
-        }
-      }
+        final StreamIterator<String> reader = StreamIterator(
+          socket!
+              .cast<List<int>>()
+              .transform(utf8.decoder)
+              .transform(const LineSplitter()),
+        );
 
-      // We will create a loop to poll every 5 seconds for new emails.
-      final otpRegex = RegExp(r'\b\d{4,8}\b');
-      int? lastMessageCount;
+        await reader.moveNext();
+        if (isCancelled) return;
 
-      while (true) {
-        socket.write('A02 SELECT INBOX\r\n');
-        int? currentMessageCount;
+        final xoauth2 = _buildXoauth2(email, accessToken);
+        socket!.write('A01 AUTHENTICATE XOAUTH2 $xoauth2\r\n');
 
         while (await reader.moveNext()) {
+          if (isCancelled) return;
           final line = reader.current;
-          if (line.contains('EXISTS')) {
-            final parts = line.split(' ');
-            if (parts.length > 1) {
-              currentMessageCount = int.tryParse(parts[1]);
+          if (line.startsWith('A01 OK')) break;
+          if (line.startsWith('A01 NO') || line.startsWith('A01 BAD')) {
+            if (!controller.isClosed) {
+              controller.add(Left(ApiFailure('IMAP Auth Failed: $line')));
             }
-          }
-          if (line.startsWith('A02 OK')) break;
-          if (line.startsWith('A02 NO')) {
-            yield Left(ApiFailure('Select Inbox Failed: $line'));
             return;
           }
-        }
-
-        if (currentMessageCount != null && currentMessageCount > 0) {
-          if (lastMessageCount == null ||
-              currentMessageCount > lastMessageCount) {
-            // Fetch subject of the latest message
-            socket.write(
-              'A03 FETCH $currentMessageCount BODY[HEADER.FIELDS (SUBJECT)]\r\n',
-            );
-            String? subject;
-            String? foundOtp;
-
-            while (await reader.moveNext()) {
-              final line = reader.current;
-              if (line.startsWith('A03 OK')) break;
-
-              if (line.trim().startsWith('Subject:')) {
-                subject = line.replaceFirst('Subject:', '').trim();
-                final match = otpRegex.firstMatch(line);
-                if (match != null) {
-                  foundOtp = match.group(0);
-                }
-              }
-            }
-
-            // FETCH body even if OTP is not found yet
-            socket.write('A04 FETCH $currentMessageCount BODY[TEXT]\r\n');
-            bool readingBody = false;
-
-            while (await reader.moveNext()) {
-              final line = reader.current;
-              if (line.startsWith('A04 OK')) break;
-
-              if (line.contains('BODY[TEXT]')) {
-                readingBody = true;
-                continue;
-              }
-
-              if (readingBody && foundOtp == null) {
-                final match = otpRegex.firstMatch(line);
-                if (match != null) {
-                  foundOtp = match.group(0);
-                }
-              }
-            }
-
-            if (subject != null) {
-              yield Right(
-                EmailMessage(
-                  subject: subject,
-                  otp: foundOtp,
-                  receivedAt: DateTime.now(),
-                ),
-              );
-            }
-            lastMessageCount = currentMessageCount;
+          if (line.startsWith('+')) {
+            socket!.write('\r\n');
           }
         }
 
-        await Future<void>.delayed(const Duration(seconds: 5));
+        // We will create a loop to poll every 5 seconds for new emails.
+        final otpRegex = RegExp(r'\b\d{4,8}\b');
+        int? lastMessageCount;
+
+        while (!isCancelled) {
+          socket!.write('A02 SELECT INBOX\r\n');
+          int? currentMessageCount;
+
+          while (await reader.moveNext()) {
+            if (isCancelled) return;
+            final line = reader.current;
+            if (line.contains('EXISTS')) {
+              final parts = line.split(' ');
+              if (parts.length > 1) {
+                currentMessageCount = int.tryParse(parts[1]);
+              }
+            }
+            if (line.startsWith('A02 OK')) break;
+            if (line.startsWith('A02 NO')) {
+              if (!controller.isClosed) {
+                controller.add(Left(ApiFailure('Select Inbox Failed: $line')));
+              }
+              return;
+            }
+          }
+
+          if (currentMessageCount != null && currentMessageCount > 0) {
+            if (lastMessageCount == null ||
+                currentMessageCount > lastMessageCount) {
+              // Fetch subject of the latest message
+              socket!.write(
+                'A03 FETCH $currentMessageCount BODY[HEADER.FIELDS (SUBJECT)]\r\n',
+              );
+              String? subject;
+              String? foundOtp;
+
+              while (await reader.moveNext()) {
+                if (isCancelled) return;
+                final line = reader.current;
+                if (line.startsWith('A03 OK')) break;
+
+                if (line.trim().startsWith('Subject:')) {
+                  subject = line.replaceFirst('Subject:', '').trim();
+                  final match = otpRegex.firstMatch(line);
+                  if (match != null) {
+                    foundOtp = match.group(0);
+                  }
+                }
+              }
+
+              if (isCancelled) return;
+              // FETCH body even if OTP is not found yet
+              socket!.write('A04 FETCH $currentMessageCount BODY[TEXT]\r\n');
+              bool readingBody = false;
+
+              while (await reader.moveNext()) {
+                if (isCancelled) return;
+                final line = reader.current;
+                if (line.startsWith('A04 OK')) break;
+
+                if (line.contains('BODY[TEXT]')) {
+                  readingBody = true;
+                  continue;
+                }
+
+                if (readingBody && foundOtp == null) {
+                  final match = otpRegex.firstMatch(line);
+                  if (match != null) {
+                    foundOtp = match.group(0);
+                  }
+                }
+              }
+
+              if (subject != null && !controller.isClosed) {
+                controller.add(
+                  Right(
+                    EmailMessage(
+                      subject: subject,
+                      otp: foundOtp,
+                      receivedAt: DateTime.now(),
+                    ),
+                  ),
+                );
+              }
+              lastMessageCount = currentMessageCount;
+            }
+          }
+
+          if (isCancelled) return;
+          await Future<void>.delayed(const Duration(seconds: 5));
+        }
+      } catch (e) {
+        if (!isCancelled && !controller.isClosed) {
+          controller.add(Left(ApiFailure('Stream IMAP Error: $e')));
+        }
+      } finally {
+        if (!isCancelled) {
+          try {
+            socket?.write('A05 LOGOUT\r\n');
+            await socket?.close();
+          } catch (_) {}
+        }
+        if (!controller.isClosed) {
+          await controller.close();
+        }
       }
-    } catch (e) {
-      yield Left(ApiFailure('Stream IMAP Error: $e'));
-    } finally {
-      try {
-        socket?.write('A05 LOGOUT\r\n');
-        await socket?.close();
-      } catch (_) {}
     }
+
+    startPolling();
+    return controller.stream;
   }
 }
