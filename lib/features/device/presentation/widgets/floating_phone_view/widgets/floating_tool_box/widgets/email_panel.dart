@@ -214,29 +214,29 @@ class _EmailPanelState extends State<EmailPanel> {
 
                       // Email List
                       Expanded(
-                        child: _store.messages.isEmpty && !_store.isLoading
+                        child: _store.messages.isEmpty
                             ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.inbox_outlined,
-                                      size: 48,
-                                      color: colorScheme.onSurface.withValues(
-                                        alpha: 0.3,
+                                child: _store.isLoading
+                                    ? const CircularProgressIndicator()
+                                    : Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.inbox_outlined,
+                                            size: 48,
+                                            color: colorScheme.onSurface
+                                                .withValues(alpha: 0.3),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Chưa có email nào.',
+                                            style: TextStyle(
+                                              color: colorScheme.onSurface
+                                                  .withValues(alpha: 0.5),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Chưa có email nào.',
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               )
                             : ListView.separated(
                                 itemCount: _store.messages.length,
