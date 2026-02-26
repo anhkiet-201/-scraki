@@ -177,6 +177,7 @@ abstract class _VideoPosterStore with Store {
     // 2. Now it's safe to switch UI to full-screen batch mode
     isBatchCreating = true;
     batchLogs.clear();
+    _progressLineIndices.clear();
     batchOutputDir = null;
 
     if (customTexts.isNotEmpty) {
@@ -205,24 +206,48 @@ abstract class _VideoPosterStore with Store {
     );
   }
 
+  final Map<String, int> _progressLineIndices = {};
+
   void _handleLogUpdate(String line) {
-    if (line.startsWith('_PROGRESS_:')) {
-      final text = line.replaceFirst('_PROGRESS_:', '');
-      if (batchLogs.isNotEmpty) {
-        batchLogs[batchLogs.length - 1] = text;
-      } else {
-        batchLogs.add(text);
+    if (line.startsWith('_PROGRESS_')) {
+      final colonIndex = line.indexOf(':');
+      if (colonIndex != -1) {
+        final prefix = line.substring(0, colonIndex); // e.g., "_PROGRESS_V1"
+        final text = line.substring(colonIndex + 1).trimLeft();
+
+        if (_progressLineIndices.containsKey(prefix) &&
+            _progressLineIndices[prefix]! < batchLogs.length) {
+          batchLogs[_progressLineIndices[prefix]!] = text;
+        } else {
+          batchLogs.add(text);
+          _progressLineIndices[prefix] = batchLogs.length - 1;
+        }
+        return;
       }
-    } else if (line.startsWith('_UPDATE_')) {
-      final text = line.replaceFirst('_UPDATE_', '');
-      if (batchLogs.isNotEmpty) {
-        batchLogs[batchLogs.length - 1] = text;
-      } else {
-        batchLogs.add(text);
-      }
-    } else {
-      batchLogs.add(line);
     }
+
+    if (line.startsWith('_UPDATE_')) {
+      final spaceIndex = line.indexOf(' ');
+      if (spaceIndex != -1) {
+        final prefix = line.substring(0, spaceIndex); // e.g., "_UPDATE_V1"
+        final progressPrefix = prefix.replaceFirst('_UPDATE_', '_PROGRESS_');
+        final text = line.substring(spaceIndex + 1).trimLeft();
+
+        if (_progressLineIndices.containsKey(progressPrefix) &&
+            _progressLineIndices[progressPrefix]! < batchLogs.length) {
+          batchLogs[_progressLineIndices[progressPrefix]!] = text;
+        } else {
+          batchLogs.add(text);
+        }
+        return;
+      } else {
+        final text = line.replaceFirst('_UPDATE_', '').trimLeft();
+        batchLogs.add(text);
+        return;
+      }
+    }
+
+    batchLogs.add(line);
   }
 
   @action

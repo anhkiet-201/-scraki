@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -148,7 +147,7 @@ class BatchVideoService {
         if (_cancelled) break;
         videoIndex++;
         final duration = await _getVideoDuration(video);
-        yield '  [Video $videoIndex] Đang chuẩn bị cắt...';
+        yield '[Video $videoIndex] Đang chuẩn bị cắt...';
 
         final newSegs = await _cutVideoToSegments(
           video: video,
@@ -182,33 +181,88 @@ class BatchVideoService {
       onOutputDir?.call(Directory(outputDir).absolute.path);
 
       int successCount = 0;
-      for (int i = 1; i <= config.outputCount; i++) {
+      final activeTasks = <Future<void>>{};
+      int currentIndex = 1;
+
+      // Ensure we don't start tasks if cancelled early
+      if (_cancelled) {
+        yield '🛑 Đã dừng.';
+        return;
+      }
+
+      // We need a way to let tasks yield logs to the stream.
+      // Easiest is to accumulate them and yield them in the main isolate when futures complete/progress.
+      // But StreamController is better. We'll use a local controller that pipes to the outer async*.
+      final streamController = StreamController<String>();
+
+      void runCreationTask(int i) {
+        late Future<void> taskFuture;
+        taskFuture =
+            _createOutputVideo(
+              outputIndex: i,
+              segments: segments,
+              outputDir: outputDir,
+              config: config,
+              overlayFile: overlayFile,
+              onProgress: (percent) {
+                if (_cancelled) return;
+                final p = (percent * 100).toStringAsFixed(0);
+                streamController.add(
+                  '_PROGRESS_VID$i: [$i/${config.outputCount}] Đang ghép video $i... $p%',
+                );
+              },
+            ).then((result) {
+              activeTasks.remove(taskFuture);
+
+              if (!_cancelled) {
+                for (final log in result.logs) {
+                  streamController.add(log);
+                }
+                if (result.success) {
+                  successCount++;
+                  streamController.add(
+                    '_UPDATE_VID$i [$i/${config.outputCount}] ✓ Hoàn tất video $i',
+                  );
+                } else {
+                  streamController.add(
+                    '_UPDATE_VID$i [$i/${config.outputCount}] ✗ (thất bại video $i)',
+                  );
+                }
+              }
+            });
+        activeTasks.add(taskFuture);
+      }
+
+      // Helper to pump streamController events to yield
+      final streamPump = streamController.stream.listen(
+        (log) => onLog?.call(log),
+      );
+
+      while (currentIndex <= config.outputCount || activeTasks.isNotEmpty) {
         if (_cancelled) break;
-        yield '  [$i/${config.outputCount}] Đang tạo video $i...';
-        final result = await _createOutputVideo(
-          outputIndex: i,
-          segments: segments,
-          outputDir: outputDir,
-          config: config,
-          overlayFile: overlayFile,
-          onProgress: (percent) {
-            final p = (percent * 100).toStringAsFixed(0);
-            onLog?.call(
-              '_PROGRESS_:  [$i/${config.outputCount}] Đang tạo video $i... $p%',
-            );
-          },
-        );
-        // Yield detail logs BEFORE _UPDATE_ so they're not overwritten
-        for (final log in result.logs) {
-          yield log;
+
+        while (activeTasks.length >= _maxConcurrentTasks) {
+          await Future.any(activeTasks);
         }
-        if (result.success) {
-          successCount++;
-          yield '_UPDATE_  [$i/${config.outputCount}] ✓';
+        if (_cancelled) break;
+
+        if (currentIndex <= config.outputCount) {
+          runCreationTask(currentIndex);
+          currentIndex++;
         } else {
-          yield '_UPDATE_  [$i/${config.outputCount}] ✗ (thất bại)';
+          if (activeTasks.isNotEmpty) {
+            await Future.any(activeTasks);
+          }
         }
       }
+
+      if (activeTasks.isNotEmpty) {
+        await Future.wait(activeTasks);
+      }
+
+      // Close the stream controller and wait for pump to finish
+      await streamController.close();
+      await streamPump.cancel();
 
       if (_cancelled) {
         yield '🛑 Đã dừng. Hoàn thành $successCount/${config.outputCount} videos.';
@@ -234,6 +288,10 @@ class BatchVideoService {
     }
     _activeProcesses.clear();
   }
+
+  // ─── Constants ────────────────────────────────────────────────────────────
+
+  static const int _maxConcurrentTasks = 5;
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
@@ -266,7 +324,7 @@ class BatchVideoService {
     }
   }
 
-  /// Cuts a single source video into 4-6 second segments in parallel (max 4).
+  /// Cuts a single source video into 4-6 second segments in parallel (max 5).
   Future<List<String>> _cutVideoToSegments({
     required String video,
     required int videoIndex,
@@ -276,69 +334,95 @@ class BatchVideoService {
     required void Function(String) onLog,
   }) async {
     final random = Random();
-    final futures = <Future<String?>>[];
+    final activeTasks = <Future<void>>{};
     int currentTime = 0;
     int segmentIndex = 0;
     int completedSegments = 0;
+    int totalSegmentsToCut = 0;
 
-    while (currentTime < duration) {
-      if (_cancelled) break;
-
-      // Random segment length between min and max
+    // First pass to determine total segments for progress tracking
+    int tempTime = 0;
+    while (tempTime < duration) {
       final segDuration =
           config.minSegmentDuration +
           random.nextInt(
             config.maxSegmentDuration - config.minSegmentDuration + 1,
           );
-      final remaining = duration - currentTime;
+      final remaining = duration - tempTime;
       final actualDuration = min(segDuration, remaining);
-
-      // Skip segments shorter than 2s
       if (actualDuration < 2) break;
-
-      segmentIndex++;
-      final vidIdx = videoIndex.toString().padLeft(3, '0');
-      final segIdx = segmentIndex.toString().padLeft(3, '0');
-      final outputPath = '$tempDir/video${vidIdx}_seg$segIdx.mp4';
-
-      final processName = 'V${vidIdx}_S$segIdx';
-
-      futures.add(
-        _runSegmentCut(
-          input: video,
-          startSeconds: currentTime,
-          duration: actualDuration,
-          output: outputPath,
-          processName: processName,
-          onProgress: (percent) {},
-          onLogMsg: onLog,
-        ).then((res) {
-          completedSegments++;
-          if (!_cancelled) {
-            onLog(
-              '_PROGRESS_: Đang cắt video $videoIndex: Hoàn thành $completedSegments segment(s)...',
-            );
-          }
-          return res;
-        }),
-      );
-
-      // Limit to 4 concurrent ffmpeg processes
-      if (futures.length >= 4) {
-        await Future.wait(futures);
-        futures.clear();
-      }
-
-      currentTime += actualDuration;
+      totalSegmentsToCut++;
+      tempTime += actualDuration;
     }
 
-    // Wait for remaining
-    if (futures.isNotEmpty) await Future.wait(futures);
+    while (currentTime < duration || activeTasks.isNotEmpty) {
+      if (_cancelled) break;
+
+      // Limit to max concurrent tasks
+      while (activeTasks.length >= _maxConcurrentTasks) {
+        await Future.any(activeTasks);
+      }
+      if (_cancelled) break;
+
+      if (currentTime < duration) {
+        // Random segment length between min and max
+        final segDuration =
+            config.minSegmentDuration +
+            random.nextInt(
+              config.maxSegmentDuration - config.minSegmentDuration + 1,
+            );
+        final remaining = duration - currentTime;
+        final actualDuration = min(segDuration, remaining);
+
+        // Skip segments shorter than 2s
+        if (actualDuration >= 2) {
+          segmentIndex++;
+          final vidIdx = videoIndex.toString().padLeft(3, '0');
+          final segIdx = segmentIndex.toString().padLeft(3, '0');
+          final outputPath = '$tempDir/video${vidIdx}_seg$segIdx.mp4';
+
+          final processName = 'V${vidIdx}_S$segIdx';
+
+          late Future<void> taskFuture;
+          taskFuture =
+              _runSegmentCut(
+                input: video,
+                startSeconds: currentTime,
+                duration: actualDuration,
+                output: outputPath,
+                processName: processName,
+                onProgress: (percent) {},
+                onLogMsg: onLog,
+              ).then((res) {
+                completedSegments++;
+                activeTasks.remove(taskFuture);
+                if (!_cancelled) {
+                  onLog(
+                    '_PROGRESS_CUT$videoIndex: Đang cắt video $videoIndex: Hoàn thành $completedSegments/$totalSegmentsToCut segment(s)...',
+                  );
+                }
+              });
+
+          activeTasks.add(taskFuture);
+        }
+        currentTime += actualDuration;
+      } else {
+        // If we've reached the end of the video but tasks are still running, wait for them
+        if (activeTasks.isNotEmpty) {
+          await Future.any(activeTasks);
+        }
+      }
+    }
+
+    // Wait for remaining, though logic above should handle most of it
+    if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
 
     // Clear the progress line so it stays as a completed note
-    onLog(
-      '_UPDATE_  [Video $videoIndex] ✓ Hoàn thành cắt $completedSegments segment(s).',
-    );
+    if (!_cancelled) {
+      onLog(
+        '_UPDATE_CUT$videoIndex [Video $videoIndex] ✓ Hoàn thành cắt $completedSegments segment(s).',
+      );
+    }
 
     final results = <String>[];
     // Collect output files in order
