@@ -221,25 +221,25 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
       final content = await file.readAsString();
 
-      // 3. Clean up remote and local file
-      try {
-        await file.delete();
-        await _shell.run('adb -s $serial shell rm $remotePath');
-      } catch (_) {
-        // Ignore cleanup errors
-      }
-
-      if (content.isEmpty) {
-        throw ServerException('Dump XML content is empty for device $serial');
-      }
-
-      // Regex for extracting email pattern
       final regex = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
       final match = regex.firstMatch(content);
 
       return match?.group(0);
     } catch (e) {
       throw ServerException('Failed to dump UI and extract email: $e');
+    } finally {
+      // 3. Clean up remote and local file safely
+      final localPath = '${Directory.systemTemp.path}/window_dump_$serial.xml';
+      try {
+        final file = File(localPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+
+      try {
+        await _shell.run('adb -s $serial shell rm $remotePath');
+      } catch (_) {}
     }
   }
 
