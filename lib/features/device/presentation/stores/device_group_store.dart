@@ -266,9 +266,45 @@ abstract class _DeviceGroupStore with Store {
     }
 
     if (!foundDeviceInAnyGroup) {
-      logger.w(
-        '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Cannot save email!',
-      );
+      if (groups.isNotEmpty) {
+        logger.w(
+          '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Automatically adding it to the first group: ${groups.first.name} before saving email.',
+        );
+        final targetGroup = groups.first;
+
+        final newSerials = List<String>.from(targetGroup.deviceSerials);
+        newSerials.add(deviceSerial);
+
+        final newEmails = Map<String, String>.from(targetGroup.deviceEmails);
+        newEmails[deviceSerial] = email;
+
+        final updatedGroup = targetGroup.copyWith(
+          deviceSerials: newSerials,
+          deviceEmails: newEmails,
+        );
+
+        final result = await _repository.updateGroup(updatedGroup);
+        result.fold(
+          (failure) {
+            logger.e(
+              '[DeviceGroupStore] Lỗi thêm device & email vào group: ${failure.message}',
+            );
+            errorMessage = failure.message;
+          },
+          (_) {
+            logger.i(
+              '[DeviceGroupStore] Automatically saved orphaned device $deviceSerial with email $email to group ${targetGroup.name}',
+            );
+            final index = groups.indexWhere((g) => g.id == targetGroup.id);
+            if (index != -1) groups[index] = updatedGroup;
+          },
+        );
+      } else {
+        logger.w(
+          '[DeviceGroupStore] FATAL: Device $deviceSerial is NOT in any group, and there are NO GROUPS available to assign it to! Cannot save email.',
+        );
+        errorMessage = 'Không có Device Group nào để lưu thông tin thiết bị!';
+      }
     }
   }
 }
