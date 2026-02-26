@@ -291,7 +291,7 @@ class BatchVideoService {
 
   // ─── Constants ────────────────────────────────────────────────────────────
 
-  static const int _maxConcurrentTasks = 5;
+  static final int _maxConcurrentTasks = Platform.numberOfProcessors;
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
