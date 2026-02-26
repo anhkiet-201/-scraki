@@ -161,62 +161,59 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
               startCount = currentMessageCount + 1;
             }
 
-            for (int i = startCount; i <= currentMessageCount; i++) {
-              if (isCancelled) return;
+            if (startCount <= currentMessageCount) {
+              socket!.write(
+                'A03 FETCH $startCount:$currentMessageCount (BODY.PEEK[HEADER.FIELDS (SUBJECT)] BODY.PEEK[TEXT])\r\n',
+              );
 
-              // Fetch subject of the message
-              socket!.write('A03 FETCH $i BODY[HEADER.FIELDS (SUBJECT)]\r\n');
-              String? subject;
-              String? foundOtp;
+              String? currentSubject;
+              String? currentOtp;
 
-              while (await reader.moveNext()) {
-                if (isCancelled) return;
-                final line = reader.current;
-                if (line.startsWith('A03 OK')) break;
-
-                if (line.trim().startsWith('Subject:')) {
-                  subject = line.replaceFirst('Subject:', '').trim();
-                  final match = otpRegex.firstMatch(line);
-                  if (match != null) {
-                    foundOtp = match.group(0);
-                  }
+              void submitParsedMessage() {
+                if (currentSubject != null && !controller.isClosed) {
+                  // Prepend OTP to list to simulate reverse chronological ordering,
+                  // but actually the stream output is List UI. The EmailStore inserts at 0 anyway.
+                  controller.add(
+                    Right(
+                      EmailMessage(
+                        subject: currentSubject!,
+                        otp: currentOtp,
+                        receivedAt: DateTime.now(),
+                      ),
+                    ),
+                  );
                 }
+                currentSubject = null;
+                currentOtp = null;
               }
 
-              if (isCancelled) return;
-              // FETCH body even if OTP is not found yet
-              socket!.write('A04 FETCH $i BODY[TEXT]\r\n');
-              bool readingBody = false;
-
               while (await reader.moveNext()) {
                 if (isCancelled) return;
                 final line = reader.current;
-                if (line.startsWith('A04 OK')) break;
 
-                if (line.contains('BODY[TEXT]')) {
-                  readingBody = true;
+                if (line.startsWith('A03 OK') ||
+                    line.startsWith('A03 NO') ||
+                    line.startsWith('A03 BAD')) {
+                  submitParsedMessage();
+                  break;
+                }
+
+                if (line.startsWith('*') && line.contains('FETCH')) {
+                  // New message block started
+                  submitParsedMessage();
                   continue;
                 }
 
-                if (readingBody && foundOtp == null) {
+                if (line.trim().startsWith('Subject:')) {
+                  currentSubject = line.replaceFirst('Subject:', '').trim();
+                }
+
+                if (currentOtp == null) {
                   final match = otpRegex.firstMatch(line);
                   if (match != null) {
-                    foundOtp = match.group(0);
+                    currentOtp = match.group(0);
                   }
                 }
-              }
-
-              if (subject != null && !controller.isClosed) {
-                controller.add(
-                  Right(
-                    EmailMessage(
-                      subject: subject,
-                      otp: foundOtp,
-                      // We use current time here because we aren't parsing Dates from IMAP yet to keep it fast
-                      receivedAt: DateTime.now(),
-                    ),
-                  ),
-                );
               }
             }
             lastMessageCount = currentMessageCount;
