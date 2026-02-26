@@ -146,12 +146,26 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
           }
 
           if (currentMessageCount != null && currentMessageCount > 0) {
-            if (lastMessageCount == null ||
-                currentMessageCount > lastMessageCount) {
-              // Fetch subject of the latest message
-              socket!.write(
-                'A03 FETCH $currentMessageCount BODY[HEADER.FIELDS (SUBJECT)]\r\n',
+            int startCount = currentMessageCount;
+            // On the first poll, grab up to 5 messages. On subsequent polls,
+            // only grab messages newer than lastMessageCount.
+            if (lastMessageCount == null) {
+              startCount = (currentMessageCount - 4).clamp(
+                1,
+                currentMessageCount,
               );
+            } else if (currentMessageCount > lastMessageCount) {
+              startCount = lastMessageCount + 1;
+            } else {
+              // No new messages
+              startCount = currentMessageCount + 1;
+            }
+
+            for (int i = startCount; i <= currentMessageCount; i++) {
+              if (isCancelled) return;
+
+              // Fetch subject of the message
+              socket!.write('A03 FETCH $i BODY[HEADER.FIELDS (SUBJECT)]\r\n');
               String? subject;
               String? foundOtp;
 
@@ -171,7 +185,7 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
 
               if (isCancelled) return;
               // FETCH body even if OTP is not found yet
-              socket!.write('A04 FETCH $currentMessageCount BODY[TEXT]\r\n');
+              socket!.write('A04 FETCH $i BODY[TEXT]\r\n');
               bool readingBody = false;
 
               while (await reader.moveNext()) {
@@ -198,13 +212,14 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
                     EmailMessage(
                       subject: subject,
                       otp: foundOtp,
+                      // We use current time here because we aren't parsing Dates from IMAP yet to keep it fast
                       receivedAt: DateTime.now(),
                     ),
                   ),
                 );
               }
-              lastMessageCount = currentMessageCount;
             }
+            lastMessageCount = currentMessageCount;
           }
 
           if (isCancelled) return;
