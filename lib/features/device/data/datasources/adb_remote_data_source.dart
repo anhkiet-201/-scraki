@@ -192,45 +192,39 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   @override
   Future<String?> dumpUiAndExtractEmail(String serial) async {
     const remotePath = '/sdcard/window_dump.xml';
-    final localPath = 'window_dump_$serial.xml';
 
     try {
-      // Dump UI on device
-      await _shell.run('adb -s $serial shell uiautomator dump $remotePath');
-
-      // Pull to local
-      await _shell.run('adb -s $serial pull $remotePath $localPath');
-
-      final file = File(localPath);
-      if (!await file.exists()) {
-        throw ServerException(
-          'Dump XML file not found after pull for device $serial',
-        );
+      // 1. Dump UI on device
+      final dumpResult = await _shell.run(
+        'adb -s $serial shell uiautomator dump $remotePath',
+      );
+      if (dumpResult.outText.contains('ERROR')) {
+        throw ServerException('Failed to dump UI: ${dumpResult.outText}');
       }
 
-      final content = await file.readAsString();
+      // 2. Cat the file content directly a local file
+      final catResult = await _shell.run(
+        'adb -s $serial shell cat $remotePath',
+      );
+      final content = catResult.outText;
 
-      // Clean up local and remote files
+      // 3. Clean up remote file
       try {
-        await file.delete();
         await _shell.run('adb -s $serial shell rm $remotePath');
       } catch (_) {
         // Ignore cleanup errors
       }
 
-      // Regex for extracting email pattern within XML tags or attributes
+      if (content.isEmpty) {
+        throw ServerException('Dump XML content is empty for device $serial');
+      }
+
+      // Regex for extracting email pattern
       final regex = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
       final match = regex.firstMatch(content);
 
       return match?.group(0);
     } catch (e) {
-      // Clean up local if failed
-      final file = File(localPath);
-      if (await file.exists()) {
-        try {
-          await file.delete();
-        } catch (_) {}
-      }
       throw ServerException('Failed to dump UI and extract email: $e');
     }
   }
