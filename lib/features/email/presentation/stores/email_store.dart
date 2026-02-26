@@ -24,6 +24,9 @@ abstract class _EmailStore with Store {
   bool isLoading = false;
 
   @observable
+  bool isListening = false;
+
+  @observable
   String? errorMessage;
 
   @observable
@@ -87,6 +90,7 @@ abstract class _EmailStore with Store {
   @action
   Future<void> startImapStream(String email) async {
     isLoading = true;
+    isListening = false;
     errorMessage = null;
 
     // Fetch accounts from firebase
@@ -147,15 +151,23 @@ abstract class _EmailStore with Store {
           onError: (dynamic e) {
             runInAction(() {
               errorMessage = 'Lỗi ngắt Stream: $e';
+              isListening = false;
+            });
+          },
+          onDone: () {
+            runInAction(() {
+              isListening = false;
             });
           },
         );
 
+    isListening = true;
     isLoading = false;
   }
 
   void dispose() {
     _emailSubscription?.cancel();
+    isListening = false;
   }
 
   @action

@@ -27,6 +27,24 @@ mixin _$EmailStore on _EmailStore, Store {
     });
   }
 
+  late final _$isListeningAtom = Atom(
+    name: '_EmailStore.isListening',
+    context: context,
+  );
+
+  @override
+  bool get isListening {
+    _$isListeningAtom.reportRead();
+    return super.isListening;
+  }
+
+  @override
+  set isListening(bool value) {
+    _$isListeningAtom.reportWrite(value, super.isListening, () {
+      super.isListening = value;
+    });
+  }
+
   late final _$errorMessageAtom = Atom(
     name: '_EmailStore.errorMessage',
     context: context,
@@ -142,6 +160,7 @@ mixin _$EmailStore on _EmailStore, Store {
   String toString() {
     return '''
 isLoading: ${isLoading},
+isListening: ${isListening},
 errorMessage: ${errorMessage},
 targetEmail: ${targetEmail},
 messages: ${messages}

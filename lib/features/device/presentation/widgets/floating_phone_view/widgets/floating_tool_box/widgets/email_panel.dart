@@ -216,7 +216,7 @@ class _EmailPanelState extends State<EmailPanel> {
                       Expanded(
                         child: _store.messages.isEmpty
                             ? Center(
-                                child: _store.isLoading
+                                child: _store.isLoading || _store.isListening
                                     ? const CircularProgressIndicator()
                                     : Column(
                                         mainAxisSize: MainAxisSize.min,
