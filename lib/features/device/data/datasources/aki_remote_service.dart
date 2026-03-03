@@ -84,14 +84,16 @@ class AkiRemoteService implements IAkiRemoteService {
 
   @override
   Future<void> type(String serial, String text, {AkiSelector? selector}) async {
+    final escapedText = text.replaceAll('"', '\\"');
     if (selector != null) {
-      // Format: type <selector> || <text>
+      // Format: type "<selector> || <text>"
+      // Dùng nháy kép bao toàn bộ để tránh '||' bị shell hiểu nhầm là toán tử OR
       await _runRemote(serial, [
         'type',
-        '${selector.toSelectorString()} || $text',
+        '"${selector.toSelectorString()} || $escapedText"',
       ], label: 'type');
     } else {
-      await _runRemote(serial, ['type', text], label: 'type');
+      await _runRemote(serial, ['type', '"$escapedText"'], label: 'type');
     }
   }
 
@@ -222,14 +224,26 @@ class AkiRemoteService implements IAkiRemoteService {
     final stdout = (result.stdout as String).trim();
     final stderr = (result.stderr as String).trim();
 
-    if (result.exitCode != 0) {
-      final errorMsg = stderr.isNotEmpty ? stderr : stdout;
+    final isSuccessOutput =
+        stdout.trim() == 'OK' || stdout.trim().startsWith('OK');
+
+    final isFailure =
+        (!isSuccessOutput && result.exitCode != 0) ||
+        stdout.contains('Failure:') ||
+        stdout.contains('No matches found') ||
+        stderr.contains('Exception') ||
+        stderr.contains('Error');
+
+    if (isFailure) {
+      final errorMsg = [
+        if (stderr.isNotEmpty) 'STDERR: $stderr',
+        if (stdout.isNotEmpty) 'STDOUT: $stdout',
+      ].join(' | ');
+
       logger.e(
         '[AkiRemoteService] [$label] failed on $serial: exit=${result.exitCode}, err=$errorMsg',
       );
-      throw AkiRemoteException(
-        '[$label] failed on $serial (exit ${result.exitCode}): $errorMsg',
-      );
+      throw AkiRemoteException('[$label] failed on $serial: $errorMsg');
     }
 
     logger.d('[AkiRemoteService] [$label] output: $stdout');
