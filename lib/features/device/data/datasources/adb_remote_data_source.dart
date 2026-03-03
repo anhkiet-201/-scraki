@@ -44,6 +44,11 @@ abstract class IAdbRemoteDataSource {
   /// [serial] - Device serial number
   /// [text] - Nội dung văn bản
   Future<void> inputText(String serial, String text);
+
+  /// Lấy tên thiết bị do người dùng đặt qua Android settings
+  /// [serial] - Device serial number
+  /// Returns: Tên thiết bị (e.g. "Pixel 6 của Kiệt"), hoặc null nếu không lấy được
+  Future<String?> getDeviceName(String serial);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -250,6 +255,27 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       await _shell.run(cmd);
     } catch (e) {
       throw ServerException('Failed to input text: $e');
+    }
+  }
+
+  @override
+  Future<String?> getDeviceName(String serial) async {
+    try {
+      final result = await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'settings',
+        'get',
+        'global',
+        'device_name',
+      ]);
+      final name = (result.stdout as String).trim();
+      // Nếu chưa set, Android trả về 'null' (string)
+      if (name.isEmpty || name == 'null') return null;
+      return name;
+    } catch (_) {
+      return null;
     }
   }
 }

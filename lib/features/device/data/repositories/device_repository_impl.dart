@@ -18,7 +18,20 @@ class DeviceRepositoryImpl implements DeviceRepository {
     try {
       final output = await _remoteDataSource.getConnectedDevicesOutput();
       final devices = AdbOutputParser.parseDevices(output);
-      return Right(devices);
+
+      // Lấy tên thân thiện song song cho tất cả connected devices
+      final namedDevices = await Future.wait(
+        devices.map((device) async {
+          if (device.status != DeviceStatus.connected) return device;
+          final friendlyName = await _remoteDataSource.getDeviceName(
+            device.serial,
+          );
+          if (friendlyName == null) return device;
+          return device.copyWith(modelName: friendlyName);
+        }),
+      );
+
+      return Right(namedDevices);
     } on ServerException catch (e) {
       return Left(AdbFailure(e.message));
     } catch (e) {
