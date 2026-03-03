@@ -25,6 +25,8 @@ import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
 import '../../features/device/data/datasources/scrcpy_socket_client.dart'
     as _i607;
+import '../../features/device/data/datasources/tiktok_post_service.dart'
+    as _i727;
 import '../../features/device/data/datasources/video_worker_manager.dart'
     as _i3;
 import '../../features/device/data/repositories/device_group_repository_firebase_impl.dart'
@@ -37,6 +39,8 @@ import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
 import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
+import '../../features/device/domain/services/i_tiktok_post_service.dart'
+    as _i229;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
 import '../../features/email/data/datasources/credential_remote_data_source.dart'
@@ -149,6 +153,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => settingsUseCaseModule.getSettingsUseCase(
         gh<_i657.ISettingsRepository>(),
       ),
+    );
+    gh.lazySingleton<_i229.ITikTokPostService>(
+      () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
     );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(

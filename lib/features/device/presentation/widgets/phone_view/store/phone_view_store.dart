@@ -15,6 +15,8 @@ import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
+import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
+
 part 'phone_view_store.g.dart';
 
 /// Dashboard tab indices
@@ -56,6 +58,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   final ScrcpyService _scrcpyService = getIt<ScrcpyService>();
   final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
+  final ITikTokPostService _tikTokService = getIt<ITikTokPostService>();
   final String serial;
   final bool isFloatingView;
 
@@ -549,21 +552,30 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> uploadFiles(String serial, List<String> paths) async {
-    // Only upload files when on Devices tab to prevent conflicts with Video Poster
-    if (paths.isEmpty ||
-        _dashboardStore.selectedIndex != DashboardTabs.devices) {
+    if (paths.isEmpty) return;
+
+    final isMp4 = paths.first.toLowerCase().endsWith('.mp4');
+
+    // Only upload files when on Devices tab OR if it's an .mp4 (to trigger TikTok Create)
+    if (_dashboardStore.selectedIndex != DashboardTabs.devices && !isMp4) {
       return;
     }
 
     runInAction(() => isPushingFile = true);
     try {
-      await _scrcpyService.pushFiles(serial, paths);
-      logger.i(
-        '[SessionManagerStore] Successfully pushed ${paths.length} files to $serial',
-      );
+      if (isMp4) {
+        // Handle TikTok Create for .mp4 files
+        await _tikTokService.openTikTokCreate(serial, paths.first);
+      } else {
+        // Normal file push via scrcpy
+        await _scrcpyService.pushFiles(serial, paths);
+        logger.i(
+          '[SessionManagerStore] Successfully pushed ${paths.length} files to $serial',
+        );
+      }
     } catch (e) {
       logger.e(
-        '[SessionManagerStore] Failed to push files to $sessionId',
+        '[SessionManagerStore] Failed to push files to $serial',
         error: e,
       );
       runInAction(() => error = 'Failed to push files: $e');
