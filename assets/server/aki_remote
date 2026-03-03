@@ -1,0 +1,5 @@
+#!/system/bin/sh
+# Shell wrapper for aki_remote
+base=/data/local/tmp
+export CLASSPATH=$base/aki_remote.jar
+exec app_process / com.aki.remote.cli.AkiRemoteMain "$@"
