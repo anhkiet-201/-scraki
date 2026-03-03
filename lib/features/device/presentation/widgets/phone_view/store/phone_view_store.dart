@@ -64,6 +64,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   late final String sessionId;
 
+  /// True khi người dùng đang ở tab Devices.
+  /// Dùng để chặn kéo thả file khi ở tab khác.
+  @computed
+  bool get isOnDevicesTab =>
+      _dashboardStore.selectedIndex == DashboardTabs.devices;
+
   ReactionDisposer? _floatingDisposer;
 
   _PhoneViewStore(this.serial, this.isFloatingView) {
@@ -147,6 +153,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @computed
   bool get isFloatingVisible => sessionManagerStore.isFloatingVisible;
+
+  /// True khi floating window đang mở VÀ view hiện tại là grid
+  /// (tức là view đang bị floating che khuất).
+  @computed
+  bool get isBlockedByFloating =>
+      !isFloatingView && sessionManagerStore.isFloatingVisible;
 
   @action
   void toggleFloating(String? serial) {

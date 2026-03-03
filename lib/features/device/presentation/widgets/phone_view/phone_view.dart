@@ -89,15 +89,33 @@ class _PhoneViewState extends State<PhoneView> {
             );
           },
           child: DropTarget(
-            onDragEntered: (_) => _store.setDragging(widget.serial, true),
+            onDragEntered: (_) {
+              if (!widget.isFloating && !_store.isOnDevicesTab) return;
+              if (_store.isBlockedByFloating) return;
+              _store.setDragging(widget.serial, true);
+            },
             onDragExited: (_) => _store.setDragging(widget.serial, false),
             onDragDone: (details) async {
               _store.setDragging(widget.serial, false);
+
+              // Guard 1: Không cho phép drop khi đang ở tab khác
+              if (!widget.isFloating && !_store.isOnDevicesTab) return;
+
+              // Guard 2: Nếu floating đang mở, chỉ floating view mới được nhận drop;
+              // grid view bên dưới bị block.
+              if (_store.isBlockedByFloating) return;
+
               final paths = details.files.map((f) => f.path).toList();
               await _store.uploadFiles(widget.serial, paths);
             },
             child: DragTarget<PosterData>(
               onWillAcceptWithDetails: (details) {
+                // Guard 1: Từ chối nếu không ở tab Devices
+                if (!widget.isFloating && !_store.isOnDevicesTab) return false;
+
+                // Guard 2: Từ chối nếu floating đang che grid
+                if (_store.isBlockedByFloating) return false;
+
                 _store.setDragging(widget.serial, true);
                 return true;
               },
