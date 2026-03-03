@@ -4,6 +4,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_creation_store.dart';
 import '../phone_view/phone_view.dart';
 import 'widgets/floating_tool_box/floating_tool_box.dart';
@@ -38,18 +39,32 @@ class FloatingPhoneView extends StatefulWidget {
 class _FloatingPhoneViewState extends State<FloatingPhoneView>
     with SessionManagerStoreMixin {
   late final FloatingPhoneViewStore _store;
+  late final DeviceManagerStore _deviceManagerStore;
+
   final GlobalKey<FloatingToolBoxState> _toolBoxKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _store = FloatingPhoneViewStore(widget.parentSize);
+    _deviceManagerStore = inject<DeviceManagerStore>();
   }
 
   @override
   void dispose() {
     _store.dispose();
     super.dispose();
+  }
+
+  /// Trả về modelName của thiết bị; fallback về serial nếu không tìm thấy.
+  String get _deviceTitle {
+    try {
+      return _deviceManagerStore.devices
+          .firstWhere((d) => d.serial == widget.serial)
+          .modelName;
+    } catch (_) {
+      return widget.serial;
+    }
   }
 
   @override
@@ -103,7 +118,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                             children: [
                               // 1. Header Component
                               FloatingWindowHeader(
-                                title: widget.serial,
+                                title: _deviceTitle,
                                 onClose: widget.onClose,
                                 onDragUpdate: (details) {
                                   runInAction(() {
