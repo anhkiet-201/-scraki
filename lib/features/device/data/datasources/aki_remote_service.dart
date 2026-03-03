@@ -6,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/logger.dart';
-import '../../domain/services/aki_selector.dart';
 import '../../domain/services/i_aki_remote_service.dart';
 
 @LazySingleton(as: IAkiRemoteService)

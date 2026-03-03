@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
+import 'package:scraki/features/device/domain/services/i_aki_remote_service.dart';
 import 'package:scraki/features/email/domain/entities/email_account.dart';
 import 'package:scraki/features/email/domain/entities/email_message.dart';
 import 'package:scraki/features/email/domain/repositories/i_email_repository.dart';
@@ -17,8 +18,13 @@ class EmailStore = _EmailStore with _$EmailStore;
 abstract class _EmailStore with Store {
   final IEmailRepository _emailRepository;
   final DeviceRepository _deviceRepository;
+  final IAkiRemoteService _akiRemote;
 
-  _EmailStore(this._emailRepository, this._deviceRepository);
+  _EmailStore(this._emailRepository, this._deviceRepository, this._akiRemote);
+
+  static final _emailRegex = RegExp(
+    r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}',
+  );
 
   @observable
   bool isLoading = false;
@@ -53,24 +59,36 @@ abstract class _EmailStore with Store {
     try {
       String resolvedEmail = targetEmail;
 
-      // Dump UI if email is not provided
+      // Lấy email từ màn hình qua aki_remote nếu chưa nhập
       if (requireDump || targetEmail.isEmpty) {
-        final dumpEither = await _deviceRepository.dumpUiAndExtractEmail(
-          deviceSerial,
-        );
-        dumpEither.fold(
-          (failure) {
-            errorMessage = 'Lỗi dump lấy email: ${failure.message}';
-          },
-          (extractedEmail) {
-            if (extractedEmail != null && extractedEmail.isNotEmpty) {
-              resolvedEmail = extractedEmail;
+        try {
+          await _akiRemote.ensureServerPushed(deviceSerial);
+
+          // Bước 1: get text-contains:@ — nhanh, chính xác, nhắm thẳng element
+          final candidate = await _akiRemote.get(
+            deviceSerial,
+            AkiSelector.textContains('@'),
+          );
+
+          if (candidate != null && _emailRegex.hasMatch(candidate)) {
+            // Trích email từ text (có thể có ký tự thừa xung quanh)
+            resolvedEmail = _emailRegex.firstMatch(candidate)!.group(0)!;
+            targetEmail = resolvedEmail;
+          } else {
+            // Bước 2: fallback dump toàn bộ XML → parse regex
+            // (email có thể nằm trong content-desc hoặc attribute ẩn)
+            final xmlDump = await _akiRemote.dump(deviceSerial);
+            final match = _emailRegex.firstMatch(xmlDump);
+            if (match != null) {
+              resolvedEmail = match.group(0)!;
               targetEmail = resolvedEmail;
             } else {
               errorMessage = 'Không tìm thấy email trên màn hình.';
             }
-          },
-        );
+          }
+        } catch (e) {
+          errorMessage = 'Lỗi lấy email: $e';
+        }
 
         if (errorMessage != null) {
           isLoading = false;

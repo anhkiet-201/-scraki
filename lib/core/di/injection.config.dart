@@ -17,6 +17,8 @@ import '../../features/dashboard/presentation/stores/dashboard_store.dart'
     as _i891;
 import '../../features/device/data/datasources/adb_remote_data_source.dart'
     as _i165;
+import '../../features/device/data/datasources/aki_remote_service.dart'
+    as _i109;
 import '../../features/device/data/datasources/device_group_remote_data_source.dart'
     as _i521;
 import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
@@ -33,6 +35,8 @@ import '../../features/device/domain/repositories/device_group_repository.dart'
     as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
+import '../../features/device/domain/services/i_aki_remote_service.dart'
+    as _i260;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
 import '../../features/email/data/datasources/credential_remote_data_source.dart'
@@ -121,6 +125,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i607.ScrcpySocketClient>(
       () => _i607.ScrcpySocketClient(),
     );
+    gh.lazySingleton<_i260.IAkiRemoteService>(() => _i109.AkiRemoteService());
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
@@ -167,6 +172,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i498.EmailStore(
         gh<_i482.IEmailRepository>(),
         gh<_i985.DeviceRepository>(),
+        gh<_i260.IAkiRemoteService>(),
       ),
     );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
@@ -176,7 +182,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
-      () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
+      () => _i563.DeviceManagerStore(
+        gh<_i985.DeviceRepository>(),
+        gh<_i260.IAkiRemoteService>(),
+      ),
     );
     gh.lazySingleton<_i481.RecruitmentRepository>(
       () => _i240.RecruitmentRepositoryImpl(
