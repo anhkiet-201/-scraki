@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
@@ -31,7 +33,7 @@ class AkiRemoteService implements IAkiRemoteService {
       final docsDir = await getApplicationDocumentsDirectory();
 
       // 1. Copy JAR từ assets ra local temp nếu chưa có.
-      final localJar = File('${docsDir.path}/aki_remote.jar');
+      final localJar = File(p.join(docsDir.path, 'aki_remote.jar'));
       if (!await localJar.exists()) {
         final bytes = await rootBundle.load(_jarAssetPath);
         await localJar.writeAsBytes(bytes.buffer.asUint8List());
@@ -45,7 +47,7 @@ class AkiRemoteService implements IAkiRemoteService {
       ], label: 'push jar');
 
       // 3. Copy shell wrapper từ assets ra local temp.
-      final localWrapper = File('${docsDir.path}/aki_remote');
+      final localWrapper = File(p.join(docsDir.path, 'aki_remote'));
       final wrapperBytes = await rootBundle.load(_wrapperAssetPath);
       await localWrapper.writeAsBytes(wrapperBytes.buffer.asUint8List());
 
