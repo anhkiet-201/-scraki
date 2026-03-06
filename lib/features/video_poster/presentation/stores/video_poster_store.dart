@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:media_kit/media_kit.dart';
@@ -420,6 +421,9 @@ abstract class _VideoPosterStore with Store {
       // Deselect all overlays to hide handles before capture
       final previousSelection = selectedCustomTextId;
       selectCustomText(null);
+
+      // Wait until all Google Fonts have finished loading
+      await GoogleFonts.pendingFonts();
 
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
