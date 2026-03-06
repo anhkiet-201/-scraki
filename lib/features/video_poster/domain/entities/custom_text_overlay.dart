@@ -27,6 +27,8 @@ class CustomTextOverlay {
   /// Border radius of the background box (px).
   final double backgroundRadius;
 
+  final String? fontFamily;
+
   const CustomTextOverlay({
     required this.id,
     required this.label,
@@ -41,6 +43,7 @@ class CustomTextOverlay {
     this.backgroundColor,
     this.backgroundOpacity = 1.0,
     this.backgroundRadius = 8.0,
+    this.fontFamily,
   });
 
   CustomTextOverlay copyWith({
@@ -59,6 +62,7 @@ class CustomTextOverlay {
     bool clearBackgroundColor = false,
     double? backgroundOpacity,
     double? backgroundRadius,
+    String? fontFamily,
   }) {
     return CustomTextOverlay(
       id: id ?? this.id,
@@ -76,6 +80,7 @@ class CustomTextOverlay {
           : (backgroundColor ?? this.backgroundColor),
       backgroundOpacity: backgroundOpacity ?? this.backgroundOpacity,
       backgroundRadius: backgroundRadius ?? this.backgroundRadius,
+      fontFamily: fontFamily ?? this.fontFamily,
     );
   }
 }

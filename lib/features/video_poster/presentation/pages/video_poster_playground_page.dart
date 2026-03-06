@@ -410,6 +410,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                         backgroundOpacity:
                                             text.backgroundOpacity,
                                         backgroundRadius: text.backgroundRadius,
+                                        fontFamily: text.fontFamily,
                                         isSelected:
                                             store.selectedCustomTextId ==
                                             text.id,

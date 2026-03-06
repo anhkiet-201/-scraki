@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'video_overlay_item_store.dart';
 
 /// Draggable and interactive text overlay item for video preview.
@@ -19,6 +20,7 @@ class VideoOverlayItem extends StatefulWidget {
   final Color? backgroundColor;
   final double backgroundOpacity;
   final double backgroundRadius;
+  final String? fontFamily;
   final bool isSelected;
   final void Function(String type, double x, double y) onPositionUpdate;
   final void Function(String type) onSelect;
@@ -41,6 +43,7 @@ class VideoOverlayItem extends StatefulWidget {
     this.backgroundColor,
     this.backgroundOpacity = 0.5,
     this.backgroundRadius = 8.0,
+    this.fontFamily,
     this.isSelected = false,
     required this.onPositionUpdate,
     required this.onSelect,
@@ -168,13 +171,22 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                 controller: _store.controller,
                                 focusNode: _store.focusNode,
                                 autofocus: true,
-                                style: TextStyle(
-                                  color: widget.color,
-                                  fontSize: _store.fontSize,
-                                  fontWeight: widget.fontWeight,
-                                  fontStyle: widget.fontStyle,
-                                  height: widget.textHeight,
-                                ),
+                                style: widget.fontFamily != null
+                                    ? GoogleFonts.getFont(
+                                        widget.fontFamily!,
+                                        color: widget.color,
+                                        fontSize: _store.fontSize,
+                                        fontWeight: widget.fontWeight,
+                                        fontStyle: widget.fontStyle,
+                                        height: widget.textHeight,
+                                      )
+                                    : TextStyle(
+                                        color: widget.color,
+                                        fontSize: _store.fontSize,
+                                        fontWeight: widget.fontWeight,
+                                        fontStyle: widget.fontStyle,
+                                        height: widget.textHeight,
+                                      ),
                                 maxLines: null,
                                 textAlign: widget.textAlign,
                                 decoration: InputDecoration(
@@ -200,13 +212,22 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                           : widget.backgroundColor != null
                           ? _TextWithLineBackgrounds(
                               text: _store.label,
-                              textStyle: TextStyle(
-                                color: widget.color,
-                                fontSize: _store.fontSize,
-                                fontWeight: widget.fontWeight,
-                                fontStyle: widget.fontStyle,
-                                height: widget.textHeight,
-                              ),
+                              textStyle: widget.fontFamily != null
+                                  ? GoogleFonts.getFont(
+                                      widget.fontFamily!,
+                                      color: widget.color,
+                                      fontSize: _store.fontSize,
+                                      fontWeight: widget.fontWeight,
+                                      fontStyle: widget.fontStyle,
+                                      height: widget.textHeight,
+                                    )
+                                  : TextStyle(
+                                      color: widget.color,
+                                      fontSize: _store.fontSize,
+                                      fontWeight: widget.fontWeight,
+                                      fontStyle: widget.fontStyle,
+                                      height: widget.textHeight,
+                                    ),
                               textAlign: widget.textAlign,
                               backgroundColor: widget.backgroundColor!,
                               backgroundOpacity: widget.backgroundOpacity,
@@ -218,13 +239,22 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               ),
                               child: Text(
                                 _store.label,
-                                style: TextStyle(
-                                  color: widget.color,
-                                  fontSize: _store.fontSize,
-                                  fontWeight: widget.fontWeight,
-                                  fontStyle: widget.fontStyle,
-                                  height: widget.textHeight,
-                                ),
+                                style: widget.fontFamily != null
+                                    ? GoogleFonts.getFont(
+                                        widget.fontFamily!,
+                                        color: widget.color,
+                                        fontSize: _store.fontSize,
+                                        fontWeight: widget.fontWeight,
+                                        fontStyle: widget.fontStyle,
+                                        height: widget.textHeight,
+                                      )
+                                    : TextStyle(
+                                        color: widget.color,
+                                        fontSize: _store.fontSize,
+                                        fontWeight: widget.fontWeight,
+                                        fontStyle: widget.fontStyle,
+                                        height: widget.textHeight,
+                                      ),
                                 softWrap: true,
                                 textAlign: widget.textAlign,
                               ),

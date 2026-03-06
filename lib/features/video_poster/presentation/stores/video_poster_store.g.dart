@@ -359,6 +359,7 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     double? backgroundRadius,
     double? textHeight,
     bool clearTextHeight = false,
+    String? fontFamily,
   }) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomTextStyle',
@@ -376,6 +377,7 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
         backgroundRadius: backgroundRadius,
         textHeight: textHeight,
         clearTextHeight: clearTextHeight,
+        fontFamily: fontFamily,
       );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);

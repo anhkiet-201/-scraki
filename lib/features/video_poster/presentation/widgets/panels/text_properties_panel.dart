@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Panel hiển thị khi tab TEXT được chọn.
 /// Cho phép thêm/chọn/xóa text và chỉnh style.
@@ -53,6 +55,21 @@ class TextPropertiesPanel extends StatelessWidget {
     Color(0xFF695F00), // Yellow-40
     Color(0xFFD2C148), // Yellow-70
     Color(0xFFEFE06D), // Yellow-80
+    // Orange
+    Color(0xFF984900), // Orange-40
+    Color(0xFFD66600), // Orange-60
+    Color(0xFFFFB68E), // Orange-80
+    Color(0xFFFFDDB3), // Orange-95
+    // Teal
+    Color(0xFF006A6A), // Teal-40
+    Color(0xFF008383), // Teal-50
+    Color(0xFF4DDEDE), // Teal-80
+    Color(0xFFBFFFFF), // Teal-95
+    // Deep Purple
+    Color(0xFF5F4ABB), // Deep Purple-40
+    Color(0xFF8069DF), // Deep Purple-60
+    Color(0xFFC6B0FF), // Deep Purple-80
+    Color(0xFFE6DEFF), // Deep Purple-95
   ];
 
   /// Bảng màu nền theo chuẩn Material 3 Color System.
@@ -89,6 +106,28 @@ class TextPropertiesPanel extends StatelessWidget {
     // Blue dark
     Color(0xFF001D36), // Blue-6
     Color(0xFF003258), // Blue-20
+    // Orange dark
+    Color(0xFF331200), // Orange-10
+    Color(0xFF4D1C00), // Orange-20
+    // Teal dark
+    Color(0xFF002020), // Teal-10
+    Color(0xFF003737), // Teal-20
+    // Deep Purple dark
+    Color(0xFF1B0062), // Deep Purple-10
+    Color(0xFF2F1581), // Deep Purple-20
+  ];
+
+  static const _fontFamilies = <String>[
+    'Roboto',
+    'Montserrat',
+    'Pacifico',
+    'Dancing Script',
+    'Lexend',
+    'Oswald',
+    'Playfair Display',
+    'Kanit',
+    'Bungee',
+    'Satisfy',
   ];
 
   @override
@@ -367,10 +406,18 @@ class TextPropertiesPanel extends StatelessWidget {
 
           const SizedBox(height: 16),
 
+          // ── Font Family ──
+          _buildSectionLabel('FONT CHỮ'),
+          const SizedBox(height: 8),
+          _buildFontPicker(text),
+
+          const SizedBox(height: 16),
+
           // ── Text Color ──
           _buildSectionLabel('MÀU CHỮ'),
           const SizedBox(height: 8),
           _buildColorPalette(
+            context: context,
             colors: _colorPalette,
             selectedColor: text.color,
             onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
@@ -412,6 +459,7 @@ class TextPropertiesPanel extends StatelessWidget {
               ),
               Expanded(
                 child: _buildColorPalette(
+                  context: context,
                   colors: _bgColorPalette,
                   selectedColor: text.backgroundColor,
                   onSelect: (c) =>
@@ -563,7 +611,53 @@ class TextPropertiesPanel extends StatelessWidget {
     );
   }
 
+  Widget _buildFontPicker(CustomTextOverlay text) {
+    final currentFont = text.fontFamily ?? 'Roboto';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _fontFamilies.contains(currentFont) ? currentFont : 'Roboto',
+          dropdownColor: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.white38,
+          ),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              store.updateCustomTextStyle(text.id, fontFamily: newValue);
+            }
+          },
+          items: _fontFamilies.map<DropdownMenuItem<String>>((String font) {
+            return DropdownMenuItem<String>(
+              value: font,
+              child: Text(
+                font,
+                style: GoogleFonts.getFont(
+                  font,
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   Widget _buildColorPalette({
+    required BuildContext context,
     required List<Color> colors,
     required Color? selectedColor,
     required void Function(Color) onSelect,
@@ -571,34 +665,146 @@ class TextPropertiesPanel extends StatelessWidget {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: colors.map((c) {
-        final isSelected =
-            selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
-        return GestureDetector(
-          onTap: () => onSelect(c),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+      children: [
+        ...colors.map((c) {
+          final isSelected =
+              selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
+          return GestureDetector(
+            onTap: () => onSelect(c),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: c,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? _accentColor : Colors.white24,
+                  width: isSelected ? 2.5 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: _accentColor.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                        ),
+                      ]
+                    : null,
+              ),
+            ),
+          );
+        }),
+        // Nút chọn màu tùy chỉnh
+        GestureDetector(
+          onTap: () => _showColorPicker(
+            context,
+            selectedColor ?? Colors.white,
+            onSelect,
+          ),
+          child: Container(
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: c,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected ? _accentColor : Colors.white24,
-                width: isSelected ? 2.5 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: _accentColor.withValues(alpha: 0.4),
-                        blurRadius: 6,
-                      ),
-                    ]
-                  : null,
+              border: Border.all(color: Colors.white24, width: 1),
+              color: Colors.white.withValues(alpha: 0.05),
+            ),
+            child: const Icon(
+              Icons.colorize_rounded,
+              size: 14,
+              color: Colors.white70,
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showColorPicker(
+    BuildContext context,
+    Color initialColor,
+    void Function(Color) onSelect,
+  ) async {
+    Color selectedColor = initialColor;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'Chọn màu',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            color: initialColor,
+            onColorChanged: (Color color) {
+              selectedColor = color;
+            },
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            spacing: 5,
+            runSpacing: 5,
+            wheelDiameter: 155,
+            heading: Text(
+              'Chọn màu cơ bản',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            ),
+            subheading: Text(
+              'Chọn sắc độ',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            ),
+            wheelSubheading: Text(
+              'Chọn từ vòng tròn',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            ),
+            showColorName: true,
+            showColorCode: true,
+            copyPasteBehavior: const ColorPickerCopyPasteBehavior(
+              longPressMenu: true,
+            ),
+            materialNameTextStyle: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            colorNameTextStyle: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            colorCodeTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color.fromARGB(179, 53, 50, 50),
+            ),
+            pickerTypeLabels: const <ColorPickerType, String>{
+              ColorPickerType.primary: 'Chính',
+              ColorPickerType.accent: 'Phụ',
+              ColorPickerType.wheel: 'Vòng tròn',
+            },
+            columnSpacing: 12,
+            enableOpacity: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('HỦY', style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onSelect(selectedColor);
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('CHỌN'),
+          ),
+        ],
+      ),
     );
   }
 }

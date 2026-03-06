@@ -189,10 +189,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
-      () => _i563.DeviceManagerStore(
-        gh<_i985.DeviceRepository>(),
-        gh<_i260.IAkiRemoteService>(),
-      ),
+      () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
     );
     gh.lazySingleton<_i481.RecruitmentRepository>(
       () => _i240.RecruitmentRepositoryImpl(

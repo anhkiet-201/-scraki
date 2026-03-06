@@ -117,6 +117,7 @@ abstract class _VideoPosterStore with Store {
     double? backgroundRadius,
     double? textHeight,
     bool clearTextHeight = false,
+    String? fontFamily,
   }) {
     final index = customTexts.indexWhere((t) => t.id == id);
     if (index == -1) return;
@@ -131,6 +132,7 @@ abstract class _VideoPosterStore with Store {
       backgroundRadius: backgroundRadius,
       textHeight: textHeight,
       clearTextHeight: clearTextHeight,
+      fontFamily: fontFamily,
     );
   }
 
