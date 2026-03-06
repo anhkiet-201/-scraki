@@ -28,6 +28,7 @@ class CustomTextOverlay {
   final double backgroundRadius;
 
   final String? fontFamily;
+  final double rotation;
 
   const CustomTextOverlay({
     required this.id,
@@ -44,6 +45,7 @@ class CustomTextOverlay {
     this.backgroundOpacity = 1.0,
     this.backgroundRadius = 8.0,
     this.fontFamily,
+    this.rotation = 0.0,
   });
 
   CustomTextOverlay copyWith({
@@ -63,6 +65,7 @@ class CustomTextOverlay {
     double? backgroundOpacity,
     double? backgroundRadius,
     String? fontFamily,
+    double? rotation,
   }) {
     return CustomTextOverlay(
       id: id ?? this.id,
@@ -81,6 +84,7 @@ class CustomTextOverlay {
       backgroundOpacity: backgroundOpacity ?? this.backgroundOpacity,
       backgroundRadius: backgroundRadius ?? this.backgroundRadius,
       fontFamily: fontFamily ?? this.fontFamily,
+      rotation: rotation ?? this.rotation,
     );
   }
 }

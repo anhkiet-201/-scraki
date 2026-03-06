@@ -21,6 +21,7 @@ class VideoOverlayItem extends StatefulWidget {
   final double backgroundOpacity;
   final double backgroundRadius;
   final String? fontFamily;
+  final double rotation;
   final bool isSelected;
   final void Function(String type, double x, double y) onPositionUpdate;
   final void Function(String type) onSelect;
@@ -44,6 +45,7 @@ class VideoOverlayItem extends StatefulWidget {
     this.backgroundOpacity = 0.5,
     this.backgroundRadius = 8.0,
     this.fontFamily,
+    this.rotation = 0.0,
     this.isSelected = false,
     required this.onPositionUpdate,
     required this.onSelect,
@@ -124,122 +126,98 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                   clipBehavior: Clip.none,
                   children: [
                     // ── Main Content Box ──
-                    AnimatedContainer(
-                      key: _store.contentKey,
-                      duration: _store.isInteracting
-                          ? Duration.zero
-                          : const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      constraints: BoxConstraints(
-                        maxWidth: _store.constraints.maxWidth,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _store.isSelected
-                              ? accentColor
-                              : (_store.isHovered
-                                    ? hoverColor.withValues(alpha: 0.5)
+                    Transform.rotate(
+                      angle: widget.rotation * (3.141592653589793 / 180),
+                      child: AnimatedContainer(
+                        key: _store.contentKey,
+                        duration: _store.isInteracting
+                            ? Duration.zero
+                            : const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        constraints: BoxConstraints(
+                          maxWidth: _store.constraints.maxWidth,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _store.isSelected
+                                ? accentColor
+                                : (_store.isHovered
+                                      ? hoverColor.withValues(alpha: 0.5)
+                                      : Colors.transparent),
+                            width: _store.isSelected ? 2 : 1,
+                          ),
+                          // Khi đang edit, dùng container background như fallback
+                          // vì CustomPainter không thể render bên trong TextField
+                          color:
+                              _store.isEditing && widget.backgroundColor != null
+                              ? widget.backgroundColor!.withValues(
+                                  alpha: widget.backgroundOpacity,
+                                )
+                              : (_store.isHovered || _store.isSelected
+                                    ? Colors.black.withValues(alpha: 0.4)
                                     : Colors.transparent),
-                          width: _store.isSelected ? 2 : 1,
+                          borderRadius: BorderRadius.circular(
+                            widget.backgroundRadius,
+                          ),
+                          boxShadow: _store.isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: accentColor.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                  ),
+                                ]
+                              : null,
                         ),
-                        // Khi đang edit, dùng container background như fallback
-                        // vì CustomPainter không thể render bên trong TextField
-                        color:
-                            _store.isEditing && widget.backgroundColor != null
-                            ? widget.backgroundColor!.withValues(
-                                alpha: widget.backgroundOpacity,
-                              )
-                            : (_store.isHovered || _store.isSelected
-                                  ? Colors.black.withValues(alpha: 0.4)
-                                  : Colors.transparent),
-                        borderRadius: BorderRadius.circular(
-                          widget.backgroundRadius,
-                        ),
-                        boxShadow: _store.isSelected
-                            ? [
-                                BoxShadow(
-                                  color: accentColor.withValues(alpha: 0.3),
-                                  blurRadius: 12,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: _store.isEditing
-                          ? IntrinsicWidth(
-                              child: TextField(
-                                controller: _store.controller,
-                                focusNode: _store.focusNode,
-                                autofocus: true,
-                                style: widget.fontFamily != null
-                                    ? GoogleFonts.getFont(
-                                        widget.fontFamily!,
-                                        color: widget.color,
-                                        fontSize: _store.fontSize,
-                                        fontWeight: widget.fontWeight,
-                                        fontStyle: widget.fontStyle,
-                                        height: widget.textHeight,
-                                      )
-                                    : TextStyle(
-                                        color: widget.color,
-                                        fontSize: _store.fontSize,
-                                        fontWeight: widget.fontWeight,
-                                        fontStyle: widget.fontStyle,
-                                        height: widget.textHeight,
-                                      ),
-                                maxLines: null,
-                                textAlign: widget.textAlign,
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  // Đồng bộ padding ngang với _TextWithLineBackgrounds
-                                  // để editing mode và display mode có cùng kích thước.
-                                  contentPadding: widget.backgroundColor != null
-                                      ? const EdgeInsets.symmetric(
-                                          horizontal: 16,
+                        child: _store.isEditing
+                            ? IntrinsicWidth(
+                                child: TextField(
+                                  controller: _store.controller,
+                                  focusNode: _store.focusNode,
+                                  autofocus: true,
+                                  style: widget.fontFamily != null
+                                      ? GoogleFonts.getFont(
+                                          widget.fontFamily!,
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
                                         )
-                                      : EdgeInsets.zero,
-                                  border: InputBorder.none,
+                                      : TextStyle(
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
+                                        ),
+                                  maxLines: null,
+                                  textAlign: widget.textAlign,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    // Đồng bộ padding ngang với _TextWithLineBackgrounds
+                                    // để editing mode và display mode có cùng kích thước.
+                                    contentPadding:
+                                        widget.backgroundColor != null
+                                        ? const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                          )
+                                        : EdgeInsets.zero,
+                                    border: InputBorder.none,
+                                  ),
+                                  onSubmitted: (_) {
+                                    _store.setEditing(false);
+                                    _store.onTextChange(
+                                      _store.type,
+                                      _store.controller.text,
+                                    );
+                                  },
                                 ),
-                                onSubmitted: (_) {
-                                  _store.setEditing(false);
-                                  _store.onTextChange(
-                                    _store.type,
-                                    _store.controller.text,
-                                  );
-                                },
-                              ),
-                            )
-                          : widget.backgroundColor != null
-                          ? _TextWithLineBackgrounds(
-                              text: _store.label,
-                              textStyle: widget.fontFamily != null
-                                  ? GoogleFonts.getFont(
-                                      widget.fontFamily!,
-                                      color: widget.color,
-                                      fontSize: _store.fontSize,
-                                      fontWeight: widget.fontWeight,
-                                      fontStyle: widget.fontStyle,
-                                      height: widget.textHeight,
-                                    )
-                                  : TextStyle(
-                                      color: widget.color,
-                                      fontSize: _store.fontSize,
-                                      fontWeight: widget.fontWeight,
-                                      fontStyle: widget.fontStyle,
-                                      height: widget.textHeight,
-                                    ),
-                              textAlign: widget.textAlign,
-                              backgroundColor: widget.backgroundColor!,
-                              backgroundOpacity: widget.backgroundOpacity,
-                              backgroundRadius: widget.backgroundRadius,
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Text(
-                                _store.label,
-                                style: widget.fontFamily != null
+                              )
+                            : widget.backgroundColor != null
+                            ? _TextWithLineBackgrounds(
+                                text: _store.label,
+                                textStyle: widget.fontFamily != null
                                     ? GoogleFonts.getFont(
                                         widget.fontFamily!,
                                         color: widget.color,
@@ -255,10 +233,38 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                         fontStyle: widget.fontStyle,
                                         height: widget.textHeight,
                                       ),
-                                softWrap: true,
                                 textAlign: widget.textAlign,
+                                backgroundColor: widget.backgroundColor!,
+                                backgroundOpacity: widget.backgroundOpacity,
+                                backgroundRadius: widget.backgroundRadius,
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Text(
+                                  _store.label,
+                                  style: widget.fontFamily != null
+                                      ? GoogleFonts.getFont(
+                                          widget.fontFamily!,
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
+                                        )
+                                      : TextStyle(
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
+                                        ),
+                                  softWrap: true,
+                                  textAlign: widget.textAlign,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
 
                     // ── 8-Point Resize Handles ──

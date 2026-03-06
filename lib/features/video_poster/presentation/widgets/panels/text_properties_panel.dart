@@ -404,6 +404,42 @@ class TextPropertiesPanel extends StatelessWidget {
                 store.updateCustomTextStyle(text.id, textHeight: v),
           ),
 
+          const SizedBox(height: 12),
+
+          // ── Rotation ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSectionLabel('XOAY  ${text.rotation.toInt()}°'),
+              if (text.rotation != 0)
+                GestureDetector(
+                  onTap: () =>
+                      store.updateCustomTextStyle(text.id, rotation: 0),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Text(
+                      'RESET',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6366F1),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          _buildSlider(
+            context: context,
+            value: text.rotation,
+            min: -180,
+            max: 180,
+            divisions: 360,
+            onChanged: (v) => store.updateCustomTextStyle(text.id, rotation: v),
+          ),
+
           const SizedBox(height: 16),
 
           // ── Font Family ──

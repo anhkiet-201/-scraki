@@ -360,6 +360,7 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     double? textHeight,
     bool clearTextHeight = false,
     String? fontFamily,
+    double? rotation,
   }) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomTextStyle',
@@ -378,6 +379,7 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
         textHeight: textHeight,
         clearTextHeight: clearTextHeight,
         fontFamily: fontFamily,
+        rotation: rotation,
       );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
