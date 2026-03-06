@@ -306,7 +306,14 @@ abstract class _VideoPosterStore with Store {
         _dashboardStore.selectedIndex != _kVideoEditorTabIndex) {
       return;
     }
+    final wasEmpty = sourceVideoPaths.isEmpty;
     sourceVideoPaths.addAll(paths);
+
+    // Auto-load and play the first video when media is added for the first time
+    if (wasEmpty && sourceVideoPaths.isNotEmpty) {
+      currentVideoIndex = 0;
+      _playCurrentVideo();
+    }
   }
 
   @action
