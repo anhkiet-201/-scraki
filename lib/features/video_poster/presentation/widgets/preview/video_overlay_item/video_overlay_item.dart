@@ -99,320 +99,329 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
     const accentColor = Color(0xFF6366F1);
     const hoverColor = Color(0xFF818CF8);
 
-    return Positioned.fill(
-      child: MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-        child: Observer(
-          builder: (context) => Align(
-            alignment: Alignment(_store.x * 2 - 1, _store.y * 2 - 1),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _store.handleSelect,
-              onDoubleTap: _store.startEditing,
-              onPanStart: (_) {
-                _store.setInteracting(true);
-                if (!_store.isSelected) _store.handleSelect();
-              },
-              onPanUpdate: _store.handleDrag,
-              onPanEnd: (_) => _store.setInteracting(false),
-              onPanCancel: () => _store.setInteracting(false),
-              child: MouseRegion(
-                onEnter: (_) => _store.setHovered(true),
-                onExit: (_) => _store.setHovered(false),
-                cursor: _store.isEditing
-                    ? SystemMouseCursors.text
-                    : SystemMouseCursors.move,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // ── Main Content Box ──
-                    Transform.rotate(
-                      angle: widget.rotation * (3.141592653589793 / 180),
-                      child: AnimatedContainer(
-                        key: _store.contentKey,
-                        duration: _store.isInteracting
-                            ? Duration.zero
-                            : const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        constraints: BoxConstraints(
-                          maxWidth: _store.constraints.maxWidth,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _store.isSelected
-                                ? accentColor
-                                : (_store.isHovered
-                                      ? hoverColor.withValues(alpha: 0.5)
-                                      : Colors.transparent),
-                            width: _store.isSelected ? 2 : 1,
+    return Observer(
+      builder: (context) {
+        final left = _store.x * _store.constraints.maxWidth;
+        final top = _store.y * _store.constraints.maxHeight;
+        return Positioned(
+          left: left,
+          top: top,
+          child: FractionalTranslation(
+            translation: const Offset(-0.5, -0.5),  
+            child: MediaQuery(
+              data: MediaQuery.of(  
+                context,
+              ).copyWith(textScaler: TextScaler.noScaling),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _store.handleSelect,
+                onDoubleTap: _store.startEditing,
+                onPanStart: (_) {
+                  _store.setInteracting(true);
+                  if (!_store.isSelected) _store.handleSelect();
+                },
+                onPanUpdate: _store.handleDrag,
+                onPanEnd: (_) => _store.setInteracting(false),
+                onPanCancel: () => _store.setInteracting(false),
+                child: MouseRegion(
+                  onEnter: (_) => _store.setHovered(true),
+                  onExit: (_) => _store.setHovered(false),
+                  cursor: _store.isEditing
+                      ? SystemMouseCursors.text
+                      : SystemMouseCursors.move,
+                  child: Transform.rotate(
+                    angle: widget.rotation * (3.141592653589793 / 180),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // ── Main Content Box ──
+                        AnimatedContainer(
+                          key: _store.contentKey,
+                          duration: _store.isInteracting
+                              ? Duration.zero
+                              : const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          constraints: BoxConstraints(
+                            maxWidth: _store.constraints.maxWidth,
                           ),
-                          // Khi đang edit, dùng container background như fallback
-                          // vì CustomPainter không thể render bên trong TextField
-                          color:
-                              _store.isEditing && widget.backgroundColor != null
-                              ? widget.backgroundColor!.withValues(
-                                  alpha: widget.backgroundOpacity,
-                                )
-                              : (_store.isHovered || _store.isSelected
-                                    ? Colors.black.withValues(alpha: 0.4)
-                                    : Colors.transparent),
-                          borderRadius: BorderRadius.circular(
-                            widget.backgroundRadius,
-                          ),
-                          boxShadow: _store.isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: accentColor.withValues(alpha: 0.3),
-                                    blurRadius: 12,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: _store.isEditing
-                            ? IntrinsicWidth(
-                                child: TextField(
-                                  controller: _store.controller,
-                                  focusNode: _store.focusNode,
-                                  autofocus: true,
-                                  style: widget.fontFamily != null
-                                      ? GoogleFonts.getFont(
-                                          widget.fontFamily!,
-                                          color: widget.color,
-                                          fontSize: _store.fontSize,
-                                          fontWeight: widget.fontWeight,
-                                          fontStyle: widget.fontStyle,
-                                          height: widget.textHeight,
-                                        )
-                                      : TextStyle(
-                                          color: widget.color,
-                                          fontSize: _store.fontSize,
-                                          fontWeight: widget.fontWeight,
-                                          fontStyle: widget.fontStyle,
-                                          height: widget.textHeight,
-                                        ),
-                                  maxLines: null,
-                                  textAlign: widget.textAlign,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    // Đồng bộ padding ngang với _TextWithLineBackgrounds
-                                    // để editing mode và display mode có cùng kích thước.
-                                    contentPadding:
-                                        widget.backgroundColor != null
-                                        ? const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                          )
-                                        : EdgeInsets.zero,
-                                    border: InputBorder.none,
-                                  ),
-                                  onSubmitted: (_) {
-                                    _store.setEditing(false);
-                                    _store.onTextChange(
-                                      _store.type,
-                                      _store.controller.text,
-                                    );
-                                  },
-                                ),
-                              )
-                            : widget.backgroundColor != null
-                            ? _TextWithLineBackgrounds(
-                                text: _store.label,
-                                textStyle: widget.fontFamily != null
-                                    ? GoogleFonts.getFont(
-                                        widget.fontFamily!,
-                                        color: widget.color,
-                                        fontSize: _store.fontSize,
-                                        fontWeight: widget.fontWeight,
-                                        fontStyle: widget.fontStyle,
-                                        height: widget.textHeight,
-                                      )
-                                    : TextStyle(
-                                        color: widget.color,
-                                        fontSize: _store.fontSize,
-                                        fontWeight: widget.fontWeight,
-                                        fontStyle: widget.fontStyle,
-                                        height: widget.textHeight,
-                                      ),
-                                textAlign: widget.textAlign,
-                                backgroundColor: widget.backgroundColor!,
-                                backgroundOpacity: widget.backgroundOpacity,
-                                backgroundRadius: widget.backgroundRadius,
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(
-                                  _store.label,
-                                  style: widget.fontFamily != null
-                                      ? GoogleFonts.getFont(
-                                          widget.fontFamily!,
-                                          color: widget.color,
-                                          fontSize: _store.fontSize,
-                                          fontWeight: widget.fontWeight,
-                                          fontStyle: widget.fontStyle,
-                                          height: widget.textHeight,
-                                        )
-                                      : TextStyle(
-                                          color: widget.color,
-                                          fontSize: _store.fontSize,
-                                          fontWeight: widget.fontWeight,
-                                          fontStyle: widget.fontStyle,
-                                          height: widget.textHeight,
-                                        ),
-                                  softWrap: true,
-                                  textAlign: widget.textAlign,
-                                ),
-                              ),
-                      ),
-                    ),
-
-                    // ── 8-Point Resize Handles ──
-                    if (_store.isSelected && !_store.isEditing) ...[
-                      Positioned.fill(
-                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: accentColor.withValues(alpha: 0.4),
-                              width: 1,
+                              color: _store.isSelected
+                                  ? accentColor
+                                  : (_store.isHovered
+                                        ? hoverColor.withValues(alpha: 0.5)
+                                        : Colors.transparent),
+                              width: _store.isSelected ? 2 : 1,
                             ),
+                            // Khi đang edit, dùng container background như fallback
+                            // vì CustomPainter không thể render bên trong TextField
+                            color:
+                                _store.isEditing &&
+                                    widget.backgroundColor != null
+                                ? widget.backgroundColor!.withValues(
+                                    alpha: widget.backgroundOpacity,
+                                  )
+                                : (_store.isHovered || _store.isSelected
+                                      ? Colors.black.withValues(alpha: 0.4)
+                                      : Colors.transparent),
+                            borderRadius: BorderRadius.circular(
+                              widget.backgroundRadius,
+                            ),
+                            boxShadow: _store.isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: accentColor.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                    ),
+                                  ]
+                                : null,
                           ),
+                          child: _store.isEditing
+                              ? IntrinsicWidth(
+                                  child: TextField(
+                                    controller: _store.controller,
+                                    focusNode: _store.focusNode,
+                                    autofocus: true,
+                                    style: widget.fontFamily != null
+                                        ? GoogleFonts.getFont(
+                                            widget.fontFamily!,
+                                            color: widget.color,
+                                            fontSize: _store.fontSize,
+                                            fontWeight: widget.fontWeight,
+                                            fontStyle: widget.fontStyle,
+                                            height: widget.textHeight,
+                                          )
+                                        : TextStyle(
+                                            color: widget.color,
+                                            fontSize: _store.fontSize,
+                                            fontWeight: widget.fontWeight,
+                                            fontStyle: widget.fontStyle,
+                                            height: widget.textHeight,
+                                          ),
+                                    maxLines: null,
+                                    textAlign: widget.textAlign,
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      // Đồng bộ padding ngang với _TextWithLineBackgrounds
+                                      // để editing mode và display mode có cùng kích thước.
+                                      contentPadding:
+                                          widget.backgroundColor != null
+                                          ? const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            )
+                                          : EdgeInsets.zero,
+                                      border: InputBorder.none,
+                                    ),
+                                    onSubmitted: (_) {
+                                      _store.setEditing(false);
+                                      _store.onTextChange(
+                                        _store.type,
+                                        _store.controller.text,
+                                      );
+                                    },
+                                  ),
+                                )
+                              : widget.backgroundColor != null
+                              ? _TextWithLineBackgrounds(
+                                  text: _store.label,
+                                  textStyle: widget.fontFamily != null
+                                      ? GoogleFonts.getFont(
+                                          widget.fontFamily!,
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
+                                        )
+                                      : TextStyle(
+                                          color: widget.color,
+                                          fontSize: _store.fontSize,
+                                          fontWeight: widget.fontWeight,
+                                          fontStyle: widget.fontStyle,
+                                          height: widget.textHeight,
+                                        ),
+                                  textAlign: widget.textAlign,
+                                  backgroundColor: widget.backgroundColor!,
+                                  backgroundOpacity: widget.backgroundOpacity,
+                                  backgroundRadius: widget.backgroundRadius,
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Text(
+                                    _store.label,
+                                    style: widget.fontFamily != null
+                                        ? GoogleFonts.getFont(
+                                            widget.fontFamily!,
+                                            color: widget.color,
+                                            fontSize: _store.fontSize,
+                                            fontWeight: widget.fontWeight,
+                                            fontStyle: widget.fontStyle,
+                                            height: widget.textHeight,
+                                          )
+                                        : TextStyle(
+                                            color: widget.color,
+                                            fontSize: _store.fontSize,
+                                            fontWeight: widget.fontWeight,
+                                            fontStyle: widget.fontStyle,
+                                            height: widget.textHeight,
+                                          ),
+                                    softWrap: true,
+                                    textAlign: widget.textAlign,
+                                  ),
+                                ),
                         ),
-                      ),
-                      _buildHandle(
-                        top: -16,
-                        left: -16,
-                        cursor: SystemMouseCursors.resizeUpLeft,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: -1,
-                          multiplierY: -1,
-                        ),
-                      ),
-                      _buildHandle(
-                        top: -16,
-                        right: -16,
-                        cursor: SystemMouseCursors.resizeUpRight,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: 1,
-                          multiplierY: -1,
-                        ),
-                      ),
-                      _buildHandle(
-                        bottom: -16,
-                        left: -16,
-                        cursor: SystemMouseCursors.resizeDownLeft,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: -1,
-                          multiplierY: 1,
-                        ),
-                      ),
-                      _buildHandle(
-                        bottom: -16,
-                        right: -16,
-                        cursor: SystemMouseCursors.resizeDownRight,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: 1,
-                          multiplierY: 1,
-                        ),
-                      ),
-                      _buildHandle(
-                        top: -16,
-                        left: 0,
-                        right: 0,
-                        cursor: SystemMouseCursors.resizeUp,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: 0,
-                          multiplierY: -1,
-                        ),
-                      ),
-                      _buildHandle(
-                        bottom: -16,
-                        left: 0,
-                        right: 0,
-                        cursor: SystemMouseCursors.resizeDown,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: 0,
-                          multiplierY: 1,
-                        ),
-                      ),
-                      _buildHandle(
-                        left: -16,
-                        top: 0,
-                        bottom: 0,
-                        cursor: SystemMouseCursors.resizeLeft,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: -1,
-                          multiplierY: 0,
-                        ),
-                      ),
-                      _buildHandle(
-                        right: -16,
-                        top: 0,
-                        bottom: 0,
-                        cursor: SystemMouseCursors.resizeRight,
-                        onDragStart: () => _store.setInteracting(true),
-                        onDragEnd: () => _store.setInteracting(false),
-                        onDrag: (d) => _store.handleResize(
-                          details: d,
-                          multiplierX: 1,
-                          multiplierY: 0,
-                        ),
-                      ),
-                    ],
 
-                    // ── Selection Label ──
-                    if (_store.isSelected && !_store.isEditing)
-                      Positioned(
-                        top: -24,
-                        left: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: accentColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'TEXT',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
+                        // ── 8-Point Resize Handles ──
+                        if (_store.isSelected && !_store.isEditing) ...[
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: accentColor.withValues(alpha: 0.4),
+                                  width: 1,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                  ],
+                          _buildHandle(
+                            top: -16,
+                            left: -16,
+                            cursor: SystemMouseCursors.resizeUpLeft,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: -1,
+                              multiplierY: -1,
+                            ),
+                          ),
+                          _buildHandle(
+                            top: -16,
+                            right: -16,
+                            cursor: SystemMouseCursors.resizeUpRight,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: 1,
+                              multiplierY: -1,
+                            ),
+                          ),
+                          _buildHandle(
+                            bottom: -16,
+                            left: -16,
+                            cursor: SystemMouseCursors.resizeDownLeft,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: -1,
+                              multiplierY: 1,
+                            ),
+                          ),
+                          _buildHandle(
+                            bottom: -16,
+                            right: -16,
+                            cursor: SystemMouseCursors.resizeDownRight,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: 1,
+                              multiplierY: 1,
+                            ),
+                          ),
+                          _buildHandle(
+                            top: -16,
+                            left: 0,
+                            right: 0,
+                            cursor: SystemMouseCursors.resizeUp,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: 0,
+                              multiplierY: -1,
+                            ),
+                          ),
+                          _buildHandle(
+                            bottom: -16,
+                            left: 0,
+                            right: 0,
+                            cursor: SystemMouseCursors.resizeDown,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: 0,
+                              multiplierY: 1,
+                            ),
+                          ),
+                          _buildHandle(
+                            left: -16,
+                            top: 0,
+                            bottom: 0,
+                            cursor: SystemMouseCursors.resizeLeft,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: -1,
+                              multiplierY: 0,
+                            ),
+                          ),
+                          _buildHandle(
+                            right: -16,
+                            top: 0,
+                            bottom: 0,
+                            cursor: SystemMouseCursors.resizeRight,
+                            onDragStart: () => _store.setInteracting(true),
+                            onDragEnd: () => _store.setInteracting(false),
+                            onDrag: (d) => _store.handleResize(
+                              details: d,
+                              multiplierX: 1,
+                              multiplierY: 0,
+                            ),
+                          ),
+                        ],
+
+                        // ── Selection Label ──
+                        if (_store.isSelected && !_store.isEditing)
+                          Positioned(
+                            top: -24,
+                            left: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'TEXT',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
