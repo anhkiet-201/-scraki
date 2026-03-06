@@ -3,7 +3,6 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
-import 'package:scraki/features/device/domain/services/i_aki_remote_service.dart';
 
 part 'device_manager_store.g.dart';
 
@@ -20,9 +19,8 @@ class DeviceManagerStore = _DeviceManagerStore with _$DeviceManagerStore;
 /// - Ngắt kết nối thiết bị
 abstract class _DeviceManagerStore with Store {
   final DeviceRepository _repository;
-  final IAkiRemoteService _akiRemote;
 
-  _DeviceManagerStore(this._repository, this._akiRemote);
+  _DeviceManagerStore(this._repository);
 
   // ═══════════════════════════════════════════════════════════════
   // DEVICE LIST
@@ -76,35 +74,8 @@ abstract class _DeviceManagerStore with Store {
           devices.clear();
           devices.addAll(list);
         });
-
-        // Push aki_remote binary lên tất cả device connected song song.
-        // Fire-and-forget: không await để không block scan UI.
-        _pushAkiRemoteToConnectedDevices(list);
       },
     );
-  }
-
-  /// Push binary `aki_remote` lên tất cả devices đang kết nối.
-  /// Lỗi từng device được log nhưng không throw để tránh ảnh hưởng luồng chính.
-  void _pushAkiRemoteToConnectedDevices(List<DeviceEntity> deviceList) {
-    final connected = deviceList
-        .where((d) => d.status == DeviceStatus.connected)
-        .toList();
-
-    if (connected.isEmpty) return;
-
-    logger.i(
-      '[DeviceManagerStore] Pushing aki_remote to ${connected.length} device(s)...',
-    );
-
-    for (final device in connected) {
-      _akiRemote.ensureServerPushed(device.serial).catchError((Object e) {
-        logger.w(
-          '[DeviceManagerStore] Failed to push aki_remote to ${device.serial}',
-          error: e,
-        );
-      });
-    }
   }
 
   /// Kết nối tới thiết bị qua địa chỉ IP và Port (TCP/IP).

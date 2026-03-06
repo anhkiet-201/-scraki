@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
-import 'package:scraki/features/device/domain/services/i_aki_remote_service.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
@@ -10,18 +9,13 @@ import 'package:fpdart/fpdart.dart';
 // Mocks
 class MockDeviceRepository extends Mock implements DeviceRepository {}
 
-class MockAkiRemoteService extends Mock implements IAkiRemoteService {}
-
 void main() {
   late MockDeviceRepository repository;
   late DeviceManagerStore store;
 
   setUp(() {
     repository = MockDeviceRepository();
-    final akiRemote = MockAkiRemoteService();
-    // ensureServerPushed là fire-and-forget — stub để không throw
-    when(() => akiRemote.ensureServerPushed(any())).thenAnswer((_) async {});
-    store = DeviceManagerStore(repository, akiRemote);
+    store = DeviceManagerStore(repository);
   });
 
   group('DeviceManagerStore', () {

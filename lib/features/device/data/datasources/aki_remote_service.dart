@@ -26,7 +26,18 @@ class AkiRemoteService implements IAkiRemoteService {
 
   @override
   Future<void> ensureServerPushed(String serial) async {
-    if (_pushedSerials.contains(serial)) return;
+    // Kiểm tra in-memory cache — nhưng vẫn cần verify file còn tồn tại trên
+    // device vì /data/local/tmp/ bị xóa khi device reboot.
+    if (_pushedSerials.contains(serial)) {
+      final stillExists = await _remoteFileExists(serial, _remoteWrapperPath);
+      if (stillExists) return;
+
+      // File bị xóa (do reboot hoặc lý do khác) — invalidate cache và push lại.
+      logger.w(
+        '[AkiRemoteService] Cache hit but binary missing on $serial, re-pushing...',
+      );
+      _pushedSerials.remove(serial);
+    }
 
     logger.i('[AkiRemoteService] Pushing binaries to $serial...');
     try {
@@ -47,9 +58,13 @@ class AkiRemoteService implements IAkiRemoteService {
       ], label: 'push jar');
 
       // 3. Copy shell wrapper từ assets ra local temp.
+      // Luôn overwrite để đảm bảo file local đúng version.
+      // Strip CRLF → LF: trên Windows, Git có thể bundle file với \r\n
+      // khiến Android shell không parse được shebang #!/system/bin/sh\r
       final localWrapper = File(p.join(docsDir.path, 'aki_remote'));
       final wrapperBytes = await rootBundle.load(_wrapperAssetPath);
-      await localWrapper.writeAsBytes(wrapperBytes.buffer.asUint8List());
+      final wrapperLf = _stripCrlf(wrapperBytes.buffer.asUint8List());
+      await localWrapper.writeAsBytes(wrapperLf);
 
       // 4. Push shell wrapper lên device.
       await _runAdb(serial, [
@@ -278,5 +293,26 @@ class AkiRemoteService implements IAkiRemoteService {
         'adb shell $label failed for $serial: ${result.stderr}',
       );
     }
+  }
+
+  /// Kiểm tra file có tồn tại trên device không (dùng `adb shell ls`).
+  Future<bool> _remoteFileExists(String serial, String remotePath) async {
+    final result = await Process.run('adb', [
+      '-s',
+      serial,
+      'shell',
+      'ls',
+      remotePath,
+    ]);
+    return result.exitCode == 0;
+  }
+
+  /// Xóa ký tự \r (CR) khỏi byte array để đảm bảo LF-only line endings.
+  ///
+  /// Cần thiết trên Windows vì Git core.autocrlf=true có thể bundle
+  /// shell script với CRLF, khiến Android /system/bin/sh không parse
+  /// được shebang #!/system/bin/sh\r.
+  List<int> _stripCrlf(List<int> bytes) {
+    return bytes.where((b) => b != 0x0D).toList(); // 0x0D = \r
   }
 }
