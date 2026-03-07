@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/di/injection.dart';
@@ -6,8 +7,22 @@ import 'package:scraki/features/device/presentation/widgets/dialogs/create_group
 import 'package:scraki/features/device/domain/entities/device_group_entity.dart';
 import 'package:scraki/core/widgets/box_card.dart';
 
-class GroupHorizontalSelector extends StatelessWidget {
+class GroupHorizontalSelector extends StatefulWidget {
   const GroupHorizontalSelector({super.key});
+
+  @override
+  State<GroupHorizontalSelector> createState() =>
+      _GroupHorizontalSelectorState();
+}
+
+class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,30 +74,57 @@ class GroupHorizontalSelector extends StatelessWidget {
                   );
                 }
 
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: store.groups.length,
-                  itemBuilder: (context, index) {
-                    final group = store.groups[index];
+                return Listener(
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      final scrollDelta = pointerSignal.scrollDelta.dy;
+                      // Determine the scroll direction based on the event delta
+                      // And adjust the ListView's scroll position
+                      final currentPosition = _scrollController.position.pixels;
+                      final maxScrollExtent =
+                          _scrollController.position.maxScrollExtent;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Observer(
-                        key: ValueKey('group_${group.id}'),
-                        builder: (_) {
-                          final isSelected = store.selectedGroupId == group.id;
-                          return _GroupChip(
-                            label: group.name,
-                            isSelected: isSelected,
-                            color: Color(group.colorValue),
-                            onTap: () => store.selectGroup(group.id),
-                            onDelete: () =>
-                                _showDeleteConfirmation(context, store, group),
-                          );
-                        },
-                      ),
-                    );
+                      double newPosition = currentPosition + scrollDelta;
+                      if (newPosition < 0) {
+                        newPosition = 0;
+                      } else if (newPosition > maxScrollExtent) {
+                        newPosition = maxScrollExtent;
+                      }
+
+                      _scrollController.jumpTo(newPosition);
+                    }
                   },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: store.groups.length,
+                    itemBuilder: (context, index) {
+                      final group = store.groups[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Observer(
+                          key: ValueKey('group_${group.id}'),
+                          builder: (_) {
+                            final isSelected =
+                                store.selectedGroupId == group.id;
+                            return _GroupChip(
+                              label: group.name,
+                              isSelected: isSelected,
+                              color: Color(group.colorValue),
+                              count: group.deviceSerials.length,
+                              onTap: () => store.selectGroup(group.id),
+                              onDelete: () => _showDeleteConfirmation(
+                                context,
+                                store,
+                                group,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -188,6 +230,7 @@ class _GroupChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final Color color;
+  final int? count;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
 
@@ -195,6 +238,7 @@ class _GroupChip extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.color,
+    this.count,
     required this.onTap,
     this.onDelete,
   });
@@ -241,7 +285,7 @@ class _GroupChip extends StatelessWidget {
                 ),
               if (!isSelected) const SizedBox(width: 8),
               Text(
-                label,
+                count != null ? '$label ($count)' : label,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: isSelected

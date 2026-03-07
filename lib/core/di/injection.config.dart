@@ -91,6 +91,8 @@ import '../../features/settings/presentation/stores/settings_store.dart'
     as _i151;
 import '../../features/video_poster/data/repositories/ffmpeg_video_processing_repository_impl.dart'
     as _i1007;
+import '../../features/video_poster/data/repositories/recent_color_repository.dart'
+    as _i763;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
     as _i427;
 import '../../features/video_poster/domain/services/anti_reup_service.dart'
@@ -120,6 +122,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
+    );
+    gh.lazySingleton<_i763.RecentColorRepository>(
+      () => _i763.RecentColorRepository(),
     );
     gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
     gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());

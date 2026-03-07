@@ -133,11 +133,39 @@ abstract class _DeviceGroupStore with Store {
 
   @action
   Future<void> createGroup(String name) async {
-    // Generate random color
-    final colorValue =
-        (0xFF000000 + (DateTime.now().microsecondsSinceEpoch & 0xFFFFFF))
-            .toInt() |
-        0xFF000000; // Ensure alpha is FF
+    const distinctColors = [
+      0xFFF44336, // Red
+      0xFF2196F3, // Blue
+      0xFF4CAF50, // Green
+      0xFFFF9800, // Orange
+      0xFF9C27B0, // Purple
+      0xFF009688, // Teal
+      0xFEFFC107, // Amber (modified to avoid white-ish yellow on light theme)
+      0xFF00BCD4, // Cyan
+      0xFFE91E63, // Pink
+      0xFF3F51B5, // Indigo
+      0xFF795548, // Brown
+      0xFFFF5722, // Deep Orange
+    ];
+
+    // Find a color that isn't currently used by any group
+    final usedColors = groups.map((g) => g.colorValue).toSet();
+    int colorValue = distinctColors.first;
+    bool foundUnique = false;
+
+    for (final color in distinctColors) {
+      if (!usedColors.contains(color)) {
+        colorValue = color;
+        foundUnique = true;
+        break;
+      }
+    }
+
+    // Fallback if all distinct colors are used
+    if (!foundUnique) {
+      final colorIndex = groups.length % distinctColors.length;
+      colorValue = distinctColors[colorIndex];
+    }
 
     final newGroup = DeviceGroupEntity.create(
       name: name,

@@ -213,11 +213,15 @@ class _DeviceCardState extends State<DeviceCard>
                             (g) => Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: Container(
-                                width: 8,
-                                height: 8,
+                                width: 10,
+                                height: 10,
                                 decoration: BoxDecoration(
                                   color: Color(g.colorValue),
                                   shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colorScheme.surface,
+                                    width: 1,
+                                  ),
                                 ),
                               ),
                             ),
