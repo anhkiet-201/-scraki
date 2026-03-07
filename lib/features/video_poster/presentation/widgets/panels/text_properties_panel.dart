@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Panel hiển thị khi tab TEXT được chọn.
@@ -875,83 +875,111 @@ class TextPropertiesPanel extends StatelessWidget {
     Color initialColor,
     void Function(Color) onSelect,
   ) async {
-    Color selectedColor = initialColor;
+    Color pickedColor = initialColor;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
-          'Chọn màu',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.palette_rounded, size: 18, color: Color(0xFF6366F1)),
+            SizedBox(width: 8),
+            Text(
+              'CHỌN MÀU',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
         ),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            color: initialColor,
-            onColorChanged: (Color color) {
-              selectedColor = color;
-            },
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            spacing: 5,
-            runSpacing: 5,
-            wheelDiameter: 155,
-            heading: Text(
-              'Chọn màu cơ bản',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+        content: StatefulBuilder(
+          builder: (_, setState) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // HSV Color Wheel + Sliders
+                ColorPicker(
+                  pickerColor: pickedColor,
+                  onColorChanged: (Color color) {
+                    setState(() => pickedColor = color);
+                  },
+                  colorPickerWidth: 280,
+                  pickerAreaHeightPercent: 0.7,
+                  enableAlpha: true,
+                  labelTypes: const [ColorLabelType.hex, ColorLabelType.hsv],
+                  displayThumbColor: true,
+                  pickerAreaBorderRadius: const BorderRadius.all(
+                    Radius.circular(12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Preview strip
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 32,
+                          color: initialColor,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'CŨ',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 32,
+                          color: pickedColor,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'MỚI',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            subheading: Text(
-              'Chọn sắc độ',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-            ),
-            wheelSubheading: Text(
-              'Chọn từ vòng tròn',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-            ),
-            showColorName: true,
-            showColorCode: true,
-            copyPasteBehavior: const ColorPickerCopyPasteBehavior(
-              longPressMenu: true,
-            ),
-            materialNameTextStyle: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-            colorNameTextStyle: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-            colorCodeTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color.fromARGB(179, 53, 50, 50),
-            ),
-            pickerTypeLabels: const <ColorPickerType, String>{
-              ColorPickerType.primary: 'Chính',
-              ColorPickerType.accent: 'Phụ',
-              ColorPickerType.wheel: 'Vòng tròn',
-            },
-            columnSpacing: 12,
-            enableOpacity: true,
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('HỦY', style: TextStyle(color: Colors.white38)),
           ),
           ElevatedButton(
             onPressed: () {
-              onSelect(selectedColor);
-              Navigator.of(context).pop();
+              onSelect(pickedColor);
+              Navigator.of(dialogCtx).pop();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _accentColor,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('CHỌN'),
+            child: const Text(
+              'CHỌN',
+              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+            ),
           ),
         ],
       ),
