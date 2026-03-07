@@ -659,6 +659,9 @@ class BatchVideoService {
     final contrast = 1.0 + random.nextDouble() * 0.05;
     final noise = 1.0 + random.nextDouble() * 3.0;
 
+    // Per-video spoof profile (device, GPS, CRF, preset, jitter id)
+    final spoofProfile = _VideoSpoofProfile.random(random);
+
     final brightnessStr = brightness.toStringAsFixed(4);
     final contrastStr = contrast.toStringAsFixed(4);
     final noiseStr = noise.toStringAsFixed(2);
@@ -705,9 +708,9 @@ class BatchVideoService {
           '-c:v',
           'libx264',
           '-preset',
-          'ultrafast',
+          spoofProfile.preset,
           '-crf',
-          '26',
+          spoofProfile.crf.toString(),
           '-c:a',
           'aac',
           '-b:a',
@@ -720,6 +723,7 @@ class BatchVideoService {
           'handler_name=Core Media Video',
           '-metadata:s:a:0',
           'handler_name=Core Media Audio',
+          ...spoofProfile.toFfmpegMetadataArgs(),
           '-movflags',
           '+faststart',
           finalOutput,
@@ -737,9 +741,9 @@ class BatchVideoService {
           '-c:v',
           'libx264',
           '-preset',
-          'ultrafast',
+          spoofProfile.preset,
           '-crf',
-          '26',
+          spoofProfile.crf.toString(),
           '-c:a',
           'aac',
           '-b:a',
@@ -752,6 +756,7 @@ class BatchVideoService {
           'handler_name=Core Media Video',
           '-metadata:s:a:0',
           'handler_name=Core Media Audio',
+          ...spoofProfile.toFfmpegMetadataArgs(),
           '-movflags',
           '+faststart',
           finalOutput,
@@ -881,4 +886,109 @@ class BatchVideoService {
         pixFmt.contains('10be');
     return hdrTransfer || hdrPixFmt;
   }
+}
+
+// ============================================================================
+// _VideoSpoofProfile — per-video randomized metadata to avoid batch detection
+// ============================================================================
+
+/// Encapsulates all per-video spoofing parameters.
+/// Call [_VideoSpoofProfile.random] to generate a fresh profile for each output.
+class _VideoSpoofProfile {
+  static const _devices = [
+    (model: 'iPhone 13', ios: '15.6'),
+    (model: 'iPhone 13 Pro', ios: '15.7.1'),
+    (model: 'iPhone 14', ios: '16.3'),
+    (model: 'iPhone 14 Pro Max', ios: '16.6'),
+    (model: 'iPhone 15', ios: '17.0'),
+    (model: 'iPhone 15 Pro Max', ios: '17.2'),
+  ];
+
+  static const _presets = ['ultrafast', 'superfast', 'veryfast'];
+
+  /// GPS bounding box: TP.HCM + Bình Dương
+  static const _latMin = 10.65;
+  static const _latMax = 11.30;
+  static const _lonMin = 106.55;
+  static const _lonMax = 107.00;
+
+  final String model;
+  final String iosVersion;
+  final String creationTime;
+  final String gpsIso6709;
+  final int crf;
+  final String preset;
+  final String jitterId; // file-size jitter
+
+  const _VideoSpoofProfile({
+    required this.model,
+    required this.iosVersion,
+    required this.creationTime,
+    required this.gpsIso6709,
+    required this.crf,
+    required this.preset,
+    required this.jitterId,
+  });
+
+  factory _VideoSpoofProfile.random(Random random) {
+    final device = _devices[random.nextInt(_devices.length)];
+
+    // Random timestamp trong 30 ngày qua
+    final daysAgo = random.nextInt(30);
+    final hoursAgo = random.nextInt(24);
+    final minutesAgo = random.nextInt(60);
+    final recordedAt = DateTime.now()
+        .toUtc()
+        .subtract(Duration(days: daysAgo, hours: hoursAgo, minutes: minutesAgo))
+        .toIso8601String();
+
+    // GPS ngẫu nhiên trong vùng TP.HCM + Bình Dương
+    final lat = _latMin + random.nextDouble() * (_latMax - _latMin);
+    final lon = _lonMin + random.nextDouble() * (_lonMax - _lonMin);
+    // ISO 6709 format: +10.8234+106.7183+0/
+    final latSign = lat >= 0 ? '+' : '-';
+    final lonSign = lon >= 0 ? '+' : '-';
+    final gps =
+        '$latSign${lat.abs().toStringAsFixed(4)}'
+        '$lonSign${lon.abs().toStringAsFixed(4)}'
+        '+0/';
+
+    // Random CRF 23–28
+    final crf = 23 + random.nextInt(6);
+
+    // Random preset
+    final preset = _presets[random.nextInt(_presets.length)];
+
+    // 8-char hex jitter id
+    final jitterId = List.generate(
+      8,
+      (_) => random.nextInt(16).toRadixString(16),
+    ).join();
+
+    return _VideoSpoofProfile(
+      model: device.model,
+      iosVersion: device.ios,
+      creationTime: recordedAt,
+      gpsIso6709: gps,
+      crf: crf,
+      preset: preset,
+      jitterId: jitterId,
+    );
+  }
+
+  /// Returns ffmpeg metadata args to be added to the command.
+  List<String> toFfmpegMetadataArgs() => [
+    '-metadata',
+    'creation_time=$creationTime',
+    '-metadata',
+    'com.apple.quicktime.make=Apple',
+    '-metadata',
+    'com.apple.quicktime.model=$model',
+    '-metadata',
+    'com.apple.quicktime.software=$iosVersion',
+    '-metadata',
+    'com.apple.quicktime.location.ISO6709=$gpsIso6709',
+    '-metadata',
+    'scraki_id=$jitterId',
+  ];
 }
