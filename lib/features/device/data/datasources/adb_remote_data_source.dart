@@ -125,14 +125,17 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     String serial, {
     bool includeSystemApps = false,
   }) async {
-    // -3 flag để chỉ lấy user-installed apps (third-party)
-    // Không dùng -3 để lấy tất cả packages (bao gồm system)
-    final flag = includeSystemApps ? '' : '-3';
-    final cmd = 'adb -s $serial shell pm list packages $flag';
-
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText.trim();
+      final result = await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'pm',
+        'list',
+        'packages',
+        if (!includeSystemApps) '-3',
+      ]);
+      final output = (result.stdout as String?)?.trim() ?? '';
 
       if (output.isEmpty) {
         return [];
@@ -152,30 +155,30 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Future<String> getPackageLabel(String serial, String packageName) async {
-    // Sử dụng dumpsys để lấy applicationLabel
-    final cmd =
-        'adb -s $serial shell dumpsys package $packageName | grep -i "applicationLabel"';
-
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText.trim();
+      final result = await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'dumpsys',
+        'package',
+        packageName,
+      ]);
+      final output = (result.stdout as String?) ?? '';
 
-      if (output.isEmpty) {
-        // Fallback: return package name nếu không tìm được label
-        return packageName;
+      if (output.isEmpty) return packageName;
+
+      for (final line in output.split('\n')) {
+        if (line.toLowerCase().contains('applicationlabel')) {
+          final match = RegExp(r'applicationLabel[^=]*=(.+)').firstMatch(line);
+          if (match != null && match.group(1) != null) {
+            return match.group(1)!.trim();
+          }
+        }
       }
 
-      // Output format: "applicationLabel=App Name" hoặc "applicationLabel-en=App Name"
-      // Parse label từ output
-      final match = RegExp(r'applicationLabel[^=]*=(.+)').firstMatch(output);
-      if (match != null && match.group(1) != null) {
-        return match.group(1)!.trim();
-      }
-
-      // Fallback
       return packageName;
-    } catch (e) {
-      // Nếu lỗi, return package name làm label
+    } catch (_) {
       return packageName;
     }
   }
@@ -334,12 +337,21 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     for (final variant in _tikTokVariants) {
       if (!installedPkgs.contains(variant.pkg)) continue;
 
-      // 1. Thử dùng URL scheme chuẩn đã được map với phiên bản TikTok tương ứng
-      final intentCmd =
-          'adb -s $serial shell am start -W -a android.intent.action.VIEW -d ${variant.scheme} -p ${variant.pkg}';
-
       try {
-        await _shell.run(intentCmd);
+        await Process.run('adb', [
+          '-s',
+          serial,
+          'shell',
+          'am',
+          'start',
+          '-W',
+          '-a',
+          'android.intent.action.VIEW',
+          '-d',
+          variant.scheme,
+          '-p',
+          variant.pkg,
+        ]);
       } catch (_) {
         // Bỏ qua lỗi thực thi ADB
       }
@@ -376,11 +388,21 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     for (final variant in _profileVariants) {
       if (!installedPkgs.contains(variant.pkg)) continue;
 
-      final intentCmd =
-          'adb -s $serial shell am start -W -a android.intent.action.VIEW -d ${variant.scheme} -p ${variant.pkg}';
-
       try {
-        await _shell.run(intentCmd);
+        await Process.run('adb', [
+          '-s',
+          serial,
+          'shell',
+          'am',
+          'start',
+          '-W',
+          '-a',
+          'android.intent.action.VIEW',
+          '-d',
+          variant.scheme,
+          '-p',
+          variant.pkg,
+        ]);
       } catch (_) {
         // Bỏ qua lỗi thực thi ADB
       }
