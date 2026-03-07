@@ -11,6 +11,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video_service.dart';
+import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,6 +26,8 @@ class VideoPosterStore = _VideoPosterStore with _$VideoPosterStore;
 
 abstract class _VideoPosterStore with Store {
   final DashboardStore _dashboardStore = inject<DashboardStore>();
+  final RecentColorRepository _recentColorRepo =
+      inject<RecentColorRepository>();
 
   // Initialization flag to prevent re-initialization on hot restart
   bool _isInitialized = false;
@@ -32,6 +35,7 @@ abstract class _VideoPosterStore with Store {
   _VideoPosterStore() {
     if (!_isInitialized) {
       initializePlayer();
+      _loadRecentColors();
       _isInitialized = true;
     }
   }
@@ -49,6 +53,42 @@ abstract class _VideoPosterStore with Store {
   @observable
   ObservableList<CustomTextOverlay> customTexts =
       ObservableList<CustomTextOverlay>();
+
+  // ─── Recently Used Colors ────────────────────────────────────────────────
+
+  static const int _kMaxRecentColors = 8;
+
+  @observable
+  ObservableList<Color> recentTextColors = ObservableList<Color>();
+
+  @observable
+  ObservableList<Color> recentBgColors = ObservableList<Color>();
+
+  void _pushRecentColor(ObservableList<Color> list, Color color) {
+    // Xóa nếu đã tồn tại để tránh duplicate, rồi đưa màu mới lên đầu
+    list.removeWhere((c) => c.toARGB32() == color.toARGB32());
+    list.insert(0, color);
+    if (list.length > _kMaxRecentColors) {
+      list.removeRange(_kMaxRecentColors, list.length);
+    }
+    // Persist ngay sau khi update
+    _saveRecentColors();
+  }
+
+  Future<void> _loadRecentColors() async {
+    final textColors = await _recentColorRepo.getRecentTextColors();
+    final bgColors = await _recentColorRepo.getRecentBgColors();
+    runInAction(() {
+      recentTextColors.addAll(textColors);
+      recentBgColors.addAll(bgColors);
+    });
+  }
+
+  void _saveRecentColors() {
+    // Fire-and-forget: lưu bất đồng bộ, không block UI
+    _recentColorRepo.saveRecentTextColors(recentTextColors.toList());
+    _recentColorRepo.saveRecentBgColors(recentBgColors.toList());
+  }
 
   @observable
   String? selectedCustomTextId;
@@ -137,6 +177,12 @@ abstract class _VideoPosterStore with Store {
       fontFamily: fontFamily,
       rotation: rotation,
     );
+
+    // Ghi lại màu vừa dùng vào danh sách gần đây
+    if (color != null) _pushRecentColor(recentTextColors, color);
+    if (backgroundColor != null) {
+      _pushRecentColor(recentBgColors, backgroundColor);
+    }
   }
 
   // ─── Batch Video Creation ────────────────────────────────────────────────────────

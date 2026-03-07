@@ -452,6 +452,16 @@ class TextPropertiesPanel extends StatelessWidget {
           // ── Text Color ──
           _buildSectionLabel('MÀU CHỮ'),
           const SizedBox(height: 8),
+          if (store.recentTextColors.isNotEmpty) ...[
+            _buildRecentColors(
+              colors: store.recentTextColors.toList(),
+              selectedColor: text.color,
+              onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
+            ),
+            const SizedBox(height: 10),
+            _buildPaletteDivider(),
+            const SizedBox(height: 8),
+          ],
           _buildColorPalette(
             context: context,
             colors: _colorPalette,
@@ -464,6 +474,17 @@ class TextPropertiesPanel extends StatelessWidget {
           // ── Background Color ──
           _buildSectionLabel('MÀU NỀN'),
           const SizedBox(height: 8),
+          if (store.recentBgColors.isNotEmpty) ...[
+            _buildRecentColors(
+              colors: store.recentBgColors.toList(),
+              selectedColor: text.backgroundColor,
+              onSelect: (c) =>
+                  store.updateCustomTextStyle(text.id, backgroundColor: c),
+            ),
+            const SizedBox(height: 10),
+            _buildPaletteDivider(),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               // No background (transparent)
@@ -579,6 +600,37 @@ class TextPropertiesPanel extends StatelessWidget {
     );
   }
 
+  /// Divider ph\u00e2n t\u00e1ch gi\u1eefa m\u00e0u g\u1ea7n \u0111\u00e2y v\u00e0 palette c\u00f3 s\u1eb5n
+  Widget _buildPaletteDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'M\u00c0U C\u00d3 S\u1eb4N',
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+            color: Colors.white24,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSlider({
     required BuildContext context,
     required double value,
@@ -689,6 +741,68 @@ class TextPropertiesPanel extends StatelessWidget {
           }).toList(),
         ),
       ),
+    );
+  }
+
+  /// Hàng màu dùng gần đây — hiển thị dạng chips ngang với nhãn "Gần đây"
+  Widget _buildRecentColors({
+    required List<Color> colors,
+    required Color? selectedColor,
+    required void Function(Color) onSelect,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.history_rounded, size: 10, color: Colors.white30),
+            const SizedBox(width: 4),
+            Text(
+              'GẦN ĐÂY',
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: Colors.white30,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: colors.map((c) {
+            final isSelected =
+                selectedColor != null &&
+                selectedColor.toARGB32() == c.toARGB32();
+            return GestureDetector(
+              onTap: () => onSelect(c),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? _accentColor : Colors.white38,
+                    width: isSelected ? 2.5 : 1.5,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: _accentColor.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

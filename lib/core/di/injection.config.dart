@@ -95,6 +95,8 @@ import '../../features/video_poster/domain/repositories/video_processing_reposit
     as _i427;
 import '../../features/video_poster/domain/services/anti_reup_service.dart'
     as _i154;
+import '../../features/video_poster/data/repositories/recent_color_repository.dart'
+    as _i832;
 import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
 import '../config/settings_config_provider.dart' as _i730;
@@ -113,6 +115,9 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
     gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
+    gh.lazySingleton<_i832.RecentColorRepository>(
+      () => _i832.RecentColorRepository(),
+    );
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
