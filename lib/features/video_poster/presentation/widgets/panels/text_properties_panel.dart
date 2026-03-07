@@ -117,17 +117,42 @@ class TextPropertiesPanel extends StatelessWidget {
     Color(0xFF2F1581), // Deep Purple-20
   ];
 
+  /// Font chia theo nhóm phong cách, ưu tiên các font có Vietnamese subset đầy đủ.
   static const _fontFamilies = <String>[
-    'Roboto',
-    'Montserrat',
-    'Pacifico',
-    'Dancing Script',
-    'Lexend',
-    'Oswald',
-    'Playfair Display',
-    'Kanit',
-    'Bungee',
-    'Satisfy',
+    // ── Sans-serif (hỗ trợ Tiếng Việt tốt nhất) ─────────────────────────────────
+    'Be Vietnam Pro', // Thiết kế riêng cho Tiếng Việt
+    'Noto Sans', // Unicode toàn diện, coverage cao nhất
+    'Inter', // Hiện đại, sạch
+    'Roboto', // Mặc định Android
+    'Nunito', // Thân thiện, bo góc
+    'Lato', // Thanh lịch
+    'Source Sans 3', // Adobe, rõ nét
+    'Open Sans', // Phổ biến, dễ đọc
+    'Barlow', // Hiện đại, gần gũi
+    'DM Sans', // Gọn, tối giản
+    'Lexend', // Tối ưu độ đọc
+    // ── Serif (hỗ trợ Tiếng Việt) ────────────────────────────────────────────
+    'Merriweather', // Báo chí, sang trọng
+    'Playfair Display', // Quý tộc, biển bảng
+    'Lora', // Nhẹ nhàng, sách
+    'Noto Serif', // Serif đầy đủ Unicode
+    // ── Semi-condensed / Bold display ────────────────────────────────────
+    'Montserrat', // Geometric, phổ biến
+    'Oswald', // Condensed, tạo ấn tượng
+    'Raleway', // Tinh tế, thời trang
+    'Barlow Condensed', // Compact, mạnh mẽ
+    'Exo 2', // Kỹ thuật, hiện đại
+    // ── Display / Decorative có Tiếng Việt ─────────────────────────────────
+    'Kanit', // Thái, hỗ trợ ký tự Latin Việt
+    'Quicksand', // Dễ thương, thiết kế
+    'Comfortaa', // Góc cạnh, hiện đại
+    'Righteous', // Bold retro, bảng hiệu
+    'Cabin', // Friendly humanist
+    // ── Script / Cách điệu (hỗ trợ cỡng Latin cũ tiếng Việt hạn chế) ───────────
+    'Dancing Script', // Viết tay, mềm mại
+    'Pacifico', // Retro surf
+    'Satisfy', // Chữ ký
+    'Lobster', // Bold script
   ];
 
   @override
