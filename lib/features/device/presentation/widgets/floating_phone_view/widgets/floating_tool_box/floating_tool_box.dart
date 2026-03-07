@@ -105,6 +105,8 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               onPowerTap: () => _store.sendPowerButton(widget.serial),
               onPosterTap: () => _store.toggleJobSelector(),
               onEmailTap: () => _store.toggleEmailPanel(),
+              onInboxTap: () => _store.openTikTokInbox(widget.serial),
+              onProfileTap: () => _store.openTikTokProfile(widget.serial),
             ),
             if (_store.showJobSelector)
               JobSelectorPanel(

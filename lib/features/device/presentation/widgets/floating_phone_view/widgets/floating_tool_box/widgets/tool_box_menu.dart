@@ -7,6 +7,8 @@ class ToolBoxMenu extends StatelessWidget {
   final VoidCallback onPowerTap;
   final VoidCallback onPosterTap;
   final VoidCallback onEmailTap;
+  final VoidCallback onInboxTap;
+  final VoidCallback onProfileTap;
 
   const ToolBoxMenu({
     super.key,
@@ -15,6 +17,8 @@ class ToolBoxMenu extends StatelessWidget {
     required this.onPowerTap,
     required this.onPosterTap,
     required this.onEmailTap,
+    required this.onInboxTap,
+    required this.onProfileTap,
   });
 
   @override
@@ -73,6 +77,38 @@ class ToolBoxMenu extends StatelessWidget {
                   icon: Icons.mark_email_read_outlined,
                   label: 'Email',
                   onTap: onEmailTap,
+                  isError: false,
+                ),
+          const SizedBox(height: 12),
+          isCollapsed
+              ? _buildIconButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.inbox_rounded,
+                  label: 'Inbox',
+                  onTap: onInboxTap,
+                  isError: false,
+                )
+              : _buildExpandedButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.inbox_rounded,
+                  label: 'Inbox',
+                  onTap: onInboxTap,
+                  isError: false,
+                ),
+          const SizedBox(height: 12),
+          isCollapsed
+              ? _buildIconButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.person_outline_rounded,
+                  label: 'Profile',
+                  onTap: onProfileTap,
+                  isError: false,
+                )
+              : _buildExpandedButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.person_outline_rounded,
+                  label: 'Profile',
+                  onTap: onProfileTap,
                   isError: false,
                 ),
         ],

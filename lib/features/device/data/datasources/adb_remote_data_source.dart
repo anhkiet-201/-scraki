@@ -49,6 +49,16 @@ abstract class IAdbRemoteDataSource {
   /// [serial] - Device serial number
   /// Returns: Tên thiết bị (e.g. "Pixel 6 của Kiệt"), hoặc null nếu không lấy được
   Future<String?> getDeviceName(String serial);
+
+  /// Mở trang Inbox (hộp thư đến) trong TikTok
+  /// Thử lần lượt: Global → Asia → Lite
+  /// [serial] - Device serial number
+  Future<void> openTikTokInbox(String serial);
+
+  /// Mở trang Profile (Hồ sơ) trong TikTok
+  /// Sử dụng Deep Link vào thẳng tab Hồ Sơ (Mine)
+  /// [serial] - Device serial number
+  Future<void> openTikTokProfile(String serial);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -277,5 +287,91 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Cấu hình chính xác Scheme mở Inbox (Notification) cho từng phiên bản TikTok
+  /// Gán tĩnh theo từng package để tránh lỗi app nhận bừa Scheme nhưng không chuyển tab.
+  static const _tikTokVariants = [
+    (
+      pkg: 'com.zhiliaoapp.musically', // Global
+      scheme: 'snssdk1233://notification',
+    ),
+    (
+      pkg: 'com.ss.android.ugc.trill', // Asia
+      scheme: 'snssdk1180://notification',
+    ),
+    (
+      pkg: 'com.zhiliaoapp.musically.go', // Global Lite
+      scheme: 'snssdk1180://notification', // User confirmed
+    ),
+    (
+      pkg: 'com.ss.android.ugc.trillgo', // Asia Lite
+      scheme: 'snssdk1180://notification',
+    ),
+  ];
+
+  @override
+  Future<void> openTikTokInbox(String serial) async {
+    // Lấy trước danh sách package chính xác đã cài để check Exact Match
+    // Tránh lỗi pm list search theo Substring (vd: tìm musically ra luôn musically.go)
+    final installedPkgs = await getInstalledPackages(serial);
+
+    for (final variant in _tikTokVariants) {
+      if (!installedPkgs.contains(variant.pkg)) continue;
+
+      // 1. Thử dùng URL scheme chuẩn đã được map với phiên bản TikTok tương ứng
+      final intentCmd =
+          'adb -s $serial shell am start -W -a android.intent.action.VIEW -d ${variant.scheme} -p ${variant.pkg}';
+
+      try {
+        await _shell.run(intentCmd);
+      } catch (_) {
+        // Bỏ qua lỗi thực thi ADB
+      }
+      return;
+    }
+
+    throw ServerException('TikTok is not installed on device $serial');
+  }
+
+  /// Cấu hình chính xác Scheme mở Profile (Hồ sơ) cho từng phiên bản TikTok
+  static const _profileVariants = [
+    (
+      pkg: 'com.zhiliaoapp.musically', // Global
+      scheme: 'snssdk1233://profile',
+    ),
+    (
+      pkg: 'com.ss.android.ugc.trill', // Asia
+      scheme: 'snssdk1180://profile',
+    ),
+    (
+      pkg: 'com.zhiliaoapp.musically.go', // Global Lite
+      scheme: 'snssdk1180://profile',
+    ),
+    (
+      pkg: 'com.ss.android.ugc.trillgo', // Asia Lite
+      scheme: 'snssdk1180://profile',
+    ),
+  ];
+
+  @override
+  Future<void> openTikTokProfile(String serial) async {
+    final installedPkgs = await getInstalledPackages(serial);
+
+    for (final variant in _profileVariants) {
+      if (!installedPkgs.contains(variant.pkg)) continue;
+
+      final intentCmd =
+          'adb -s $serial shell am start -W -a android.intent.action.VIEW -d ${variant.scheme} -p ${variant.pkg}';
+
+      try {
+        await _shell.run(intentCmd);
+      } catch (_) {
+        // Bỏ qua lỗi thực thi ADB
+      }
+      return;
+    }
+
+    throw ServerException('TikTok is not installed on device $serial');
   }
 }

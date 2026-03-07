@@ -63,6 +63,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$recentTextColorsAtom = Atom(
+    name: '_VideoPosterStore.recentTextColors',
+    context: context,
+  );
+
+  @override
+  ObservableList<ui.Color> get recentTextColors {
+    _$recentTextColorsAtom.reportRead();
+    return super.recentTextColors;
+  }
+
+  @override
+  set recentTextColors(ObservableList<ui.Color> value) {
+    _$recentTextColorsAtom.reportWrite(value, super.recentTextColors, () {
+      super.recentTextColors = value;
+    });
+  }
+
+  late final _$recentBgColorsAtom = Atom(
+    name: '_VideoPosterStore.recentBgColors',
+    context: context,
+  );
+
+  @override
+  ObservableList<ui.Color> get recentBgColors {
+    _$recentBgColorsAtom.reportRead();
+    return super.recentBgColors;
+  }
+
+  @override
+  set recentBgColors(ObservableList<ui.Color> value) {
+    _$recentBgColorsAtom.reportWrite(value, super.recentBgColors, () {
+      super.recentBgColors = value;
+    });
+  }
+
   late final _$selectedCustomTextIdAtom = Atom(
     name: '_VideoPosterStore.selectedCustomTextId',
     context: context,
@@ -500,6 +536,8 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
 sourceVideoPaths: ${sourceVideoPaths},
 currentVideoIndex: ${currentVideoIndex},
 customTexts: ${customTexts},
+recentTextColors: ${recentTextColors},
+recentBgColors: ${recentBgColors},
 selectedCustomTextId: ${selectedCustomTextId},
 batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},

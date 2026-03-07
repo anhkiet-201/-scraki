@@ -57,6 +57,30 @@ mixin _$FloatingToolBoxStore on _FloatingToolBoxStore, Store {
     );
   }
 
+  late final _$openTikTokInboxAsyncAction = AsyncAction(
+    '_FloatingToolBoxStore.openTikTokInbox',
+    context: context,
+  );
+
+  @override
+  Future<void> openTikTokInbox(String serial) {
+    return _$openTikTokInboxAsyncAction.run(
+      () => super.openTikTokInbox(serial),
+    );
+  }
+
+  late final _$openTikTokProfileAsyncAction = AsyncAction(
+    '_FloatingToolBoxStore.openTikTokProfile',
+    context: context,
+  );
+
+  @override
+  Future<void> openTikTokProfile(String serial) {
+    return _$openTikTokProfileAsyncAction.run(
+      () => super.openTikTokProfile(serial),
+    );
+  }
+
   late final _$_FloatingToolBoxStoreActionController = ActionController(
     name: '_FloatingToolBoxStore',
     context: context,

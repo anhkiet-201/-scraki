@@ -61,4 +61,24 @@ abstract class _FloatingToolBoxStore with Store {
       // Tạm thời ignore error
     }
   }
+
+  /// Mở trang Inbox TikTok qua ADB intent (Global / Asia / Lite).
+  @action
+  Future<void> openTikTokInbox(String serial) async {
+    try {
+      await _adbDataSource.openTikTokInbox(serial);
+    } catch (_) {
+      // Ignore nếu TikTok chưa cài
+    }
+  }
+
+  /// Mở trang Profile TikTok qua ADB intent (Global / Asia / Lite).
+  @action
+  Future<void> openTikTokProfile(String serial) async {
+    try {
+      await _adbDataSource.openTikTokProfile(serial);
+    } catch (_) {
+      // Ignore nếu TikTok chưa cài
+    }
+  }
 }
