@@ -16,6 +16,7 @@ import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
+import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
 
 part 'phone_view_store.g.dart';
 
@@ -59,6 +60,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final ITikTokPostService _tikTokService = getIt<ITikTokPostService>();
+  final IAdbRemoteDataSource _adbDataSource = getIt<IAdbRemoteDataSource>();
   final String serial;
   final bool isFloatingView;
 
@@ -500,6 +502,11 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     );
 
     _workerManager.sendControl(sessionId, message.serialize());
+  }
+
+  void sendKeyByAdb(int keyCode) {
+    if (keyCode == 0) return;
+    _adbDataSource.sendKeyEvent(serial, keyCode);
   }
 
   int _getAndroidMetaState() {

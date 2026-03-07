@@ -36,6 +36,11 @@ abstract class IAdbRemoteDataSource {
   /// [serial] - Device serial number
   Future<void> sendPowerKey(String serial);
 
+  /// Gửi keycode bất kỳ qua ADB (dùng giả lập Navigation Buttons khi control disabled)
+  /// [serial] - Device serial number
+  /// [keyCode] - Mã phím Android KeyEvent
+  Future<void> sendKeyEvent(String serial, int keyCode);
+
   /// Dump ui and extract email
   /// [serial] - Device serial number
   Future<String?> dumpUiAndExtractEmail(String serial);
@@ -206,6 +211,16 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       await _shell.run(cmd);
     } catch (e) {
       throw ServerException('Failed to send power key: $e');
+    }
+  }
+
+  @override
+  Future<void> sendKeyEvent(String serial, int keyCode) async {
+    final cmd = 'adb -s $serial shell input keyevent $keyCode';
+    try {
+      await _shell.run(cmd);
+    } catch (e) {
+      // Ignored for non-critical navigation keys
     }
   }
 

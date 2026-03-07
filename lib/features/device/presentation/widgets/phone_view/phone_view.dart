@@ -276,11 +276,7 @@ class _PhoneViewState extends State<PhoneView> {
             ),
           ),
         ),
-        MirrorNavigationBar(
-          store: _store,
-          isEnabled: widget.isFloating,
-          isFloating: widget.isFloating,
-        ),
+        MirrorNavigationBar(store: _store, isFloating: widget.isFloating),
       ],
     );
   }

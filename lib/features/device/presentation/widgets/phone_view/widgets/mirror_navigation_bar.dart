@@ -23,7 +23,9 @@ class MirrorNavigationBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      height: isFloating ? UIConstants.floatingNavigationBarHeight : UIConstants.gridNavigationBarHeight,
+      height: isFloating
+          ? UIConstants.floatingNavigationBarHeight
+          : UIConstants.gridNavigationBarHeight,
       decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerLow),
       child: Column(
         children: [
@@ -85,6 +87,11 @@ class _NavigationButton extends StatelessWidget {
   });
 
   void _onTap() {
+    if (!isFloating) {
+      store.sendKeyByAdb(keyCode);
+      return;
+    }
+
     // Send keydown
     store.sendKey(store.serial, keyCode, 0);
 
@@ -106,8 +113,12 @@ class _NavigationButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: UIConstants.hoverAnimationDuration,
           padding: EdgeInsets.symmetric(
-            horizontal: isFloating ? UIConstants.floatingNavButtonPaddingHorizontal : UIConstants.gridNavButtonPaddingHorizontal,
-            vertical: isFloating ? UIConstants.floatingNavButtonPaddingVertical : UIConstants.gridNavButtonPaddingVertical,
+            horizontal: isFloating
+                ? UIConstants.floatingNavButtonPaddingHorizontal
+                : UIConstants.gridNavButtonPaddingHorizontal,
+            vertical: isFloating
+                ? UIConstants.floatingNavButtonPaddingVertical
+                : UIConstants.gridNavButtonPaddingVertical,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(UIConstants.buttonBorderRadius),
@@ -123,8 +134,12 @@ class _NavigationButton extends StatelessWidget {
                       : theme.colorScheme.onSurfaceVariant)
                 : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             size: isPrimary
-                ? (isFloating ? UIConstants.floatingNavButtonIconSizePrimary : UIConstants.gridNavButtonIconSizePrimary)
-                : (isFloating ? UIConstants.floatingNavButtonIconSize : UIConstants.gridNavButtonIconSize),
+                ? (isFloating
+                      ? UIConstants.floatingNavButtonIconSizePrimary
+                      : UIConstants.gridNavButtonIconSizePrimary)
+                : (isFloating
+                      ? UIConstants.floatingNavButtonIconSize
+                      : UIConstants.gridNavButtonIconSize),
           ),
         ),
       ),
