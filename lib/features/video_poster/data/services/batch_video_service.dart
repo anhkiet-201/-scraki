@@ -688,12 +688,10 @@ class BatchVideoService {
       ];
 
       // Build overlay inputs dynamically
-      int inputIndexOffset = 1; // 0 is concat video
 
       // 1. Text Overlay (if exists)
       if (overlayFile != null) {
         ffmpegArgs.addAll(['-loop', '1', '-i', overlayFile.absolute.path]);
-        inputIndexOffset++;
       }
 
       // 2. Custom Images & GIFs
@@ -713,7 +711,6 @@ class BatchVideoService {
             img.localPath ?? img.imageUrl,
           ]);
         }
-        inputIndexOffset++;
       }
 
       // 3. Build complex filter
