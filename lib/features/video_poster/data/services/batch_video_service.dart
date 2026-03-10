@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
+
 // ============================================================================
 // BatchVideoService — Cross-platform Dart reimplementation of make-vid.sh
 // Works on macOS & Windows by calling ffmpeg/ffprobe via dart:io Process.
@@ -19,6 +21,7 @@ class BatchVideoConfig {
   final int outputCount;
   final String? outputDir; // null = auto-generate with timestamp
   final Uint8List? overlayBytes;
+  final List<CustomImageOverlay> imageOverlays;
 
   const BatchVideoConfig({
     this.minSegmentDuration = 4,
@@ -29,6 +32,7 @@ class BatchVideoConfig {
     this.outputCount = 10,
     this.outputDir,
     this.overlayBytes,
+    this.imageOverlays = const [],
   });
 }
 
@@ -683,24 +687,124 @@ class BatchVideoService {
         concatFile.path,
       ];
 
+      // Build overlay inputs dynamically
+      int inputIndexOffset = 1; // 0 is concat video
+
+      // 1. Text Overlay (if exists)
       if (overlayFile != null) {
+        ffmpegArgs.addAll(['-loop', '1', '-i', overlayFile.absolute.path]);
+        inputIndexOffset++;
+      }
+
+      // 2. Custom Images & GIFs
+      for (var img in config.imageOverlays) {
+        if (img.isGif) {
+          ffmpegArgs.addAll([
+            '-ignore_loop',
+            '0',
+            '-i',
+            img.localPath ?? img.imageUrl,
+          ]);
+        } else {
+          ffmpegArgs.addAll([
+            '-loop',
+            '1',
+            '-i',
+            img.localPath ?? img.imageUrl,
+          ]);
+        }
+        inputIndexOffset++;
+      }
+
+      // 3. Build complex filter
+      final hasOverlays =
+          overlayFile != null || config.imageOverlays.isNotEmpty;
+
+      if (hasOverlays) {
+        StringBuffer filterComplex = StringBuffer();
+
+        // Background setup
+        filterComplex.write(
+          '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,',
+        );
+        filterComplex.write('crop=1080:1920,');
+        filterComplex.write(
+          'eq=brightness=$brightnessStr:contrast=$contrastStr,',
+        );
+        filterComplex.write('noise=alls=$noiseStr:allf=t,');
+        filterComplex.write('setpts=${ptsStr}*PTS[bg];');
+
+        int currentInputIdx = 1; // Start from 1 because 0 is bg video
+        String lastVideoLabel = '[bg]';
+
+        // 3a. Overlay Text
+        if (overlayFile != null) {
+          filterComplex.write(
+            '$lastVideoLabel[$currentInputIdx:v]overlay=0:0:shortest=1[ov$currentInputIdx];',
+          );
+          lastVideoLabel = '[ov$currentInputIdx]';
+          currentInputIdx++;
+        }
+
+        // 3b. Overlay Custom Images
+        for (int i = 0; i < config.imageOverlays.length; i++) {
+          var imgConfig = config.imageOverlays[i];
+
+          // Convert coordinates
+          // x, y are normalized [0..1].
+          // width, height are absolute logical pixels in 720x1280.
+          // video is 1080x1920, so ratio is 1.5x
+          final int targetW = (imgConfig.width * 1.5).round();
+          final int targetH = (imgConfig.height * 1.5).round();
+          final int targetX = (imgConfig.x * 1080 - targetW / 2).round();
+          final int targetY = (imgConfig.y * 1920 - targetH / 2).round();
+
+          // Handle rotation if any (simplified: we just scale for now to keep things robust,
+          // but we can add rotation filter if needed. `rotate=a=rad` requires padding)
+
+          String scaleLabel = '[scaled$currentInputIdx]';
+          filterComplex.write(
+            '[$currentInputIdx:v]scale=$targetW:$targetH[scaled$currentInputIdx];',
+          );
+
+          String nextVideoLabel = '[ov$currentInputIdx]';
+          // If it's the last overlay, name it [outv]
+          if (i == config.imageOverlays.length - 1) {
+            nextVideoLabel = '[outv]';
+          }
+
+          // Overlay command
+          String shortestFlag = imgConfig.isGif
+              ? ':shortest=1'
+              : ''; // usually GIFs don't force shortest but it's safe if we want background to end
+          filterComplex.write(
+            '$lastVideoLabel$scaleLabel'
+            'overlay=$targetX:$targetY$shortestFlag$nextVideoLabel;',
+          );
+
+          lastVideoLabel = nextVideoLabel;
+          currentInputIdx++;
+        }
+
+        // If only text was added, we need to map the last ov to outv
+        if (config.imageOverlays.isEmpty && overlayFile != null) {
+          // We named it ov$currentInputIdx earlier but it's the last, let's fix it simply:
+          String correctedFilter = filterComplex.toString().replaceAll(
+            '[ov1];',
+            '[outv];',
+          );
+          filterComplex = StringBuffer(correctedFilter);
+        }
+
+        // Remove trailing semicolon
+        String fStr = filterComplex.toString();
+        if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
+
         ffmpegArgs.addAll([
-          '-loop',
-          '1',
-          '-i',
-          overlayFile.absolute.path,
-          // Only process video in filter_complex — audio handled separately
-          // to avoid crash when source has no audio stream
           '-filter_complex',
-          '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
-              'crop=1080:1920,'
-              'eq=brightness=$brightnessStr:contrast=$contrastStr,'
-              'noise=alls=$noiseStr:allf=t,'
-              'setpts=${ptsStr}*PTS[bg];'
-              '[bg][1:v]overlay=0:0:shortest=1[outv]',
+          fStr,
           '-map',
           '[outv]',
-          // Optional audio: skipped gracefully if no audio stream exists
           '-map',
           '0:a?',
           '-af',

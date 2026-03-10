@@ -114,26 +114,26 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
-    gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
     );
+    gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
+    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
+    gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
+    gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
+    gh.lazySingleton<_i607.ScrcpySocketClient>(
+      () => _i607.ScrcpySocketClient(),
+    );
+    gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
     gh.lazySingleton<_i763.RecentColorRepository>(
       () => _i763.RecentColorRepository(),
     );
     gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
-    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
-    gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
-    gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
-    gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
-    gh.lazySingleton<_i607.ScrcpySocketClient>(
-      () => _i607.ScrcpySocketClient(),
-    );
     gh.lazySingleton<_i260.IAkiRemoteService>(() => _i109.AkiRemoteService());
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
@@ -218,17 +218,17 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i891.DashboardStore>(),
       ),
     );
+    gh.lazySingleton<_i420.FetchJobsUseCase>(
+      () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
+    );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
-      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
     gh.lazySingleton<_i405.ParseJobTextUseCase>(
       () => _i405.ParseJobTextUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i420.FetchJobsUseCase>(
-      () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
+    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
+      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
     gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(

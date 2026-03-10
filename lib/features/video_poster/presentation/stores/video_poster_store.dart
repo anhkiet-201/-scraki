@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
@@ -13,6 +16,7 @@ import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.da
 import 'package:scraki/features/video_poster/data/services/batch_video_service.dart';
 import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
+import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
 import 'package:uuid/uuid.dart';
 
 part 'video_poster_store.g.dart';
@@ -54,6 +58,72 @@ abstract class _VideoPosterStore with Store {
   ObservableList<CustomTextOverlay> customTexts =
       ObservableList<CustomTextOverlay>();
 
+  // ─── Custom Image Overlays ────────────────────────────────────────────────
+
+  @observable
+  ObservableList<CustomImageOverlay> customImages =
+      ObservableList<CustomImageOverlay>();
+
+  @observable
+  String? selectedCustomImageId;
+
+  @action
+  void addCustomImage(
+    String imageUrl,
+    double x,
+    double y, {
+    bool isGif = false,
+  }) {
+    final id = const Uuid().v4();
+    customImages.add(
+      CustomImageOverlay(id: id, imageUrl: imageUrl, isGif: isGif, x: x, y: y),
+    );
+    // Auto-select the newly created image
+    selectedCustomImageId = id;
+    // Deselect text if any
+    selectedCustomTextId = null;
+  }
+
+  @action
+  void removeCustomImage(String id) {
+    customImages.removeWhere((i) => i.id == id);
+    if (selectedCustomImageId == id) {
+      selectedCustomImageId = null;
+    }
+  }
+
+  @action
+  void selectCustomImage(String? id) {
+    if (id != null) {
+      selectedCustomTextId = null; // deselect text if selecting image
+    }
+    selectedCustomImageId = id;
+  }
+
+  @action
+  void updateCustomImagePosition(String id, double x, double y) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(x: x, y: y);
+  }
+
+  @action
+  void updateCustomImageSize(String id, double width, double height) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(
+      width: width.clamp(20.0, 1000.0),
+      height: height.clamp(20.0, 1000.0),
+    );
+  }
+
+  @action
+  void updateCustomImageLocalPath(String id, String path) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(localPath: path);
+  }
+
   // ─── Recently Used Colors ────────────────────────────────────────────────
 
   static const int _kMaxRecentColors = 8;
@@ -91,6 +161,9 @@ abstract class _VideoPosterStore with Store {
   }
 
   @observable
+  bool isHidingImagesForCapture = false;
+
+  @observable
   String? selectedCustomTextId;
 
   @action
@@ -107,6 +180,7 @@ abstract class _VideoPosterStore with Store {
     );
     // Auto-select the newly created text
     selectedCustomTextId = id;
+    selectedCustomImageId = null;
   }
 
   @action
@@ -119,6 +193,9 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void selectCustomText(String? id) {
+    if (id != null) {
+      selectedCustomImageId = null; // deselect image if selecting text
+    }
     selectedCustomTextId = id;
   }
 
@@ -235,9 +312,25 @@ abstract class _VideoPosterStore with Store {
       batchLogs.add('🖼️ Đã chụp Text Overlay thành công.');
     }
 
+    // Download network images if needed
+    for (int i = 0; i < customImages.length; i++) {
+      var img = customImages[i];
+      if (img.imageUrl.startsWith('http')) {
+        batchLogs.add('⬇️ Đang tải ảnh ${i + 1}/${customImages.length}...');
+        try {
+          String ext = img.isGif ? '.gif' : '.png';
+          String path = await _downloadNetworkImage(img.imageUrl, ext);
+          customImages[i] = img.copyWith(localPath: path);
+        } catch (e) {
+          batchLogs.add('❌ Lỗi tải ảnh: $e');
+        }
+      }
+    }
+
     final config = BatchVideoConfig(
       outputCount: batchOutputCount,
       overlayBytes: overlayBytes,
+      imageOverlays: customImages.toList(),
     );
 
     final stream = _batchService!.createBatchVideos(
@@ -426,6 +519,7 @@ abstract class _VideoPosterStore with Store {
   void resetProject() {
     sourceVideoPaths.clear();
     customTexts.clear();
+    customImages.clear();
     currentVideoIndex = 0;
     player.stop();
 
@@ -464,9 +558,11 @@ abstract class _VideoPosterStore with Store {
         throw 'Please add at least one text or video element before exporting.';
       }
 
-      // Deselect all overlays to hide handles before capture
-      final previousSelection = selectedCustomTextId;
+      final previousTextSelection = selectedCustomTextId;
+      final previousImageSelection = selectedCustomImageId;
       selectCustomText(null);
+      selectCustomImage(null);
+      isHidingImagesForCapture = true;
 
       // Wait until all Google Fonts have finished loading
       await GoogleFonts.pendingFonts();
@@ -484,8 +580,12 @@ abstract class _VideoPosterStore with Store {
       final image = await renderObject.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
+      isHidingImagesForCapture = false;
       // Restore selection
-      selectCustomText(previousSelection);
+      if (previousTextSelection != null)
+        selectCustomText(previousTextSelection);
+      if (previousImageSelection != null)
+        selectCustomImage(previousImageSelection);
 
       if (byteData == null) throw 'Failed to encode overlay image.';
 
@@ -494,5 +594,18 @@ abstract class _VideoPosterStore with Store {
       debugPrint('Error capturing preview: $e');
       rethrow;
     }
+  }
+
+  Future<String> _downloadNetworkImage(String url, String ext) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File(
+        '${tempDir.path}/temp_img_${DateTime.now().millisecondsSinceEpoch}$ext',
+      );
+      await tempFile.writeAsBytes(response.bodyBytes);
+      return tempFile.path;
+    }
+    throw 'HTTP ${response.statusCode}';
   }
 }

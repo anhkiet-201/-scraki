@@ -63,6 +63,46 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$customImagesAtom = Atom(
+    name: '_VideoPosterStore.customImages',
+    context: context,
+  );
+
+  @override
+  ObservableList<CustomImageOverlay> get customImages {
+    _$customImagesAtom.reportRead();
+    return super.customImages;
+  }
+
+  @override
+  set customImages(ObservableList<CustomImageOverlay> value) {
+    _$customImagesAtom.reportWrite(value, super.customImages, () {
+      super.customImages = value;
+    });
+  }
+
+  late final _$selectedCustomImageIdAtom = Atom(
+    name: '_VideoPosterStore.selectedCustomImageId',
+    context: context,
+  );
+
+  @override
+  String? get selectedCustomImageId {
+    _$selectedCustomImageIdAtom.reportRead();
+    return super.selectedCustomImageId;
+  }
+
+  @override
+  set selectedCustomImageId(String? value) {
+    _$selectedCustomImageIdAtom.reportWrite(
+      value,
+      super.selectedCustomImageId,
+      () {
+        super.selectedCustomImageId = value;
+      },
+    );
+  }
+
   late final _$recentTextColorsAtom = Atom(
     name: '_VideoPosterStore.recentTextColors',
     context: context,
@@ -311,6 +351,83 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   );
 
   @override
+  void addCustomImage(
+    String imageUrl,
+    double x,
+    double y, {
+    bool isGif = false,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.addCustomImage',
+    );
+    try {
+      return super.addCustomImage(imageUrl, x, y, isGif: isGif);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void removeCustomImage(String id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.removeCustomImage',
+    );
+    try {
+      return super.removeCustomImage(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void selectCustomImage(String? id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.selectCustomImage',
+    );
+    try {
+      return super.selectCustomImage(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomImagePosition(String id, double x, double y) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImagePosition',
+    );
+    try {
+      return super.updateCustomImagePosition(id, x, y);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomImageSize(String id, double width, double height) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImageSize',
+    );
+    try {
+      return super.updateCustomImageSize(id, width, height);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomImageLocalPath(String id, String path) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImageLocalPath',
+    );
+    try {
+      return super.updateCustomImageLocalPath(id, path);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void addCustomText() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.addCustomText',
@@ -536,6 +653,8 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
 sourceVideoPaths: ${sourceVideoPaths},
 currentVideoIndex: ${currentVideoIndex},
 customTexts: ${customTexts},
+customImages: ${customImages},
+selectedCustomImageId: ${selectedCustomImageId},
 recentTextColors: ${recentTextColors},
 recentBgColors: ${recentBgColors},
 selectedCustomTextId: ${selectedCustomTextId},

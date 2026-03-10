@@ -5,14 +5,17 @@ import 'package:get_it/get_it.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/video_overlay_item.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/preview/image_overlay_item/image_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/controls/floating_glass_controls.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/media_library_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/text_properties_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/batch_video_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/image_library_panel.dart';
 
 /// Nav tab index constants
 const int _kNavMedia = 0;
 const int _kNavText = 1;
+const int _kNavImage = 2;
 
 class VideoPosterPlaygroundPage extends StatefulWidget {
   const VideoPosterPlaygroundPage({super.key});
@@ -84,13 +87,19 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                               SizedBox(
                                 width: 300,
                                 child: Observer(
-                                  builder: (_) =>
-                                      store.activeNavIndex == _kNavText
-                                      ? TextPropertiesPanel(store: store)
-                                      : MediaLibraryPanel(
-                                          store: store,
-                                          onVideoTap: store.playVideoAtIndex,
-                                        ),
+                                  builder: (_) {
+                                    if (store.activeNavIndex == _kNavText) {
+                                      return TextPropertiesPanel(store: store);
+                                    } else if (store.activeNavIndex ==
+                                        _kNavImage) {
+                                      return ImageLibraryPanel(store: store);
+                                    } else {
+                                      return MediaLibraryPanel(
+                                        store: store,
+                                        onVideoTap: store.playVideoAtIndex,
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
 
@@ -276,6 +285,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           _buildNavIcon(_kNavMedia, Icons.inventory_2_outlined, 'MEDIA'),
           const SizedBox(height: 4),
           _buildNavIcon(_kNavText, Icons.text_fields_rounded, 'TEXT'),
+          const SizedBox(height: 4),
+          _buildNavIcon(_kNavImage, Icons.image_outlined, 'IMAGES'),
         ],
       ),
     );
@@ -386,10 +397,77 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                   children: [
                                     // Transparent background — shows video below
                                     Positioned.fill(
-                                      child: Container(
-                                        color: Colors.transparent,
+                                      child: DragTarget<Map<String, dynamic>>(
+                                        onAcceptWithDetails: (details) {
+                                          final renderBox =
+                                              store.previewKey.currentContext
+                                                      ?.findRenderObject()
+                                                  as RenderBox?;
+                                          if (renderBox != null) {
+                                            final localOffset = renderBox
+                                                .globalToLocal(details.offset);
+
+                                            // DragDraggable in ImageLibraryPanel had 100x100 size for feedback
+                                            // Adjust center offset by half size
+                                            final adjustedX =
+                                                (localOffset.dx + 50) /
+                                                renderBox.size.width;
+                                            final adjustedY =
+                                                (localOffset.dy + 50) /
+                                                renderBox.size.height;
+
+                                            final x = adjustedX.clamp(0.0, 1.0);
+                                            final y = adjustedY.clamp(0.0, 1.0);
+
+                                            final data = details.data;
+                                            store.addCustomImage(
+                                              data['url'] as String,
+                                              x,
+                                              y,
+                                              isGif: data['isGif'] as bool,
+                                            );
+                                          }
+                                        },
+                                        builder:
+                                            (
+                                              context,
+                                              candidateData,
+                                              rejectedData,
+                                            ) {
+                                              return Container(
+                                                color: candidateData.isNotEmpty
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.1,
+                                                      )
+                                                    : Colors.transparent,
+                                              );
+                                            },
                                       ),
                                     ),
+
+                                    // Custom Image Overlays
+                                    if (!store.isHidingImagesForCapture)
+                                      ...store.customImages.map(
+                                        (image) => ImageOverlayItem(
+                                          key: ValueKey(image.id),
+                                          id: image.id,
+                                          imageUrl: image.imageUrl,
+                                          isGif: image.isGif,
+                                          x: image.x,
+                                          y: image.y,
+                                          width: image.width,
+                                          height: image.height,
+                                          rotation: image.rotation,
+                                          constraints: virtualConstraints,
+                                          isSelected:
+                                              store.selectedCustomImageId ==
+                                              image.id,
+                                          onPositionUpdate:
+                                              store.updateCustomImagePosition,
+                                          onSelect: store.selectCustomImage,
+                                          onResize: store.updateCustomImageSize,
+                                        ),
+                                      ),
 
                                     // Free-form custom text overlays
                                     ...store.customTexts.map(
