@@ -90,40 +90,33 @@ abstract class _ImageOverlayItemStore with Store {
     required double multiplierX, // -1: left, 1: right, 0: mid
     required double multiplierY, // -1: top, 1: bottom, 0: mid
   }) {
-    // Resize by directly modifying width/height constraints based on pan delta
     final dx = details.delta.dx;
     final dy = details.delta.dy;
-
-    // Scale proportionally if dragged from a corner
-    bool proportional = multiplierX != 0 && multiplierY != 0;
 
     double newWidth = width;
     double newHeight = height;
 
+    // Thay đổi width nếu kéo cạnh hoặc góc có trục X
     if (multiplierX != 0) {
-      newWidth = width + (multiplierX * dx);
-      if (proportional) {
-        // maintain ratio
-        newHeight = newWidth * (height / width);
-      }
+      newWidth = width + multiplierX * dx;
     }
-    if (multiplierY != 0 && !proportional) {
-      newHeight = height + (multiplierY * dy);
+    // Thay đổi height nếu kéo cạnh hoặc góc có trục Y
+    if (multiplierY != 0) {
+      newHeight = height + multiplierY * dy;
     }
 
     newWidth = newWidth.clamp(20.0, 1000.0);
     newHeight = newHeight.clamp(20.0, 1000.0);
 
-    // Calc diff to maintain anchor
     final dW = newWidth - width;
     final dH = newHeight - height;
 
-    if (dW.abs() < 0.1 && dH.abs() < 0.1) return;
+    if (dW.abs() < 0.01 && dH.abs() < 0.01) return;
 
     updateSize(newWidth, newHeight);
     onResize(id, newWidth, newHeight);
 
-    // Shift X/Y based on the anchor that resized
+    // Dịch chuyển tâm sao cho anchor góc đối diện không di chuyển
     final newX = (x + (multiplierX * dW / 2) / constraints.maxWidth).clamp(
       0.0,
       1.0,

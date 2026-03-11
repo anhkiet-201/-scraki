@@ -349,6 +349,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             builder: (context, constraints) {
               return Stack(
                 fit: StackFit.expand,
+                clipBehavior: Clip.none,
                 children: [
                   // Video Preview
                   Observer(
@@ -377,6 +378,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   Positioned.fill(
                     child: FittedBox(
                       fit: BoxFit.contain,
+                      clipBehavior: Clip.none,
                       child: SizedBox(
                         width: 720,
                         height: 1280,
@@ -391,9 +393,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
 
                               return GestureDetector(
                                 // Deselect when tapping blank area
-                                onTap: () => store.selectCustomText(null),
-                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  store.selectCustomText(null);
+                                  store.selectCustomImage(null);
+                                },
+                                behavior: HitTestBehavior.translucent,
                                 child: Stack(
+                                  clipBehavior: Clip.none,
                                   children: [
                                     // Transparent background — shows video below
                                     Positioned.fill(

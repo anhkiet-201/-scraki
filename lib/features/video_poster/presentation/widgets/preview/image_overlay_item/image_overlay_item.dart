@@ -72,7 +72,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
     if (widget.imageUrl.startsWith('http')) {
       return Image.network(
         widget.imageUrl,
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return const Center(child: CircularProgressIndicator());
@@ -81,12 +81,11 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
             const Icon(Icons.error, color: Colors.red),
       );
     } else if (widget.imageUrl.startsWith('assets/')) {
-      return Image.asset(widget.imageUrl, fit: BoxFit.contain);
+      return Image.asset(widget.imageUrl, fit: BoxFit.fill);
     } else {
-      // Fallback for local file path
       return Image.file(
         File(widget.imageUrl),
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         errorBuilder: (context, error, stackTrace) =>
             const Icon(Icons.error, color: Colors.blue),
       );
@@ -97,73 +96,97 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
   Widget build(BuildContext context) {
     const accentColor = Color(0xFF6366F1);
     const hoverColor = Color(0xFF818CF8);
+    // Padding nội bộ giúp handle góc luôn nằm trong bounds của SizedBox
+    const pad = 16.0;
 
     return Observer(
       builder: (context) {
         final left = _store.x * _store.constraints.maxWidth;
         final top = _store.y * _store.constraints.maxHeight;
+        final w = _store.width;
+        final h = _store.height;
 
         return Positioned(
           left: left,
           top: top,
           child: FractionalTranslation(
             translation: const Offset(-0.5, -0.5),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _store.handleSelect,
-              onPanStart: (_) {
-                _store.setInteracting(true);
-                if (!_store.isSelected) _store.handleSelect();
-              },
-              onPanUpdate: _store.handleDrag,
-              onPanEnd: (_) => _store.setInteracting(false),
-              onPanCancel: () => _store.setInteracting(false),
-              child: MouseRegion(
-                onEnter: (_) => _store.setHovered(true),
-                onExit: (_) => _store.setHovered(false),
-                cursor: SystemMouseCursors.move,
-                child: Transform.rotate(
-                  angle: widget.rotation * (3.141592653589793 / 180),
+            child: MouseRegion(
+              onEnter: (_) => _store.setHovered(true),
+              onExit: (_) => _store.setHovered(false),
+              child: Transform.rotate(
+                angle: widget.rotation * (3.141592653589793 / 180),
+                child: SizedBox(
+                  // SizedBox lớn hơn ảnh 2*pad mỗi chiều
+                  // Handle tại góc (0,0) chính xác bằng với góc ảnh
+                  width: w + pad * 2,
+                  height: h + pad * 2,
                   child: Stack(
-                    clipBehavior: Clip.none,
                     children: [
-                      // Main Image Content Box
-                      AnimatedContainer(
-                        key: _store.contentKey,
-                        duration: _store.isInteracting
-                            ? Duration.zero
-                            : const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        width: _store.width,
-                        height: _store.height,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _store.isSelected
-                                ? accentColor
-                                : (_store.isHovered
-                                      ? hoverColor.withValues(alpha: 0.5)
-                                      : Colors.transparent),
-                            width: _store.isSelected ? 2 : 1,
+                      // ── Ảnh nằm tại (pad, pad) bên trong SizedBox ──
+                      Positioned(
+                        top: pad,
+                        left: pad,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _store.handleSelect,
+                          onPanStart: (_) {
+                            _store.setInteracting(true);
+                            if (!_store.isSelected) _store.handleSelect();
+                          },
+                          onPanUpdate: _store.handleDrag,
+                          onPanEnd: (_) => _store.setInteracting(false),
+                          onPanCancel: () => _store.setInteracting(false),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.move,
+                            child: AnimatedContainer(
+                              key: _store.contentKey,
+                              duration: _store.isInteracting
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 150),
+                              curve: Curves.easeOut,
+                              width: w,
+                              height: h,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: _store.isSelected
+                                      ? accentColor
+                                      : (_store.isHovered
+                                            ? hoverColor.withValues(alpha: 0.5)
+                                            : Colors.transparent),
+                                  width: _store.isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: _buildImageProvider(),
+                            ),
                           ),
                         ),
-                        child: _buildImageProvider(),
                       ),
 
-                      // Resize Handles
+                      // ── Resize Handles (chỉ khi selected) ──────────────
                       if (_store.isSelected) ...[
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: accentColor.withValues(alpha: 0.4),
-                                width: 1,
+                        // Viền selection
+                        Positioned(
+                          top: pad,
+                          left: pad,
+                          child: IgnorePointer(
+                            child: Container(
+                              width: w,
+                              height: h,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: accentColor.withValues(alpha: 0.4),
+                                  width: 1,
+                                ),
                               ),
                             ),
                           ),
                         ),
+
+                        // Góc TL — tại (0, 0) trong SizedBox = góc ảnh
                         _buildHandle(
-                          top: -16,
-                          left: -16,
+                          top: 0,
+                          left: 0,
                           cursor: SystemMouseCursors.resizeUpLeft,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -173,9 +196,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: -1,
                           ),
                         ),
+                        // Góc TR
                         _buildHandle(
-                          top: -16,
-                          right: -16,
+                          top: 0,
+                          left: w,
                           cursor: SystemMouseCursors.resizeUpRight,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -185,9 +209,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: -1,
                           ),
                         ),
+                        // Góc BL
                         _buildHandle(
-                          bottom: -16,
-                          left: -16,
+                          top: h,
+                          left: 0,
                           cursor: SystemMouseCursors.resizeDownLeft,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -197,9 +222,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: 1,
                           ),
                         ),
+                        // Góc BR
                         _buildHandle(
-                          bottom: -16,
-                          right: -16,
+                          top: h,
+                          left: w,
                           cursor: SystemMouseCursors.resizeDownRight,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -209,10 +235,11 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: 1,
                           ),
                         ),
+
+                        // Cạnh Top
                         _buildHandle(
-                          top: -16,
-                          left: 0,
-                          right: 0,
+                          top: 0,
+                          left: w / 2,
                           cursor: SystemMouseCursors.resizeUp,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -222,10 +249,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: -1,
                           ),
                         ),
+                        // Cạnh Bottom
                         _buildHandle(
-                          bottom: -16,
-                          left: 0,
-                          right: 0,
+                          top: h,
+                          left: w / 2,
                           cursor: SystemMouseCursors.resizeDown,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -235,10 +262,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: 1,
                           ),
                         ),
+                        // Cạnh Left
                         _buildHandle(
-                          left: -16,
-                          top: 0,
-                          bottom: 0,
+                          top: h / 2,
+                          left: 0,
                           cursor: SystemMouseCursors.resizeLeft,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -248,10 +275,10 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: 0,
                           ),
                         ),
+                        // Cạnh Right
                         _buildHandle(
-                          right: -16,
-                          top: 0,
-                          bottom: 0,
+                          top: h / 2,
+                          left: w,
                           cursor: SystemMouseCursors.resizeRight,
                           onDragStart: () => _store.setInteracting(true),
                           onDragEnd: () => _store.setInteracting(false),
@@ -261,33 +288,34 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             multiplierY: 0,
                           ),
                         ),
-                      ],
 
-                      // Selection Label
-                      if (_store.isSelected)
+                        // Label GIF/IMAGE
                         Positioned(
-                          top: -24,
-                          left: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: accentColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              widget.isGif ? 'GIF' : 'IMAGE',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
+                          top: pad + 4,
+                          left: pad + 4,
+                          child: IgnorePointer(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.isGif ? 'GIF' : 'IMAGE',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),

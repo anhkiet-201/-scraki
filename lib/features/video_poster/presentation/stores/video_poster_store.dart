@@ -68,20 +68,78 @@ abstract class _VideoPosterStore with Store {
   String? selectedCustomImageId;
 
   @action
-  void addCustomImage(
+  Future<void> addCustomImage(
     String imageUrl,
     double x,
     double y, {
     bool isGif = false,
-  }) {
-    final id = const Uuid().v4();
-    customImages.add(
-      CustomImageOverlay(id: id, imageUrl: imageUrl, isGif: isGif, x: x, y: y),
-    );
-    // Auto-select the newly created image
-    selectedCustomImageId = id;
-    // Deselect text if any
-    selectedCustomTextId = null;
+  }) async {
+    double initialW = 200.0;
+    double initialH = 200.0;
+
+    try {
+      ImageProvider provider;
+      if (imageUrl.startsWith('http')) {
+        provider = NetworkImage(imageUrl);
+      } else if (imageUrl.startsWith('assets/')) {
+        provider = AssetImage(imageUrl);
+      } else {
+        provider = FileImage(File(imageUrl));
+      }
+
+      final completer = Completer<ui.Image>();
+      provider
+          .resolve(const ImageConfiguration())
+          .addListener(
+            ImageStreamListener(
+              (info, _) {
+                if (!completer.isCompleted) {
+                  completer.complete(info.image);
+                }
+              },
+              onError: (e, s) {
+                if (!completer.isCompleted) {
+                  completer.completeError(e);
+                }
+              },
+            ),
+          );
+
+      final image = await completer.future;
+      final w = image.width.toDouble();
+      final h = image.height.toDouble();
+      final ratio = w / h;
+
+      // Max dimension 300 to match video preview size well
+      if (w > h) {
+        initialW = 300.0;
+        initialH = 300.0 / ratio;
+      } else {
+        initialH = 300.0;
+        initialW = 300.0 * ratio;
+      }
+    } catch (e) {
+      debugPrint('Failed to resolve image size: $e');
+    }
+
+    runInAction(() {
+      final id = const Uuid().v4();
+      customImages.add(
+        CustomImageOverlay(
+          id: id,
+          imageUrl: imageUrl,
+          isGif: isGif,
+          x: x,
+          y: y,
+          width: initialW,
+          height: initialH,
+        ),
+      );
+      // Auto-select the newly created image
+      selectedCustomImageId = id;
+      // Deselect text if any
+      selectedCustomTextId = null;
+    });
   }
 
   @action

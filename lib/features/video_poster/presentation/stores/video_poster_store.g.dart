@@ -139,6 +139,28 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$isHidingImagesForCaptureAtom = Atom(
+    name: '_VideoPosterStore.isHidingImagesForCapture',
+    context: context,
+  );
+
+  @override
+  bool get isHidingImagesForCapture {
+    _$isHidingImagesForCaptureAtom.reportRead();
+    return super.isHidingImagesForCapture;
+  }
+
+  @override
+  set isHidingImagesForCapture(bool value) {
+    _$isHidingImagesForCaptureAtom.reportWrite(
+      value,
+      super.isHidingImagesForCapture,
+      () {
+        super.isHidingImagesForCapture = value;
+      },
+    );
+  }
+
   late final _$selectedCustomTextIdAtom = Atom(
     name: '_VideoPosterStore.selectedCustomTextId',
     context: context,
@@ -323,6 +345,23 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$addCustomImageAsyncAction = AsyncAction(
+    '_VideoPosterStore.addCustomImage',
+    context: context,
+  );
+
+  @override
+  Future<void> addCustomImage(
+    String imageUrl,
+    double x,
+    double y, {
+    bool isGif = false,
+  }) {
+    return _$addCustomImageAsyncAction.run(
+      () => super.addCustomImage(imageUrl, x, y, isGif: isGif),
+    );
+  }
+
   late final _$createBatchVideosAsyncAction = AsyncAction(
     '_VideoPosterStore.createBatchVideos',
     context: context,
@@ -349,23 +388,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     name: '_VideoPosterStore',
     context: context,
   );
-
-  @override
-  void addCustomImage(
-    String imageUrl,
-    double x,
-    double y, {
-    bool isGif = false,
-  }) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.addCustomImage',
-    );
-    try {
-      return super.addCustomImage(imageUrl, x, y, isGif: isGif);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
 
   @override
   void removeCustomImage(String id) {
@@ -657,6 +679,7 @@ customImages: ${customImages},
 selectedCustomImageId: ${selectedCustomImageId},
 recentTextColors: ${recentTextColors},
 recentBgColors: ${recentBgColors},
+isHidingImagesForCapture: ${isHidingImagesForCapture},
 selectedCustomTextId: ${selectedCustomTextId},
 batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},
