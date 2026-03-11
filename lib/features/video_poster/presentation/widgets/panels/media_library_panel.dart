@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:desktop_drop/desktop_drop.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 
 /// Media Library panel — drag-and-drop video file management
@@ -32,10 +32,26 @@ class MediaLibraryPanel extends StatelessWidget {
         ),
         const Divider(height: 1, color: Colors.white10),
         Expanded(
-          child: DropTarget(
-            onDragDone: (details) {
-              final paths = details.files.map((e) => e.path).toList();
-              store.addSourceVideos(paths);
+          child: DropRegion(
+            formats: Formats.standardFormats,
+            onDropOver: (_) => DropOperation.copy,
+            onPerformDrop: (event) async {
+              final paths = <String>[];
+              for (final item in event.session.items) {
+                final reader = item.dataReader;
+                if (reader != null && reader.canProvide(Formats.fileUri)) {
+                  reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
+                    if (uri != null) {
+                      paths.add(uri.toFilePath());
+                    }
+                  });
+                }
+              }
+              // Wait a bit for async getValue callbacks
+              await Future<void>.delayed(const Duration(milliseconds: 50));
+              if (paths.isNotEmpty) {
+                store.addSourceVideos(paths);
+              }
             },
             child: Observer(
               builder: (_) => ListView.builder(

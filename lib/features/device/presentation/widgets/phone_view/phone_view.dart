@@ -9,7 +9,7 @@ import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder.dart';
 import 'package:scraki/features/device/presentation/widgets/phone_view/store/phone_view_store.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:desktop_drop/desktop_drop.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'widgets/mirror_navigation_bar.dart';
 import 'widgets/drag_overlay_view.dart';
 import 'widgets/push_progress_view.dart';
@@ -88,14 +88,17 @@ class _PhoneViewState extends State<PhoneView> {
               isFloating: widget.isFloating,
             );
           },
-          child: DropTarget(
-            onDragEntered: (_) {
-              if (!widget.isFloating && !_store.isOnDevicesTab) return;
-              if (_store.isBlockedByFloating) return;
+          child: DropRegion(
+            formats: Formats.standardFormats,
+            onDropOver: (_) {
+              if (!widget.isFloating && !_store.isOnDevicesTab)
+                return DropOperation.none;
+              if (_store.isBlockedByFloating) return DropOperation.none;
               _store.setDragging(widget.serial, true);
+              return DropOperation.copy;
             },
-            onDragExited: (_) => _store.setDragging(widget.serial, false),
-            onDragDone: (details) async {
+            onDropLeave: (_) => _store.setDragging(widget.serial, false),
+            onPerformDrop: (event) async {
               _store.setDragging(widget.serial, false);
 
               // Guard 1: Không cho phép drop khi đang ở tab khác
@@ -105,8 +108,19 @@ class _PhoneViewState extends State<PhoneView> {
               // grid view bên dưới bị block.
               if (_store.isBlockedByFloating) return;
 
-              final paths = details.files.map((f) => f.path).toList();
-              await _store.uploadFiles(widget.serial, paths);
+              final paths = <String>[];
+              for (final item in event.session.items) {
+                final reader = item.dataReader;
+                if (reader != null && reader.canProvide(Formats.fileUri)) {
+                  reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
+                    if (uri != null) paths.add(uri.toFilePath());
+                  });
+                }
+              }
+              await Future<void>.delayed(const Duration(milliseconds: 50));
+              if (paths.isNotEmpty) {
+                await _store.uploadFiles(widget.serial, paths);
+              }
             },
             child: DragTarget<PosterData>(
               onWillAcceptWithDetails: (details) {
