@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -673,13 +674,30 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
     // 2. Kéo ảnh từ browser (Chrome/Edge) gửi HTML (có thẻ img)
     if (reader.canProvide(Formats.htmlText)) {
       reader.getValue<String>(Formats.htmlText, (String? html) {
-        debugPrint('[DROP] from html: $html');
         if (html != null) {
+          // Lỗi Windows đọc CF_HTML UTF-8 thành String (UTF-16LE) khiến text bị móp thành Tiếng Trung
+          // Cần chuyển String thành byte array và decode theo UTF-8
+          String decodedHtml = html;
+          if (html.isNotEmpty && html.runes.first > 255) {
+            try {
+              final encoded = Uint8List(html.length * 2);
+              for (int i = 0; i < html.length; i++) {
+                final codeUnit = html.codeUnitAt(i);
+                encoded[i * 2] = codeUnit & 0xFF;
+                encoded[i * 2 + 1] = codeUnit >> 8;
+              }
+              decodedHtml = utf8.decode(encoded, allowMalformed: true);
+            } catch (e) {
+              debugPrint('[DROP] utf8 decode error: $e');
+            }
+          }
+          debugPrint('[DROP] from html: $decodedHtml');
+
           final imgRegex = RegExp(
             r'<img[^>]+src="([^"]+)"',
             caseSensitive: false,
           );
-          final match = imgRegex.firstMatch(html);
+          final match = imgRegex.firstMatch(decodedHtml);
           var imgUrl = match?.group(1);
           if (imgUrl != null && imgUrl.startsWith('http')) {
             imgUrl = _resolve(imgUrl.replaceAll('&amp;', '&'));
