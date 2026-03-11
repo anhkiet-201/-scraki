@@ -81,6 +81,11 @@ abstract class _VideoPosterStore with Store {
 
   @action
   Future<void> toggleFavorite(String url, {bool isGif = false}) async {
+    if (!url.startsWith('http')) {
+      debugPrint(' toggleFavorite Local images are not supported');
+      return;
+    }
+
     final existingItem = favoriteImages.where((f) => f.url == url).firstOrNull;
     if (existingItem != null) {
       try {

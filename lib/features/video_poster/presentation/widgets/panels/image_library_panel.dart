@@ -289,6 +289,10 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                                     right: 0,
                                     child: Observer(
                                       builder: (_) {
+                                        if (!item.imageUrl.startsWith('http')) {
+                                          return const SizedBox.shrink();
+                                        }
+
                                         final isFavorite = widget
                                             .store
                                             .favoriteImages
