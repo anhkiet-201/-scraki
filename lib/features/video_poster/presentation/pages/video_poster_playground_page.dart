@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/video_overlay_item/video_overlay_item.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/preview/image_overlay_item/image_overlay_item.dart';
@@ -339,198 +340,608 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   // ─── Interactive Preview ──────────────────────────────────────────────────
 
   Widget _buildInteractivePreview() {
-    return Container(
-      color: Colors.black,
-      padding: const EdgeInsets.all(20),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: 9 / 16,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                fit: StackFit.expand,
-                clipBehavior: Clip.none,
-                children: [
-                  // Video Preview
-                  Observer(
-                    warnWhenNoObservables: false,
-                    builder: (context) {
-                      if (store.sourceVideoPaths.isEmpty) {
-                        return Container(
-                          color: Colors.black,
-                          child: const Center(
-                            child: Text(
-                              'No Video Selected',
-                              style: TextStyle(color: Colors.white24),
+    return _ImageDropZone(
+      store: store,
+      child: Container(
+        color: Colors.black,
+        padding: const EdgeInsets.all(20),
+        child: Center(
+          child: AspectRatio(
+            aspectRatio: 9 / 16,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Video Preview
+                    Observer(
+                      warnWhenNoObservables: false,
+                      builder: (context) {
+                        if (store.sourceVideoPaths.isEmpty) {
+                          return Container(
+                            color: Colors.black,
+                            child: const Center(
+                              child: Text(
+                                'No Video Selected',
+                                style: TextStyle(color: Colors.white24),
+                              ),
                             ),
-                          ),
+                          );
+                        }
+                        return Video(
+                          controller: store.videoController,
+                          fit: BoxFit.cover,
+                          controls: (state) => const SizedBox.shrink(),
                         );
-                      }
-                      return Video(
-                        controller: store.videoController,
-                        fit: BoxFit.cover,
-                        controls: (state) => const SizedBox.shrink(),
-                      );
-                    },
-                  ),
+                      },
+                    ),
 
-                  // Virtual canvas for free text overlays (720x1280)
-                  Positioned.fill(
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      clipBehavior: Clip.none,
-                      child: SizedBox(
-                        width: 720,
-                        height: 1280,
-                        child: RepaintBoundary(
-                          key: store.previewKey,
-                          child: Observer(
-                            builder: (context) {
-                              const virtualConstraints = BoxConstraints(
-                                maxWidth: 720,
-                                maxHeight: 1280,
-                              );
+                    // Virtual canvas for free text overlays (720x1280)
+                    Positioned.fill(
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        clipBehavior: Clip.none,
+                        child: SizedBox(
+                          width: 720,
+                          height: 1280,
+                          child: RepaintBoundary(
+                            key: store.previewKey,
+                            child: Observer(
+                              builder: (context) {
+                                const virtualConstraints = BoxConstraints(
+                                  maxWidth: 720,
+                                  maxHeight: 1280,
+                                );
 
-                              return GestureDetector(
-                                // Deselect when tapping blank area
-                                onTap: () {
-                                  store.selectCustomText(null);
-                                  store.selectCustomImage(null);
-                                },
-                                behavior: HitTestBehavior.translucent,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    // Transparent background — shows video below
-                                    Positioned.fill(
-                                      child: DragTarget<Map<String, dynamic>>(
-                                        onAcceptWithDetails: (details) {
-                                          final renderBox =
-                                              store.previewKey.currentContext
-                                                      ?.findRenderObject()
-                                                  as RenderBox?;
-                                          if (renderBox != null) {
-                                            final localOffset = renderBox
-                                                .globalToLocal(details.offset);
+                                return GestureDetector(
+                                  // Deselect when tapping blank area
+                                  onTap: () {
+                                    store.selectCustomText(null);
+                                    store.selectCustomImage(null);
+                                  },
+                                  behavior: HitTestBehavior.translucent,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      // Transparent background — shows video below
+                                      Positioned.fill(
+                                        child: DragTarget<Map<String, dynamic>>(
+                                          onAcceptWithDetails: (details) {
+                                            final renderBox =
+                                                store.previewKey.currentContext
+                                                        ?.findRenderObject()
+                                                    as RenderBox?;
+                                            if (renderBox != null) {
+                                              final localOffset = renderBox
+                                                  .globalToLocal(
+                                                    details.offset,
+                                                  );
 
-                                            // DragDraggable in ImageLibraryPanel had 100x100 size for feedback
-                                            // Adjust center offset by half size
-                                            final adjustedX =
-                                                (localOffset.dx + 50) /
-                                                renderBox.size.width;
-                                            final adjustedY =
-                                                (localOffset.dy + 50) /
-                                                renderBox.size.height;
+                                              // DragDraggable in ImageLibraryPanel had 100x100 size for feedback
+                                              // Adjust center offset by half size
+                                              final adjustedX =
+                                                  (localOffset.dx + 50) /
+                                                  renderBox.size.width;
+                                              final adjustedY =
+                                                  (localOffset.dy + 50) /
+                                                  renderBox.size.height;
 
-                                            final x = adjustedX.clamp(0.0, 1.0);
-                                            final y = adjustedY.clamp(0.0, 1.0);
-
-                                            final data = details.data;
-                                            store.addCustomImage(
-                                              data['url'] as String,
-                                              x,
-                                              y,
-                                              isGif: data['isGif'] as bool,
-                                            );
-                                          }
-                                        },
-                                        builder:
-                                            (
-                                              context,
-                                              candidateData,
-                                              rejectedData,
-                                            ) {
-                                              return Container(
-                                                color: candidateData.isNotEmpty
-                                                    ? Colors.white.withValues(
-                                                        alpha: 0.1,
-                                                      )
-                                                    : Colors.transparent,
+                                              final x = adjustedX.clamp(
+                                                0.0,
+                                                1.0,
                                               );
-                                            },
-                                      ),
-                                    ),
+                                              final y = adjustedY.clamp(
+                                                0.0,
+                                                1.0,
+                                              );
 
-                                    // Custom Image Overlays
-                                    if (!store.isHidingImagesForCapture)
-                                      ...store.customImages.map(
-                                        (image) => ImageOverlayItem(
-                                          key: ValueKey(image.id),
-                                          id: image.id,
-                                          imageUrl: image.imageUrl,
-                                          isGif: image.isGif,
-                                          x: image.x,
-                                          y: image.y,
-                                          width: image.width,
-                                          height: image.height,
-                                          rotation: image.rotation,
-                                          constraints: virtualConstraints,
-                                          isSelected:
-                                              store.selectedCustomImageId ==
-                                              image.id,
-                                          onPositionUpdate:
-                                              store.updateCustomImagePosition,
-                                          onSelect: store.selectCustomImage,
-                                          onResize: store.updateCustomImageSize,
+                                              final data = details.data;
+                                              store.addCustomImage(
+                                                data['url'] as String,
+                                                x,
+                                                y,
+                                                isGif: data['isGif'] as bool,
+                                              );
+                                            }
+                                          },
+                                          builder:
+                                              (
+                                                context,
+                                                candidateData,
+                                                rejectedData,
+                                              ) {
+                                                return Container(
+                                                  color:
+                                                      candidateData.isNotEmpty
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.1,
+                                                        )
+                                                      : Colors.transparent,
+                                                );
+                                              },
                                         ),
                                       ),
 
-                                    // Free-form custom text overlays
-                                    ...store.customTexts.map(
-                                      (text) => VideoOverlayItem(
-                                        key: ValueKey(text.id),
-                                        label: text.label,
-                                        x: text.x,
-                                        y: text.y,
-                                        type: text.id,
-                                        constraints: virtualConstraints,
-                                        color: text.color,
-                                        fontSize: text.fontSize,
-                                        textHeight: text.textHeight,
-                                        fontWeight: text.fontWeight,
-                                        fontStyle: text.fontStyle,
-                                        textAlign: text.textAlign,
-                                        backgroundColor: text.backgroundColor,
-                                        backgroundOpacity:
-                                            text.backgroundOpacity,
-                                        backgroundRadius: text.backgroundRadius,
-                                        fontFamily: text.fontFamily,
-                                        rotation: text.rotation,
-                                        isSelected:
-                                            store.selectedCustomTextId ==
-                                            text.id,
-                                        onPositionUpdate: (_, x, y) =>
-                                            store.updateCustomTextPosition(
+                                      // Custom Image Overlays
+                                      if (!store.isHidingImagesForCapture)
+                                        ...store.customImages.map(
+                                          (image) => ImageOverlayItem(
+                                            key: ValueKey(image.id),
+                                            id: image.id,
+                                            imageUrl: image.imageUrl,
+                                            isGif: image.isGif,
+                                            x: image.x,
+                                            y: image.y,
+                                            width: image.width,
+                                            height: image.height,
+                                            rotation: image.rotation,
+                                            constraints: virtualConstraints,
+                                            isSelected:
+                                                store.selectedCustomImageId ==
+                                                image.id,
+                                            onPositionUpdate:
+                                                store.updateCustomImagePosition,
+                                            onSelect: store.selectCustomImage,
+                                            onResize:
+                                                store.updateCustomImageSize,
+                                          ),
+                                        ),
+
+                                      // Free-form custom text overlays
+                                      ...store.customTexts.map(
+                                        (text) => VideoOverlayItem(
+                                          key: ValueKey(text.id),
+                                          label: text.label,
+                                          x: text.x,
+                                          y: text.y,
+                                          type: text.id,
+                                          constraints: virtualConstraints,
+                                          color: text.color,
+                                          fontSize: text.fontSize,
+                                          textHeight: text.textHeight,
+                                          fontWeight: text.fontWeight,
+                                          fontStyle: text.fontStyle,
+                                          textAlign: text.textAlign,
+                                          backgroundColor: text.backgroundColor,
+                                          backgroundOpacity:
+                                              text.backgroundOpacity,
+                                          backgroundRadius:
+                                              text.backgroundRadius,
+                                          fontFamily: text.fontFamily,
+                                          rotation: text.rotation,
+                                          isSelected:
+                                              store.selectedCustomTextId ==
                                               text.id,
-                                              x,
-                                              y,
-                                            ),
-                                        onSelect: (_) =>
-                                            store.selectCustomText(text.id),
-                                        onResize: (_, size) =>
-                                            store.updateCustomTextFontSize(
-                                              text.id,
-                                              size,
-                                            ),
-                                        onTextChange: (_, val) =>
-                                            store.updateCustomTextLabel(
-                                              text.id,
-                                              val,
-                                            ),
+                                          onPositionUpdate: (_, x, y) =>
+                                              store.updateCustomTextPosition(
+                                                text.id,
+                                                x,
+                                                y,
+                                              ),
+                                          onSelect: (_) =>
+                                              store.selectCustomText(text.id),
+                                          onResize: (_, size) =>
+                                              store.updateCustomTextFontSize(
+                                                text.id,
+                                                size,
+                                              ),
+                                          onTextChange: (_, val) =>
+                                              store.updateCustomTextLabel(
+                                                text.id,
+                                                val,
+                                              ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
                     ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Drop Zone: nhận ảnh từ file + URL ───────────────────────────────────────
+
+class _ImageDropZone extends StatefulWidget {
+  final VideoPosterStore store;
+  final Widget child;
+  const _ImageDropZone({required this.store, required this.child});
+
+  @override
+  State<_ImageDropZone> createState() => _ImageDropZoneState();
+}
+
+class _ImageDropZoneState extends State<_ImageDropZone> {
+  bool _isDragging = false;
+  bool _showUrlInput = false;
+  final _urlCtrl = TextEditingController();
+  final _urlFocus = FocusNode();
+  final _zoneFocus = FocusNode(); // focus vùng drop để nhận keyboard
+
+  @override
+  void initState() {
+    super.initState();
+    // Tự request focus để nhận Ctrl+V
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _zoneFocus.requestFocus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _urlCtrl.dispose();
+    _urlFocus.dispose();
+    _zoneFocus.dispose();
+    super.dispose();
+  }
+
+  static const _imgExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+
+  bool _isImgFile(String p) => _imgExts.any(p.toLowerCase().endsWith);
+
+  Future<void> _pasteFromClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      debugPrint('[PASTE] clipboard: $text');
+      if (text.isEmpty) return;
+      final url = _resolve(text);
+      if (url.startsWith('http')) {
+        debugPrint('[PASTE] -> adding: $url');
+        widget.store.addCustomImage(
+          url,
+          0.5,
+          0.5,
+          isGif:
+              url.toLowerCase().contains('.gif') ||
+              url.toLowerCase().contains('giphy'),
+        );
+      } else {
+        debugPrint('[PASTE] -> not a URL, opening input');
+        // Nếu không phải URL, mở input để người dùng nhập
+        setState(() {
+          _showUrlInput = true;
+          _urlCtrl.text = text;
+        });
+        Future.delayed(
+          const Duration(milliseconds: 50),
+          () => _urlFocus.requestFocus(),
+        );
+      }
+    } catch (e) {
+      debugPrint('[PASTE] error: $e');
+    }
+  }
+
+  // Fallback kiểm tra Magic bytes cho local file (nếu cần)
+
+  String _resolve(String url) {
+    try {
+      final u = Uri.parse(url);
+      final imgurl = u.queryParameters['imgurl'];
+      if (imgurl != null && imgurl.isNotEmpty) {
+        return Uri.decodeComponent(imgurl);
+      }
+    } catch (_) {}
+    return url;
+  }
+
+  Future<void> _handleDropItem(DropItem item) async {
+    final formats = item.dataReader?.getFormats(Formats.standardFormats);
+    debugPrint('[DROP] Processing item with formats: $formats');
+    final reader = item.dataReader;
+    if (reader == null) return;
+
+    // 1. Nếu kéo file ảnh vật lý từ desktop
+    if (reader.canProvide(Formats.fileUri)) {
+      reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
+        if (uri != null) {
+          final p = uri.toFilePath();
+          debugPrint('[DROP] local file: $p');
+          if (_isImgFile(p)) {
+            widget.store.addCustomImage(
+              p,
+              0.5,
+              0.5,
+              isGif: p.toLowerCase().endsWith('.gif'),
+            );
+          } else {
+            // Check nếu là .url / .webloc
+            if (p.toLowerCase().endsWith('.url') ||
+                p.toLowerCase().endsWith('.webloc')) {
+              // Mở file ra đọc... (simplified, you can keep old logic here if needed or just skip)
+            }
+          }
+        }
+      }, onError: (e) => debugPrint('[DROP] err: $e'));
+      return;
+    }
+
+    // 2. Kéo ảnh từ browser (Chrome/Edge) gửi HTML (có thẻ img)
+    if (reader.canProvide(Formats.htmlText)) {
+      reader.getValue<String>(Formats.htmlText, (String? html) {
+        debugPrint('[DROP] from html: $html');
+        if (html != null) {
+          final imgRegex = RegExp(
+            r'<img[^>]+src="([^"]+)"',
+            caseSensitive: false,
+          );
+          final match = imgRegex.firstMatch(html);
+          var imgUrl = match?.group(1);
+          if (imgUrl != null && imgUrl.startsWith('http')) {
+            imgUrl = _resolve(imgUrl.replaceAll('&amp;', '&'));
+            debugPrint('[DROP] extracted img: $imgUrl');
+            widget.store.addCustomImage(
+              imgUrl,
+              0.5,
+              0.5,
+              isGif: imgUrl.toLowerCase().contains('.gif'),
+            );
+          }
+        }
+      });
+      return;
+    }
+
+    // 3. Fallback kéo ảnh gửi plain URI / text
+    if (reader.canProvide(Formats.uri)) {
+      reader.getValue<NamedUri>(Formats.uri, (NamedUri? uri) {
+        debugPrint('[DROP] from uri: ${uri?.uri.toString()}');
+        if (uri != null && uri.uri.scheme.startsWith('http')) {
+          final url = _resolve(uri.uri.toString());
+          widget.store.addCustomImage(
+            url,
+            0.5,
+            0.5,
+            isGif: url.toLowerCase().contains('.gif'),
+          );
+        }
+      }, onError: (e) => debugPrint('[DROP] err: $e'));
+      return;
+    }
+
+    if (reader.canProvide(Formats.plainText)) {
+      reader.getValue<String>(Formats.plainText, (String? text) {
+        debugPrint('[DROP] from text: $text');
+        if (text != null && text.startsWith('http')) {
+          final url = _resolve(text.trim());
+          widget.store.addCustomImage(
+            url,
+            0.5,
+            0.5,
+            isGif: url.toLowerCase().contains('.gif'),
+          );
+        }
+      });
+      return;
+    }
+  }
+
+  Future<void> _onPerformDrop(PerformDropEvent event) async {
+    setState(() => _isDragging = false);
+    debugPrint('[DROP] perform drop, items: ${event.session.items.length}');
+    for (final item in event.session.items) {
+      await _handleDropItem(item);
+    }
+  }
+
+  void _submit() {
+    final raw = _urlCtrl.text.trim();
+    debugPrint('[URL] submit raw: $raw');
+    if (raw.isEmpty) {
+      setState(() => _showUrlInput = false);
+      return;
+    }
+    final url = _resolve(raw);
+    debugPrint('[URL] resolved: $url');
+    if (url.startsWith('http')) {
+      debugPrint('[URL] -> adding to store');
+      widget.store.addCustomImage(
+        url,
+        0.5,
+        0.5,
+        isGif: url.toLowerCase().contains('.gif'),
+      );
+    } else {
+      debugPrint('[URL] -> invalid URL, not adding');
+    }
+    _urlCtrl.clear();
+    setState(() => _showUrlInput = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _zoneFocus.requestFocus(),
+      child: KeyboardListener(
+        focusNode: _zoneFocus,
+        onKeyEvent: (event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.keyV &&
+              HardwareKeyboard.instance.isControlPressed) {
+            _pasteFromClipboard();
+          }
+        },
+        child: DropRegion(
+          formats: Formats.standardFormats,
+          onDropOver: (event) {
+            if (!_isDragging) setState(() => _isDragging = true);
+            return DropOperation.copy;
+          },
+          onDropLeave: (event) {
+            setState(() => _isDragging = false);
+          },
+          onPerformDrop: _onPerformDrop,
+          child: Stack(
+            children: [
+              widget.child,
+              if (_isDragging)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: const Color(0xFF6366F1),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.image_outlined,
+                              color: Color(0xFF6366F1),
+                              size: 48,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Thả ảnh vào đây',
+                              style: TextStyle(
+                                color: Color(0xFF6366F1),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              );
-            },
+                ),
+              if (_showUrlInput)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _showUrlInput = false;
+                        _urlCtrl.clear();
+                      });
+                    },
+                    child: Container(color: Colors.black54),
+                  ),
+                ),
+              if (_showUrlInput)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 60,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E2E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF6366F1),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF6366F1,
+                            ).withValues(alpha: 0.3),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.link,
+                            color: Color(0xFF6366F1),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _urlCtrl,
+                              focusNode: _urlFocus,
+                              autofocus: true,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: 'Paste URL ảnh rồi Enter...',
+                                hintStyle: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 13,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                              onSubmitted: (_) => _submit(),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _submit,
+                            child: const Text(
+                              'Thêm',
+                              style: TextStyle(color: Color(0xFF6366F1)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Tooltip(
+                  message: 'Nhập URL ảnh từ web',
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _showUrlInput = true);
+                      Future.delayed(
+                        const Duration(milliseconds: 50),
+                        () => _urlFocus.requestFocus(),
+                      );
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF6366F1,
+                            ).withValues(alpha: 0.4),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.add_link,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -58,7 +58,6 @@ dependencies:
   media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.7
   visibility_detector: ^0.4.0+2
-  desktop_drop: ^0.7.0
   flutter_colorpicker: ^1.1.0
 
   # Data/Features
@@ -79,6 +78,7 @@ dependencies:
   cloud_firestore: ^6.1.2
   equatable: ^2.0.8
   intl: ^0.20.2
+  super_drag_and_drop: ^0.9.1
 
 dev_dependencies:
   flutter_test:
