@@ -21,9 +21,15 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
   bool _isLoading = false;
   Timer? _debounce;
 
+  final ScrollController _scrollController = ScrollController();
+  int _offset = 0;
+  final int _limit = 20;
+  bool _isFetchingMore = false;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _fetchTrending();
   }
 
@@ -31,12 +37,56 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
   void dispose() {
     _searchController.dispose();
     _debounce?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoading && !_isFetchingMore) {
+        _loadMoreGifs();
+      }
+    }
+  }
+
+  Future<void> _loadMoreGifs() async {
+    setState(() => _isFetchingMore = true);
+    _offset += _limit;
+
+    final query = _searchController.text;
+    List<Map<String, dynamic>> moreGifs = [];
+
+    if (query.isEmpty) {
+      moreGifs = await _giphyService.getTrendingGifs(
+        limit: _limit,
+        offset: _offset,
+      );
+    } else {
+      moreGifs = await _giphyService.searchGifs(
+        query,
+        limit: _limit,
+        offset: _offset,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _gifs.addAll(moreGifs);
+        _isFetchingMore = false;
+      });
+    }
+  }
+
   Future<void> _fetchTrending() async {
-    setState(() => _isLoading = true);
-    final results = await _giphyService.getTrendingGifs();
+    setState(() {
+      _isLoading = true;
+      _offset = 0;
+    });
+    final results = await _giphyService.getTrendingGifs(
+      limit: _limit,
+      offset: _offset,
+    );
     if (mounted) {
       setState(() {
         _gifs = results;
@@ -53,8 +103,15 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
         return;
       }
 
-      setState(() => _isLoading = true);
-      final results = await _giphyService.searchGifs(query);
+      setState(() {
+        _isLoading = true;
+        _offset = 0;
+      });
+      final results = await _giphyService.searchGifs(
+        query,
+        limit: _limit,
+        offset: _offset,
+      );
       if (mounted) {
         setState(() {
           _gifs = results;
@@ -152,41 +209,65 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                     style: const TextStyle(color: Colors.white30),
                   ),
                 )
-              : GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: _gifs.length,
-                  itemBuilder: (context, index) {
-                    final gif = _gifs[index];
-                    final url = gif['url'] as String;
+              : Column(
+                  children: [
+                    Expanded(
+                      child: GridView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 1,
+                            ),
+                        itemCount: _gifs.length,
+                        itemBuilder: (context, index) {
+                          final gif = _gifs[index];
+                          final url = gif['url'] as String;
 
-                    return InkWell(
-                      onTap: () {
-                        widget.store.addCustomImage(url, 0.5, 0.5, isGif: true);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.network(
-                          url,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.broken_image,
-                                color: Colors.white10,
+                          return InkWell(
+                            onTap: () {
+                              widget.store.addCustomImage(
+                                url,
+                                0.5,
+                                0.5,
+                                isGif: true,
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(4),
                               ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Image.network(
+                                url,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      Icons.broken_image,
+                                      color: Colors.white10,
+                                    ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (_isFetchingMore)
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
                       ),
-                    );
-                  },
+                  ],
                 ),
         ),
       ],
