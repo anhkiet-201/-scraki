@@ -132,17 +132,39 @@ abstract class _VideoPosterStore with Store {
   String? selectedCustomImageId;
 
   @action
-  Future<void> addCustomImage(
+  void addCustomImage(
     String imageUrl,
     double x,
     double y, {
     bool isGif = false,
-  }) async {
-    double initialW = 200.0;
-    double initialH = 200.0;
+  }) {
+    // Thêm ảnh ngay với kích thước mặc định — không block UI thread
+    final id = const Uuid().v4();
+    runInAction(() {
+      customImages.add(
+        CustomImageOverlay(
+          id: id,
+          imageUrl: imageUrl,
+          isGif: isGif,
+          x: x,
+          y: y,
+          width: 200.0,
+          height: 200.0,
+        ),
+      );
+      selectedCustomImageId = id;
+      selectedCustomTextId = null;
+    });
 
+    // Load kích thước thực ảnh bất đồng bộ — cập nhật sau khi xong
+    _resolveImageSizeAsync(id, imageUrl);
+  }
+
+  /// Resolve kích thước ảnh bất đồng bộ, cập nhật store sau khi load xong.
+  /// Không block UI thread.
+  Future<void> _resolveImageSizeAsync(String id, String imageUrl) async {
     try {
-      ImageProvider provider;
+      final ImageProvider provider;
       if (imageUrl.startsWith('http')) {
         provider = NetworkImage(imageUrl);
       } else if (imageUrl.startsWith('assets/')) {
@@ -157,14 +179,10 @@ abstract class _VideoPosterStore with Store {
           .addListener(
             ImageStreamListener(
               (info, _) {
-                if (!completer.isCompleted) {
-                  completer.complete(info.image);
-                }
+                if (!completer.isCompleted) completer.complete(info.image);
               },
               onError: (e, s) {
-                if (!completer.isCompleted) {
-                  completer.completeError(e);
-                }
+                if (!completer.isCompleted) completer.completeError(e);
               },
             ),
           );
@@ -174,36 +192,20 @@ abstract class _VideoPosterStore with Store {
       final h = image.height.toDouble();
       final ratio = w / h;
 
-      // Max dimension 300 to match video preview size well
+      double finalW, finalH;
       if (w > h) {
-        initialW = 300.0;
-        initialH = 300.0 / ratio;
+        finalW = 300.0;
+        finalH = 300.0 / ratio;
       } else {
-        initialH = 300.0;
-        initialW = 300.0 * ratio;
+        finalH = 300.0;
+        finalW = 300.0 * ratio;
       }
-    } catch (e) {
-      debugPrint('Failed to resolve image size: $e');
-    }
 
-    runInAction(() {
-      final id = const Uuid().v4();
-      customImages.add(
-        CustomImageOverlay(
-          id: id,
-          imageUrl: imageUrl,
-          isGif: isGif,
-          x: x,
-          y: y,
-          width: initialW,
-          height: initialH,
-        ),
-      );
-      // Auto-select the newly created image
-      selectedCustomImageId = id;
-      // Deselect text if any
-      selectedCustomTextId = null;
-    });
+      // Cập nhật kích thước thực sau khi load xong
+      runInAction(() => updateCustomImageSize(id, finalW, finalH));
+    } catch (e) {
+      debugPrint('[ImageOverlay] Failed to resolve image size for $id: $e');
+    }
   }
 
   @action
@@ -574,6 +576,11 @@ abstract class _VideoPosterStore with Store {
 
   // Preview capture key
   final previewKey = GlobalKey();
+
+  /// True khi người dùng đang ở tab Video Editor.
+  /// Dùng để chặn drop events khi widget vẫn alive nhưng bị ẩn (KeepAlivePage).
+  bool get isOnVideoEditorTab =>
+      _dashboardStore.selectedIndex == _kVideoEditorTabIndex;
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 

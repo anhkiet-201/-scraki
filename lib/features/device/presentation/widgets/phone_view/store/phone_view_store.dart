@@ -573,17 +573,29 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   Future<void> uploadFiles(String serial, List<String> paths) async {
     if (paths.isEmpty) return;
 
-    final isMp4 = paths.first.toLowerCase().endsWith('.mp4');
+    final ext = paths.first.toLowerCase().split('.').last;
+    final isVideo = const {
+      'mp4',
+      'mov',
+      'avi',
+      'mkv',
+      'webm',
+      '3gp',
+      'ts',
+      'm4v',
+      'flv',
+      'wmv',
+    }.contains(ext);
 
-    // Only upload files when on Devices tab OR if it's an .mp4 (to trigger TikTok Create)
-    if (_dashboardStore.selectedIndex != DashboardTabs.devices && !isMp4) {
+    // Only upload files when on Devices tab OR if it's a video (to trigger TikTok Create)
+    if (_dashboardStore.selectedIndex != DashboardTabs.devices && !isVideo) {
       return;
     }
 
     runInAction(() => isPushingFile = true);
     try {
-      if (isMp4) {
-        // Handle TikTok Create for .mp4 files
+      if (isVideo) {
+        // Handle TikTok Create for video files
         await _tikTokService.openTikTokCreate(serial, paths.first);
       } else {
         // Normal file push via scrcpy

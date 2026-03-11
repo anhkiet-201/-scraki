@@ -590,8 +590,21 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
   }
 
   static const _imgExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+  static const _videoExts = [
+    '.mp4',
+    '.mov',
+    '.avi',
+    '.mkv',
+    '.webm',
+    '.m4v',
+    '.flv',
+    '.wmv',
+    '.3gp',
+    '.ts',
+  ];
 
   bool _isImgFile(String p) => _imgExts.any(p.toLowerCase().endsWith);
+  bool _isVideoFile(String p) => _videoExts.any(p.toLowerCase().endsWith);
 
   Future<void> _pasteFromClipboard() async {
     try {
@@ -646,12 +659,17 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
     final reader = item.dataReader;
     if (reader == null) return;
 
-    // 1. Nếu kéo file ảnh vật lý từ desktop
+    // 1. Nếu kéo file vật lý từ desktop
     if (reader.canProvide(Formats.fileUri)) {
       reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
         if (uri != null) {
           final p = uri.toFilePath();
           debugPrint('[DROP] local file: $p');
+          // Bỏ qua video — để MediaLibraryPanel xử lý
+          if (_isVideoFile(p)) {
+            debugPrint('[DROP] skipping video file in image zone: $p');
+            return;
+          }
           if (_isImgFile(p)) {
             widget.store.addCustomImage(
               p,
@@ -659,13 +677,8 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
               0.5,
               isGif: p.toLowerCase().endsWith('.gif'),
             );
-          } else {
-            // Check nếu là .url / .webloc
-            if (p.toLowerCase().endsWith('.url') ||
-                p.toLowerCase().endsWith('.webloc')) {
-              // Mở file ra đọc... (simplified, you can keep old logic here if needed or just skip)
-            }
           }
+          // Bỏ qua .url / .webloc và các định dạng khác
         }
       }, onError: (e) => debugPrint('[DROP] err: $e'));
       return;
@@ -763,6 +776,10 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
   }
 
   Future<void> _onPerformDrop(PerformDropEvent event) async {
+    // Guard: widget vẫn alive trong PageView (KeepAlivePage) khi tab bị ẩn.
+    // Nếu không ở Video Editor tab, bỏ qua hoàn toàn để tránh decode sai file.
+    if (!widget.store.isOnVideoEditorTab) return;
+
     setState(() => _isDragging = false);
     debugPrint('[DROP] perform drop, items: ${event.session.items.length}');
     for (final item in event.session.items) {
@@ -808,9 +825,29 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
           }
         },
         child: DropRegion(
-          formats: Formats.standardFormats,
+          formats: const [
+            Formats.fileUri, // file ảnh local (.png, .jpg, .gif …)
+            Formats.htmlText, // kéo ảnh từ browser (có thẻ <img>)
+            Formats.uri, // URL ảnh dạng URI
+            Formats.plainText, // URL ảnh dạng text thuần
+          ],
           onDropOver: (event) {
-            if (!_isDragging) setState(() => _isDragging = true);
+            // Guard: chặn khi không ở tab Video Editor
+            // (PageView + KeepAlivePage giữ widget alive ngay cả khi ẩn)
+            if (!widget.store.isOnVideoEditorTab) return DropOperation.none;
+
+            // Chỉ kích hoạt overlay khi kéo ảnh từ browser (có htmlText/uri)
+            // File local (bao gồm video) chỉ gửi fileUri — không hiện overlay
+            final hasWebImage = event.session.items.any(
+              (item) =>
+                  item.dataReader?.canProvide(Formats.htmlText) == true ||
+                  item.dataReader?.canProvide(Formats.uri) == true,
+            );
+            if (hasWebImage && !_isDragging) {
+              setState(() => _isDragging = true);
+            } else if (!hasWebImage && _isDragging) {
+              setState(() => _isDragging = false);
+            }
             return DropOperation.copy;
           },
           onDropLeave: (event) {

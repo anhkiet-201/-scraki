@@ -36,22 +36,33 @@ class MediaLibraryPanel extends StatelessWidget {
             formats: Formats.standardFormats,
             onDropOver: (_) => DropOperation.copy,
             onPerformDrop: (event) async {
+              // QUAN TRỌNG: onPerformDrop block platform thread (Windows message loop).
+              // KHÔNG được await bất kỳ thứ gì ở đây — phải return ngay lập tức.
+              // Dùng Completer để thu thập paths từ callbacks bất đồng bộ,
+              // sau đó xử lý qua Future.microtask sau khi platform thread được giải phóng.
               final paths = <String>[];
+              int pending = 0;
+
+              void tryFinish() {
+                pending--;
+                if (pending == 0 && paths.isNotEmpty) {
+                  // Chạy sau khi onPerformDrop return — không block platform thread
+                  Future.microtask(() => store.addSourceVideos(paths));
+                }
+              }
+
               for (final item in event.session.items) {
                 final reader = item.dataReader;
                 if (reader != null && reader.canProvide(Formats.fileUri)) {
+                  pending++;
                   reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
-                    if (uri != null) {
-                      paths.add(uri.toFilePath());
-                    }
+                    if (uri != null) paths.add(uri.toFilePath());
+                    tryFinish();
                   });
                 }
               }
-              // Wait a bit for async getValue callbacks
-              await Future<void>.delayed(const Duration(milliseconds: 50));
-              if (paths.isNotEmpty) {
-                store.addSourceVideos(paths);
-              }
+
+              // Không có item nào hợp lệ — không cần làm gì
             },
             child: Observer(
               builder: (_) => ListView.builder(

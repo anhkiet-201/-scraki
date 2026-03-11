@@ -393,21 +393,21 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
-  late final _$addCustomImageAsyncAction = AsyncAction(
-    '_VideoPosterStore.addCustomImage',
-    context: context,
-  );
-
   @override
-  Future<void> addCustomImage(
+  void addCustomImage(
     String imageUrl,
     double x,
     double y, {
     bool isGif = false,
   }) {
-    return _$addCustomImageAsyncAction.run(
-      () => super.addCustomImage(imageUrl, x, y, isGif: isGif),
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.addCustomImage',
     );
+    try {
+      return super.addCustomImage(imageUrl, x, y, isGif: isGif);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
   }
 
   late final _$createBatchVideosAsyncAction = AsyncAction(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -108,18 +109,38 @@ class _PhoneViewState extends State<PhoneView> {
               // grid view bên dưới bị block.
               if (_store.isBlockedByFloating) return;
 
+              // Collect file paths từ getValue callbacks.
+              // getValue callback fires synchronously trên Windows → completer
+              // resolve NGAY trong vòng lặp → await bên dưới return gần như instant,
+              // không block platform thread đáng kể.
               final paths = <String>[];
+              final completer = Completer<void>();
+              var pending = 0;
+
+              void tryComplete() {
+                pending--;
+                if (pending == 0) completer.complete();
+              }
+
               for (final item in event.session.items) {
                 final reader = item.dataReader;
                 if (reader != null && reader.canProvide(Formats.fileUri)) {
+                  pending++;
                   reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
                     if (uri != null) paths.add(uri.toFilePath());
+                    tryComplete();
                   });
                 }
               }
-              await Future<void>.delayed(const Duration(milliseconds: 50));
+
+              if (pending == 0) return; // không có file nào
+
+              // Chờ tất cả callbacks → gần như instant vì getValue fires synchronously
+              await completer.future;
+
               if (paths.isNotEmpty) {
-                await _store.uploadFiles(widget.serial, paths);
+                // ignore: discarded_futures — uploadFiles chạy background, không block UI
+                _store.uploadFiles(widget.serial, paths);
               }
             },
             child: DragTarget<PosterData>(
