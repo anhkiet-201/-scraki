@@ -381,16 +381,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
-  late final _$_loadFavoritesAsyncAction = AsyncAction(
-    '_VideoPosterStore._loadFavorites',
-    context: context,
-  );
-
-  @override
-  Future<void> _loadFavorites() {
-    return _$_loadFavoritesAsyncAction.run(() => super._loadFavorites());
-  }
-
   late final _$toggleFavoriteAsyncAction = AsyncAction(
     '_VideoPosterStore.toggleFavorite',
     context: context,
@@ -446,6 +436,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     name: '_VideoPosterStore',
     context: context,
   );
+
+  @override
+  void _watchFavorites() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore._watchFavorites',
+    );
+    try {
+      return super._watchFavorites();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
 
   @override
   void removeCustomImage(String id) {

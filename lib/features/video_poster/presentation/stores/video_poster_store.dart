@@ -44,7 +44,7 @@ abstract class _VideoPosterStore with Store {
     if (!_isInitialized) {
       initializePlayer();
       _loadRecentColors();
-      _loadFavorites();
+      _watchFavorites();
       _isInitialized = true;
     }
   }
@@ -58,52 +58,47 @@ abstract class _VideoPosterStore with Store {
   @observable
   bool isLoadingFavorites = false;
 
+  StreamSubscription<List<FavoriteImage>>? _favoritesSubscription;
+
   @action
-  Future<void> _loadFavorites() async {
+  void _watchFavorites() {
     isLoadingFavorites = true;
-    try {
-      final list = await _favoriteImageRepo.getFavorites();
-      runInAction(() {
-        favoriteImages.clear();
-        favoriteImages.addAll(list);
-      });
-    } catch (e) {
-      debugPrint('Error loading favorites: $e');
-    } finally {
-      runInAction(() => isLoadingFavorites = false);
-    }
+    _favoritesSubscription?.cancel();
+    _favoritesSubscription = _favoriteImageRepo.watchFavorites().listen(
+      (list) {
+        runInAction(() {
+          favoriteImages.clear();
+          favoriteImages.addAll(list);
+          isLoadingFavorites = false;
+        });
+      },
+      onError: (Object e) {
+        debugPrint('Error watching favorites: $e');
+        runInAction(() => isLoadingFavorites = false);
+      },
+    );
   }
 
   @action
   Future<void> toggleFavorite(String url, {bool isGif = false}) async {
-    final existingIndex = favoriteImages.indexWhere((f) => f.url == url);
-    if (existingIndex != -1) {
-      final item = favoriteImages[existingIndex];
-      // Xóa ở local list trước để UI cập nhật ngay
-      favoriteImages.removeAt(existingIndex);
+    final existingItem = favoriteImages.where((f) => f.url == url).firstOrNull;
+    if (existingItem != null) {
       try {
-        await _favoriteImageRepo.removeFavorite(item.id);
+        await _favoriteImageRepo.removeFavorite(existingItem.id);
       } catch (e) {
         debugPrint(' toggleFavorite Remove API failed: $e');
-        // Rollback nếu API lỗi
-        runInAction(() => favoriteImages.insert(existingIndex, item));
       }
     } else {
-      final tempId = const Uuid().v4();
       final newItem = FavoriteImage(
-        id: tempId,
+        id: const Uuid().v4(),
         url: url,
         isGif: isGif,
         createdAt: DateTime.now(),
       );
-      // Thêm lên đầu UI list ngay lap tuc
-      favoriteImages.insert(0, newItem);
       try {
         await _favoriteImageRepo.addFavorite(newItem);
       } catch (e) {
         debugPrint(' toggleFavorite Add API failed: $e');
-        // Rollback nêu api lỗi
-        runInAction(() => favoriteImages.remove(newItem));
       }
     }
   }
@@ -638,6 +633,7 @@ abstract class _VideoPosterStore with Store {
   @action
   void disposePlayer() {
     cancelBatchVideos();
+    _favoritesSubscription?.cancel();
     _durationSub?.cancel();
     _positionSub?.cancel();
     _playingSub?.cancel();

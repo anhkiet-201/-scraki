@@ -17,6 +17,11 @@ class FavoriteImageRepositoryImpl implements FavoriteImageRepository {
   }
 
   @override
+  Stream<List<FavoriteImage>> watchFavorites() {
+    return _remoteDataSource.watchFavorites();
+  }
+
+  @override
   Future<void> addFavorite(FavoriteImage image) async {
     final model = FavoriteImageModel.fromEntity(image);
     await _remoteDataSource.addFavorite(model);

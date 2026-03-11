@@ -5,6 +5,7 @@ import 'package:scraki/features/video_poster/data/models/favorite_image_model.da
 
 abstract class FavoriteImageRemoteDataSource {
   Future<List<FavoriteImageModel>> getFavorites();
+  Stream<List<FavoriteImageModel>> watchFavorites();
   Future<void> addFavorite(FavoriteImageModel model);
   Future<void> removeFavorite(String id);
 }
@@ -30,6 +31,19 @@ class FavoriteImageRemoteDataSourceImpl
       logger.e('[Firestore] getFavorites failed: $e');
       rethrow;
     }
+  }
+
+  @override
+  Stream<List<FavoriteImageModel>> watchFavorites() {
+    return _collection.orderBy('createdAt', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        return FavoriteImageModel.fromJson(data);
+      }).toList();
+    });
   }
 
   @override
