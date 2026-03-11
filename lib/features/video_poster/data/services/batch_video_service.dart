@@ -743,16 +743,28 @@ class BatchVideoService {
           // Convert coordinates
           final int targetW = (imgConfig.width * 1.5).round();
           final int targetH = (imgConfig.height * 1.5).round();
-          final int targetX = (imgConfig.x * 1080 - targetW / 2).round();
-          final int targetY = (imgConfig.y * 1920 - targetH / 2).round();
+
+          int finalW = targetW;
+          int finalH = targetH;
+
+          if (imgConfig.rotation != 0) {
+            final double angle = imgConfig.rotation * pi / 180;
+            finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs())
+                .round();
+            finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs())
+                .round();
+          }
+
+          final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
+          final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
           String scaleLabel = '[scaled$overlayIdx]';
           String scaleFilter = '[$currentInputIdx:v]scale=$targetW:$targetH';
 
           if (imgConfig.rotation != 0) {
-            // Apply rotation filter, transparent background
+            // Apply rotation filter, transparent background, and expand bounding box
             scaleFilter +=
-                ',format=rgba,rotate=${imgConfig.rotation}*PI/180:c=black@0';
+                ',format=rgba,rotate=${imgConfig.rotation}*PI/180:c=black@0:ow=$finalW:oh=$finalH';
           }
           filterComplex.write('$scaleFilter$scaleLabel;');
 

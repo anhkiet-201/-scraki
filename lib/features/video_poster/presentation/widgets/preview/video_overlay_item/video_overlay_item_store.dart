@@ -1,6 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
+import 'dart:math' as math;
 
 part 'video_overlay_item_store.g.dart';
 
@@ -140,6 +141,7 @@ abstract class _VideoOverlayItemStore with Store {
     required DragUpdateDetails details,
     required double multiplierX, // -1: left, 1: right, 0: mid
     required double multiplierY, // -1: top, 1: bottom, 0: mid
+    double rotation = 0.0,
   }) {
     // 1. Measure ACTUAL starting size BEFORE font change
     final renderBox =
@@ -147,22 +149,28 @@ abstract class _VideoOverlayItemStore with Store {
     if (renderBox == null) return;
     final startSize = renderBox.size;
 
-    // 2. Calculate delta based on handle type
-    double delta;
+    // 2. Rotate delta based on object angle
+    final angle = rotation * (math.pi / 180);
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+
+    final dx = details.delta.dx * cosA - details.delta.dy * sinA;
+    final dy = details.delta.dx * sinA + details.delta.dy * cosA;
+
+    // 3. Calculate size delta based on handle type
+    double deltaScale;
     if (multiplierX != 0 && multiplierY != 0) {
       // Corner: Responsive to both (diagonal)
-      delta =
-          (multiplierX * details.delta.dx + multiplierY * details.delta.dy) *
-          0.05;
+      deltaScale = (multiplierX * dx + multiplierY * dy) * 0.05;
     } else if (multiplierX != 0) {
       // Mid-Side: Horizontal focus
-      delta = multiplierX * details.delta.dx * 0.05;
+      deltaScale = multiplierX * dx * 0.05;
     } else {
       // Mid-Top/Bottom: Vertical focus
-      delta = multiplierY * details.delta.dy * 0.05;
+      deltaScale = multiplierY * dy * 0.05;
     }
 
-    final newFontSize = (fontSize + delta).clamp(10.0, 200.0);
+    final newFontSize = (fontSize + deltaScale).clamp(10.0, 200.0);
     if ((newFontSize - fontSize).abs() < 0.01) return;
 
     // 3. Calculate growth based on standard scaling

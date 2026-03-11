@@ -1,6 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
+import 'dart:math' as math;
 
 part 'image_overlay_item_store.g.dart';
 
@@ -89,9 +90,14 @@ abstract class _ImageOverlayItemStore with Store {
     required DragUpdateDetails details,
     required double multiplierX, // -1: left, 1: right, 0: mid
     required double multiplierY, // -1: top, 1: bottom, 0: mid
+    double rotation = 0.0,
   }) {
-    final dx = details.delta.dx;
-    final dy = details.delta.dy;
+    final angle = rotation * (math.pi / 180);
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+
+    final dx = details.delta.dx * cosA - details.delta.dy * sinA;
+    final dy = details.delta.dx * sinA + details.delta.dy * cosA;
 
     double newWidth = width;
     double newHeight = height;
@@ -131,9 +137,16 @@ abstract class _ImageOverlayItemStore with Store {
   }
 
   @action
-  void handleDrag(DragUpdateDetails details) {
-    final newX = (x + details.delta.dx / constraints.maxWidth).clamp(0.0, 1.0);
-    final newY = (y + details.delta.dy / constraints.maxHeight).clamp(0.0, 1.0);
+  void handleDrag(DragUpdateDetails details, double rotation) {
+    final angle = rotation * (math.pi / 180);
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+
+    final globalDx = details.delta.dx * cosA - details.delta.dy * sinA;
+    final globalDy = details.delta.dx * sinA + details.delta.dy * cosA;
+
+    final newX = (x + globalDx / constraints.maxWidth).clamp(0.0, 1.0);
+    final newY = (y + globalDy / constraints.maxHeight).clamp(0.0, 1.0);
 
     updatePosition(newX, newY);
     onPositionUpdate(id, newX, newY);

@@ -253,6 +253,7 @@ mixin _$VideoOverlayItemStore on _VideoOverlayItemStore, Store {
     required DragUpdateDetails details,
     required double multiplierX,
     required double multiplierY,
+    double rotation = 0.0,
   }) {
     final _$actionInfo = _$_VideoOverlayItemStoreActionController.startAction(
       name: '_VideoOverlayItemStore.handleResize',
@@ -262,6 +263,7 @@ mixin _$VideoOverlayItemStore on _VideoOverlayItemStore, Store {
         details: details,
         multiplierX: multiplierX,
         multiplierY: multiplierY,
+        rotation: rotation,
       );
     } finally {
       _$_VideoOverlayItemStoreActionController.endAction(_$actionInfo);

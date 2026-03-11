@@ -199,6 +199,7 @@ mixin _$ImageOverlayItemStore on _ImageOverlayItemStore, Store {
     required DragUpdateDetails details,
     required double multiplierX,
     required double multiplierY,
+    double rotation = 0.0,
   }) {
     final _$actionInfo = _$_ImageOverlayItemStoreActionController.startAction(
       name: '_ImageOverlayItemStore.handleResize',
@@ -208,6 +209,7 @@ mixin _$ImageOverlayItemStore on _ImageOverlayItemStore, Store {
         details: details,
         multiplierX: multiplierX,
         multiplierY: multiplierY,
+        rotation: rotation,
       );
     } finally {
       _$_ImageOverlayItemStoreActionController.endAction(_$actionInfo);
@@ -215,12 +217,12 @@ mixin _$ImageOverlayItemStore on _ImageOverlayItemStore, Store {
   }
 
   @override
-  void handleDrag(DragUpdateDetails details) {
+  void handleDrag(DragUpdateDetails details, double rotation) {
     final _$actionInfo = _$_ImageOverlayItemStoreActionController.startAction(
       name: '_ImageOverlayItemStore.handleDrag',
     );
     try {
-      return super.handleDrag(details);
+      return super.handleDrag(details, rotation);
     } finally {
       _$_ImageOverlayItemStoreActionController.endAction(_$actionInfo);
     }

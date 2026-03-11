@@ -134,7 +134,8 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             _store.setInteracting(true);
                             if (!_store.isSelected) _store.handleSelect();
                           },
-                          onPanUpdate: _store.handleDrag,
+                          onPanUpdate: (d) =>
+                              _store.handleDrag(d, widget.rotation),
                           onPanEnd: (_) => _store.setInteracting(false),
                           onPanCancel: () => _store.setInteracting(false),
                           child: MouseRegion(

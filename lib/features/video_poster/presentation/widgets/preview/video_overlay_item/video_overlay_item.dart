@@ -107,9 +107,9 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
           left: left,
           top: top,
           child: FractionalTranslation(
-            translation: const Offset(-0.5, -0.5),  
+            translation: const Offset(-0.5, -0.5),
             child: MediaQuery(
-              data: MediaQuery.of(  
+              data: MediaQuery.of(
                 context,
               ).copyWith(textScaler: TextScaler.noScaling),
               child: GestureDetector(
@@ -296,6 +296,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: -1,
                               multiplierY: -1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -308,6 +309,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: 1,
                               multiplierY: -1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -320,6 +322,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: -1,
                               multiplierY: 1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -332,6 +335,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: 1,
                               multiplierY: 1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -345,6 +349,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: 0,
                               multiplierY: -1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -358,6 +363,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: 0,
                               multiplierY: 1,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -371,6 +377,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: -1,
                               multiplierY: 0,
+                              rotation: widget.rotation,
                             ),
                           ),
                           _buildHandle(
@@ -384,6 +391,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               details: d,
                               multiplierX: 1,
                               multiplierY: 0,
+                              rotation: widget.rotation,
                             ),
                           ),
                         ],
