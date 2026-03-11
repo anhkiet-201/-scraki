@@ -731,66 +731,53 @@ class BatchVideoService {
         filterComplex.write('noise=alls=$noiseStr:allf=t,');
         filterComplex.write('setpts=${ptsStr}*PTS[bg];');
 
-        int currentInputIdx = 1; // Start from 1 because 0 is bg video
+        int overlayIdx = 1;
         String lastVideoLabel = '[bg]';
 
-        // 3a. Overlay Text
-        if (overlayFile != null) {
-          filterComplex.write(
-            '$lastVideoLabel[$currentInputIdx:v]overlay=0:0:shortest=1[ov$currentInputIdx];',
-          );
-          lastVideoLabel = '[ov$currentInputIdx]';
-          currentInputIdx++;
-        }
-
-        // 3b. Overlay Custom Images
+        // 3a. Overlay Custom Images FIRST (Bottom layers)
+        int imageInputStartIndex = (overlayFile != null) ? 2 : 1;
         for (int i = 0; i < config.imageOverlays.length; i++) {
           var imgConfig = config.imageOverlays[i];
+          int currentInputIdx = imageInputStartIndex + i;
 
           // Convert coordinates
-          // x, y are normalized [0..1].
-          // width, height are absolute logical pixels in 720x1280.
-          // video is 1080x1920, so ratio is 1.5x
           final int targetW = (imgConfig.width * 1.5).round();
           final int targetH = (imgConfig.height * 1.5).round();
           final int targetX = (imgConfig.x * 1080 - targetW / 2).round();
           final int targetY = (imgConfig.y * 1920 - targetH / 2).round();
 
-          // Handle rotation if any (simplified: we just scale for now to keep things robust,
-          // but we can add rotation filter if needed. `rotate=a=rad` requires padding)
+          String scaleLabel = '[scaled$overlayIdx]';
+          String scaleFilter = '[$currentInputIdx:v]scale=$targetW:$targetH';
 
-          String scaleLabel = '[scaled$currentInputIdx]';
-          filterComplex.write(
-            '[$currentInputIdx:v]scale=$targetW:$targetH[scaled$currentInputIdx];',
-          );
+          if (imgConfig.rotation != 0) {
+            // Apply rotation filter, transparent background
+            scaleFilter +=
+                ',format=rgba,rotate=${imgConfig.rotation}*PI/180:c=black@0';
+          }
+          filterComplex.write('$scaleFilter$scaleLabel;');
 
-          String nextVideoLabel = '[ov$currentInputIdx]';
-          // If it's the last overlay, name it [outv]
-          if (i == config.imageOverlays.length - 1) {
+          String nextVideoLabel = '[ov$overlayIdx]';
+          if (i == config.imageOverlays.length - 1 && overlayFile == null) {
             nextVideoLabel = '[outv]';
           }
 
-          // Overlay command
-          String shortestFlag = imgConfig.isGif
-              ? ':shortest=1'
-              : ''; // usually GIFs don't force shortest but it's safe if we want background to end
+          String shortestFlag = imgConfig.isGif ? ':shortest=1' : '';
           filterComplex.write(
             '$lastVideoLabel$scaleLabel'
             'overlay=$targetX:$targetY$shortestFlag$nextVideoLabel;',
           );
 
           lastVideoLabel = nextVideoLabel;
-          currentInputIdx++;
+          overlayIdx++;
         }
 
-        // If only text was added, we need to map the last ov to outv
-        if (config.imageOverlays.isEmpty && overlayFile != null) {
-          // We named it ov$currentInputIdx earlier but it's the last, let's fix it simply:
-          String correctedFilter = filterComplex.toString().replaceAll(
-            '[ov1];',
-            '[outv];',
+        // 3b. Overlay Text LAST (Top layer)
+        if (overlayFile != null) {
+          int textInputIdx = 1; // Text input is always passed first via -i
+          String nextVideoLabel = '[outv]';
+          filterComplex.write(
+            '$lastVideoLabel[$textInputIdx:v]overlay=0:0:shortest=1$nextVideoLabel;',
           );
-          filterComplex = StringBuffer(correctedFilter);
         }
 
         // Remove trailing semicolon
