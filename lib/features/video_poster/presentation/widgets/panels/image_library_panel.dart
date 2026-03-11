@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
@@ -25,6 +26,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
   Timer? _debounce;
 
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
   int _offset = 0;
   final int _limit = 20;
   bool _isFetchingMore = false;
@@ -41,6 +43,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
     _searchController.dispose();
     _debounce?.cancel();
     _scrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -180,104 +183,133 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                 ),
                 SizedBox(
                   height: 90,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: images.length,
-                    itemBuilder: (context, index) {
-                      final item = images[index];
-                      final isSelected = selectedId == item.id;
+                  child: Listener(
+                    onPointerSignal: (pointerSignal) {
+                      if (pointerSignal is PointerScrollEvent) {
+                        final offset = pointerSignal.scrollDelta.dy;
+                        if (offset != 0 &&
+                            _horizontalScrollController.hasClients) {
+                          _horizontalScrollController.jumpTo(
+                            (_horizontalScrollController.offset + offset).clamp(
+                              0.0,
+                              _horizontalScrollController
+                                  .position
+                                  .maxScrollExtent,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: ReorderableListView.builder(
+                      scrollController: _horizontalScrollController,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      buildDefaultDragHandles: false,
+                      itemCount: images.length,
+                      onReorder: (oldIndex, newIndex) {
+                        widget.store.reorderCustomImage(oldIndex, newIndex);
+                      },
+                      itemBuilder: (context, index) {
+                        final item = images[index];
+                        final isSelected = selectedId == item.id;
 
-                      return GestureDetector(
-                        onTap: () {
-                          widget.store.selectCustomImage(item.id);
-                        },
-                        child: Container(
-                          width: 80,
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2A2A2A),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF6366F1)
-                                  : Colors.white10,
-                              width: isSelected ? 2 : 1,
+                        return ReorderableDragStartListener(
+                          key: ValueKey(item.id),
+                          index: index,
+                          child: GestureDetector(
+                            onTap: () {
+                              widget.store.selectCustomImage(item.id);
+                            },
+                            child: Container(
+                              width: 80,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF6366F1)
+                                      : Colors.white10,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: item.imageUrl.startsWith('http')
+                                          ? Image.network(
+                                              item.imageUrl,
+                                              fit: BoxFit.contain,
+                                            )
+                                          : Image.file(
+                                              File(item.imageUrl),
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (ctx, err, stack) =>
+                                                  const Icon(
+                                                    Icons.image,
+                                                    color: Colors.white30,
+                                                  ),
+                                            ),
+                                    ),
+                                  ),
+                                  if (item.isGif)
+                                    Positioned(
+                                      top: 4,
+                                      left: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF6366F1),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'GIF',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        widget.store.removeCustomImage(item.id);
+                                      },
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.redAccent,
+                                          borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(8),
+                                            topRight: Radius.circular(8),
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.all(4),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: item.imageUrl.startsWith('http')
-                                      ? Image.network(
-                                          item.imageUrl,
-                                          fit: BoxFit.contain,
-                                        )
-                                      : Image.file(
-                                          File(item.imageUrl),
-                                          fit: BoxFit.contain,
-                                          errorBuilder: (ctx, err, stack) =>
-                                              const Icon(
-                                                Icons.image,
-                                                color: Colors.white30,
-                                              ),
-                                        ),
-                                ),
-                              ),
-                              if (item.isGif)
-                                Positioned(
-                                  top: 4,
-                                  left: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'GIF',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    widget.store.removeCustomImage(item.id);
-                                  },
-                                  child: Container(
-                                    decoration: const BoxDecoration(
-                                      color: Colors.redAccent,
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(8),
-                                        topRight: Radius.circular(8),
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(4),
-                                    child: const Icon(
-                                      Icons.close,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const Padding(

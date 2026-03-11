@@ -159,6 +159,15 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
+  void reorderCustomImage(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = customImages.removeAt(oldIndex);
+    customImages.insert(newIndex, item);
+  }
+
+  @action
   void updateCustomImagePosition(String id, double x, double y) {
     final index = customImages.indexWhere((i) => i.id == id);
     if (index == -1) return;
