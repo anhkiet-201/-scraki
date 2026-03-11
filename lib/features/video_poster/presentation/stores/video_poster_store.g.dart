@@ -9,6 +9,42 @@ part of 'video_poster_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoPosterStore on _VideoPosterStore, Store {
+  late final _$favoriteImagesAtom = Atom(
+    name: '_VideoPosterStore.favoriteImages',
+    context: context,
+  );
+
+  @override
+  ObservableList<FavoriteImage> get favoriteImages {
+    _$favoriteImagesAtom.reportRead();
+    return super.favoriteImages;
+  }
+
+  @override
+  set favoriteImages(ObservableList<FavoriteImage> value) {
+    _$favoriteImagesAtom.reportWrite(value, super.favoriteImages, () {
+      super.favoriteImages = value;
+    });
+  }
+
+  late final _$isLoadingFavoritesAtom = Atom(
+    name: '_VideoPosterStore.isLoadingFavorites',
+    context: context,
+  );
+
+  @override
+  bool get isLoadingFavorites {
+    _$isLoadingFavoritesAtom.reportRead();
+    return super.isLoadingFavorites;
+  }
+
+  @override
+  set isLoadingFavorites(bool value) {
+    _$isLoadingFavoritesAtom.reportWrite(value, super.isLoadingFavorites, () {
+      super.isLoadingFavorites = value;
+    });
+  }
+
   late final _$sourceVideoPathsAtom = Atom(
     name: '_VideoPosterStore.sourceVideoPaths',
     context: context,
@@ -345,6 +381,28 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$_loadFavoritesAsyncAction = AsyncAction(
+    '_VideoPosterStore._loadFavorites',
+    context: context,
+  );
+
+  @override
+  Future<void> _loadFavorites() {
+    return _$_loadFavoritesAsyncAction.run(() => super._loadFavorites());
+  }
+
+  late final _$toggleFavoriteAsyncAction = AsyncAction(
+    '_VideoPosterStore.toggleFavorite',
+    context: context,
+  );
+
+  @override
+  Future<void> toggleFavorite(String url, {bool isGif = false}) {
+    return _$toggleFavoriteAsyncAction.run(
+      () => super.toggleFavorite(url, isGif: isGif),
+    );
+  }
+
   late final _$addCustomImageAsyncAction = AsyncAction(
     '_VideoPosterStore.addCustomImage',
     context: context,
@@ -408,6 +466,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.selectCustomImage(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void reorderCustomImage(int oldIndex, int newIndex) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.reorderCustomImage',
+    );
+    try {
+      return super.reorderCustomImage(oldIndex, newIndex);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -672,6 +742,8 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   @override
   String toString() {
     return '''
+favoriteImages: ${favoriteImages},
+isLoadingFavorites: ${isLoadingFavorites},
 sourceVideoPaths: ${sourceVideoPaths},
 currentVideoIndex: ${currentVideoIndex},
 customTexts: ${customTexts},

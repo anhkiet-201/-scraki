@@ -17,6 +17,8 @@ import 'package:scraki/features/video_poster/data/services/batch_video_service.d
 import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
+import 'package:scraki/features/video_poster/domain/entities/favorite_image.dart';
+import 'package:scraki/features/video_poster/domain/repositories/favorite_image_repository.dart';
 import 'package:uuid/uuid.dart';
 
 part 'video_poster_store.g.dart';
@@ -32,6 +34,8 @@ abstract class _VideoPosterStore with Store {
   final DashboardStore _dashboardStore = inject<DashboardStore>();
   final RecentColorRepository _recentColorRepo =
       inject<RecentColorRepository>();
+  final FavoriteImageRepository _favoriteImageRepo =
+      inject<FavoriteImageRepository>();
 
   // Initialization flag to prevent re-initialization on hot restart
   bool _isInitialized = false;
@@ -40,7 +44,67 @@ abstract class _VideoPosterStore with Store {
     if (!_isInitialized) {
       initializePlayer();
       _loadRecentColors();
+      _loadFavorites();
       _isInitialized = true;
+    }
+  }
+
+  // ─── Favorite Images ──────────────────────────────────────────────────────
+
+  @observable
+  ObservableList<FavoriteImage> favoriteImages =
+      ObservableList<FavoriteImage>();
+
+  @observable
+  bool isLoadingFavorites = false;
+
+  @action
+  Future<void> _loadFavorites() async {
+    isLoadingFavorites = true;
+    try {
+      final list = await _favoriteImageRepo.getFavorites();
+      runInAction(() {
+        favoriteImages.clear();
+        favoriteImages.addAll(list);
+      });
+    } catch (e) {
+      debugPrint('Error loading favorites: $e');
+    } finally {
+      runInAction(() => isLoadingFavorites = false);
+    }
+  }
+
+  @action
+  Future<void> toggleFavorite(String url, {bool isGif = false}) async {
+    final existingIndex = favoriteImages.indexWhere((f) => f.url == url);
+    if (existingIndex != -1) {
+      final item = favoriteImages[existingIndex];
+      // Xóa ở local list trước để UI cập nhật ngay
+      favoriteImages.removeAt(existingIndex);
+      try {
+        await _favoriteImageRepo.removeFavorite(item.id);
+      } catch (e) {
+        debugPrint(' toggleFavorite Remove API failed: $e');
+        // Rollback nếu API lỗi
+        runInAction(() => favoriteImages.insert(existingIndex, item));
+      }
+    } else {
+      final tempId = const Uuid().v4();
+      final newItem = FavoriteImage(
+        id: tempId,
+        url: url,
+        isGif: isGif,
+        createdAt: DateTime.now(),
+      );
+      // Thêm lên đầu UI list ngay lap tuc
+      favoriteImages.insert(0, newItem);
+      try {
+        await _favoriteImageRepo.addFavorite(newItem);
+      } catch (e) {
+        debugPrint(' toggleFavorite Add API failed: $e');
+        // Rollback nêu api lỗi
+        runInAction(() => favoriteImages.remove(newItem));
+      }
     }
   }
 

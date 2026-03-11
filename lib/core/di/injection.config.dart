@@ -89,10 +89,16 @@ import '../../features/settings/presentation/stores/settings_email_store.dart'
     as _i1056;
 import '../../features/settings/presentation/stores/settings_store.dart'
     as _i151;
+import '../../features/video_poster/data/datasources/favorite_image_remote_data_source.dart'
+    as _i963;
+import '../../features/video_poster/data/repositories/favorite_image_repository_impl.dart'
+    as _i650;
 import '../../features/video_poster/data/repositories/ffmpeg_video_processing_repository_impl.dart'
     as _i1007;
 import '../../features/video_poster/data/repositories/recent_color_repository.dart'
     as _i763;
+import '../../features/video_poster/domain/repositories/favorite_image_repository.dart'
+    as _i147;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
     as _i427;
 import '../../features/video_poster/domain/services/anti_reup_service.dart'
@@ -144,6 +150,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i391.IPosterRepository>(
       () => _i424.PosterRepositoryImpl(),
     );
+    gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
+      () => _i963.FavoriteImageRemoteDataSourceImpl(),
+    );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
     gh.lazySingleton<_i583.IImapRemoteDataSource>(
       () => _i583.ImapRemoteDataSourceImpl(),
@@ -173,6 +182,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
+    );
+    gh.lazySingleton<_i147.FavoriteImageRepository>(
+      () => _i650.FavoriteImageRepositoryImpl(
+        gh<_i963.FavoriteImageRemoteDataSource>(),
+      ),
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),

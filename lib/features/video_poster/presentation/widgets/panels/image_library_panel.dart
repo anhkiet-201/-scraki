@@ -303,6 +303,45 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                                       ),
                                     ),
                                   ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Observer(
+                                      builder: (_) {
+                                        final isFavorite = widget
+                                            .store
+                                            .favoriteImages
+                                            .any((f) => f.url == item.imageUrl);
+                                        return GestureDetector(
+                                          onTap: () {
+                                            widget.store.toggleFavorite(
+                                              item.imageUrl,
+                                              isGif: item.isGif,
+                                            );
+                                          },
+                                          child: Container(
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black45,
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: Radius.circular(8),
+                                                bottomRight: Radius.circular(8),
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.all(4),
+                                            child: Icon(
+                                              isFavorite
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              size: 14,
+                                              color: isFavorite
+                                                  ? Colors.redAccent
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -321,6 +360,37 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
           },
         ),
 
+        Expanded(
+          child: DefaultTabController(
+            length: 2,
+            initialIndex: 1,
+            child: Column(
+              children: [
+                const TabBar(
+                  indicatorColor: Color(0xFF6366F1),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white30,
+                  tabs: [
+                    Tab(text: 'Khám Phá'),
+                    Tab(text: 'Yêu Thích'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [_buildDiscoverTab(), _buildFavoritesTab()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDiscoverTab() {
+    return Column(
+      children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -328,7 +398,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
               ElevatedButton.icon(
                 onPressed: () => _pickImage(context),
                 icon: const Icon(Icons.upload_file),
-                label: const Text('Tải ảnh lên'),
+                label: const Text('Tải ảnh từ máy'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(40),
                   backgroundColor: const Color(0xFF6366F1),
@@ -360,7 +430,6 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
             ],
           ),
         ),
-
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -369,7 +438,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                   child: Text(
                     _searchController.text.isEmpty
                         ? "Không có GIF thịnh hành"
-                        : "Không tìm thấy kết cục",
+                        : "Không tìm thấy kết quả",
                     style: const TextStyle(color: Colors.white30),
                   ),
                 )
@@ -390,33 +459,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                         itemBuilder: (context, index) {
                           final gif = _gifs[index];
                           final url = gif['url'] as String;
-
-                          return InkWell(
-                            onTap: () {
-                              widget.store.addCustomImage(
-                                url,
-                                0.5,
-                                0.5,
-                                isGif: true,
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: Image.network(
-                                url,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
-                                      Icons.broken_image,
-                                      color: Colors.white10,
-                                    ),
-                              ),
-                            ),
-                          );
+                          return _buildGifItem(url, true);
                         },
                       ),
                     ),
@@ -435,6 +478,94 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFavoritesTab() {
+    return Observer(
+      builder: (_) {
+        final favorites = widget.store.favoriteImages;
+
+        if (widget.store.isLoadingFavorites && favorites.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (favorites.isEmpty) {
+          return const Center(
+            child: Text(
+              "Chưa có ảnh/GIF yêu thích nào",
+              style: TextStyle(color: Colors.white30),
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1,
+          ),
+          itemCount: favorites.length,
+          itemBuilder: (context, index) {
+            final fav = favorites[index];
+            return _buildGifItem(fav.url, fav.isGif);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildGifItem(String url, bool isGif) {
+    return Observer(
+      builder: (_) {
+        final isFavorite = widget.store.favoriteImages.any((f) => f.url == url);
+
+        return Stack(
+          children: [
+            InkWell(
+              onTap: () {
+                widget.store.addCustomImage(url, 0.5, 0.5, isGif: isGif);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, color: Colors.white10),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: () => widget.store.toggleFavorite(url, isGif: isGif),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.redAccent : Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
