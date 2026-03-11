@@ -510,6 +510,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void updateCustomImageRotation(String id, double rotation) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImageRotation',
+    );
+    try {
+      return super.updateCustomImageRotation(id, rotation);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void updateCustomImageLocalPath(String id, String path) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomImageLocalPath',

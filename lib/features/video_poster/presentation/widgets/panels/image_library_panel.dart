@@ -336,6 +336,54 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                     ),
                   ),
                 ),
+                if (selectedId != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "XOAY ẢNH",
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        Observer(
+                          builder: (_) {
+                            final image = images.firstWhere(
+                              (i) => i.id == selectedId,
+                            );
+                            return Text(
+                              "${image.rotation.toInt()}°",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Observer(
+                    builder: (_) {
+                      final image = images.firstWhere(
+                        (i) => i.id == selectedId,
+                      );
+                      return Slider(
+                        value: image.rotation,
+                        min: 0,
+                        max: 360,
+                        activeColor: const Color(0xFF6366F1),
+                        inactiveColor: Colors.white10,
+                        onChanged: (val) {
+                          widget.store.updateCustomImageRotation(
+                            selectedId,
+                            val,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0),
                   child: Divider(height: 1, color: Colors.white10),

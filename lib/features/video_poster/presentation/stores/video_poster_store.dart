@@ -249,6 +249,13 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
+  void updateCustomImageRotation(String id, double rotation) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(rotation: rotation);
+  }
+
+  @action
   void updateCustomImageLocalPath(String id, String path) {
     final index = customImages.indexWhere((i) => i.id == id);
     if (index == -1) return;
