@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
+
+import 'package:flutter_mobx/flutter_mobx.dart';
 
 /// Image Library panel — drag-and-drop Image items to the video canvas
 class ImageLibraryPanel extends StatefulWidget {
@@ -156,6 +159,135 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
           ),
         ),
         const Divider(height: 1, color: Colors.white10),
+
+        // Phần hiển thị Ảnh/GIF đã thêm vào video
+        Observer(
+          builder: (_) {
+            final images = widget.store.customImages;
+            final selectedId = widget.store.selectedCustomImageId;
+
+            if (images.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    "Ảnh/GIF Đang Dùng:",
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ),
+                SizedBox(
+                  height: 90,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      final item = images[index];
+                      final isSelected = selectedId == item.id;
+
+                      return GestureDetector(
+                        onTap: () {
+                          widget.store.selectCustomImage(item.id);
+                        },
+                        child: Container(
+                          width: 80,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2A2A2A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF6366F1)
+                                  : Colors.white10,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: item.imageUrl.startsWith('http')
+                                      ? Image.network(
+                                          item.imageUrl,
+                                          fit: BoxFit.contain,
+                                        )
+                                      : Image.file(
+                                          File(item.imageUrl),
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (ctx, err, stack) =>
+                                              const Icon(
+                                                Icons.image,
+                                                color: Colors.white30,
+                                              ),
+                                        ),
+                                ),
+                              ),
+                              if (item.isGif)
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6366F1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'GIF',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    widget.store.removeCustomImage(item.id);
+                                  },
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(8),
+                                        topRight: Radius.circular(8),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.all(4),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Divider(height: 1, color: Colors.white10),
+                ),
+              ],
+            );
+          },
+        ),
 
         Padding(
           padding: const EdgeInsets.all(16.0),
