@@ -675,39 +675,53 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
     if (reader.canProvide(Formats.htmlText)) {
       reader.getValue<String>(Formats.htmlText, (String? html) {
         if (html != null) {
-          // Lỗi Windows đọc CF_HTML UTF-8 thành String (UTF-16LE) khiến text bị móp thành Tiếng Trung
-          // Cần chuyển String thành byte array và decode theo UTF-8
           String decodedHtml = html;
-          if (html.isNotEmpty && html.runes.first > 255) {
+          // Phát hiện lỗi UTF-8 bytes bị ép kiểu nhầm thành UTF-16LE String (thường tạo ra các ký tự CJK)
+          if (html.isNotEmpty && html.codeUnitAt(0) > 255) {
             try {
               final encoded = Uint8List(html.length * 2);
               for (int i = 0; i < html.length; i++) {
                 final codeUnit = html.codeUnitAt(i);
-                encoded[i * 2] = codeUnit & 0xFF;
-                encoded[i * 2 + 1] = codeUnit >> 8;
+                encoded[i * 2] = codeUnit & 0xFF; // Xử lý Little Endian Byte 1
+                encoded[i * 2 + 1] =
+                    codeUnit >> 8; // Xử lý Little Endian Byte 2
               }
-              decodedHtml = utf8.decode(encoded, allowMalformed: true);
+              // Data decode lại bằng utf-8 từ arr bytes
+              decodedHtml = utf8.decode(
+                encoded.where((b) => b != 0).toList(),
+                allowMalformed: true,
+              );
             } catch (e) {
               debugPrint('[DROP] utf8 decode error: $e');
             }
           }
-          debugPrint('[DROP] from html: $decodedHtml');
+          debugPrint('[DROP] decoded html: $decodedHtml');
 
+          // Thử tìm thẻ src="" hoặc http thẳng trong chuỗi đã decode (hoặc string gốc nếu lỗi)
           final imgRegex = RegExp(
-            r'<img[^>]+src="([^"]+)"',
+            r'(?:src="|(?:https?:\/\/))([^"]+?(?:png|jpg|jpeg|gif|webp))',
             caseSensitive: false,
           );
-          final match = imgRegex.firstMatch(decodedHtml);
+          final match =
+              imgRegex.firstMatch(decodedHtml) ?? imgRegex.firstMatch(html);
+
           var imgUrl = match?.group(1);
-          if (imgUrl != null && imgUrl.startsWith('http')) {
-            imgUrl = _resolve(imgUrl.replaceAll('&amp;', '&'));
-            debugPrint('[DROP] extracted img: $imgUrl');
-            widget.store.addCustomImage(
-              imgUrl,
-              0.5,
-              0.5,
-              isGif: imgUrl.toLowerCase().contains('.gif'),
-            );
+          if (imgUrl != null) {
+            if (!imgUrl.startsWith('http')) {
+              imgUrl = match?.group(0)?.startsWith('http') == true
+                  ? match?.group(0)
+                  : imgUrl;
+            }
+            if (imgUrl != null && imgUrl.startsWith('http')) {
+              imgUrl = _resolve(imgUrl.replaceAll('&amp;', '&'));
+              debugPrint('[DROP] extracted img: $imgUrl');
+              widget.store.addCustomImage(
+                imgUrl,
+                0.5,
+                0.5,
+                isGif: imgUrl.toLowerCase().contains('.gif'),
+              );
+            }
           }
         }
       });
