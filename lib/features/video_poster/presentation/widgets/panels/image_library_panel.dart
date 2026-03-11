@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
 
@@ -125,24 +124,6 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
         });
       }
     });
-  }
-
-  /// Mở hộp thoại chọn ảnh hỗ trợ format PNG, JPG, GIF
-  Future<void> _pickImage(BuildContext context) async {
-    const XTypeGroup typeGroup = XTypeGroup(
-      label: 'images',
-      extensions: <String>['jpg', 'png', 'gif', 'jpeg'],
-    );
-    final XFile? file = await openFile(
-      acceptedTypeGroups: <XTypeGroup>[typeGroup],
-    );
-
-    if (file != null) {
-      if (!context.mounted) return;
-      final isGif = file.name.toLowerCase().endsWith('.gif');
-      // Tự động add vào giữa màn hình khi chọn từ máy
-      widget.store.addCustomImage(file.path, 0.5, 0.5, isGif: isGif);
-    }
   }
 
   @override
@@ -393,41 +374,26 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _pickImage(context),
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Tải ảnh từ máy'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(40),
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm GIF trên Giphy...',
+              hintStyle: const TextStyle(color: Colors.white30),
+              prefixIcon: const Icon(
+                Icons.search,
+                color: Colors.white30,
+                size: 18,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Tìm kiếm GIF trên Giphy...',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Colors.white30,
-                    size: 18,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                ),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
               ),
-            ],
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+            ),
           ),
         ),
         Expanded(
