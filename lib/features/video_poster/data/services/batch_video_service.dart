@@ -913,12 +913,38 @@ class _SegmentRequest {
 /// Call [_VideoSpoofProfile.random] to generate a fresh profile for each output.
 class _VideoSpoofProfile {
   static const _devices = [
-    (model: 'iPhone 13', ios: '15.6'),
-    (model: 'iPhone 13 Pro', ios: '15.7.1'),
-    (model: 'iPhone 14', ios: '16.3'),
-    (model: 'iPhone 14 Pro Max', ios: '16.6'),
-    (model: 'iPhone 15', ios: '17.0'),
-    (model: 'iPhone 15 Pro Max', ios: '17.2'),
+    (model: 'Samsung Galaxy S23 Ultra', android: '13'),
+    (model: 'Samsung Galaxy S24 Ultra', android: '14'),
+    (model: 'Samsung Galaxy Z Fold5', android: '13'),
+    (model: 'Samsung Galaxy A54 5G', android: '13'),
+    (model: 'Samsung Galaxy Tab S9 Ultra', android: '13'),
+    (model: 'Google Pixel 8 Pro', android: '14'),
+    (model: 'Google Pixel 7 Pro', android: '13'),
+    (model: 'Google Pixel 6a', android: '13'),
+    (model: 'Google Pixel Fold', android: '13'),
+    (model: 'Xiaomi 13 Pro', android: '13'),
+    (model: 'Xiaomi 14 Ultra', android: '14'),
+    (model: 'Redmi Note 13 Pro+', android: '13'),
+    (model: 'Xiaomi Pad 6', android: '13'),
+    (model: 'Oppo Find X6 Pro', android: '13'),
+    (model: 'Oppo Reno10 Pro+', android: '13'),
+    (model: 'Oppo Find N3 Flip', android: '13'),
+    (model: 'Vivo X90 Pro+', android: '13'),
+    (model: 'Vivo V29 Pro', android: '13'),
+    (model: 'Vivo X Flip', android: '13'),
+    (model: 'Realme GT5', android: '13'),
+    (model: 'Realme 11 Pro+', android: '13'),
+    (model: 'Sony Xperia 1 V', android: '13'),
+    (model: 'Sony Xperia 5 V', android: '13'),
+    (model: 'OnePlus 11', android: '13'),
+    (model: 'OnePlus 12', android: '14'),
+    (model: 'OnePlus Open', android: '13'),
+    (model: 'Motorola Edge 40 Pro', android: '13'),
+    (model: 'Motorola Razr 40 Ultra', android: '13'),
+    (model: 'Asus ROG Phone 7 Ultimate', android: '13'),
+    (model: 'Asus Zenfone 10', android: '13'),
+    (model: 'Nothing Phone (2)', android: '13'),
+    (model: 'Nokia G42', android: '13'),
   ];
 
   static const _presets = ['ultrafast', 'superfast', 'veryfast'];
@@ -930,7 +956,7 @@ class _VideoSpoofProfile {
   static const _lonMax = 107.00;
 
   final String model;
-  final String iosVersion;
+  final String androidVersion;
   final String creationTime;
   final String gpsIso6709;
   final int crf;
@@ -940,7 +966,7 @@ class _VideoSpoofProfile {
 
   const _VideoSpoofProfile({
     required this.model,
-    required this.iosVersion,
+    required this.androidVersion,
     required this.creationTime,
     required this.gpsIso6709,
     required this.crf,
@@ -999,7 +1025,7 @@ class _VideoSpoofProfile {
 
     return _VideoSpoofProfile(
       model: device.model,
-      iosVersion: device.ios,
+      androidVersion: device.android,
       creationTime: recordedAt,
       gpsIso6709: gps,
       crf: crf,
