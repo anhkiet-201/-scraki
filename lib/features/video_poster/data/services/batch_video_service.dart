@@ -596,13 +596,7 @@ class BatchVideoService {
         }
       }
 
-      // 3. Silent audio source
-      ffmpegArgs.addAll([
-        '-f',
-        'lavfi',
-        '-i',
-        'anoisesrc=d=60:c=white:a=0.001:r=44100',
-      ]);
+
 
       // 4. Build filter complex
       StringBuffer filterComplex = StringBuffer();
@@ -727,26 +721,14 @@ class BatchVideoService {
       String fStr = filterComplex.toString();
       if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
 
-      int silentAudioIdx =
-          1 + config.textOverlays.length + config.imageOverlays.length;
 
-      final double audioVol = 0.95 + (random.nextDouble() * 0.1);
-      final int audioSampleRate = 44100 + (random.nextInt(41) - 20);
 
       ffmpegArgs.addAll([
         '-filter_complex',
-        '$fStr;[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
+        '$fStr',
         '-map',
         lastVideoLabel,
-        '-map',
-        '[outa]',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-ac',
-        '2',
-        '-shortest',
+        '-an', // Remove all audio streams
         '-r',
         '30',
         '-x264-params',
@@ -1036,6 +1018,8 @@ class _VideoSpoofProfile {
   List<String> toFfmpegMetadataArgs() => [
     '-metadata',
     'creation_time=$creationTime',
+    '-metadata',
+    'location=$gpsIso6709',
     '-metadata',
     'Hw=1',
     '-metadata',
