@@ -567,9 +567,6 @@ class _ImageDropZone extends StatefulWidget {
 
 class _ImageDropZoneState extends State<_ImageDropZone> {
   bool _isDragging = false;
-  bool _showUrlInput = false;
-  final _urlCtrl = TextEditingController();
-  final _urlFocus = FocusNode();
   final _zoneFocus = FocusNode(); // focus vùng drop để nhận keyboard
 
   @override
@@ -583,8 +580,6 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
 
   @override
   void dispose() {
-    _urlCtrl.dispose();
-    _urlFocus.dispose();
     _zoneFocus.dispose();
     super.dispose();
   }
@@ -624,16 +619,7 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
               url.toLowerCase().contains('giphy'),
         );
       } else {
-        debugPrint('[PASTE] -> not a URL, opening input');
-        // Nếu không phải URL, mở input để người dùng nhập
-        setState(() {
-          _showUrlInput = true;
-          _urlCtrl.text = text;
-        });
-        Future.delayed(
-          const Duration(milliseconds: 50),
-          () => _urlFocus.requestFocus(),
-        );
+        debugPrint('[PASTE] -> not a URL, ignoring');
       }
     } catch (e) {
       debugPrint('[PASTE] error: $e');
@@ -787,29 +773,7 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
     }
   }
 
-  void _submit() {
-    final raw = _urlCtrl.text.trim();
-    debugPrint('[URL] submit raw: $raw');
-    if (raw.isEmpty) {
-      setState(() => _showUrlInput = false);
-      return;
-    }
-    final url = _resolve(raw);
-    debugPrint('[URL] resolved: $url');
-    if (url.startsWith('http')) {
-      debugPrint('[URL] -> adding to store');
-      widget.store.addCustomImage(
-        url,
-        0.5,
-        0.5,
-        isGif: url.toLowerCase().contains('.gif'),
-      );
-    } else {
-      debugPrint('[URL] -> invalid URL, not adding');
-    }
-    _urlCtrl.clear();
-    setState(() => _showUrlInput = false);
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -833,11 +797,9 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
           ],
           onDropOver: (event) {
             // Guard: chặn khi không ở tab Video Editor
-            // (PageView + KeepAlivePage giữ widget alive ngay cả khi ẩn)
             if (!widget.store.isOnVideoEditorTab) return DropOperation.none;
 
-            // Chỉ kích hoạt overlay khi kéo ảnh từ browser (có htmlText/uri)
-            // File local (bao gồm video) chỉ gửi fileUri — không hiện overlay
+            // Chỉ kích hoạt overlay khi kéo ảnh từ browser
             final hasWebImage = event.session.items.any(
               (item) =>
                   item.dataReader?.canProvide(Formats.htmlText) == true ||
@@ -892,124 +854,6 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
                     ),
                   ),
                 ),
-              if (_showUrlInput)
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _showUrlInput = false;
-                        _urlCtrl.clear();
-                      });
-                    },
-                    child: Container(color: Colors.black54),
-                  ),
-                ),
-              if (_showUrlInput)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 60,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E2E),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF6366F1),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF6366F1,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 20,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.link,
-                            color: Color(0xFF6366F1),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _urlCtrl,
-                              focusNode: _urlFocus,
-                              autofocus: true,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'Paste URL ảnh rồi Enter...',
-                                hintStyle: TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 13,
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                              onSubmitted: (_) => _submit(),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _submit,
-                            child: const Text(
-                              'Thêm',
-                              style: TextStyle(color: Color(0xFF6366F1)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: Tooltip(
-                  message: 'Nhập URL ảnh từ web',
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() => _showUrlInput = true);
-                      Future.delayed(
-                        const Duration(milliseconds: 50),
-                        () => _urlFocus.requestFocus(),
-                      );
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.85),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF6366F1,
-                            ).withValues(alpha: 0.4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.add_link,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
