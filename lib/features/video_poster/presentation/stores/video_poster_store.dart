@@ -396,10 +396,25 @@ abstract class _VideoPosterStore with Store {
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây
-    if (color != null) _pushRecentColor(recentTextColors, color);
     if (backgroundColor != null) {
       _pushRecentColor(recentBgColors, backgroundColor);
     }
+  }
+
+  @action
+  void updateCustomTextTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      startTime: startTime,
+      endTime: endTime,
+      clearEndTime: clearEndTime,
+    );
   }
 
   // ─── Batch Video Creation ────────────────────────────────────────────────────────
@@ -430,12 +445,42 @@ abstract class _VideoPosterStore with Store {
 
     _batchService = BatchVideoService();
 
-    // 1. Capture text overlay BEFORE setting isBatchCreating=true
-    // Because isBatchCreating=true will hide the RepaintBoundary from the screen
-    Uint8List? overlayBytes;
+    // 1. Group text overlays by timing and capture each group as PNG
+    final timedOverlays = <TimedOverlay>[];
     if (customTexts.isNotEmpty) {
       try {
-        overlayBytes = await capturePreviewAsPng();
+        final originalTexts = List<CustomTextOverlay>.from(customTexts);
+        final groupedTexts = <String, List<CustomTextOverlay>>{};
+        for (final text in originalTexts) {
+          final key = '${text.startTime}_${text.endTime}';
+          groupedTexts.putIfAbsent(key, () => []).add(text);
+        }
+
+        // Use runInAction to modify observables
+        for (final group in groupedTexts.values) {
+          runInAction(() {
+            customTexts.clear();
+            customTexts.addAll(group);
+          });
+
+          // Wait for UI to update
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+
+          final bytes = await capturePreviewAsPng();
+          timedOverlays.add(
+            TimedOverlay(
+              bytes: bytes,
+              startTime: group.first.startTime,
+              endTime: group.first.endTime,
+            ),
+          );
+        }
+
+        // Restore original texts
+        runInAction(() {
+          customTexts.clear();
+          customTexts.addAll(originalTexts);
+        });
       } catch (e) {
         batchLogs.add('❌ Lỗi capture text: $e');
         return;
@@ -469,7 +514,7 @@ abstract class _VideoPosterStore with Store {
 
     final config = BatchVideoConfig(
       outputCount: batchOutputCount,
-      overlayBytes: overlayBytes,
+      textOverlays: timedOverlays,
       imageOverlays: customImages.toList(),
     );
 

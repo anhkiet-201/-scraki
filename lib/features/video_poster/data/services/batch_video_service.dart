@@ -11,6 +11,18 @@ import 'package:scraki/features/video_poster/domain/entities/custom_image_overla
 // Works on macOS & Windows by calling ffmpeg/ffprobe via dart:io Process.
 // ============================================================================
 
+class TimedOverlay {
+  final Uint8List bytes;
+  final double startTime;
+  final double? endTime;
+
+  const TimedOverlay({
+    required this.bytes,
+    required this.startTime,
+    this.endTime,
+  });
+}
+
 /// Configuration constants matching make-vid.sh defaults.
 class BatchVideoConfig {
   final int minSegmentDuration; // seconds
@@ -20,7 +32,7 @@ class BatchVideoConfig {
   final int maxFinalDuration; // seconds
   final int outputCount;
   final String? outputDir; // null = auto-generate with timestamp
-  final Uint8List? overlayBytes;
+  final List<TimedOverlay> textOverlays;
   final List<CustomImageOverlay> imageOverlays;
 
   const BatchVideoConfig({
@@ -31,7 +43,7 @@ class BatchVideoConfig {
     this.maxFinalDuration = 40,
     this.outputCount = 10,
     this.outputDir,
-    this.overlayBytes,
+    this.textOverlays = const [],
     this.imageOverlays = const [],
   });
 }
@@ -110,13 +122,6 @@ class BatchVideoService {
       '${Directory.systemTemp.path}/scraki_segments_$timestamp',
     );
     await tempDir.create(recursive: true);
-
-    File? overlayFile;
-    if (config.overlayBytes != null) {
-      yield '🖼️ Đang chuẩn bị text overlay...';
-      overlayFile = File('${tempDir.path}/overlay.png');
-      await overlayFile.writeAsBytes(config.overlayBytes!);
-    }
 
     try {
       // ── Step 1: Validate inputs & Get Durations ──────────────────────────
@@ -261,23 +266,20 @@ class BatchVideoService {
       void runCreationTask(int i) {
         final plan = videoPlans[i]!;
         final segmentsToMerge = plan.map((r) => segmentFileMap[r]!).toList();
-
         late Future<void> taskFuture;
-        taskFuture =
-            _createOutputVideo(
-              outputIndex: i,
-              segments: segmentsToMerge,
-              outputDir: outputDir,
-              config: config,
-              overlayFile: overlayFile,
-              onProgress: (percent) {
-                if (_cancelled) return;
-                final p = (percent * 100).toStringAsFixed(0);
-                streamController.add(
-                  '_PROGRESS_VID$i: [$i/${config.outputCount}] Đang ghép video $i... $p%',
-                );
-              },
-            ).then((result) {
+        taskFuture = _createOutputVideo(
+          outputIndex: i,
+          segments: segmentsToMerge,
+          outputDir: outputDir,
+          config: config,
+          onProgress: (percent) {
+            if (_cancelled) return;
+            final p = (percent * 100).toStringAsFixed(0);
+            streamController.add(
+              '_PROGRESS_VID$i: [$i/${config.outputCount}] Đang ghép video $i... $p%',
+            );
+          },
+        ).then((result) {
               activeTasks.remove(taskFuture);
               if (!_cancelled) {
                 for (final log in result.logs) {
@@ -513,13 +515,11 @@ class BatchVideoService {
     required String outputDir,
     required BatchVideoConfig config,
     void Function(double)? onProgress,
-    File? overlayFile,
   }) async {
     final logs = <String>[];
     final random = Random();
 
     // Target duration for this output video
-    // (Already handled in planning phase in createBatchVideos)
     final targetDuration =
         config.minFinalDuration +
         random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
@@ -534,7 +534,6 @@ class BatchVideoService {
     );
     final buffer = StringBuffer();
     for (final seg in segments) {
-      // Use absolute paths; ffmpeg concat requires forward slashes even on Windows
       final absPath = File(seg).absolute.path.replaceAll('\\', '/');
       buffer.writeln("file '$absPath'");
     }
@@ -542,18 +541,18 @@ class BatchVideoService {
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
     final pts = 0.96 + random.nextDouble() * 0.08;
-    final brightness = (random.nextDouble() * 0.04) - 0.02; // -0.02 to 0.02
-    final contrast = 1.0 + (random.nextDouble() * 0.06) - 0.03; // 0.97 to 1.03
-    final noise = 0.5 + random.nextDouble() * 1.5; // Reduce noise grain
+    final brightness = (random.nextDouble() * 0.04) - 0.02;
+    final contrast = 1.0 + (random.nextDouble() * 0.06) - 0.03;
+    final noise = 0.5 + random.nextDouble() * 1.5;
 
-    // Per-video spoof profile (device, GPS, CRF, preset, jitter id)
     final spoofProfile = _VideoSpoofProfile.random(random);
-
     final noiseStr = noise.toStringAsFixed(2);
     final ptsStr = pts.toStringAsFixed(6);
 
     final finalOutput =
         '${Directory(outputDir).absolute.path}${Platform.pathSeparator}final_${outputIndex.toString().padLeft(3, '0')}.mp4';
+
+    final textOverlayFiles = <File>[];
 
     try {
       final List<String> ffmpegArgs = [
@@ -567,11 +566,15 @@ class BatchVideoService {
         concatFile.path,
       ];
 
-      // Build overlay inputs dynamically
-
-      // 1. Text Overlay (if exists)
-      if (overlayFile != null) {
-        ffmpegArgs.addAll(['-loop', '1', '-i', overlayFile.absolute.path]);
+      // 1. Text Overlays (Timed)
+      for (var i = 0; i < config.textOverlays.length; i++) {
+        final overlay = config.textOverlays[i];
+        final file = File(
+          '${Directory.systemTemp.path}/scraki_text_${outputIndex}_${i}_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+        await file.writeAsBytes(overlay.bytes);
+        textOverlayFiles.add(file);
+        ffmpegArgs.addAll(['-loop', '1', '-i', file.absolute.path]);
       }
 
       // 2. Custom Images & GIFs
@@ -593,269 +596,169 @@ class BatchVideoService {
         }
       }
 
-      // 4. Add silent audio source with tiny noise to force bitrate
+      // 3. Silent audio source
       ffmpegArgs.addAll([
         '-f',
         'lavfi',
         '-i',
-        'anoisesrc=d=60:c=white:a=0.001:r=44100', // Produces mono noise
+        'anoisesrc=d=60:c=white:a=0.001:r=44100',
       ]);
 
-      // 3. Build complex filter
-      final hasOverlays =
-          overlayFile != null || config.imageOverlays.isNotEmpty;
+      // 4. Build filter complex
+      StringBuffer filterComplex = StringBuffer();
 
-      if (hasOverlays) {
-        StringBuffer filterComplex = StringBuffer();
+      // Background Zoom & Pan
+      final double zoomVal = 1.01 + (random.nextDouble() * 0.02);
+      final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
+      final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
 
-        // ---- Visual Jitter Parameters ----
-        // 1. Background Zoom & Pan (Subtle)
-        final double zoomVal =
-            1.01 + (random.nextDouble() * 0.02); // 1.01 to 1.03
-        final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
-        final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
+      filterComplex.write(
+        '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,',
+      );
+      filterComplex.write('crop=1080:1920,');
+      filterComplex.write(
+        'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,',
+      );
+      filterComplex.write(
+        'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
+      );
+      filterComplex.write('noise=alls=$noiseStr:allf=t,');
+      filterComplex.write('setpts=${ptsStr}*PTS[bg];');
 
-        // 2. Visual Jitter (Already randomized at start of loop)
+      int overlayIdx = 1;
+      String lastVideoLabel = '[bg]';
 
-        // Background setup with Zoom, Pan, and Jitter
-        filterComplex.write(
-          '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,',
-        );
-        filterComplex.write('crop=1080:1920,');
-        // Apply Zoom & Pan
-        filterComplex.write(
-          'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,',
-        );
-        filterComplex.write(
-          'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
-        );
-        filterComplex.write('noise=alls=$noiseStr:allf=t,');
-        filterComplex.write('setpts=${ptsStr}*PTS[bg];');
+      // 4a. Overlay Custom Images
+      int imageInputStartIndex = 1 + config.textOverlays.length;
+      for (int i = 0; i < config.imageOverlays.length; i++) {
+        var imgConfig = config.imageOverlays[i];
+        int currentInputIdx = imageInputStartIndex + i;
 
-        int overlayIdx = 1;
-        String lastVideoLabel = '[bg]';
+        final int targetW = (imgConfig.width * 1.5).round();
+        final int targetH = (imgConfig.height * 1.5).round();
 
-        // 3a. Overlay Custom Images FIRST (Bottom layers)
-        int imageInputStartIndex = (overlayFile != null) ? 2 : 1;
-        for (int i = 0; i < config.imageOverlays.length; i++) {
-          var imgConfig = config.imageOverlays[i];
-          int currentInputIdx = imageInputStartIndex + i;
+        int finalW = targetW;
+        int finalH = targetH;
 
-          // Convert coordinates
-          final int targetW = (imgConfig.width * 1.5).round();
-          final int targetH = (imgConfig.height * 1.5).round();
+        if (imgConfig.rotation != 0) {
+          final double angle = imgConfig.rotation * pi / 180;
+          finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs())
+              .round();
+          finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs())
+              .round();
+        }
 
-          int finalW = targetW;
-          int finalH = targetH;
+        final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
+        final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
-          if (imgConfig.rotation != 0) {
-            final double angle = imgConfig.rotation * pi / 180;
-            finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs())
-                .round();
-            finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs())
-                .round();
-          }
+        final double overlayScale = 0.98 + (random.nextDouble() * 0.04);
+        final double overlayRotate = (random.nextDouble() * 2.0) - 1.0;
+        final double overlayBright = (random.nextDouble() * 0.06) - 0.03;
+        final double overlaySat = 1.0 + (random.nextDouble() * 0.1) - 0.05;
+        final int jX = random.nextInt(11) - 5;
+        final int jY = random.nextInt(11) - 5;
 
-          final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
-          final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
+        final int finalTargetW = (targetW * overlayScale).round();
+        final int finalTargetH = (targetH * overlayScale).round();
 
-          // ---- Overlay Jitter ----
-          final double overlayScale =
-              0.98 + (random.nextDouble() * 0.04); // 0.98 to 1.02
-          final double overlayRotate =
-              (random.nextDouble() * 2.0) - 1.0; // -1 to 1 degree
-          final double overlayBright =
-              (random.nextDouble() * 0.06) - 0.03; // -0.03 to 0.03
-          final double overlaySat =
-              1.0 + (random.nextDouble() * 0.1) - 0.05; // 0.95 to 1.05
-          final int jX = random.nextInt(11) - 5; // -5 to 5 px
-          final int jY = random.nextInt(11) - 5; // -5 to 5 px
+        String scaleLabel = '[scaled$overlayIdx]';
+        String scaleFilter =
+            '[$currentInputIdx:v]scale=$finalTargetW:$finalTargetH';
+        scaleFilter +=
+            ',format=rgba,eq=brightness=$overlayBright:saturation=$overlaySat';
 
-          final int finalTargetW = (targetW * overlayScale).round();
-          final int finalTargetH = (targetH * overlayScale).round();
-
-          String scaleLabel = '[scaled$overlayIdx]';
-          String scaleFilter =
-              '[$currentInputIdx:v]scale=$finalTargetW:$finalTargetH';
-
-          // Combine rotation and jitter colors
+        if (imgConfig.rotation != 0 || overlayRotate != 0) {
+          final double totalRotation = imgConfig.rotation + overlayRotate;
           scaleFilter +=
-              ',format=rgba,eq=brightness=$overlayBright:saturation=$overlaySat';
-
-          if (imgConfig.rotation != 0 || overlayRotate != 0) {
-            final double totalRotation = imgConfig.rotation + overlayRotate;
-            scaleFilter +=
-                ',rotate=$totalRotation*PI/180:c=black@0:ow=$finalW:oh=$finalH';
-          }
-          filterComplex.write('$scaleFilter$scaleLabel;');
-
-          String nextVideoLabel = '[ov$overlayIdx]';
-          if (i == config.imageOverlays.length - 1 && overlayFile == null) {
-            nextVideoLabel = '[outv]';
-          }
-
-          String shortestFlag = imgConfig.isGif ? ':shortest=1' : '';
-          filterComplex.write(
-            '$lastVideoLabel$scaleLabel'
-            'overlay=${targetX + jX}:${targetY + jY}$shortestFlag$nextVideoLabel;',
-          );
-
-          lastVideoLabel = nextVideoLabel;
-          overlayIdx++;
+              ',rotate=$totalRotation*PI/180:c=black@0:ow=$finalW:oh=$finalH';
         }
+        filterComplex.write('$scaleFilter$scaleLabel;');
 
-        // 3b. Overlay Text LAST (Top layer)
-        if (overlayFile != null) {
-          int textInputIdx = 1; // Text input is always passed first via -i
-          String nextVideoLabel = '[outv]';
+        String nextVideoLabel = '[ov$overlayIdx]';
+        String shortestFlag = imgConfig.isGif ? ':shortest=1' : '';
+        filterComplex.write(
+          '$lastVideoLabel$scaleLabel'
+          'overlay=${targetX + jX}:${targetY + jY}$shortestFlag$nextVideoLabel;',
+        );
 
-          // Text Jitter
-          final int textJX = random.nextInt(9) - 4; // -4 to 4 px
-          final int textJY = random.nextInt(9) - 4; // -4 to 4 px
-          final double textOpacity =
-              0.96 + (random.nextDouble() * 0.04); // 0.96 to 1.0
-
-          String textStreamLabel = '[text_jitter]';
-          filterComplex.write(
-            '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$textStreamLabel;',
-          );
-
-          filterComplex.write(
-            '$lastVideoLabel$textStreamLabel'
-            'overlay=$textJX:$textJY:shortest=1$nextVideoLabel;',
-          );
-        }
-
-        // Remove trailing semicolon
-        String fStr = filterComplex.toString();
-        if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
-
-        int silentAudioIdx =
-            1 + (overlayFile != null ? 1 : 0) + config.imageOverlays.length;
-
-        // ---- Audio Jitter ----
-        final double audioVol =
-            0.95 + (random.nextDouble() * 0.1); // 0.95 to 1.05
-        final int audioSampleRate =
-            44100 + (random.nextInt(41) - 20); // 44080 to 44120
-
-        ffmpegArgs.addAll([
-          '-filter_complex',
-          fStr +
-              ';[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
-          '-map',
-          '[outv]',
-          '-map',
-          '[outa]',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          '-ac',
-          '2',
-          '-shortest', // Ensure audio doesn't exceed video
-          '-r',
-          '30', // Force 30fps to avoid 29.35fps VFR giveaways
-          '-x264-params',
-          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
-          '-preset',
-          spoofProfile.preset,
-          '-crf',
-          spoofProfile.crf.toString(),
-          '-map_metadata',
-          '-1',
-          '-brand',
-          'isom',
-          '-metadata',
-          'major_brand=isom',
-          '-metadata',
-          'minor_version=512',
-          '-metadata',
-          'compatible_brands=isomiso2avc1mp41',
-          '-metadata:s:v:0',
-          'handler_name=VideoHandler',
-          '-metadata:s:v:0',
-          'vendor_id=[0][0][0][0]',
-          '-metadata:s:a:0',
-          'handler_name=SoundHandler',
-          '-metadata:s:a:0',
-          'vendor_id=[0][0][0][0]',
-          ...spoofProfile.toFfmpegMetadataArgs(),
-          '-movflags',
-          '+faststart+use_metadata_tags',
-          finalOutput,
-        ]);
-      } else {
-        int silentAudioIdx = 1; // Only concat and silent audio
-
-        // ---- Visual Jitter Parameters ----
-        final double zoomVal = 1.01 + (random.nextDouble() * 0.02);
-        final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
-        final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
-
-        // ---- Audio Jitter ----
-        final double audioVol = 0.95 + (random.nextDouble() * 0.1);
-        final int audioSampleRate = 44100 + (random.nextInt(41) - 20);
-
-        ffmpegArgs.addAll([
-          '-filter_complex',
-          '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
-              'crop=1080:1920,'
-              'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,'
-              'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},'
-              'noise=alls=${noise.toStringAsFixed(2)}:allf=t,'
-              'setpts=${ptsStr}*PTS[outv];'
-              '[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
-          '-map',
-          '[outv]',
-          '-map',
-          '[outa]',
-          '-c:a',
-          'aac',
-          '-ac',
-          '2',
-          '-b:a',
-          '128k',
-          '-shortest',
-          '-r',
-          '30',
-          '-c:v',
-          'libx264',
-          '-x264-params',
-          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
-          '-preset',
-          spoofProfile.preset,
-          '-crf',
-          spoofProfile.crf.toString(),
-          '-map_metadata',
-          '-1',
-          '-brand',
-          'isom',
-          '-metadata',
-          'major_brand=isom',
-          '-metadata',
-          'minor_version=512',
-          '-metadata',
-          'compatible_brands=isomiso2avc1mp41',
-          '-metadata:s:v:0',
-          'handler_name=VideoHandler',
-          '-metadata:s:v:0',
-          'vendor_id=[0][0][0][0]',
-          '-metadata:s:a:0',
-          'handler_name=SoundHandler',
-          '-metadata:s:a:0',
-          'vendor_id=[0][0][0][0]',
-          ...spoofProfile.toFfmpegMetadataArgs(),
-          '-movflags',
-          '+faststart+use_metadata_tags',
-          finalOutput,
-        ]);
+        lastVideoLabel = nextVideoLabel;
+        overlayIdx++;
       }
+
+      // 4b. Overlay Text
+      for (int i = 0; i < config.textOverlays.length; i++) {
+        final overlay = config.textOverlays[i];
+        int textInputIdx = 1 + i;
+
+        final int textJX = random.nextInt(9) - 4;
+        final int textJY = random.nextInt(9) - 4;
+        final double textOpacity = 0.96 + (random.nextDouble() * 0.04);
+
+        String jitterLabel = '[text_jitter$i]';
+        filterComplex.write(
+          '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$jitterLabel;',
+        );
+
+        String enableFilter = "enable='between(t,${overlay.startTime},";
+        if (overlay.endTime != null) {
+          enableFilter += "${overlay.endTime})'";
+        } else {
+          enableFilter += "99999)'";
+        }
+
+        String nextVideoLabel = '[ov$overlayIdx]';
+        filterComplex.write(
+          '$lastVideoLabel$jitterLabel'
+          'overlay=$textJX:$textJY:$enableFilter:shortest=1$nextVideoLabel;',
+        );
+
+        lastVideoLabel = nextVideoLabel;
+        overlayIdx++;
+      }
+
+      // Final processing
+      String fStr = filterComplex.toString();
+      if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
+
+      int silentAudioIdx =
+          1 + config.textOverlays.length + config.imageOverlays.length;
+
+      final double audioVol = 0.95 + (random.nextDouble() * 0.1);
+      final int audioSampleRate = 44100 + (random.nextInt(41) - 20);
+
+      ffmpegArgs.addAll([
+        '-filter_complex',
+        '$fStr;[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
+        '-map',
+        lastVideoLabel,
+        '-map',
+        '[outa]',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-ac',
+        '2',
+        '-shortest',
+        '-r',
+        '30',
+        '-x264-params',
+        'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
+        '-preset',
+        spoofProfile.preset,
+        '-crf',
+        spoofProfile.crf.toString(),
+        '-map_metadata',
+        '-1',
+        '-movflags',
+        '+faststart+use_metadata_tags',
+        ...spoofProfile.toFfmpegMetadataArgs(),
+        finalOutput,
+      ]);
 
       final process = await Process.start(_ffmpegBin, ffmpegArgs);
       _activeProcesses.add(process);
 
-      // Collect stderr for progress tracking AND error reporting
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
       final stderrBuf = StringBuffer();
       process.stderr.listen((data) {
@@ -904,8 +807,13 @@ class BatchVideoService {
       return (success: false, logs: logs);
     } finally {
       try {
-        await concatFile.delete();
+        if (concatFile.existsSync()) await concatFile.delete();
       } catch (_) {}
+      for (final file in textOverlayFiles) {
+        try {
+          if (file.existsSync()) await file.delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -986,7 +894,8 @@ class _SegmentRequest {
 
   String get id {
     final name = sourcePath.split(RegExp(r'[/\\]')).last;
-    return 's${startTime}_d${duration}_f${hflip ? 1 : 0}_$name';
+    final hflipVal = hflip ? 1 : 0;
+    return 's${startTime}_d${duration}_f${hflipVal}_$name';
   }
 
   @override

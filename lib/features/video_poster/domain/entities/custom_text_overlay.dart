@@ -30,6 +30,12 @@ class CustomTextOverlay {
   final String? fontFamily;
   final double rotation;
 
+  /// Time in seconds when the text should appear.
+  final double startTime;
+
+  /// Time in seconds when the text should disappear. Null means until the end.
+  final double? endTime;
+
   const CustomTextOverlay({
     required this.id,
     required this.label,
@@ -46,6 +52,8 @@ class CustomTextOverlay {
     this.backgroundRadius = 8.0,
     this.fontFamily,
     this.rotation = 0.0,
+    this.startTime = 0.0,
+    this.endTime,
   });
 
   CustomTextOverlay copyWith({
@@ -66,6 +74,9 @@ class CustomTextOverlay {
     double? backgroundRadius,
     String? fontFamily,
     double? rotation,
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
   }) {
     return CustomTextOverlay(
       id: id ?? this.id,
@@ -85,6 +96,8 @@ class CustomTextOverlay {
       backgroundRadius: backgroundRadius ?? this.backgroundRadius,
       fontFamily: fontFamily ?? this.fontFamily,
       rotation: rotation ?? this.rotation,
+      startTime: startTime ?? this.startTime,
+      endTime: clearEndTime ? null : (endTime ?? this.endTime),
     );
   }
 }
