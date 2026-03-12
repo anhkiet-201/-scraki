@@ -542,15 +542,13 @@ class BatchVideoService {
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
     final pts = 0.96 + random.nextDouble() * 0.08;
-    final brightness = (random.nextDouble() * 0.06) - 0.03;
-    final contrast = 1.0 + random.nextDouble() * 0.05;
-    final noise = 1.0 + random.nextDouble() * 3.0;
+    final brightness = (random.nextDouble() * 0.04) - 0.02; // -0.02 to 0.02
+    final contrast = 1.0 + (random.nextDouble() * 0.06) - 0.03; // 0.97 to 1.03
+    final noise = 0.5 + random.nextDouble() * 1.5; // Reduce noise grain
 
     // Per-video spoof profile (device, GPS, CRF, preset, jitter id)
     final spoofProfile = _VideoSpoofProfile.random(random);
 
-    final brightnessStr = brightness.toStringAsFixed(4);
-    final contrastStr = contrast.toStringAsFixed(4);
     final noiseStr = noise.toStringAsFixed(2);
     final ptsStr = pts.toStringAsFixed(6);
 
@@ -610,13 +608,26 @@ class BatchVideoService {
       if (hasOverlays) {
         StringBuffer filterComplex = StringBuffer();
 
-        // Background setup
+        // ---- Visual Jitter Parameters ----
+        // 1. Background Zoom & Pan (Subtle)
+        final double zoomVal =
+            1.01 + (random.nextDouble() * 0.02); // 1.01 to 1.03
+        final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
+        final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
+
+        // 2. Visual Jitter (Already randomized at start of loop)
+
+        // Background setup with Zoom, Pan, and Jitter
         filterComplex.write(
           '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,',
         );
         filterComplex.write('crop=1080:1920,');
+        // Apply Zoom & Pan
         filterComplex.write(
-          'eq=brightness=$brightnessStr:contrast=$contrastStr,',
+          'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,',
+        );
+        filterComplex.write(
+          'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
         );
         filterComplex.write('noise=alls=$noiseStr:allf=t,');
         filterComplex.write('setpts=${ptsStr}*PTS[bg];');
@@ -648,13 +659,33 @@ class BatchVideoService {
           final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
           final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
-          String scaleLabel = '[scaled$overlayIdx]';
-          String scaleFilter = '[$currentInputIdx:v]scale=$targetW:$targetH';
+          // ---- Overlay Jitter ----
+          final double overlayScale =
+              0.98 + (random.nextDouble() * 0.04); // 0.98 to 1.02
+          final double overlayRotate =
+              (random.nextDouble() * 2.0) - 1.0; // -1 to 1 degree
+          final double overlayBright =
+              (random.nextDouble() * 0.06) - 0.03; // -0.03 to 0.03
+          final double overlaySat =
+              1.0 + (random.nextDouble() * 0.1) - 0.05; // 0.95 to 1.05
+          final int jX = random.nextInt(11) - 5; // -5 to 5 px
+          final int jY = random.nextInt(11) - 5; // -5 to 5 px
 
-          if (imgConfig.rotation != 0) {
-            // Apply rotation filter, transparent background, and expand bounding box
+          final int finalTargetW = (targetW * overlayScale).round();
+          final int finalTargetH = (targetH * overlayScale).round();
+
+          String scaleLabel = '[scaled$overlayIdx]';
+          String scaleFilter =
+              '[$currentInputIdx:v]scale=$finalTargetW:$finalTargetH';
+
+          // Combine rotation and jitter colors
+          scaleFilter +=
+              ',format=rgba,eq=brightness=$overlayBright:saturation=$overlaySat';
+
+          if (imgConfig.rotation != 0 || overlayRotate != 0) {
+            final double totalRotation = imgConfig.rotation + overlayRotate;
             scaleFilter +=
-                ',format=rgba,rotate=${imgConfig.rotation}*PI/180:c=black@0:ow=$finalW:oh=$finalH';
+                ',rotate=$totalRotation*PI/180:c=black@0:ow=$finalW:oh=$finalH';
           }
           filterComplex.write('$scaleFilter$scaleLabel;');
 
@@ -666,7 +697,7 @@ class BatchVideoService {
           String shortestFlag = imgConfig.isGif ? ':shortest=1' : '';
           filterComplex.write(
             '$lastVideoLabel$scaleLabel'
-            'overlay=$targetX:$targetY$shortestFlag$nextVideoLabel;',
+            'overlay=${targetX + jX}:${targetY + jY}$shortestFlag$nextVideoLabel;',
           );
 
           lastVideoLabel = nextVideoLabel;
@@ -677,8 +708,21 @@ class BatchVideoService {
         if (overlayFile != null) {
           int textInputIdx = 1; // Text input is always passed first via -i
           String nextVideoLabel = '[outv]';
+
+          // Text Jitter
+          final int textJX = random.nextInt(9) - 4; // -4 to 4 px
+          final int textJY = random.nextInt(9) - 4; // -4 to 4 px
+          final double textOpacity =
+              0.96 + (random.nextDouble() * 0.04); // 0.96 to 1.0
+
+          String textStreamLabel = '[text_jitter]';
           filterComplex.write(
-            '$lastVideoLabel[$textInputIdx:v]overlay=0:0:shortest=1$nextVideoLabel;',
+            '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$textStreamLabel;',
+          );
+
+          filterComplex.write(
+            '$lastVideoLabel$textStreamLabel'
+            'overlay=$textJX:$textJY:shortest=1$nextVideoLabel;',
           );
         }
 
@@ -689,13 +733,20 @@ class BatchVideoService {
         int silentAudioIdx =
             1 + (overlayFile != null ? 1 : 0) + config.imageOverlays.length;
 
+        // ---- Audio Jitter ----
+        final double audioVol =
+            0.95 + (random.nextDouble() * 0.1); // 0.95 to 1.05
+        final int audioSampleRate =
+            44100 + (random.nextInt(41) - 20); // 44080 to 44120
+
         ffmpegArgs.addAll([
           '-filter_complex',
-          fStr,
+          fStr +
+              ';[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
           '-map',
           '[outv]',
           '-map',
-          '$silentAudioIdx:a',
+          '[outa]',
           '-c:a',
           'aac',
           '-b:a',
@@ -737,17 +788,28 @@ class BatchVideoService {
       } else {
         int silentAudioIdx = 1; // Only concat and silent audio
 
+        // ---- Visual Jitter Parameters ----
+        final double zoomVal = 1.01 + (random.nextDouble() * 0.02);
+        final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
+        final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
+
+        // ---- Audio Jitter ----
+        final double audioVol = 0.95 + (random.nextDouble() * 0.1);
+        final int audioSampleRate = 44100 + (random.nextInt(41) - 20);
+
         ffmpegArgs.addAll([
-          '-vf',
-          'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
+          '-filter_complex',
+          '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
               'crop=1080:1920,'
-              'eq=brightness=$brightnessStr:contrast=$contrastStr,'
-              'noise=alls=$noiseStr:allf=t,'
-              'setpts=${ptsStr}*PTS',
+              'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,'
+              'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},'
+              'noise=alls=${noise.toStringAsFixed(2)}:allf=t,'
+              'setpts=${ptsStr}*PTS[outv];'
+              '[$silentAudioIdx:a]volume=$audioVol,asetrate=$audioSampleRate,aresample=44100[outa]',
           '-map',
-          '0:v',
+          '[outv]',
           '-map',
-          '$silentAudioIdx:a',
+          '[outa]',
           '-c:a',
           'aac',
           '-ac',
