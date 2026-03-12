@@ -119,15 +119,18 @@ class BatchVideoService {
     }
 
     try {
-      // ── Step 1: Validate inputs ──────────────────────────────────────────
+      // ── Step 1: Validate inputs & Get Durations ──────────────────────────
 
       yield '📋 Kiểm tra video nguồn...';
       final validVideos = <String>[];
+      final videoDurations = <String, int>{};
+
       for (final path in sourceVideoPaths) {
         if (_cancelled) return;
         final duration = await _getVideoDuration(path);
         if (duration >= config.minVideoDuration) {
           validVideos.add(path);
+          videoDurations[path] = duration;
         } else {
           yield '⚠️  Bỏ qua: ${_basename(path)} (quá ngắn: ${duration}s)';
         }
@@ -139,48 +142,110 @@ class BatchVideoService {
       }
       yield '✅ ${validVideos.length} video hợp lệ';
 
-      // ── Step 2: Cut into segments ─────────────────────────────────────────
+      // ── Step 2: Planning (Lazy Cutting) ──────────────────────────────────
       yield '';
-      yield '[1/2] Cắt segments...';
-      await tempDir.create(recursive: true);
+      yield '[1/3] Lập kế hoạch cắt video...';
+      final random = Random();
 
-      final segments = <String>[];
-      int videoIndex = 0;
+      // Plan for each output video
+      final videoPlans = <int, List<_SegmentRequest>>{};
+      final allUniqueSegments = <_SegmentRequest>{};
 
-      for (final video in validVideos) {
-        if (_cancelled) break;
-        videoIndex++;
-        final duration = await _getVideoDuration(video);
-        yield '[Video $videoIndex] Đang chuẩn bị cắt...';
+      for (int i = 1; i <= config.outputCount; i++) {
+        final targetDuration =
+            config.minFinalDuration +
+            random.nextInt(
+              config.maxFinalDuration - config.minFinalDuration + 1,
+            );
 
-        final newSegs = await _cutVideoToSegments(
-          video: video,
-          videoIndex: videoIndex,
-          duration: duration,
-          config: config,
-          tempDir: tempDir.path,
-          onLog: (msg) {
-            onLog?.call(msg);
-          },
-        );
-        segments.addAll(newSegs);
+        final selected = <_SegmentRequest>[];
+        int totalDuration = 0;
+        String lastVideoPath = '';
+
+        while (totalDuration < targetDuration && !_cancelled) {
+          final sourcePath = validVideos[random.nextInt(validVideos.length)];
+
+          // Anti-repetition (skip if same as last unless only 1 source)
+          if (sourcePath == lastVideoPath && validVideos.length > 1) continue;
+
+          final srcDur = videoDurations[sourcePath]!;
+          if (srcDur < config.minSegmentDuration) continue;
+
+          final segDur =
+              config.minSegmentDuration +
+              random.nextInt(
+                min(config.maxSegmentDuration, srcDur) -
+                    config.minSegmentDuration +
+                    1,
+              );
+
+          final maxStart = srcDur - segDur;
+          if (maxStart < 0) continue;
+          final startTime = random.nextInt(maxStart + 1);
+
+          final request = _SegmentRequest(
+            sourcePath: sourcePath,
+            startTime: startTime,
+            duration: segDur,
+            hflip: random.nextBool(), // 50% chance of mirror
+          );
+
+          selected.add(request);
+          allUniqueSegments.add(request);
+          totalDuration += segDur;
+          lastVideoPath = sourcePath;
+        }
+        videoPlans[i] = selected;
       }
+
+      // ── Step 3: Render unique segments ───────────────────────────────────
+      yield '';
+      yield '[2/3] Đang xử lý ${allUniqueSegments.length} segments (Lazy)...';
+
+      final segmentFileMap = <_SegmentRequest, String>{};
+      final activeCutTasks = <Future<void>>{};
+      int completedSegments = 0;
+
+      for (final req in allUniqueSegments) {
+        if (_cancelled) break;
+
+        while (activeCutTasks.length >= _maxConcurrentTasks) {
+          await Future.any(activeCutTasks);
+        }
+        if (_cancelled) break;
+
+        final outputPath = '${tempDir.path}/${req.id}.mp4';
+        segmentFileMap[req] = outputPath;
+
+        late Future<void> task;
+        task =
+            _runSegmentCut(
+              input: req.sourcePath,
+              startSeconds: req.startTime,
+              duration: req.duration,
+              output: outputPath,
+              hflip: req.hflip,
+              processName: req.id,
+              onLogMsg: onLog,
+            ).then((_) {
+              activeCutTasks.remove(task);
+              completedSegments++;
+              onLog?.call(
+                '_UPDATE_LAZY: Đang render segments: $completedSegments/${allUniqueSegments.length}...',
+              );
+            });
+        activeCutTasks.add(task);
+      }
+      if (activeCutTasks.isNotEmpty) await Future.wait(activeCutTasks);
 
       if (_cancelled) {
         yield '🛑 Đã dừng.';
         return;
       }
 
-      yield '   → ${segments.length} segments đã tạo ✓';
-
-      if (segments.length < 6) {
-        yield '❌ Không đủ segments (cần ≥ 6, có ${segments.length})';
-        return;
-      }
-
-      // ── Step 3: Create output videos ────────────────────────────────────
+      // ── Step 4: Create output videos ────────────────────────────────────
       yield '';
-      yield '[2/2] Tạo ${config.outputCount} videos...';
+      yield '[3/3] Đang ghép ${config.outputCount} videos...';
       await Directory(outputDir).create(recursive: true);
       onOutputDir?.call(Directory(outputDir).absolute.path);
 
@@ -188,23 +253,20 @@ class BatchVideoService {
       final activeTasks = <Future<void>>{};
       int currentIndex = 1;
 
-      // Ensure we don't start tasks if cancelled early
-      if (_cancelled) {
-        yield '🛑 Đã dừng.';
-        return;
-      }
-
-      // We need a way to let tasks yield logs to the stream.
-      // Easiest is to accumulate them and yield them in the main isolate when futures complete/progress.
-      // But StreamController is better. We'll use a local controller that pipes to the outer async*.
       final streamController = StreamController<String>();
+      final streamPump = streamController.stream.listen(
+        (log) => onLog?.call(log),
+      );
 
       void runCreationTask(int i) {
+        final plan = videoPlans[i]!;
+        final segmentsToMerge = plan.map((r) => segmentFileMap[r]!).toList();
+
         late Future<void> taskFuture;
         taskFuture =
             _createOutputVideo(
               outputIndex: i,
-              segments: segments,
+              segments: segmentsToMerge,
               outputDir: outputDir,
               config: config,
               overlayFile: overlayFile,
@@ -217,7 +279,6 @@ class BatchVideoService {
               },
             ).then((result) {
               activeTasks.remove(taskFuture);
-
               if (!_cancelled) {
                 for (final log in result.logs) {
                   streamController.add(log);
@@ -237,34 +298,21 @@ class BatchVideoService {
         activeTasks.add(taskFuture);
       }
 
-      // Helper to pump streamController events to yield
-      final streamPump = streamController.stream.listen(
-        (log) => onLog?.call(log),
-      );
-
       while (currentIndex <= config.outputCount || activeTasks.isNotEmpty) {
         if (_cancelled) break;
-
         while (activeTasks.length >= _maxConcurrentTasks) {
           await Future.any(activeTasks);
         }
         if (_cancelled) break;
-
         if (currentIndex <= config.outputCount) {
           runCreationTask(currentIndex);
           currentIndex++;
         } else {
-          if (activeTasks.isNotEmpty) {
-            await Future.any(activeTasks);
-          }
+          if (activeTasks.isNotEmpty) await Future.any(activeTasks);
         }
       }
+      if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
 
-      if (activeTasks.isNotEmpty) {
-        await Future.wait(activeTasks);
-      }
-
-      // Close the stream controller and wait for pump to finish
       await streamController.close();
       await streamPump.cancel();
 
@@ -328,121 +376,6 @@ class BatchVideoService {
     }
   }
 
-  /// Cuts a single source video into 4-6 second segments in parallel (max 5).
-  Future<List<String>> _cutVideoToSegments({
-    required String video,
-    required int videoIndex,
-    required int duration,
-    required BatchVideoConfig config,
-    required String tempDir,
-    required void Function(String) onLog,
-  }) async {
-    final random = Random();
-    final activeTasks = <Future<void>>{};
-    int currentTime = 0;
-    int segmentIndex = 0;
-    int completedSegments = 0;
-    int totalSegmentsToCut = 0;
-
-    // First pass to determine total segments for progress tracking
-    int tempTime = 0;
-    while (tempTime < duration) {
-      final segDuration =
-          config.minSegmentDuration +
-          random.nextInt(
-            config.maxSegmentDuration - config.minSegmentDuration + 1,
-          );
-      final remaining = duration - tempTime;
-      final actualDuration = min(segDuration, remaining);
-      if (actualDuration < 2) break;
-      totalSegmentsToCut++;
-      tempTime += actualDuration;
-    }
-
-    while (currentTime < duration || activeTasks.isNotEmpty) {
-      if (_cancelled) break;
-
-      // Limit to max concurrent tasks
-      while (activeTasks.length >= _maxConcurrentTasks) {
-        await Future.any(activeTasks);
-      }
-      if (_cancelled) break;
-
-      if (currentTime < duration) {
-        // Random segment length between min and max
-        final segDuration =
-            config.minSegmentDuration +
-            random.nextInt(
-              config.maxSegmentDuration - config.minSegmentDuration + 1,
-            );
-        final remaining = duration - currentTime;
-        final actualDuration = min(segDuration, remaining);
-
-        // Skip segments shorter than 2s
-        if (actualDuration >= 2) {
-          segmentIndex++;
-          final vidIdx = videoIndex.toString().padLeft(3, '0');
-          final segIdx = segmentIndex.toString().padLeft(3, '0');
-          final outputPath = '$tempDir/video${vidIdx}_seg$segIdx.mp4';
-
-          final processName = 'V${vidIdx}_S$segIdx';
-
-          late Future<void> taskFuture;
-          taskFuture =
-              _runSegmentCut(
-                input: video,
-                startSeconds: currentTime,
-                duration: actualDuration,
-                output: outputPath,
-                processName: processName,
-                onProgress: (percent) {},
-                onLogMsg: onLog,
-              ).then((res) {
-                completedSegments++;
-                activeTasks.remove(taskFuture);
-                if (!_cancelled) {
-                  onLog(
-                    '_PROGRESS_CUT$videoIndex: Đang cắt video $videoIndex: Hoàn thành $completedSegments/$totalSegmentsToCut segment(s)...',
-                  );
-                }
-              });
-
-          activeTasks.add(taskFuture);
-        }
-        currentTime += actualDuration;
-      } else {
-        // If we've reached the end of the video but tasks are still running, wait for them
-        if (activeTasks.isNotEmpty) {
-          await Future.any(activeTasks);
-        }
-      }
-    }
-
-    // Wait for remaining, though logic above should handle most of it
-    if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
-
-    // Clear the progress line so it stays as a completed note
-    if (!_cancelled) {
-      onLog(
-        '_UPDATE_CUT$videoIndex [Video $videoIndex] ✓ Hoàn thành cắt $completedSegments segment(s).',
-      );
-    }
-
-    final results = <String>[];
-    // Collect output files in order
-    final dir = Directory(tempDir);
-    final vidIdx = videoIndex.toString().padLeft(3, '0');
-    await for (final entity in dir.list()) {
-      if (entity is File &&
-          entity.path.contains('video${vidIdx}_seg') &&
-          entity.path.endsWith('.mp4')) {
-        results.add(entity.path);
-      }
-    }
-    results.sort();
-    return results;
-  }
-
   /// Runs a single ffmpeg segment cut. Returns the output path on success, null on failure.
   /// Automatically detects HDR content and applies tonemapping to ensure all segments
   /// are normalized to yuv420p + BT.709 for compatible concat.
@@ -451,6 +384,7 @@ class BatchVideoService {
     required int startSeconds,
     required int duration,
     required String output,
+    required bool hflip,
     String? processName,
     void Function(double)? onProgress,
     void Function(String)? onLogMsg,
@@ -460,10 +394,14 @@ class BatchVideoService {
     final hdr = _isHdr(transfer: colorInfo.transfer, pixFmt: colorInfo.pixFmt);
 
     // Base scale/crop/fps filter common to both paths
-    const baseFilter =
+    String baseFilter =
         'scale=1080:1920:force_original_aspect_ratio=increase,'
         'crop=1080:1920,'
         'fps=30';
+
+    if (hflip) {
+      baseFilter += ',hflip';
+    }
 
     // HDR: convert to linear light → tonemap → BT.709
     // Requires ffmpeg built with libzimg (standard in most distros).
@@ -487,7 +425,7 @@ class BatchVideoService {
           '-i', input,
           '-t', duration.toString(),
           '-vf', vf,
-          '-af', 'volume=0.05',
+          '-an', // Always remove audio for anti-reup
           // Force normalized SDR output — critical for concat compatibility
           '-pix_fmt', 'yuv420p',
           '-color_range', 'tv',
@@ -497,9 +435,6 @@ class BatchVideoService {
           '-c:v', 'libx264',
           '-preset', 'ultrafast',
           '-crf', '26',
-          '-c:a', 'aac',
-          '-b:a', '128k',
-          '-ar', '44100',
           '-movflags', '+faststart',
           output,
         ]);
@@ -584,63 +519,12 @@ class BatchVideoService {
     final random = Random();
 
     // Target duration for this output video
+    // (Already handled in planning phase in createBatchVideos)
     final targetDuration =
         config.minFinalDuration +
         random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
 
-    // Select segments until we hit target duration, avoiding adjacent same-source
-    final selected = <String>[];
-    int totalDuration = 0;
-    String lastVideoId = '';
-
-    // Check total distinct sources
-    final uniqueSourceCount = segments
-        .map(
-          (s) => _basename(s).contains('_seg')
-              ? _basename(s).split('_seg').first
-              : _basename(s),
-        )
-        .toSet()
-        .length;
-
-    var availableSegments = List<String>.from(segments);
-    _shuffleList(availableSegments, random);
-
-    while (totalDuration < targetDuration && !_cancelled) {
-      if (availableSegments.isEmpty) {
-        break;
-      }
-
-      // Rút ngẫu nhiên từ pool segment 1 lần (sau khi shuffle)
-      final seg = availableSegments.removeLast();
-      if (!File(seg).existsSync()) continue;
-
-      final basename = _basename(seg);
-      final currentVideoId = basename.contains('_seg')
-          ? basename.split('_seg').first
-          : basename;
-
-      // Anti-repetition check (UNLESS we only have 1 source video)
-      if (currentVideoId == lastVideoId &&
-          selected.isNotEmpty &&
-          uniqueSourceCount > 1) {
-        continue;
-      }
-
-      final segDur = await _getVideoDuration(seg);
-      selected.add(seg);
-      totalDuration += segDur;
-      lastVideoId = currentVideoId;
-    }
-
-    if (totalDuration < targetDuration) {
-      logs.add(
-        '  ⚠️ Video $outputIndex: Chỉ gom được ${totalDuration}s (cần ${targetDuration}s). Thêm video gốc.',
-      );
-      return (success: false, logs: logs);
-    }
-
-    if (selected.isEmpty) {
+    if (segments.isEmpty) {
       return (success: false, logs: logs);
     }
 
@@ -649,16 +533,15 @@ class BatchVideoService {
       '${Directory.systemTemp.path}/scraki_concat_${outputIndex}_${DateTime.now().millisecondsSinceEpoch}.txt',
     );
     final buffer = StringBuffer();
-    for (final seg in selected) {
+    for (final seg in segments) {
       // Use absolute paths; ffmpeg concat requires forward slashes even on Windows
-      final absPath = File(seg).absolute.path.replaceAll('\\\\', '/');
+      final absPath = File(seg).absolute.path.replaceAll('\\', '/');
       buffer.writeln("file '$absPath'");
     }
     await concatFile.writeAsString(buffer.toString());
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
     final pts = 0.96 + random.nextDouble() * 0.08;
-    final tempo = 1.0 / pts;
     final brightness = (random.nextDouble() * 0.06) - 0.03;
     final contrast = 1.0 + random.nextDouble() * 0.05;
     final noise = 1.0 + random.nextDouble() * 3.0;
@@ -670,7 +553,6 @@ class BatchVideoService {
     final contrastStr = contrast.toStringAsFixed(4);
     final noiseStr = noise.toStringAsFixed(2);
     final ptsStr = pts.toStringAsFixed(6);
-    final tempoStr = tempo.toStringAsFixed(6);
 
     final finalOutput =
         '${Directory(outputDir).absolute.path}${Platform.pathSeparator}final_${outputIndex.toString().padLeft(3, '0')}.mp4';
@@ -712,6 +594,14 @@ class BatchVideoService {
           ]);
         }
       }
+
+      // 4. Add silent audio source with tiny noise to force bitrate
+      ffmpegArgs.addAll([
+        '-f',
+        'lavfi',
+        '-i',
+        'anoisesrc=d=60:c=white:a=0.001:r=44100', // Produces mono noise
+      ]);
 
       // 3. Build complex filter
       final hasOverlays =
@@ -796,39 +686,57 @@ class BatchVideoService {
         String fStr = filterComplex.toString();
         if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
 
+        int silentAudioIdx =
+            1 + (overlayFile != null ? 1 : 0) + config.imageOverlays.length;
+
         ffmpegArgs.addAll([
           '-filter_complex',
           fStr,
           '-map',
           '[outv]',
           '-map',
-          '0:a?',
-          '-af',
-          'volume=0.05,atempo=$tempoStr',
-          '-c:v',
-          'libx264',
-          '-preset',
-          spoofProfile.preset,
-          '-crf',
-          spoofProfile.crf.toString(),
+          '$silentAudioIdx:a',
           '-c:a',
           'aac',
           '-b:a',
           '128k',
-          '-brand',
-          'qt  ',
+          '-ac',
+          '2',
+          '-shortest', // Ensure audio doesn't exceed video
+          '-r',
+          '30', // Force 30fps to avoid 29.35fps VFR giveaways
+          '-x264-params',
+          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
+          '-preset',
+          spoofProfile.preset,
+          '-crf',
+          spoofProfile.crf.toString(),
           '-map_metadata',
           '-1',
+          '-brand',
+          'isom',
+          '-metadata',
+          'major_brand=isom',
+          '-metadata',
+          'minor_version=512',
+          '-metadata',
+          'compatible_brands=isomiso2avc1mp41',
           '-metadata:s:v:0',
-          'handler_name=Core Media Video',
+          'handler_name=VideoHandler',
+          '-metadata:s:v:0',
+          'vendor_id=[0][0][0][0]',
           '-metadata:s:a:0',
-          'handler_name=Core Media Audio',
+          'handler_name=SoundHandler',
+          '-metadata:s:a:0',
+          'vendor_id=[0][0][0][0]',
           ...spoofProfile.toFfmpegMetadataArgs(),
           '-movflags',
-          '+faststart',
+          '+faststart+use_metadata_tags',
           finalOutput,
         ]);
       } else {
+        int silentAudioIdx = 1; // Only concat and silent audio
+
         ffmpegArgs.addAll([
           '-vf',
           'scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,'
@@ -836,29 +744,48 @@ class BatchVideoService {
               'eq=brightness=$brightnessStr:contrast=$contrastStr,'
               'noise=alls=$noiseStr:allf=t,'
               'setpts=${ptsStr}*PTS',
-          '-af',
-          'volume=0.05,atempo=$tempoStr',
+          '-map',
+          '0:v',
+          '-map',
+          '$silentAudioIdx:a',
+          '-c:a',
+          'aac',
+          '-ac',
+          '2',
+          '-b:a',
+          '128k',
+          '-shortest',
+          '-r',
+          '30',
           '-c:v',
           'libx264',
+          '-x264-params',
+          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
           '-preset',
           spoofProfile.preset,
           '-crf',
           spoofProfile.crf.toString(),
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          '-brand',
-          'qt  ',
           '-map_metadata',
           '-1',
+          '-brand',
+          'isom',
+          '-metadata',
+          'major_brand=isom',
+          '-metadata',
+          'minor_version=512',
+          '-metadata',
+          'compatible_brands=isomiso2avc1mp41',
           '-metadata:s:v:0',
-          'handler_name=Core Media Video',
+          'handler_name=VideoHandler',
+          '-metadata:s:v:0',
+          'vendor_id=[0][0][0][0]',
           '-metadata:s:a:0',
-          'handler_name=Core Media Audio',
+          'handler_name=SoundHandler',
+          '-metadata:s:a:0',
+          'vendor_id=[0][0][0][0]',
           ...spoofProfile.toFfmpegMetadataArgs(),
           '-movflags',
-          '+faststart',
+          '+faststart+use_metadata_tags',
           finalOutput,
         ]);
       }
@@ -917,16 +844,6 @@ class BatchVideoService {
       try {
         await concatFile.delete();
       } catch (_) {}
-    }
-  }
-
-  /// Fisher-Yates in-place shuffle using Dart Random.
-  void _shuffleList<T>(List<T> list, Random random) {
-    for (int i = list.length - 1; i > 0; i--) {
-      final j = random.nextInt(i + 1);
-      final tmp = list[i];
-      list[i] = list[j];
-      list[j] = tmp;
     }
   }
 
@@ -989,6 +906,46 @@ class BatchVideoService {
 }
 
 // ============================================================================
+// _SegmentRequest — planning data for a single video slice
+// ============================================================================
+
+class _SegmentRequest {
+  final String sourcePath;
+  final int startTime;
+  final int duration;
+  final bool hflip;
+
+  _SegmentRequest({
+    required this.sourcePath,
+    required this.startTime,
+    required this.duration,
+    required this.hflip,
+  });
+
+  String get id {
+    final name = sourcePath.split(RegExp(r'[/\\]')).last;
+    return 's${startTime}_d${duration}_f${hflip ? 1 : 0}_$name';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _SegmentRequest &&
+          runtimeType == other.runtimeType &&
+          sourcePath == other.sourcePath &&
+          startTime == other.startTime &&
+          duration == other.duration &&
+          hflip == other.hflip;
+
+  @override
+  int get hashCode =>
+      sourcePath.hashCode ^
+      startTime.hashCode ^
+      duration.hashCode ^
+      hflip.hashCode;
+}
+
+// ============================================================================
 // _VideoSpoofProfile — per-video randomized metadata to avoid batch detection
 // ============================================================================
 
@@ -1019,6 +976,7 @@ class _VideoSpoofProfile {
   final int crf;
   final String preset;
   final String jitterId; // file-size jitter
+  final String videoId; // UUID for CapCut
 
   const _VideoSpoofProfile({
     required this.model,
@@ -1028,6 +986,7 @@ class _VideoSpoofProfile {
     required this.crf,
     required this.preset,
     required this.jitterId,
+    required this.videoId,
   });
 
   factory _VideoSpoofProfile.random(Random random) {
@@ -1037,10 +996,11 @@ class _VideoSpoofProfile {
     final daysAgo = random.nextInt(30);
     final hoursAgo = random.nextInt(24);
     final minutesAgo = random.nextInt(60);
-    final recordedAt = DateTime.now()
-        .toUtc()
-        .subtract(Duration(days: daysAgo, hours: hoursAgo, minutes: minutesAgo))
-        .toIso8601String();
+    final recordedTime = DateTime.now().toUtc().subtract(
+      Duration(days: daysAgo, hours: hoursAgo, minutes: minutesAgo),
+    );
+    final recordedAt =
+        recordedTime.toUtc().toIso8601String().split('.').first + '.000000Z';
 
     // GPS ngẫu nhiên trong vùng TP.HCM + Bình Dương
     final lat = _latMin + random.nextDouble() * (_latMax - _latMin);
@@ -1065,6 +1025,18 @@ class _VideoSpoofProfile {
       (_) => random.nextInt(16).toRadixString(16),
     ).join();
 
+    // Simple UUID v4 generator
+    String genUuid() {
+      final r = Random();
+      return List.generate(36, (i) {
+        if (i == 8 || i == 13 || i == 18 || i == 23) return '-';
+        if (i == 14) return '4';
+        final res = r.nextInt(16);
+        if (i == 19) return (res & 0x3 | 0x8).toRadixString(16);
+        return res.toRadixString(16);
+      }).join();
+    }
+
     return _VideoSpoofProfile(
       model: device.model,
       iosVersion: device.ios,
@@ -1073,7 +1045,13 @@ class _VideoSpoofProfile {
       crf: crf,
       preset: preset,
       jitterId: jitterId,
+      videoId: genUuid(),
     );
+  }
+
+  String get _lvMetaInfo {
+    // Escaped JSON string matching CapCut Mobile structure
+    return '{"data":{"adsTemplateId":"","appVersion":"16.9.0","businessComponentId":"","businessTemplateId":"","capabilityName":"text_template,filter,transform,text_font","editType":"edit","enterFrom":"draft","exportType":"export","is_use_audio_separation":1,"launchMode":"launch","os":"android","product":"vicut","region":"VN","source_platform":"mobile_2","videoId":"$videoId"},"source_type":"vicut"}';
   }
 
   /// Returns ffmpeg metadata args to be added to the command.
@@ -1081,14 +1059,24 @@ class _VideoSpoofProfile {
     '-metadata',
     'creation_time=$creationTime',
     '-metadata',
-    'com.apple.quicktime.make=Apple',
+    'Hw=1',
     '-metadata',
-    'com.apple.quicktime.model=$model',
+    'te_is_reencode=1',
     '-metadata',
-    'com.apple.quicktime.software=$iosVersion',
+    'encoder=bytevehwavc',
+    '-metadata:s:v:0',
+    'encoder=bytevehwavc',
+    '-metadata:s:a:0',
+    'encoder=bytevehwavc',
     '-metadata',
-    'com.apple.quicktime.location.ISO6709=$gpsIso6709',
+    'aigc_info={"aigc_label_type":0,"source_info":""}',
     '-metadata',
-    'scraki_id=$jitterId',
+    'LvMetaInfo=$_lvMetaInfo',
+    '-fflags',
+    '+bitexact',
+    '-flags:v',
+    '+bitexact',
+    '-flags:a',
+    '+bitexact',
   ];
 }
