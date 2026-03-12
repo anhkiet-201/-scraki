@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
-
+import 'package:scraki/features/video_poster/presentation/widgets/form/time_input_field.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 /// Image Library panel — drag-and-drop Image items to the video canvas
@@ -368,18 +368,58 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                       final image = images.firstWhere(
                         (i) => i.id == selectedId,
                       );
-                      return Slider(
-                        value: image.rotation,
-                        min: 0,
-                        max: 360,
-                        activeColor: const Color(0xFF6366F1),
-                        inactiveColor: Colors.white10,
-                        onChanged: (val) {
-                          widget.store.updateCustomImageRotation(
-                            selectedId,
-                            val,
-                          );
-                        },
+                      return Column(
+                        children: [
+                          Slider(
+                            value: image.rotation,
+                            min: 0,
+                            max: 360,
+                            activeColor: const Color(0xFF6366F1),
+                            inactiveColor: Colors.white10,
+                            onChanged: (val) {
+                              widget.store.updateCustomImageRotation(
+                                selectedId,
+                                val,
+                              );
+                            },
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TimeInputField(
+                                    label: "Bắt đầu (s)",
+                                    initialValue: image.startTime,
+                                    onChanged: (val) {
+                                      widget.store.updateCustomImageTiming(
+                                        selectedId,
+                                        startTime: val,
+                                      );
+                                    },
+                                    hint: "0.0",
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TimeInputField(
+                                    label: "Kết thúc (s)",
+                                    initialValue: image.endTime,
+                                    onChanged: (val) {
+                                      widget.store.updateCustomImageTiming(
+                                        selectedId,
+                                        endTime: val,
+                                        clearEndTime: val == null,
+                                      );
+                                    },
+                                    hint: "Mãi mãi",
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                       );
                     },
                   ),

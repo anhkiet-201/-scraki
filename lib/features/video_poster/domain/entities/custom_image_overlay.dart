@@ -25,6 +25,12 @@ class CustomImageOverlay {
 
   final double rotation;
 
+  /// Thời gian bắt đầu xuất hiện (giây)
+  final double startTime;
+
+  /// Thời gian biến mất (giây), null = chạy hết video
+  final double? endTime;
+
   const CustomImageOverlay({
     required this.id,
     required this.imageUrl,
@@ -35,6 +41,8 @@ class CustomImageOverlay {
     this.width = 200.0, // Default width
     this.height = 200.0, // Default height
     this.rotation = 0.0,
+    this.startTime = 0.0,
+    this.endTime,
   });
 
   CustomImageOverlay copyWith({
@@ -47,6 +55,9 @@ class CustomImageOverlay {
     double? width,
     double? height,
     double? rotation,
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
   }) {
     return CustomImageOverlay(
       id: id ?? this.id,
@@ -58,6 +69,9 @@ class CustomImageOverlay {
       width: width ?? this.width,
       height: height ?? this.height,
       rotation: rotation ?? this.rotation,
+      startTime: startTime ?? this.startTime,
+      endTime: clearEndTime ? null : (endTime ?? this.endTime),
     );
   }
+
 }

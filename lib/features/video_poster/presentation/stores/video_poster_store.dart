@@ -258,6 +258,22 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
+  void updateCustomImageTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(
+      startTime: startTime,
+      endTime: endTime,
+      clearEndTime: clearEndTime,
+    );
+  }
+
+  @action
   void updateCustomImageLocalPath(String id, String path) {
     final index = customImages.indexWhere((i) => i.id == id);
     if (index == -1) return;

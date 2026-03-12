@@ -674,11 +674,18 @@ class BatchVideoService {
         }
         filterComplex.write('$scaleFilter$scaleLabel;');
 
+        String enableFilter = "enable='between(t,${imgConfig.startTime},";
+        if (imgConfig.endTime != null) {
+          enableFilter += "${imgConfig.endTime})'";
+        } else {
+          enableFilter += "99999)'";
+        }
+
         String nextVideoLabel = '[ov$overlayIdx]';
         String shortestFlag = imgConfig.isGif ? ':shortest=1' : '';
         filterComplex.write(
           '$lastVideoLabel$scaleLabel'
-          'overlay=${targetX + jX}:${targetY + jY}$shortestFlag$nextVideoLabel;',
+          'overlay=${targetX + jX}:${targetY + jY}:$enableFilter$shortestFlag$nextVideoLabel;',
         );
 
         lastVideoLabel = nextVideoLabel;
