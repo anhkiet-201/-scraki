@@ -56,6 +56,37 @@ class BatchVideoService {
   static String get _ffprobeBin =>
       Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
+  // Choose GPU encoder based on platform and availability
+  Future<String> _getGpuEncoder() async {
+    if (Platform.isMacOS) return 'h264_videotoolbox';
+    if (Platform.isWindows) {
+      // Priority: NVENC > AMF > QSV > libx264 (fallback)
+      final encoders = await _getAvailableEncoders();
+      if (encoders.contains('h264_nvenc')) return 'h264_nvenc';
+      if (encoders.contains('h264_amf')) return 'h264_amf';
+      if (encoders.contains('h264_qsv')) return 'h264_qsv';
+    }
+    return 'libx264';
+  }
+
+  List<String>? _availableEncoders;
+  Future<List<String>> _getAvailableEncoders() async {
+    if (_availableEncoders != null) return _availableEncoders!;
+    try {
+      final result = await Process.run(_ffmpegBin, ['-encoders']);
+      final output = result.stdout as String;
+      _availableEncoders =
+          output
+              .split('\n')
+              .where((l) => l.contains('V....D'))
+              .map((l) => l.split(' ').where((s) => s.isNotEmpty).skip(1).first)
+              .toList();
+      return _availableEncoders!;
+    } catch (_) {
+      return [];
+    }
+  }
+
   // Track running processes for cancellation
   final List<Process> _activeProcesses = [];
   bool _cancelled = false;
@@ -418,11 +449,15 @@ class BatchVideoService {
               'format=yuv420p'
         : '$baseFilter,format=yuv420p';
 
+    final gpuEncoder = await _getGpuEncoder();
+
     Future<String?> runWithFilter(String vf) async {
       try {
         final process = await Process.start(_ffmpegBin, [
           '-hide_banner',
           '-y',
+          '-hwaccel',
+          'auto', // Enable HW Decoding
           '-ss', startSeconds.toString(),
           '-i', input,
           '-t', duration.toString(),
@@ -434,9 +469,17 @@ class BatchVideoService {
           '-colorspace', 'bt709',
           '-color_primaries', 'bt709',
           '-color_trc', 'bt709',
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-crf', '26',
+          '-c:v', gpuEncoder,
+          if (gpuEncoder == 'libx264') ...[
+            '-preset',
+            'ultrafast',
+            '-crf',
+            '26',
+          ] else ...[
+            // GPU encoders use different rate control
+            '-realtime',
+            '1',
+          ],
           '-movflags', '+faststart',
           output,
         ]);
@@ -555,9 +598,13 @@ class BatchVideoService {
     final textOverlayFiles = <File>[];
 
     try {
+      final gpuEncoder = await _getGpuEncoder();
+
       final List<String> ffmpegArgs = [
         '-hide_banner',
         '-y',
+        '-hwaccel',
+        'auto', // HW Decode
         '-f',
         'concat',
         '-safe',
@@ -731,12 +778,16 @@ class BatchVideoService {
         '-an', // Remove all audio streams
         '-r',
         '30',
-        '-x264-params',
-        'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
-        '-preset',
-        spoofProfile.preset,
-        '-crf',
-        spoofProfile.crf.toString(),
+        '-c:v',
+        gpuEncoder,
+        if (gpuEncoder == 'libx264') ...[
+          '-x264-params',
+          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
+          '-preset',
+          spoofProfile.preset,
+          '-crf',
+          spoofProfile.crf.toString(),
+        ],
         '-map_metadata',
         '-1',
         '-movflags',
