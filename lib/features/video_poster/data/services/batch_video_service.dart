@@ -57,11 +57,17 @@ class BatchVideoService {
   static String get _ffprobeBin =>
       Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
-  // Choose GPU encoder based on platform and availability
+  // ─── Opt-2: GPU encoder — resolved once per service instance ─────────────
+
+  String? _cachedGpuEncoder;
+
   Future<String> _getGpuEncoder() async {
+    return _cachedGpuEncoder ??= await _resolveGpuEncoder();
+  }
+
+  Future<String> _resolveGpuEncoder() async {
     if (Platform.isMacOS) return 'h264_videotoolbox';
     if (Platform.isWindows) {
-      // Priority: NVENC > AMF > QSV > libx264 (fallback)
       final encoders = await _getAvailableEncoders();
       if (encoders.contains('h264_nvenc')) return 'h264_nvenc';
       if (encoders.contains('h264_amf')) return 'h264_amf';
@@ -71,6 +77,7 @@ class BatchVideoService {
   }
 
   List<String>? _availableEncoders;
+
   Future<List<String>> _getAvailableEncoders() async {
     if (_availableEncoders != null) return _availableEncoders!;
     try {
@@ -86,6 +93,16 @@ class BatchVideoService {
     } catch (_) {
       return [];
     }
+  }
+
+  // ─── Opt-1: Color info cache — avoid re-probing the same source file ──────
+
+  final Map<String, ({String transfer, String primaries, String pixFmt})>
+  _colorInfoCache = {};
+
+  Future<({String transfer, String primaries, String pixFmt})>
+  _probeVideoColorCached(String path) async {
+    return _colorInfoCache[path] ??= await _probeVideoColor(path);
   }
 
   // Track running processes for cancellation
@@ -105,6 +122,8 @@ class BatchVideoService {
   }) async* {
     _cancelled = false;
     _activeProcesses.clear();
+    _cachedGpuEncoder = null;
+    _colorInfoCache.clear();
 
     // Validate ffmpeg availability
     if (!await _checkFfmpeg()) {
@@ -156,18 +175,27 @@ class BatchVideoService {
     await tempDir.create(recursive: true);
 
     try {
-      // ── Step 1: Validate inputs & Get Durations ──────────────────────────
+      // ── Step 1: Validate inputs & probe all source videos in parallel ─────
 
       yield '📋 Kiểm tra video nguồn...';
+
+      // Opt-1: probe duration + color info concurrently for all sources
+      final probeResults = await Future.wait(
+        sourceVideoPaths.map((path) => _probeSourceVideo(path)),
+      );
+
       final validVideos = <String>[];
       final videoDurations = <String, int>{};
 
-      for (final path in sourceVideoPaths) {
+      for (int i = 0; i < sourceVideoPaths.length; i++) {
         if (_cancelled) return;
-        final duration = await _getVideoDuration(path);
+        final path = sourceVideoPaths[i];
+        final duration = probeResults[i].duration;
         if (duration >= config.minVideoDuration) {
           validVideos.add(path);
           videoDurations[path] = duration;
+          // Warm up the color cache with the probe result (no extra ffprobe needed)
+          _colorInfoCache[path] = probeResults[i].colorInfo;
         } else {
           yield '⚠️  Bỏ qua: ${_basename(path)} (quá ngắn: ${duration}s)';
         }
@@ -237,11 +265,15 @@ class BatchVideoService {
 
       // ── Step 3: Render unique segments ───────────────────────────────────
       yield '';
-      yield '[2/3] Đang xử lý ${allUniqueSegments.length} segments (Lazy)...';
+      yield '[2/3] Đang xử lý ${allUniqueSegments.length} segments...';
 
       final segmentFileMap = <_SegmentRequest, String>{};
       final activeCutTasks = <Future<void>>{};
       int completedSegments = 0;
+      final totalSegments = allUniqueSegments.length;
+
+      // Tạo initial entry để _handleLogUpdate có thể track và update in-place
+      onLog?.call('_PROGRESS_LAZY: ⏳ Đang render segments: 0/$totalSegments...');
 
       for (final req in allUniqueSegments) {
         if (_cancelled) break;
@@ -267,8 +299,9 @@ class BatchVideoService {
             ).then((_) {
               activeCutTasks.remove(task);
               completedSegments++;
+              // Dùng _PROGRESS_LAZY để update cùng 1 dòng thay vì thêm dòng mới
               onLog?.call(
-                '_UPDATE_LAZY: Đang render segments: $completedSegments/${allUniqueSegments.length}...',
+                '_PROGRESS_LAZY: ⏳ Đang render segments: $completedSegments/$totalSegments...',
               );
             });
         activeCutTasks.add(task);
@@ -377,7 +410,10 @@ class BatchVideoService {
 
   // ─── Constants ────────────────────────────────────────────────────────────
 
-  static final int _maxConcurrentTasks = Platform.numberOfProcessors;
+  /// Opt-5: Tăng concurrency lên 2x processors vì ffmpeg là I/O + GPU bound,
+  /// không phải thuần CPU bound như Dart isolates.
+  static int get _maxConcurrentTasks =>
+      (Platform.numberOfProcessors * 2).clamp(4, 16);
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
@@ -390,29 +426,53 @@ class BatchVideoService {
     }
   }
 
-  /// Uses ffprobe to get video duration in integer seconds.
-  Future<int> _getVideoDuration(String filePath) async {
+  /// Opt-1: Probe duration + color info in a single ffprobe call.
+  /// Kết hợp 2 lần gọi ffprobe thành 1 để giảm I/O overhead.
+  Future<({int duration, ({String transfer, String primaries, String pixFmt}) colorInfo})>
+  _probeSourceVideo(String path) async {
     try {
       final result = await Process.run(_ffprobeBin, [
-        '-v',
-        'error',
+        '-v', 'error',
+        '-select_streams', 'v:0',
         '-show_entries',
-        'format=duration',
-        '-of',
-        'default=noprint_wrappers=1:nokey=1',
-        filePath,
+        'format=duration:stream=color_transfer,color_primaries,pix_fmt',
+        '-of', 'default=noprint_wrappers=1:nokey=0',
+        path,
       ]);
-      final output = (result.stdout as String).trim();
-      final d = double.tryParse(output) ?? 0;
-      return d.round();
+      final out = result.stdout as String;
+
+      double durationSec = 0;
+      String transfer = '';
+      String primaries = '';
+      String pixFmt = '';
+
+      for (final line in out.split('\n')) {
+        if (line.startsWith('duration=')) {
+          durationSec = double.tryParse(line.split('=').last.trim()) ?? 0;
+        } else if (line.startsWith('color_transfer=')) {
+          transfer = line.split('=').last.trim();
+        } else if (line.startsWith('color_primaries=')) {
+          primaries = line.split('=').last.trim();
+        } else if (line.startsWith('pix_fmt=')) {
+          pixFmt = line.split('=').last.trim();
+        }
+      }
+
+      return (
+        duration: durationSec.round(),
+        colorInfo: (transfer: transfer, primaries: primaries, pixFmt: pixFmt),
+      );
     } catch (_) {
-      return 0;
+      return (
+        duration: 0,
+        colorInfo: (transfer: '', primaries: '', pixFmt: ''),
+      );
     }
   }
 
-  /// Runs a single ffmpeg segment cut. Returns the output path on success, null on failure.
-  /// Automatically detects HDR content and applies tonemapping to ensure all segments
-  /// are normalized to yuv420p + BT.709 for compatible concat.
+  /// Segment cut: luôn encode để đảm bảo mỗi segment bắt đầu bằng I-frame mới.
+  /// Stream copy bị bỏ vì random seek không đảm bảo I-frame alignment,
+  /// dẫn đến artifact/lag tại điểm nối khi concat.
   Future<String?> _runSegmentCut({
     required String input,
     required int startSeconds,
@@ -423,11 +483,38 @@ class BatchVideoService {
     void Function(double)? onProgress,
     void Function(String)? onLogMsg,
   }) async {
-    // Detect HDR to choose the right vf filter chain
-    final colorInfo = await _probeVideoColor(input);
-    final hdr = _isHdr(transfer: colorInfo.transfer, pixFmt: colorInfo.pixFmt);
+    // Dùng cache thay vì gọi ffprobe lại
+    final colorInfo = await _probeVideoColorCached(input);
+    final isHdr = _isHdr(transfer: colorInfo.transfer, pixFmt: colorInfo.pixFmt);
 
-    // Base scale/crop/fps filter common to both paths
+    return _runSegmentEncode(
+      input: input,
+      startSeconds: startSeconds,
+      duration: duration,
+      output: output,
+      hflip: hflip,
+      isHdr: isHdr,
+      colorInfo: colorInfo,
+      processName: processName,
+      onProgress: onProgress,
+      onLogMsg: onLogMsg,
+    );
+  }
+
+  /// Encode segment với filter chain (hflip nếu cần / HDR tonemapping).
+  /// Luôn tạo I-frame mới ở đầu mỗi segment để đảm bảo concat mượt.
+  Future<String?> _runSegmentEncode({
+    required String input,
+    required int startSeconds,
+    required int duration,
+    required String output,
+    required bool hflip,
+    required bool isHdr,
+    required ({String transfer, String primaries, String pixFmt}) colorInfo,
+    String? processName,
+    void Function(double)? onProgress,
+    void Function(String)? onLogMsg,
+  }) async {
     String baseFilter =
         'scale=1080:1920:force_original_aspect_ratio=increase,'
         'crop=1080:1920,'
@@ -437,10 +524,7 @@ class BatchVideoService {
       baseFilter += ',hflip';
     }
 
-    // HDR: convert to linear light → tonemap → BT.709
-    // Requires ffmpeg built with libzimg (standard in most distros).
-    // Falls back to SDR path on failure.
-    final vfFilter = hdr
+    final vfFilter = isHdr
         ? '$baseFilter,'
               'zscale=t=linear:npl=100,'
               'format=gbrpf32le,'
@@ -475,7 +559,7 @@ class BatchVideoService {
             '-preset',
             'ultrafast',
             '-crf',
-            '26', 
+            '26',
           ] else ...[
             // GPU encoders use different rate control
             '-realtime',
@@ -508,7 +592,6 @@ class BatchVideoService {
         _activeProcesses.remove(process);
 
         if (exitCode != 0 || !File(output).existsSync()) {
-          // Log the last meaningful error lines from ffmpeg stderr
           final errorLines = stderrBuf
               .toString()
               .split('\n')
@@ -538,11 +621,11 @@ class BatchVideoService {
 
     // If HDR tonemapping failed (e.g. zscale not available), retry with
     // simple SDR fallback — colors may be clipped but video will be created.
-    if (result == null && hdr) {
+    if (result == null && isHdr) {
       onLogMsg?.call(
         '  ⚠️ [${processName ?? _basename(input)}] zscale tonemapping thất bại, thử fallback SDR...',
       );
-      final fallbackFilter = '${baseFilter},format=yuv420p';
+      final fallbackFilter = '$baseFilter,format=yuv420p';
       return runWithFilter(fallbackFilter);
     }
 
@@ -599,6 +682,7 @@ class BatchVideoService {
     final textOverlayFiles = <File>[];
 
     try {
+      // Opt-2: dùng cached encoder thay vì await lại
       final gpuEncoder = await _getGpuEncoder();
 
       final List<String> ffmpegArgs = [
@@ -644,23 +728,19 @@ class BatchVideoService {
         }
       }
 
-
-
-      // 4. Build filter complex
+      // 3. Build filter complex
       StringBuffer filterComplex = StringBuffer();
 
-      // Background Zoom & Pan
+      // Opt-4: Bỏ zoompan (d=1 không tạo chuyển động thực, chỉ tốn GPU).
+      // Thay bằng crop tĩnh với offset ngẫu nhiên nhỏ để tạo hiệu ứng "framing" khác nhau.
       final double zoomVal = 1.01 + (random.nextDouble() * 0.02);
-      final double panX = random.nextDouble() * (1080 * (zoomVal - 1.0));
-      final double panY = random.nextDouble() * (1920 * (zoomVal - 1.0));
+      final int xOff = (random.nextDouble() * 1080 * (zoomVal - 1.0)).round();
+      final int yOff = (random.nextDouble() * 1920 * (zoomVal - 1.0)).round();
 
       filterComplex.write(
-        '[0:v]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,',
+        '[0:v]scale=${(1080 * zoomVal).round()}:${(1920 * zoomVal).round()}:force_original_aspect_ratio=increase:flags=lanczos,',
       );
-      filterComplex.write('crop=1080:1920,');
-      filterComplex.write(
-        'zoompan=z=$zoomVal:x=$panX:y=$panY:d=1:s=1080x1920,',
-      );
+      filterComplex.write('crop=1080:1920:$xOff:$yOff,');
       filterComplex.write(
         'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
       );
@@ -670,7 +750,7 @@ class BatchVideoService {
       int overlayIdx = 1;
       String lastVideoLabel = '[bg]';
 
-      // 4a. Overlay Custom Images
+      // 3a. Overlay Custom Images
       int imageInputStartIndex = 1 + config.textOverlays.length;
       for (int i = 0; i < config.imageOverlays.length; i++) {
         var imgConfig = config.imageOverlays[i];
@@ -740,7 +820,7 @@ class BatchVideoService {
         overlayIdx++;
       }
 
-      // 4b. Overlay Text
+      // 3b. Overlay Text
       for (int i = 0; i < config.textOverlays.length; i++) {
         final overlay = config.textOverlays[i];
         int textInputIdx = 1 + i;
@@ -774,8 +854,6 @@ class BatchVideoService {
       // Final processing
       String fStr = filterComplex.toString();
       if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
-
-
 
       ffmpegArgs.addAll([
         '-filter_complex',
