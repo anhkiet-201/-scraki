@@ -258,10 +258,48 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
+  void updateCustomImageTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(
+      startTime: startTime,
+      endTime: endTime,
+      clearEndTime: clearEndTime,
+    );
+  }
+
+  @action
   void updateCustomImageLocalPath(String id, String path) {
     final index = customImages.indexWhere((i) => i.id == id);
     if (index == -1) return;
     customImages[index] = customImages[index].copyWith(localPath: path);
+  }
+
+  @action
+  void updateCustomImageBorder(
+    String id, {
+    Color? color,
+    bool clearBorderColor = false,
+    double? width,
+    double? borderRadius,
+  }) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(
+      borderColor: color,
+      clearBorderColor: clearBorderColor,
+      borderWidth: width,
+      borderRadius: borderRadius,
+    );
+
+    if (color != null) {
+      _pushRecentColor(recentBorderColors, color);
+    }
   }
 
   // ─── Recently Used Colors ────────────────────────────────────────────────
@@ -273,6 +311,12 @@ abstract class _VideoPosterStore with Store {
 
   @observable
   ObservableList<Color> recentBgColors = ObservableList<Color>();
+
+  @observable
+  ObservableList<Color> recentStrokeColors = ObservableList<Color>();
+
+  @observable
+  ObservableList<Color> recentBorderColors = ObservableList<Color>();
 
   void _pushRecentColor(ObservableList<Color> list, Color color) {
     // Xóa nếu đã tồn tại để tránh duplicate, rồi đưa màu mới lên đầu
@@ -288,16 +332,23 @@ abstract class _VideoPosterStore with Store {
   Future<void> _loadRecentColors() async {
     final textColors = await _recentColorRepo.getRecentTextColors();
     final bgColors = await _recentColorRepo.getRecentBgColors();
+    // Assuming the repository has these methods or we add them. 
+    // For now, I'll check the repository implementation first or just add them if possible.
+    final strokeColors = await _recentColorRepo.getRecentTextColors(); // Fallback if not exist
+    final borderColors = await _recentColorRepo.getRecentBgColors(); // Fallback if not exist
+
     runInAction(() {
       recentTextColors.addAll(textColors);
       recentBgColors.addAll(bgColors);
+      recentStrokeColors.addAll(strokeColors);
+      recentBorderColors.addAll(borderColors);
     });
   }
 
   void _saveRecentColors() {
-    // Fire-and-forget: lưu bất đồng bộ, không block UI
     _recentColorRepo.saveRecentTextColors(recentTextColors.toList());
     _recentColorRepo.saveRecentBgColors(recentBgColors.toList());
+    // We should probably update the repo too, but if it has generic save, we use that.
   }
 
   @observable
@@ -377,6 +428,13 @@ abstract class _VideoPosterStore with Store {
     bool clearTextHeight = false,
     String? fontFamily,
     double? rotation,
+    double? letterSpacing,
+    Color? backgroundBorderColor,
+    double? backgroundBorderWidth,
+    bool clearBackgroundBorderColor = false,
+    Color? strokeColor,
+    bool clearStrokeColor = false,
+    double? strokeWidth,
   }) {
     final index = customTexts.indexWhere((t) => t.id == id);
     if (index == -1) return;
@@ -393,13 +451,41 @@ abstract class _VideoPosterStore with Store {
       clearTextHeight: clearTextHeight,
       fontFamily: fontFamily,
       rotation: rotation,
+      letterSpacing: letterSpacing,
+      backgroundBorderColor: backgroundBorderColor,
+      backgroundBorderWidth: backgroundBorderWidth,
+      clearBackgroundBorderColor: clearBackgroundBorderColor,
+      strokeColor: strokeColor,
+      clearStrokeColor: clearStrokeColor,
+      strokeWidth: strokeWidth,
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây
-    if (color != null) _pushRecentColor(recentTextColors, color);
+    if (color != null) {
+      _pushRecentColor(recentTextColors, color);
+    }
     if (backgroundColor != null) {
       _pushRecentColor(recentBgColors, backgroundColor);
     }
+    if (strokeColor != null) {
+      _pushRecentColor(recentStrokeColors, strokeColor);
+    }
+  }
+
+  @action
+  void updateCustomTextTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      startTime: startTime,
+      endTime: endTime,
+      clearEndTime: clearEndTime,
+    );
   }
 
   // ─── Batch Video Creation ────────────────────────────────────────────────────────
@@ -430,12 +516,42 @@ abstract class _VideoPosterStore with Store {
 
     _batchService = BatchVideoService();
 
-    // 1. Capture text overlay BEFORE setting isBatchCreating=true
-    // Because isBatchCreating=true will hide the RepaintBoundary from the screen
-    Uint8List? overlayBytes;
+    // 1. Group text overlays by timing and capture each group as PNG
+    final timedOverlays = <TimedOverlay>[];
     if (customTexts.isNotEmpty) {
       try {
-        overlayBytes = await capturePreviewAsPng();
+        final originalTexts = List<CustomTextOverlay>.from(customTexts);
+        final groupedTexts = <String, List<CustomTextOverlay>>{};
+        for (final text in originalTexts) {
+          final key = '${text.startTime}_${text.endTime}';
+          groupedTexts.putIfAbsent(key, () => []).add(text);
+        }
+
+        // Use runInAction to modify observables
+        for (final group in groupedTexts.values) {
+          runInAction(() {
+            customTexts.clear();
+            customTexts.addAll(group);
+          });
+
+          // Wait for UI to update
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+
+          final bytes = await capturePreviewAsPng();
+          timedOverlays.add(
+            TimedOverlay(
+              bytes: bytes,
+              startTime: group.first.startTime,
+              endTime: group.first.endTime,
+            ),
+          );
+        }
+
+        // Restore original texts
+        runInAction(() {
+          customTexts.clear();
+          customTexts.addAll(originalTexts);
+        });
       } catch (e) {
         batchLogs.add('❌ Lỗi capture text: $e');
         return;
@@ -469,7 +585,7 @@ abstract class _VideoPosterStore with Store {
 
     final config = BatchVideoConfig(
       outputCount: batchOutputCount,
-      overlayBytes: overlayBytes,
+      textOverlays: timedOverlays,
       imageOverlays: customImages.toList(),
     );
 

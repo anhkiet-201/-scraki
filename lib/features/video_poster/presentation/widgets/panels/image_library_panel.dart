@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
-
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/common/panel_components.dart';
 
 /// Image Library panel — drag-and-drop Image items to the video canvas
 class ImageLibraryPanel extends StatefulWidget {
@@ -150,244 +150,203 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
             final images = widget.store.customImages;
             final selectedId = widget.store.selectedCustomImageId;
 
-            if (images.isEmpty) return const SizedBox.shrink();
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    "Ảnh/GIF Đang Dùng:",
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                if (images.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      "Ảnh/GIF Đang Dùng:",
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
                   ),
-                ),
-                SizedBox(
-                  height: 90,
-                  child: Listener(
-                    onPointerSignal: (pointerSignal) {
-                      if (pointerSignal is PointerScrollEvent) {
-                        final offset = pointerSignal.scrollDelta.dy;
-                        if (offset != 0 &&
-                            _horizontalScrollController.hasClients) {
-                          _horizontalScrollController.jumpTo(
-                            (_horizontalScrollController.offset + offset).clamp(
-                              0.0,
-                              _horizontalScrollController
-                                  .position
-                                  .maxScrollExtent,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    child: ReorderableListView.builder(
-                      scrollController: _horizontalScrollController,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      buildDefaultDragHandles: false,
-                      itemCount: images.length,
-                      onReorder: (oldIndex, newIndex) {
-                        widget.store.reorderCustomImage(oldIndex, newIndex);
-                      },
-                      itemBuilder: (context, index) {
-                        final item = images[index];
-                        final isSelected = selectedId == item.id;
-
-                        return ReorderableDragStartListener(
-                          key: ValueKey(item.id),
-                          index: index,
-                          child: GestureDetector(
-                            onTap: () {
-                              widget.store.selectCustomImage(item.id);
-                            },
-                            child: Container(
-                              width: 80,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2A2A2A),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF6366F1)
-                                      : Colors.white10,
-                                  width: isSelected ? 2 : 1,
-                                ),
+                  SizedBox(
+                    height: 90,
+                    child: Listener(
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent) {
+                          final offset = pointerSignal.scrollDelta.dy;
+                          if (offset != 0 &&
+                              _horizontalScrollController.hasClients) {
+                            _horizontalScrollController.jumpTo(
+                              (_horizontalScrollController.offset + offset).clamp(
+                                0.0,
+                                _horizontalScrollController
+                                    .position
+                                    .maxScrollExtent,
                               ),
-                              child: Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: item.imageUrl.startsWith('http')
-                                          ? Image.network(
-                                              item.imageUrl,
-                                              fit: BoxFit.contain,
-                                            )
-                                          : Image.file(
-                                              File(item.imageUrl),
-                                              fit: BoxFit.contain,
-                                              errorBuilder: (ctx, err, stack) =>
-                                                  const Icon(
-                                                    Icons.image,
-                                                    color: Colors.white30,
-                                                  ),
-                                            ),
-                                    ),
+                            );
+                          }
+                        }
+                      },
+                      child: ReorderableListView.builder(
+                        scrollController: _horizontalScrollController,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        buildDefaultDragHandles: false,
+                        itemCount: images.length,
+                        onReorder: (oldIndex, newIndex) {
+                          widget.store.reorderCustomImage(oldIndex, newIndex);
+                        },
+                        itemBuilder: (context, index) {
+                          final item = images[index];
+                          final isSelected = selectedId == item.id;
+
+                          return ReorderableDragStartListener(
+                            key: ValueKey(item.id),
+                            index: index,
+                            child: GestureDetector(
+                              onTap: () {
+                                widget.store.selectCustomImage(item.id);
+                              },
+                              child: Container(
+                                width: 80,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2A2A2A),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? PanelComponents.kPanelAccentColor
+                                        : Colors.white10,
+                                    width: isSelected ? 2 : 1,
                                   ),
-                                  if (item.isGif)
-                                    Positioned(
-                                      top: 4,
-                                      left: 4,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF6366F1),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: item.imageUrl.startsWith('http')
+                                            ? Image.network(
+                                                item.imageUrl,
+                                                fit: BoxFit.contain,
+                                              )
+                                            : Image.file(
+                                                File(item.imageUrl),
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (ctx, err, stack) =>
+                                                    const Icon(
+                                                      Icons.image,
+                                                      color: Colors.white30,
+                                                    ),
+                                              ),
+                                      ),
+                                    ),
+                                    if (item.isGif)
+                                      Positioned(
+                                        top: 4,
+                                        left: 4,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: PanelComponents.kPanelAccentColor,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'GIF',
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
-                                        child: const Text(
-                                          'GIF',
-                                          style: TextStyle(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
+                                      ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          widget.store.removeCustomImage(item.id);
+                                        },
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.redAccent,
+                                            borderRadius: BorderRadius.only(
+                                              bottomLeft: Radius.circular(8),
+                                              topRight: Radius.circular(8),
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.all(4),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 14,
                                             color: Colors.white,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        widget.store.removeCustomImage(item.id);
-                                      },
-                                      child: Container(
-                                        decoration: const BoxDecoration(
-                                          color: Colors.redAccent,
-                                          borderRadius: BorderRadius.only(
-                                            bottomLeft: Radius.circular(8),
-                                            topRight: Radius.circular(8),
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.all(4),
-                                        child: const Icon(
-                                          Icons.close,
-                                          size: 14,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Observer(
-                                      builder: (_) {
-                                        if (!item.imageUrl.startsWith('http')) {
-                                          return const SizedBox.shrink();
-                                        }
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Observer(
+                                        builder: (_) {
+                                          if (!item.imageUrl.startsWith('http')) {
+                                            return const SizedBox.shrink();
+                                          }
 
-                                        final isFavorite = widget
-                                            .store
-                                            .favoriteImages
-                                            .any((f) => f.url == item.imageUrl);
-                                        return GestureDetector(
-                                          onTap: () {
-                                            widget.store.toggleFavorite(
-                                              item.imageUrl,
-                                              isGif: item.isGif,
-                                            );
-                                          },
-                                          child: Container(
-                                            decoration: const BoxDecoration(
-                                              color: Colors.black45,
-                                              borderRadius: BorderRadius.only(
-                                                topLeft: Radius.circular(8),
-                                                bottomRight: Radius.circular(8),
+                                          final isFavorite = widget
+                                              .store
+                                              .favoriteImages
+                                              .any((f) => f.url == item.imageUrl);
+                                          return GestureDetector(
+                                            onTap: () {
+                                              widget.store.toggleFavorite(
+                                                item.imageUrl,
+                                                isGif: item.isGif,
+                                              );
+                                            },
+                                            child: Container(
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black45,
+                                                borderRadius: BorderRadius.only(
+                                                  topLeft: Radius.circular(8),
+                                                  bottomRight: Radius.circular(8),
+                                                ),
+                                              ),
+                                              padding: const EdgeInsets.all(4),
+                                              child: Icon(
+                                                isFavorite
+                                                    ? Icons.favorite
+                                                    : Icons.favorite_border,
+                                                size: 14,
+                                                color: isFavorite
+                                                    ? Colors.redAccent
+                                                    : Colors.white,
                                               ),
                                             ),
-                                            padding: const EdgeInsets.all(4),
-                                            child: Icon(
-                                              isFavorite
-                                                  ? Icons.favorite
-                                                  : Icons.favorite_border,
-                                              size: 14,
-                                              color: isFavorite
-                                                  ? Colors.redAccent
-                                                  : Colors.white,
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                if (selectedId != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "XOAY ẢNH",
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        Observer(
-                          builder: (_) {
-                            final image = images.firstWhere(
-                              (i) => i.id == selectedId,
-                            );
-                            return Text(
-                              "${image.rotation.toInt()}°",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  Observer(
-                    builder: (_) {
-                      final image = images.firstWhere(
-                        (i) => i.id == selectedId,
-                      );
-                      return Slider(
-                        value: image.rotation,
-                        min: 0,
-                        max: 360,
-                        activeColor: const Color(0xFF6366F1),
-                        inactiveColor: Colors.white10,
-                        onChanged: (val) {
-                          widget.store.updateCustomImageRotation(
-                            selectedId,
-                            val,
                           );
                         },
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ],
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
-                  child: Divider(height: 1, color: Colors.white10),
-                ),
+
+                if (selectedId != null) ...[
+                  const SizedBox(height: 12),
+                  _buildImageProperties(selectedId),
+                ],
+
+                if (images.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12.0),
+                    child: Divider(height: 1, color: Colors.white10),
+                  ),
               ],
             );
           },
@@ -414,6 +373,176 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageProperties(String selectedId) {
+    final image = widget.store.customImages.firstWhere((i) => i.id == selectedId);
+
+    return Column(
+      children: [
+        // ── Section: APPEARANCE (MÀU SẮC & BO GÓC) ──
+        PanelComponents.buildPanelSection(
+          title: 'MÀU SẮC & BO GÓC',
+          icon: Icons.auto_awesome_rounded,
+          initiallyExpanded: true,
+          children: [
+            PanelComponents.buildPanelRow(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PanelComponents.buildSectionLabel(
+                      'BO GÓC: ${image.borderRadius.toInt()}px',
+                    ),
+                    PanelComponents.buildSlider(
+                      context: context,
+                      value: image.borderRadius,
+                      min: 0,
+                      max: 100,
+                      onChanged: (v) => widget.store
+                          .updateCustomImageBorder(selectedId,
+                              borderRadius: v),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PanelComponents.buildSectionLabel('XOAY: ${image.rotation.toInt()}°'),
+                    PanelComponents.buildSlider(
+                      context: context,
+                      value: image.rotation,
+                      min: -180,
+                      max: 180,
+                      divisions: 360,
+                      onChanged: (v) => widget.store.updateCustomImageRotation(selectedId, v),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ── Section: BORDER (VIỀN ẢNH) ──
+        PanelComponents.buildPanelSection(
+          title: 'VIỀN ẢNH',
+          icon: Icons.border_outer_rounded,
+          children: [
+            PanelComponents.buildSectionLabel('MÀU VIỀN'),
+            const SizedBox(height: 8),
+            if (widget.store.recentBorderColors.isNotEmpty) ...[
+              PanelComponents.buildRecentColors(
+                colors: widget.store.recentBorderColors.toList(),
+                selectedColor: image.borderColor,
+                onSelect: (c) =>
+                    widget.store.updateCustomImageBorder(selectedId, color: c),
+              ),
+              const SizedBox(height: 8),
+              PanelComponents.buildPaletteDivider(),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => widget.store.updateCustomImageBorder(
+                    selectedId,
+                    width: 0,
+                    clearBorderColor: true,
+                  ),
+                  child: Container(
+                    width: 28, height: 28,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: image.borderWidth == 0 ? PanelComponents.kPanelAccentColor : Colors.white10,
+                        width: image.borderWidth == 0 ? 2 : 1,
+                      ),
+                    ),
+                    child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                  ),
+                ),
+                Expanded(
+                  child: PanelComponents.buildColorPalette(
+                    context: context,
+                    colors: PanelComponents.colorPalette,
+                    selectedColor: image.borderColor,
+                    onSelect: (c) {
+                      widget.store.updateCustomImageBorder(selectedId, color: c);
+                      if (image.borderWidth == 0) widget.store.updateCustomImageBorder(selectedId, width: 2.0);
+                    },
+                    onPickCustom: () => PanelComponents.showColorPicker(
+                      context: context,
+                      initialColor: image.borderColor ?? Colors.white,
+                      onColorSelected: (c) {
+                        widget.store.updateCustomImageBorder(selectedId, color: c);
+                        if (image.borderWidth == 0) widget.store.updateCustomImageBorder(selectedId, width: 2.0);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (image.borderColor != null && image.borderWidth > 0) ...[
+              const SizedBox(height: 16),
+              PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN: ${image.borderWidth.toInt()}px'),
+              PanelComponents.buildSlider(
+                context: context,
+                value: image.borderWidth,
+                min: 0, max: 20,
+                onChanged: (v) => widget.store.updateCustomImageBorder(selectedId, width: v),
+              ),
+            ],
+          ],
+        ),
+
+        // ── Section: TIMELINE ──
+        PanelComponents.buildPanelSection(
+          title: 'THỜI GIAN HIỂN THỊ',
+          icon: Icons.timer_rounded,
+          children: [
+            PanelComponents.buildTimeInput(
+              label: 'BẮT ĐẦU (s)',
+              value: image.startTime,
+              onChanged: (v) => widget.store.updateCustomImageTiming(selectedId, startTime: v),
+            ),
+            const SizedBox(height: 12),
+            PanelComponents.buildTimeInput(
+              label: 'KẾT THÚC (s)',
+              value: image.endTime,
+              hint: 'Xuyên suốt',
+              onChanged: (v) => v == null 
+                  ? widget.store.updateCustomImageTiming(selectedId, clearEndTime: true)
+                  : widget.store.updateCustomImageTiming(selectedId, endTime: v),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+        
+        // ── Delete Button ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: () => widget.store.removeCustomImage(selectedId),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.redAccent.withOpacity(0.8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: Colors.redAccent.withOpacity(0.2)),
+                ),
+              ),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('XÓA ẢNH/GIF NÀY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
             ),
           ),
         ),
@@ -586,4 +715,5 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
       },
     );
   }
+
 }

@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Represents a free-form image or GIF overlay on the video canvas.
 /// All position values (x, y) are normalized [0.0, 1.0] relative to
 /// the 720x1280 virtual canvas.
@@ -25,6 +27,19 @@ class CustomImageOverlay {
 
   final double rotation;
 
+  /// Thời gian bắt đầu xuất hiện (giây)
+  final double startTime;
+
+  /// Thời gian biến mất (giây), null = chạy hết video
+  final double? endTime;
+
+  /// Border color. Null means no border.
+  final Color? borderColor;
+
+  /// Border width in px.
+  final double borderWidth;
+  final double borderRadius;
+
   const CustomImageOverlay({
     required this.id,
     required this.imageUrl,
@@ -35,6 +50,11 @@ class CustomImageOverlay {
     this.width = 200.0, // Default width
     this.height = 200.0, // Default height
     this.rotation = 0.0,
+    this.startTime = 0.0,
+    this.endTime,
+    this.borderColor,
+    this.borderWidth = 0.0,
+    this.borderRadius = 8.0,
   });
 
   CustomImageOverlay copyWith({
@@ -47,6 +67,13 @@ class CustomImageOverlay {
     double? width,
     double? height,
     double? rotation,
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+    Color? borderColor,
+    bool clearBorderColor = false,
+    double? borderWidth,
+    double? borderRadius,
   }) {
     return CustomImageOverlay(
       id: id ?? this.id,
@@ -58,6 +85,12 @@ class CustomImageOverlay {
       width: width ?? this.width,
       height: height ?? this.height,
       rotation: rotation ?? this.rotation,
+      startTime: startTime ?? this.startTime,
+      endTime: clearEndTime ? null : (endTime ?? this.endTime),
+      borderColor: clearBorderColor ? null : (borderColor ?? this.borderColor),
+      borderWidth: borderWidth ?? this.borderWidth,
+      borderRadius: borderRadius ?? this.borderRadius,
     );
   }
+
 }

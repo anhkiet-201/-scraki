@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/form/time_input_field.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/common/panel_components.dart';
 
 /// Panel hiển thị khi tab TEXT được chọn.
 /// Cho phép thêm/chọn/xóa text và chỉnh style.
@@ -12,148 +12,7 @@ class TextPropertiesPanel extends StatelessWidget {
 
   const TextPropertiesPanel({super.key, required this.store});
 
-  static const _accentColor = Color(0xFF6366F1);
-
-  /// Bảng màu chữ theo chuẩn Material 3 Color System.
-  /// Sử dụng các tone 40, 60, 80, 90 từ các tonal palette chính thức.
-  static const _colorPalette = <Color>[
-    // Neutrals (Neutral Tonal Palette)
-    Color(0xFFFFFFFF), // White
-    Color(0xFFE6E1E5), // Neutral-90
-    Color(0xFF938F99), // Neutral-60
-    Color(0xFF1C1B1F), // Neutral-10 (Near black)
-    // Primary (Purple / Default M3 seed)
-    Color(0xFF6750A4), // Primary-40
-    Color(0xFF9A82DB), // Primary-60
-    Color(0xFFCFBCFF), // Primary-80
-    Color(0xFFEADDFF), // Primary-95
-    // Secondary
-    Color(0xFF625B71), // Secondary-40
-    Color(0xFF9A91A8), // Secondary-60
-    Color(0xFFCCC2DC), // Secondary-80
-    Color(0xFFE8DEF8), // Secondary-95
-    // Tertiary (Pink / Rose)
-    Color(0xFF7D5260), // Tertiary-40
-    Color(0xFFB58392), // Tertiary-60
-    Color(0xFFEFB8C8), // Tertiary-80
-    Color(0xFFFFD8E4), // Tertiary-95
-    // Error
-    Color(0xFFB3261E), // Error-40
-    Color(0xFFEC928E), // Error-70
-    Color(0xFFF2B8B5), // Error-80
-    // Tertiary Green (Custom seed)
-    Color(0xFF386A20), // Green-40
-    Color(0xFF57A640), // Green-50
-    Color(0xFF8FC877), // Green-70
-    Color(0xFFC5EDB5), // Green-90
-    // Blue / Informational
-    Color(0xFF0061A4), // Blue-40
-    Color(0xFF4FA6E7), // Blue-60
-    Color(0xFF9ECAFF), // Blue-80
-    Color(0xFFD0E4FF), // Blue-95
-    // Yellow / Warning
-    Color(0xFF695F00), // Yellow-40
-    Color(0xFFD2C148), // Yellow-70
-    Color(0xFFEFE06D), // Yellow-80
-    // Orange
-    Color(0xFF984900), // Orange-40
-    Color(0xFFD66600), // Orange-60
-    Color(0xFFFFB68E), // Orange-80
-    Color(0xFFFFDDB3), // Orange-95
-    // Teal
-    Color(0xFF006A6A), // Teal-40
-    Color(0xFF008383), // Teal-50
-    Color(0xFF4DDEDE), // Teal-80
-    Color(0xFFBFFFFF), // Teal-95
-    // Deep Purple
-    Color(0xFF5F4ABB), // Deep Purple-40
-    Color(0xFF8069DF), // Deep Purple-60
-    Color(0xFFC6B0FF), // Deep Purple-80
-    Color(0xFFE6DEFF), // Deep Purple-95
-  ];
-
-  /// Bảng màu nền theo chuẩn Material 3 Color System.
-  /// Sử dụng tone tối (10–30) làm nền để đảm bảo contrast tốt với văn bản.
-  static const _bgColorPalette = <Color>[
-    // Surface & Neutral dark (Neutral Tonal Palette)
-    Color(0xFF1C1B1F), // Neutral-10
-    Color(0xFF313033), // Neutral-20
-    Color(0xFF48464C), // Neutral-30
-    Color(0xFF787579), // Neutral-50
-    Color(0xFFE6E1E5), // Neutral-90 (light)
-    Color(0xFFFFFFFF), // Neutral-100
-    // Primary container dark
-    Color(0xFF21005D), // Primary-4
-    Color(0xFF38006B), // Primary-10
-    Color(0xFF4F378B), // Primary-30
-    Color(0xFF6750A4), // Primary-40
-    Color(0xFF9A82DB), // Primary-60
-    // Secondary container dark
-    Color(0xFF1D192B), // Secondary-6
-    Color(0xFF332D41), // Secondary-20
-    Color(0xFF4A4458), // Secondary-30
-    // Tertiary container dark (Rose/Pink)
-    Color(0xFF31111D), // Tertiary-6
-    Color(0xFF492532), // Tertiary-20
-    Color(0xFF633B48), // Tertiary-30
-    // Error container dark
-    Color(0xFF410002), // Error-6
-    Color(0xFF690005), // Error-20
-    Color(0xFF93000A), // Error-30
-    // Green dark
-    Color(0xFF072100), // Green-6
-    Color(0xFF1A3D07), // Green-20
-    // Blue dark
-    Color(0xFF001D36), // Blue-6
-    Color(0xFF003258), // Blue-20
-    // Orange dark
-    Color(0xFF331200), // Orange-10
-    Color(0xFF4D1C00), // Orange-20
-    // Teal dark
-    Color(0xFF002020), // Teal-10
-    Color(0xFF003737), // Teal-20
-    // Deep Purple dark
-    Color(0xFF1B0062), // Deep Purple-10
-    Color(0xFF2F1581), // Deep Purple-20
-  ];
-
-  /// Font chia theo nhóm phong cách, ưu tiên các font có Vietnamese subset đầy đủ.
-  static const _fontFamilies = <String>[
-    // ── Sans-serif (hỗ trợ Tiếng Việt tốt nhất) ─────────────────────────────────
-    'Be Vietnam Pro', // Thiết kế riêng cho Tiếng Việt
-    'Noto Sans', // Unicode toàn diện, coverage cao nhất
-    'Inter', // Hiện đại, sạch
-    'Roboto', // Mặc định Android
-    'Nunito', // Thân thiện, bo góc
-    'Lato', // Thanh lịch
-    'Source Sans 3', // Adobe, rõ nét
-    'Open Sans', // Phổ biến, dễ đọc
-    'Barlow', // Hiện đại, gần gũi
-    'DM Sans', // Gọn, tối giản
-    'Lexend', // Tối ưu độ đọc
-    // ── Serif (hỗ trợ Tiếng Việt) ────────────────────────────────────────────
-    'Merriweather', // Báo chí, sang trọng
-    'Playfair Display', // Quý tộc, biển bảng
-    'Lora', // Nhẹ nhàng, sách
-    'Noto Serif', // Serif đầy đủ Unicode
-    // ── Semi-condensed / Bold display ────────────────────────────────────
-    'Montserrat', // Geometric, phổ biến
-    'Oswald', // Condensed, tạo ấn tượng
-    'Raleway', // Tinh tế, thời trang
-    'Barlow Condensed', // Compact, mạnh mẽ
-    'Exo 2', // Kỹ thuật, hiện đại
-    // ── Display / Decorative có Tiếng Việt ─────────────────────────────────
-    'Kanit', // Thái, hỗ trợ ký tự Latin Việt
-    'Quicksand', // Dễ thương, thiết kế
-    'Comfortaa', // Góc cạnh, hiện đại
-    'Righteous', // Bold retro, bảng hiệu
-    'Cabin', // Friendly humanist
-    // ── Script / Cách điệu (hỗ trợ cỡng Latin cũ tiếng Việt hạn chế) ───────────
-    'Dancing Script', // Viết tay, mềm mại
-    'Pacifico', // Retro surf
-    'Satisfy', // Chữ ký
-    'Lobster', // Bold script
-  ];
+  static const _accentColor = PanelComponents.kPanelAccentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +20,7 @@ class TextPropertiesPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF111111),
         border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          right: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
       ),
       child: Column(
@@ -250,10 +109,11 @@ class TextPropertiesPanel extends StatelessWidget {
     String? selectedId,
   ) {
     return Container(
-      constraints: const BoxConstraints(maxHeight: 120),
+      constraints: const BoxConstraints(maxHeight: 400),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: texts.length,
+        shrinkWrap: true,
         itemBuilder: (_, i) {
           final t = texts[i];
           final isActive = t.id == selectedId;
@@ -321,7 +181,7 @@ class TextPropertiesPanel extends StatelessWidget {
             Icon(
               Icons.text_fields_rounded,
               size: 40,
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Colors.white.withOpacity(0.1),
             ),
             const SizedBox(height: 12),
             Text(
@@ -329,7 +189,7 @@ class TextPropertiesPanel extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.25),
+                color: Colors.white.withOpacity(0.25),
                 height: 1.6,
               ),
             ),
@@ -341,673 +201,381 @@ class TextPropertiesPanel extends StatelessWidget {
 
   Widget _buildProperties(BuildContext context, CustomTextOverlay text) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Style Toggles ──
-          _buildSectionLabel('ĐỊNH DẠNG'),
-          const SizedBox(height: 8),
-          Row(
+          // ── Section: TYPOGRAPHY (VĂN BẢN) ──
+          PanelComponents.buildPanelSection(
+            title: 'CHỮ & ĐỊNH DẠNG',
+            icon: Icons.font_download_rounded,
+            initiallyExpanded: true,
             children: [
-              _buildToggleButton(
-                icon: Icons.format_bold_rounded,
-                active: text.fontWeight == FontWeight.bold,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  fontWeight: text.fontWeight == FontWeight.bold
-                      ? FontWeight.normal
-                      : FontWeight.bold,
-                ),
+              PanelComponents.buildSectionLabel('FONT CHỮ'),
+              const SizedBox(height: 8),
+              PanelComponents.buildFontPicker(
+                currentFont: text.fontFamily ?? 'Roboto',
+                onFontSelected: (font) =>
+                    store.updateCustomTextStyle(text.id, fontFamily: font),
               ),
-              const SizedBox(width: 8),
-              _buildToggleButton(
-                icon: Icons.format_italic_rounded,
-                active: text.fontStyle == FontStyle.italic,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  fontStyle: text.fontStyle == FontStyle.italic
-                      ? FontStyle.normal
-                      : FontStyle.italic,
-                ),
-              ),
-              const SizedBox(width: 16),
-              _buildAlignButton(
-                icon: Icons.format_align_left_rounded,
-                active: text.textAlign == TextAlign.left,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.left,
-                ),
-              ),
-              _buildAlignButton(
-                icon: Icons.format_align_center_rounded,
-                active: text.textAlign == TextAlign.center,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              _buildAlignButton(
-                icon: Icons.format_align_right_rounded,
-                active: text.textAlign == TextAlign.right,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Font Size ──
-          _buildSectionLabel('CỠ CHỮ  ${text.fontSize.toInt()}px'),
-          const SizedBox(height: 4),
-          _buildSlider(
-            context: context,
-            value: text.fontSize,
-            min: 8,
-            max: 120,
-            onChanged: (v) => store.updateCustomTextFontSize(text.id, v),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Line Height ──
-          _buildSectionLabel(
-            'KHOẢNG CÁCH DÒNG  ${(text.textHeight ?? 1.2).toStringAsFixed(1)}x',
-          ),
-          const SizedBox(height: 4),
-          _buildSlider(
-            context: context,
-            value: text.textHeight ?? 1.2,
-            min: 0.8,
-            max: 3.0,
-            divisions: 44,
-            onChanged: (v) =>
-                store.updateCustomTextStyle(text.id, textHeight: v),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Rotation ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildSectionLabel('XOAY  ${text.rotation.toInt()}°'),
-              if (text.rotation != 0)
-                GestureDetector(
-                  onTap: () =>
-                      store.updateCustomTextStyle(text.id, rotation: 0),
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Text(
-                      'RESET',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6366F1),
-                        letterSpacing: 0.5,
+              const SizedBox(height: 16),
+              PanelComponents.buildPanelRow(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'CỠ CHỮ: ${text.fontSize.toInt()}px',
                       ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.fontSize,
+                        min: 8,
+                        max: 120,
+                        onChanged: (v) =>
+                            store.updateCustomTextFontSize(text.id, v),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'DÒNG: ${(text.textHeight ?? 1.2).toStringAsFixed(1)}x',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.textHeight ?? 1.2,
+                        min: 0.8,
+                        max: 3.0,
+                        divisions: 44,
+                        onChanged: (v) =>
+                            store.updateCustomTextStyle(text.id, textHeight: v),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              PanelComponents.buildPanelRow(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'K.CÁCH: ${text.letterSpacing.toStringAsFixed(1)}',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.letterSpacing,
+                        min: -5,
+                        max: 20,
+                        onChanged: (v) => store.updateCustomTextStyle(text.id,
+                            letterSpacing: v),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'XOAY: ${text.rotation.toInt()}°',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.rotation,
+                        min: -180,
+                        max: 180,
+                        divisions: 360,
+                        onChanged: (v) =>
+                            store.updateCustomTextStyle(text.id, rotation: v),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  PanelComponents.buildToggleButton(
+                    icon: Icons.format_bold_rounded,
+                    active: text.fontWeight == FontWeight.bold,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      fontWeight: text.fontWeight == FontWeight.bold
+                          ? FontWeight.normal
+                          : FontWeight.bold,
                     ),
                   ),
-                ),
+                  PanelComponents.buildToggleButton(
+                    icon: Icons.format_italic_rounded,
+                    active: text.fontStyle == FontStyle.italic,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      fontStyle: text.fontStyle == FontStyle.italic
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 24,
+                    child: VerticalDivider(color: Colors.white10),
+                  ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_left_rounded,
+                    active: text.textAlign == TextAlign.left,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.left,
+                    ),
+                  ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_center_rounded,
+                    active: text.textAlign == TextAlign.center,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_right_rounded,
+                    active: text.textAlign == TextAlign.right,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          _buildSlider(
-            context: context,
-            value: text.rotation,
-            min: -180,
-            max: 180,
-            divisions: 360,
-            onChanged: (v) => store.updateCustomTextStyle(text.id, rotation: v),
-          ),
 
-          const SizedBox(height: 16),
-
-          // ── Font Family ──
-          _buildSectionLabel('FONT CHỮ'),
-          const SizedBox(height: 8),
-          _buildFontPicker(text),
-
-          const SizedBox(height: 16),
-
-          // ── Text Color ──
-          _buildSectionLabel('MÀU CHỮ'),
-          const SizedBox(height: 8),
-          if (store.recentTextColors.isNotEmpty) ...[
-            _buildRecentColors(
-              colors: store.recentTextColors.toList(),
-              selectedColor: text.color,
-              onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
-            ),
-            const SizedBox(height: 10),
-            _buildPaletteDivider(),
-            const SizedBox(height: 8),
-          ],
-          _buildColorPalette(
-            context: context,
-            colors: _colorPalette,
-            selectedColor: text.color,
-            onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Background Color ──
-          _buildSectionLabel('MÀU NỀN'),
-          const SizedBox(height: 8),
-          if (store.recentBgColors.isNotEmpty) ...[
-            _buildRecentColors(
-              colors: store.recentBgColors.toList(),
-              selectedColor: text.backgroundColor,
-              onSelect: (c) =>
-                  store.updateCustomTextStyle(text.id, backgroundColor: c),
-            ),
-            const SizedBox(height: 10),
-            _buildPaletteDivider(),
-            const SizedBox(height: 8),
-          ],
-          Row(
+          // ── Section: APPEARANCE (MÀU SẮC & NỀN) ──
+          PanelComponents.buildPanelSection(
+            title: 'MÀU SẮC & NỀN',
+            icon: Icons.palette_rounded,
+            initiallyExpanded: true,
             children: [
-              // No background (transparent)
-              GestureDetector(
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  clearBackgroundColor: true,
+              PanelComponents.buildSectionLabel('MÀU CHỮ'),
+              const SizedBox(height: 8),
+              if (store.recentTextColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentTextColors.toList(),
+                  selectedColor: text.color,
+                  onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
                 ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 28,
-                  height: 28,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: text.backgroundColor == null
-                          ? _accentColor
-                          : Colors.white24,
-                      width: text.backgroundColor == null ? 2.5 : 1,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.block_rounded,
-                    size: 14,
-                    color: Colors.white38,
-                  ),
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
+              ],
+              PanelComponents.buildColorPalette(
+                context: context,
+                colors: PanelComponents.colorPalette,
+                selectedColor: text.color,
+                onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
+                onPickCustom: () => PanelComponents.showColorPicker(
+                  context: context,
+                  initialColor: text.color,
+                  onColorSelected: (c) =>
+                      store.updateCustomTextStyle(text.id, color: c),
                 ),
               ),
-              Expanded(
-                child: _buildColorPalette(
-                  context: context,
-                  colors: _bgColorPalette,
+              const SizedBox(height: 20),
+              PanelComponents.buildSectionLabel('MÀU NỀN'),
+              const SizedBox(height: 8),
+              if (store.recentBgColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentBgColors.toList(),
                   selectedColor: text.backgroundColor,
                   onSelect: (c) =>
                       store.updateCustomTextStyle(text.id, backgroundColor: c),
                 ),
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      clearBackgroundColor: true,
+                    ),
+                    child: Container(
+                      width: 28, height: 28,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: text.backgroundColor == null ? _accentColor : Colors.white10,
+                          width: text.backgroundColor == null ? 2 : 1,
+                        ),
+                      ),
+                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                    ),
+                  ),
+                  Expanded(
+                    child: PanelComponents.buildColorPalette(
+                      context: context,
+                      colors: PanelComponents.darkColorPalette,
+                      selectedColor: text.backgroundColor,
+                      onSelect: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
+                      onPickCustom: () => PanelComponents.showColorPicker(
+                        context: context,
+                        initialColor: text.backgroundColor ?? Colors.black,
+                        onColorSelected: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              if (text.backgroundColor != null) ...[
+                const SizedBox(height: 16),
+                PanelComponents.buildPanelRow(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel(
+                          'ĐỘ MỜ: ${(text.backgroundOpacity * 100).toInt()}%',
+                        ),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: text.backgroundOpacity,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: (v) => store.updateCustomTextStyle(text.id,
+                              backgroundOpacity: v),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel(
+                          'BO GÓC: ${text.backgroundRadius.toInt()}px',
+                        ),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: text.backgroundRadius,
+                          min: 0,
+                          max: 100,
+                          onChanged: (v) => store.updateCustomTextStyle(text.id,
+                              backgroundRadius: v),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
 
-          if (text.backgroundColor != null) ...[
-            const SizedBox(height: 8),
-            _buildSectionLabel(
-              'ĐỘ MỜ NỀN  ${(text.backgroundOpacity * 100).toInt()}%',
-            ),
-            const SizedBox(height: 4),
-            _buildSlider(
-              context: context,
-              value: text.backgroundOpacity,
-              min: 0.05,
-              max: 1.0,
-              divisions: 19,
-              onChanged: (v) =>
-                  store.updateCustomTextStyle(text.id, backgroundOpacity: v),
-            ),
-            const SizedBox(height: 8),
-            _buildSectionLabel('BO GÓC  ${text.backgroundRadius.toInt()}px'),
-            const SizedBox(height: 4),
-            _buildSlider(
-              context: context,
-              value: text.backgroundRadius,
-              min: 0,
-              max: 40,
-              divisions: 40,
-              onChanged: (v) =>
-                  store.updateCustomTextStyle(text.id, backgroundRadius: v),
-            ),
-          ],
-
-          const SizedBox(height: 20),
-
-          // ── Delete ──
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => store.removeCustomText(text.id),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.red, width: 1),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          // ── Section: BORDER & EFFECTS (VIỀN & HIỆU ỨNG) ──
+          PanelComponents.buildPanelSection(
+            title: 'VIỀN & HIỆU ỨNG',
+            icon: Icons.auto_awesome_rounded,
+            children: [
+              PanelComponents.buildSectionLabel('VIỀN CHỮ'),
+              const SizedBox(height: 8),
+              if (store.recentStrokeColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentStrokeColors.toList(),
+                  selectedColor: text.strokeColor,
+                  onSelect: (c) =>
+                      store.updateCustomTextStyle(text.id, strokeColor: c),
                 ),
-              ),
-              icon: const Icon(Icons.delete_outline_rounded, size: 16),
-              label: const Text(
-                'XÓA CHỮ NÀY',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Helpers ─────────────────────────────────────────────────────────────
-
-  Widget _buildSectionLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 9,
-        fontWeight: FontWeight.w900,
-        letterSpacing: 1.5,
-        color: Colors.white38,
-      ),
-    );
-  }
-
-  /// Divider ph\u00e2n t\u00e1ch gi\u1eefa m\u00e0u g\u1ea7n \u0111\u00e2y v\u00e0 palette c\u00f3 s\u1eb5n
-  Widget _buildPaletteDivider() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.08),
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          'M\u00c0U C\u00d3 S\u1eb4N',
-          style: TextStyle(
-            fontSize: 8,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            color: Colors.white24,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.08),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSlider({
-    required BuildContext context,
-    required double value,
-    required double min,
-    required double max,
-    int? divisions,
-    required void Function(double) onChanged,
-  }) {
-    return SliderTheme(
-      data: SliderTheme.of(context).copyWith(
-        trackHeight: 2,
-        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-        activeTrackColor: _accentColor,
-        inactiveTrackColor: Colors.white12,
-        thumbColor: Colors.white,
-        overlayColor: _accentColor.withValues(alpha: 0.2),
-      ),
-      child: Slider(
-        value: value.clamp(min, max),
-        min: min,
-        max: max,
-        divisions: divisions,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildToggleButton({
-    required IconData icon,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: active ? _accentColor : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 18, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildAlignButton({
-    required IconData icon,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: active ? _accentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, size: 16, color: Colors.white70),
-      ),
-    );
-  }
-
-  Widget _buildFontPicker(CustomTextOverlay text) {
-    final currentFont = text.fontFamily ?? 'Roboto';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _fontFamilies.contains(currentFont) ? currentFont : 'Roboto',
-          dropdownColor: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(12),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.white38,
-          ),
-          isExpanded: true,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              store.updateCustomTextStyle(text.id, fontFamily: newValue);
-            }
-          },
-          items: _fontFamilies.map<DropdownMenuItem<String>>((String font) {
-            return DropdownMenuItem<String>(
-              value: font,
-              child: Text(
-                font,
-                style: GoogleFonts.getFont(
-                  font,
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  /// Hàng màu dùng gần đây — hiển thị dạng chips ngang với nhãn "Gần đây"
-  Widget _buildRecentColors({
-    required List<Color> colors,
-    required Color? selectedColor,
-    required void Function(Color) onSelect,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.history_rounded, size: 10, color: Colors.white30),
-            const SizedBox(width: 4),
-            Text(
-              'GẦN ĐÂY',
-              style: const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-                color: Colors.white30,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: colors.map((c) {
-            final isSelected =
-                selectedColor != null &&
-                selectedColor.toARGB32() == c.toARGB32();
-            return GestureDetector(
-              onTap: () => onSelect(c),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? _accentColor : Colors.white38,
-                    width: isSelected ? 2.5 : 1.5,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: _accentColor.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                          ),
-                        ]
-                      : null,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildColorPalette({
-    required BuildContext context,
-    required List<Color> colors,
-    required Color? selectedColor,
-    required void Function(Color) onSelect,
-  }) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        ...colors.map((c) {
-          final isSelected =
-              selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
-          return GestureDetector(
-            onTap: () => onSelect(c),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: c,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? _accentColor : Colors.white24,
-                  width: isSelected ? 2.5 : 1,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: _accentColor.withValues(alpha: 0.4),
-                          blurRadius: 6,
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
-          );
-        }),
-        // Nút chọn màu tùy chỉnh
-        GestureDetector(
-          onTap: () => _showColorPicker(
-            context,
-            selectedColor ?? Colors.white,
-            onSelect,
-          ),
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white24, width: 1),
-              color: Colors.white.withValues(alpha: 0.05),
-            ),
-            child: const Icon(
-              Icons.colorize_rounded,
-              size: 14,
-              color: Colors.white70,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showColorPicker(
-    BuildContext context,
-    Color initialColor,
-    void Function(Color) onSelect,
-  ) async {
-    Color pickedColor = initialColor;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.palette_rounded, size: 18, color: Color(0xFF6366F1)),
-            SizedBox(width: 8),
-            Text(
-              'CHỌN MÀU',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-        content: StatefulBuilder(
-          builder: (_, setState) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // HSV Color Wheel + Sliders
-                ColorPicker(
-                  pickerColor: pickedColor,
-                  onColorChanged: (Color color) {
-                    setState(() => pickedColor = color);
-                  },
-                  colorPickerWidth: 280,
-                  pickerAreaHeightPercent: 0.7,
-                  enableAlpha: true,
-                  labelTypes: const [ColorLabelType.hex, ColorLabelType.hsv],
-                  displayThumbColor: true,
-                  pickerAreaBorderRadius: const BorderRadius.all(
-                    Radius.circular(12),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Preview strip
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 32,
-                          color: initialColor,
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'CŨ',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.white70,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => store.updateCustomTextStyle(text.id, strokeWidth: 0, clearStrokeColor: true),
+                    child: Container(
+                      width: 28, height: 28,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: (text.strokeWidth == 0 || text.strokeColor == null) ? _accentColor : Colors.white10,
+                          width: (text.strokeWidth == 0 || text.strokeColor == null) ? 2 : 1,
                         ),
                       ),
-                      Expanded(
-                        child: Container(
-                          height: 32,
-                          color: pickedColor,
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'MỚI',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.white70,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                    ),
                   ),
+                  Expanded(
+                    child: PanelComponents.buildColorPalette(
+                      context: context,
+                      colors: PanelComponents.colorPalette,
+                      selectedColor: text.strokeColor,
+                      onSelect: (c) {
+                        store.updateCustomTextStyle(text.id, strokeColor: c);
+                        if (text.strokeWidth == 0) store.updateCustomTextStyle(text.id, strokeWidth: 2.0);
+                      },
+                      onPickCustom: () => PanelComponents.showColorPicker(
+                        context: context,
+                        initialColor: text.strokeColor ?? Colors.white,
+                        onColorSelected: (c) => store.updateCustomTextStyle(text.id, strokeColor: c),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (text.strokeColor != null && text.strokeWidth > 0) ...[
+                const SizedBox(height: 8),
+                PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN CHỮ: ${text.strokeWidth.toInt()}px'),
+                PanelComponents.buildSlider(
+                  context: context,
+                  value: text.strokeWidth,
+                  min: 0, max: 20,
+                  onChanged: (v) => store.updateCustomTextStyle(text.id, strokeWidth: v),
                 ),
               ],
-            ),
+              const SizedBox(height: 8),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('HỦY', style: TextStyle(color: Colors.white38)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onSelect(pickedColor);
-              Navigator.of(dialogCtx).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _accentColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+
+          // ── Section: TIMELINE ──
+          PanelComponents.buildPanelSection(
+            title: 'THỜI GIAN HIỂN THỊ',
+            icon: Icons.timer_rounded,
+            children: [
+              _buildTimeInput(
+                label: 'BẮT ĐẦU (s)',
+                value: text.startTime,
+                onChanged: (v) => store.updateCustomTextTiming(text.id, startTime: v),
               ),
-            ),
-            child: const Text(
-              'CHỌN',
-              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
-            ),
+              const SizedBox(height: 12),
+              _buildTimeInput(
+                label: 'KẾT THÚC (s)',
+                value: text.endTime,
+                hint: 'Xuyên suốt',
+                onChanged: (v) => v == null 
+                    ? store.updateCustomTextTiming(text.id, clearEndTime: true)
+                    : store.updateCustomTextTiming(text.id, endTime: v),
+              ),
+            ],
           ),
+          const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+
+  Widget _buildTimeInput({
+    required String label,
+    required double? value,
+    required void Function(double?) onChanged,
+    String? hint,
+  }) {
+    return TimeInputField(
+      label: label,
+      initialValue: value,
+      onChanged: onChanged,
+      hint: hint,
     );
   }
 }

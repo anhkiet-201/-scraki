@@ -11,6 +11,38 @@ import 'package:scraki/features/video_poster/domain/services/anti_reup_service.d
 
 @Injectable(as: VideoProcessingRepository)
 class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
+  // Choose GPU encoder based on platform and availability
+  Future<String> _getGpuEncoder() async {
+    if (Platform.isMacOS) return 'h264_videotoolbox';
+    if (Platform.isWindows) {
+      final encoders = await _getAvailableEncoders();
+      if (encoders.contains('h264_nvenc')) return 'h264_nvenc';
+      if (encoders.contains('h264_amf')) return 'h264_amf';
+      if (encoders.contains('h264_qsv')) return 'h264_qsv';
+    }
+    return 'libx264';
+  }
+
+  List<String>? _availableEncoders;
+  Future<List<String>> _getAvailableEncoders() async {
+    if (_availableEncoders != null) return _availableEncoders!;
+    final findFf = await _findFfmpeg();
+    if (findFf == null) return [];
+    try {
+      final result = await Process.run(findFf, ['-encoders']);
+      final output = result.stdout as String;
+      _availableEncoders =
+          output
+              .split('\n')
+              .where((l) => l.contains('V....D'))
+              .map((l) => l.split(' ').where((s) => s.isNotEmpty).skip(1).first)
+              .toList();
+      return _availableEncoders!;
+    } catch (_) {
+      return [];
+    }
+  }
+
   @override
   Future<String?> generatePreview(VideoComposition composition) async {
     return null;
@@ -274,8 +306,13 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       'Exporting with finalDuration: $finalDuration (Target: ${composition.antiReupConfig.targetDuration})',
     );
 
+    final gpuEncoder = await _getGpuEncoder();
+
     final args = [
+      '-hide_banner',
       '-y',
+      '-hwaccel',
+      'auto',
       ...inputs,
       '-filter_complex',
       filterComplex,
@@ -285,11 +322,16 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
       '-t',
       finalDuration.toString(),
       '-c:v',
-      'libx264',
-      '-preset',
-      'medium',
-      '-crf',
-      '23',
+      gpuEncoder,
+      if (gpuEncoder == 'libx264') ...[
+        '-preset',
+        'medium',
+        '-crf',
+        '23',
+      ] else ...[
+        '-realtime',
+        '1',
+      ],
       if (hasAudio) ...[
         '-c:a',
         'aac', // Ensure audio codec is set
@@ -333,10 +375,13 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
     );
 
     await Process.run(ffmpegPath, [
-      '-i',
-      videoPath,
+      '-hide_banner',
+      '-hwaccel',
+      'auto',
       '-ss',
       '00:00:01',
+      '-i',
+      videoPath,
       '-vframes',
       '1',
       '-q:v',

@@ -22,11 +22,17 @@ class VideoOverlayItem extends StatefulWidget {
   final double backgroundRadius;
   final String? fontFamily;
   final double rotation;
+  final Color? strokeColor;
+  final double strokeWidth;
+  final double letterSpacing;
   final bool isSelected;
   final void Function(String type, double x, double y) onPositionUpdate;
   final void Function(String type) onSelect;
   final void Function(String type, double newSize) onResize;
   final void Function(String type, String newValue) onTextChange;
+
+  final Color? backgroundBorderColor;
+  final double backgroundBorderWidth;
 
   const VideoOverlayItem({
     super.key,
@@ -42,10 +48,15 @@ class VideoOverlayItem extends StatefulWidget {
     this.fontStyle = FontStyle.normal,
     this.textAlign = TextAlign.center,
     this.backgroundColor,
-    this.backgroundOpacity = 0.5,
-    this.backgroundRadius = 8.0,
+    this.backgroundOpacity = 1.0,
+    this.backgroundRadius = 0.0,
+    this.backgroundBorderColor,
+    this.backgroundBorderWidth = 0.0,
     this.fontFamily,
     this.rotation = 0.0,
+    this.strokeColor,
+    this.strokeWidth = 0.0,
+    this.letterSpacing = 0.0,
     this.isSelected = false,
     required this.onPositionUpdate,
     required this.onSelect,
@@ -150,7 +161,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               color: _store.isSelected
                                   ? accentColor
                                   : (_store.isHovered
-                                        ? hoverColor.withValues(alpha: 0.5)
+                                        ? hoverColor.withOpacity(0.5)
                                         : Colors.transparent),
                               width: _store.isSelected ? 2 : 1,
                             ),
@@ -159,11 +170,11 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                             color:
                                 _store.isEditing &&
                                     widget.backgroundColor != null
-                                ? widget.backgroundColor!.withValues(
-                                    alpha: widget.backgroundOpacity,
+                                ? widget.backgroundColor!.withOpacity(
+                                    widget.backgroundOpacity,
                                   )
                                 : (_store.isHovered || _store.isSelected
-                                      ? Colors.black.withValues(alpha: 0.4)
+                                      ? Colors.black.withOpacity(0.4)
                                       : Colors.transparent),
                             borderRadius: BorderRadius.circular(
                               widget.backgroundRadius,
@@ -171,7 +182,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                             boxShadow: _store.isSelected
                                 ? [
                                     BoxShadow(
-                                      color: accentColor.withValues(alpha: 0.3),
+                                      color: accentColor.withOpacity(0.3),
                                       blurRadius: 12,
                                     ),
                                   ]
@@ -198,6 +209,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                             fontWeight: widget.fontWeight,
                                             fontStyle: widget.fontStyle,
                                             height: widget.textHeight,
+                                            letterSpacing: widget.letterSpacing,
                                           ),
                                     maxLines: null,
                                     textAlign: widget.textAlign,
@@ -225,7 +237,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               : widget.backgroundColor != null
                               ? _TextWithLineBackgrounds(
                                   text: _store.label,
-                                  textStyle: widget.fontFamily != null
+                                  style: widget.fontFamily != null
                                       ? GoogleFonts.getFont(
                                           widget.fontFamily!,
                                           color: widget.color,
@@ -233,6 +245,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                           fontWeight: widget.fontWeight,
                                           fontStyle: widget.fontStyle,
                                           height: widget.textHeight,
+                                          letterSpacing: widget.letterSpacing,
                                         )
                                       : TextStyle(
                                           color: widget.color,
@@ -240,38 +253,80 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                           fontWeight: widget.fontWeight,
                                           fontStyle: widget.fontStyle,
                                           height: widget.textHeight,
+                                          letterSpacing: widget.letterSpacing,
                                         ),
                                   textAlign: widget.textAlign,
                                   backgroundColor: widget.backgroundColor!,
                                   backgroundOpacity: widget.backgroundOpacity,
                                   backgroundRadius: widget.backgroundRadius,
+                                  backgroundBorderColor: widget.backgroundBorderColor,
+                                  backgroundBorderWidth: widget.backgroundBorderWidth,
+                                  strokeColor: widget.strokeColor,
+                                  strokeWidth: widget.strokeWidth,
                                 )
                               : Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                   ),
-                                  child: Text(
-                                    _store.label,
-                                    style: widget.fontFamily != null
-                                        ? GoogleFonts.getFont(
-                                            widget.fontFamily!,
-                                            color: widget.color,
-                                            fontSize: _store.fontSize,
-                                            fontWeight: widget.fontWeight,
-                                            fontStyle: widget.fontStyle,
-                                            height: widget.textHeight,
-                                          )
-                                        : TextStyle(
-                                            color: widget.color,
-                                            fontSize: _store.fontSize,
-                                            fontWeight: widget.fontWeight,
-                                            fontStyle: widget.fontStyle,
-                                            height: widget.textHeight,
+                                  child: Stack(
+                                      children: [
+                                        if (widget.strokeColor != null &&
+                                            widget.strokeWidth > 0)
+                                          Text(
+                                            _store.label,
+                                            style: (widget.fontFamily != null
+                                                    ? GoogleFonts.getFont(
+                                                        widget.fontFamily!,
+                                                        fontSize: _store.fontSize,
+                                                        fontWeight: widget.fontWeight,
+                                                        fontStyle: widget.fontStyle,
+                                                        height: widget.textHeight,
+                                                        letterSpacing: widget.letterSpacing,
+                                                      )
+                                                    : TextStyle(
+                                                        fontSize: _store.fontSize,
+                                                        fontWeight: widget.fontWeight,
+                                                        fontStyle: widget.fontStyle,
+                                                        height: widget.textHeight,
+                                                        letterSpacing: widget.letterSpacing,
+                                                      ))
+                                                .copyWith(
+                                              foreground: Paint()
+                                                  ..style = PaintingStyle.stroke
+                                                  ..strokeJoin = StrokeJoin.round
+                                                  ..strokeCap = StrokeCap.round
+                                                  ..strokeWidth = widget.strokeWidth
+                                                  ..color = widget.strokeColor!,
+                                            ),
+                                            softWrap: true,
+                                            textAlign: widget.textAlign,
                                           ),
-                                    softWrap: true,
-                                    textAlign: widget.textAlign,
+                                        Text(
+                                          _store.label,
+                                          style: widget.fontFamily != null
+                                              ? GoogleFonts.getFont(
+                                                  widget.fontFamily!,
+                                                  color: widget.color,
+                                                  fontSize: _store.fontSize,
+                                                  fontWeight: widget.fontWeight,
+                                                  fontStyle: widget.fontStyle,
+                                                  height: widget.textHeight,
+                                                  letterSpacing: widget.letterSpacing,
+                                                )
+                                              : TextStyle(
+                                                  color: widget.color,
+                                                  fontSize: _store.fontSize,
+                                                  fontWeight: widget.fontWeight,
+                                                  fontStyle: widget.fontStyle,
+                                                  height: widget.textHeight,
+                                                  letterSpacing: widget.letterSpacing,
+                                                ),
+                                          softWrap: true,
+                                          textAlign: widget.textAlign,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
                         ),
 
                         // ── 8-Point Resize Handles ──
@@ -280,7 +335,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                             child: Container(
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                  color: accentColor.withValues(alpha: 0.4),
+                                  color: accentColor.withOpacity(0.4),
                                   width: 1,
                                 ),
                               ),
@@ -483,25 +538,30 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
   }
 }
 
-/// Hiển thị text với background BoxDecoration riêng cho từng dòng.
-/// Dùng TextPainter.computeLineMetrics() để xác định text thuộc dòng nào,
-/// sau đó render mỗi dòng bằng Container(decoration: BoxDecoration) riêng biệt.
 class _TextWithLineBackgrounds extends StatelessWidget {
-  const _TextWithLineBackgrounds({
-    required this.text,
-    required this.textStyle,
-    required this.textAlign,
-    required this.backgroundColor,
-    required this.backgroundOpacity,
-    required this.backgroundRadius,
-  });
-
   final String text;
-  final TextStyle textStyle;
+  final TextStyle style;
   final TextAlign textAlign;
   final Color backgroundColor;
   final double backgroundOpacity;
   final double backgroundRadius;
+  final Color? backgroundBorderColor;
+  final double backgroundBorderWidth;
+  final Color? strokeColor;
+  final double strokeWidth;
+
+  const _TextWithLineBackgrounds({
+    required this.text,
+    required this.style,
+    required this.textAlign,
+    required this.backgroundColor,
+    required this.backgroundOpacity,
+    required this.backgroundRadius,
+    this.backgroundBorderColor,
+    this.backgroundBorderWidth = 0.0,
+    this.strokeColor,
+    this.strokeWidth = 0.0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -531,13 +591,40 @@ class _TextWithLineBackgrounds extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(backgroundRadius),
+                  border: backgroundBorderWidth > 0 &&
+                          backgroundBorderColor != null
+                      ? Border.all(
+                          color: backgroundBorderColor!,
+                          width: backgroundBorderWidth,
+                        )
+                      : null,
                 ),
-                child: Text(
-                  lineTexts[i],
-                  style: textStyle,
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: textAlign,
+                child: Stack(
+                  children: [
+                    if (strokeColor != null && strokeWidth > 0)
+                      Text(
+                        lineTexts[i],
+                        style: style.copyWith(
+                          color: null,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeJoin = StrokeJoin.round
+                            ..strokeCap = StrokeCap.round
+                            ..strokeWidth = strokeWidth
+                            ..color = strokeColor!,
+                        ),
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: textAlign,
+                      ),
+                    Text(
+                      lineTexts[i],
+                      style: style,
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: textAlign,
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -551,7 +638,7 @@ class _TextWithLineBackgrounds extends StatelessWidget {
     if (text.isEmpty) return [];
 
     final painter = TextPainter(
-      text: TextSpan(text: text, style: textStyle),
+      text: TextSpan(text: text, style: style),
       textAlign: textAlign,
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: maxWidth);

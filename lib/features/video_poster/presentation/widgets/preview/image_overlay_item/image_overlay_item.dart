@@ -15,6 +15,9 @@ class ImageOverlayItem extends StatefulWidget {
   final double rotation;
   final BoxConstraints constraints;
   final bool isSelected;
+  final Color? borderColor;
+  final double borderWidth;
+  final double borderRadius;
   final void Function(String id, double x, double y) onPositionUpdate;
   final void Function(String id) onSelect;
   final void Function(String id, double newWidth, double newHeight) onResize;
@@ -31,6 +34,9 @@ class ImageOverlayItem extends StatefulWidget {
     this.rotation = 0.0,
     required this.constraints,
     this.isSelected = false,
+    this.borderColor,
+    this.borderWidth = 0.0,
+    this.borderRadius = 0.0,
     required this.onPositionUpdate,
     required this.onSelect,
     required this.onResize,
@@ -148,18 +154,37 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                               curve: Curves.easeOut,
                               width: w,
                               height: h,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: _store.isSelected
-                                      ? accentColor
-                                      : (_store.isHovered
-                                            ? hoverColor.withValues(alpha: 0.5)
-                                            : Colors.transparent),
-                                  width: _store.isSelected ? 2 : 1,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: _store.isSelected
+                                        ? accentColor
+                                        : (_store.isHovered
+                                              ? hoverColor.withValues(alpha: 0.5)
+                                              : Colors.transparent),
+                                    width: _store.isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius:
+                                        BorderRadius.circular(widget.borderRadius),
+                                    border: widget.borderWidth > 0 &&
+                                            widget.borderColor != null
+                                        ? Border.all(
+                                            color: widget.borderColor!,
+                                            width: widget.borderWidth,
+                                          )
+                                        : null,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      (widget.borderRadius - widget.borderWidth)
+                                          .clamp(0, double.infinity),
+                                    ),
+                                    child: _buildImageProvider(),
+                                  ),
                                 ),
                               ),
-                              child: _buildImageProvider(),
-                            ),
                           ),
                         ),
                       ),
