@@ -109,10 +109,11 @@ class TextPropertiesPanel extends StatelessWidget {
     String? selectedId,
   ) {
     return Container(
-      constraints: const BoxConstraints(maxHeight: 120),
+      constraints: const BoxConstraints(maxHeight: 400),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: texts.length,
+        shrinkWrap: true,
         itemBuilder: (_, i) {
           final t = texts[i];
           final isActive = t.id == selectedId;
@@ -124,8 +125,8 @@ class TextPropertiesPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive
-                    ? _accentColor.withOpacity(0.15)
-                    : Colors.white.withOpacity(0.04),
+                    ? _accentColor.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(8),
                 border: isActive
                     ? Border.all(color: _accentColor, width: 1)
@@ -542,44 +543,21 @@ class TextPropertiesPanel extends StatelessWidget {
             title: 'THỜI GIAN HIỂN THỊ',
             icon: Icons.timer_rounded,
             children: [
-              PanelComponents.buildPanelRow(
-                children: [
-                  _buildTimeInput(
-                    label: 'BẮT ĐẦU (s)',
-                    value: text.startTime,
-                    onChanged: (v) => store.updateCustomTextTiming(text.id, startTime: v),
-                  ),
-                  _buildTimeInput(
-                    label: 'KẾT THÚC (s)',
-                    value: text.endTime,
-                    hint: 'Xuyên suốt',
-                    onChanged: (v) => v == null 
-                        ? store.updateCustomTextTiming(text.id, clearEndTime: true)
-                        : store.updateCustomTextTiming(text.id, endTime: v),
-                  ),
-                ],
+              _buildTimeInput(
+                label: 'BẮT ĐẦU (s)',
+                value: text.startTime,
+                onChanged: (v) => store.updateCustomTextTiming(text.id, startTime: v),
+              ),
+              const SizedBox(height: 12),
+              _buildTimeInput(
+                label: 'KẾT THÚC (s)',
+                value: text.endTime,
+                hint: 'Xuyên suốt',
+                onChanged: (v) => v == null 
+                    ? store.updateCustomTextTiming(text.id, clearEndTime: true)
+                    : store.updateCustomTextTiming(text.id, endTime: v),
               ),
             ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Delete ──
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: () => store.removeCustomText(text.id),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.redAccent.withOpacity(0.8),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(color: Colors.redAccent.withOpacity(0.2)),
-                ),
-              ),
-              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              label: const Text('XÓA VĂN BẢN NÀY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            ),
           ),
           const SizedBox(height: 32),
         ],

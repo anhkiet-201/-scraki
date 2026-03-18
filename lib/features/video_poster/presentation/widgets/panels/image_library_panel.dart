@@ -507,22 +507,19 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
           title: 'THỜI GIAN HIỂN THỊ',
           icon: Icons.timer_rounded,
           children: [
-            PanelComponents.buildPanelRow(
-              children: [
-                PanelComponents.buildTimeInput(
-                  label: 'BẮT ĐẦU (s)',
-                  value: image.startTime,
-                  onChanged: (v) => widget.store.updateCustomImageTiming(selectedId, startTime: v),
-                ),
-                PanelComponents.buildTimeInput(
-                  label: 'KẾT THÚC (s)',
-                  value: image.endTime,
-                  hint: 'Xuyên suốt',
-                  onChanged: (v) => v == null 
-                      ? widget.store.updateCustomImageTiming(selectedId, clearEndTime: true)
-                      : widget.store.updateCustomImageTiming(selectedId, endTime: v),
-                ),
-              ],
+            PanelComponents.buildTimeInput(
+              label: 'BẮT ĐẦU (s)',
+              value: image.startTime,
+              onChanged: (v) => widget.store.updateCustomImageTiming(selectedId, startTime: v),
+            ),
+            const SizedBox(height: 12),
+            PanelComponents.buildTimeInput(
+              label: 'KẾT THÚC (s)',
+              value: image.endTime,
+              hint: 'Xuyên suốt',
+              onChanged: (v) => v == null 
+                  ? widget.store.updateCustomImageTiming(selectedId, clearEndTime: true)
+                  : widget.store.updateCustomImageTiming(selectedId, endTime: v),
             ),
           ],
         ),
