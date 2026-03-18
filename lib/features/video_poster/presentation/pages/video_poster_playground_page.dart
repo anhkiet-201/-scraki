@@ -455,9 +455,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                 return Container(
                                                   color:
                                                       candidateData.isNotEmpty
-                                                      ? Colors.white.withValues(
-                                                          alpha: 0.1,
-                                                        )
+                                                      ? Colors.white.withOpacity(0.1)
                                                       : Colors.transparent,
                                                 );
                                               },
@@ -481,11 +479,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                             isSelected:
                                                 store.selectedCustomImageId ==
                                                 image.id,
-                                            onPositionUpdate:
-                                                store.updateCustomImagePosition,
+                                            onPositionUpdate: (id, x, y) =>
+                                                store.updateCustomImagePosition(
+                                                    id, x, y),
                                             onSelect: store.selectCustomImage,
-                                            onResize:
-                                                store.updateCustomImageSize,
+                                            onResize: (id, w, h) =>
+                                                store.updateCustomImageSize(
+                                                    id, w, h),
+                                            borderColor: image.borderColor,
+                                            borderWidth: image.borderWidth,
+                                            borderRadius: image.borderRadius,
                                           ),
                                         ),
 
@@ -505,12 +508,17 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           fontStyle: text.fontStyle,
                                           textAlign: text.textAlign,
                                           backgroundColor: text.backgroundColor,
-                                          backgroundOpacity:
-                                              text.backgroundOpacity,
-                                          backgroundRadius:
-                                              text.backgroundRadius,
+                                          backgroundOpacity: text.backgroundOpacity,
+                                          backgroundRadius: text.backgroundRadius,
+                                          backgroundBorderColor:
+                                              text.backgroundBorderColor,
+                                          backgroundBorderWidth:
+                                              text.backgroundBorderWidth,
                                           fontFamily: text.fontFamily,
                                           rotation: text.rotation,
+                                          strokeColor: text.strokeColor,
+                                          strokeWidth: text.strokeWidth,
+                                          letterSpacing: text.letterSpacing,
                                           isSelected:
                                               store.selectedCustomTextId ==
                                               text.id,

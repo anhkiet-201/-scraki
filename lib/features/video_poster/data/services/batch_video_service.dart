@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
@@ -474,7 +475,7 @@ class BatchVideoService {
             '-preset',
             'ultrafast',
             '-crf',
-            '26',
+            '26', 
           ] else ...[
             // GPU encoders use different rate control
             '-realtime',
@@ -713,6 +714,12 @@ class BatchVideoService {
           scaleFilter +=
               ',rotate=$totalRotation*PI/180:c=black@0:ow=$finalW:oh=$finalH';
         }
+        if (imgConfig.borderWidth > 0) {
+          final String borderHex = _colorToHex(imgConfig.borderColor ?? Colors.white);
+          final int ffBorderW = (imgConfig.borderWidth * 1.5).round();
+          scaleFilter += ',drawbox=c=$borderHex:t=$ffBorderW';
+        }
+
         filterComplex.write('$scaleFilter$scaleLabel;');
 
         String enableFilter = "enable='between(t,${imgConfig.startTime},";
@@ -912,6 +919,10 @@ class BatchVideoService {
         pixFmt.contains('10le') ||
         pixFmt.contains('10be');
     return hdrTransfer || hdrPixFmt;
+  }
+
+  String _colorToHex(Color color) {
+    return '0x${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
   }
 }
 

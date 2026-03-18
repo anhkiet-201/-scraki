@@ -6,6 +6,7 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/time_input_field.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/common/panel_components.dart';
 
 /// Image Library panel — drag-and-drop Image items to the video canvas
 class ImageLibraryPanel extends StatefulWidget {
@@ -419,6 +420,118 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                             ),
                           ),
                           const SizedBox(height: 16),
+
+                          // ── Border (Viền ảnh) ──
+                          PanelComponents.buildSectionLabel('VIỀN ẢNH'),
+                          const SizedBox(height: 8),
+                          if (widget.store.recentBorderColors.isNotEmpty) ...[
+                            PanelComponents.buildRecentColors(
+                              colors: widget.store.recentBorderColors.toList(),
+                              selectedColor: image.borderColor,
+                              onSelect: (c) => widget.store
+                                  .updateCustomImageBorder(selectedId, color: c),
+                            ),
+                            const SizedBox(height: 10),
+                            PanelComponents.buildPaletteDivider(),
+                            const SizedBox(height: 8),
+                          ],
+                          Row(
+                            children: [
+                              // No border (width 0)
+                              GestureDetector(
+                                onTap: () => widget.store
+                                    .updateCustomImageBorder(selectedId, width: 0),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  width: 28,
+                                  height: 28,
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: image.borderWidth == 0
+                                          ? const Color(0xFF6366F1)
+                                          : Colors.white24,
+                                      width: image.borderWidth == 0 ? 2.5 : 1,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.block_rounded,
+                                    size: 14,
+                                    color: Colors.white38,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: PanelComponents.buildColorPalette(
+                                  context: context,
+                                  colors: PanelComponents.colorPalette,
+                                  selectedColor: image.borderColor,
+                                  onSelect: (Color c) {
+                                    widget.store.updateCustomImageBorder(
+                                      selectedId,
+                                      color: c,
+                                    );
+                                    if (image.borderWidth == 0) {
+                                      widget.store.updateCustomImageBorder(
+                                        selectedId,
+                                        width: 2.0,
+                                      );
+                                    }
+                                  },
+                                  onPickCustom: () =>
+                                      PanelComponents.showColorPicker(
+                                    context: context,
+                                    initialColor: image.borderColor ?? Colors.white,
+                                    onColorSelected: (Color c) {
+                                      widget.store.updateCustomImageBorder(
+                                        selectedId,
+                                        color: c,
+                                      );
+                                      if (image.borderWidth == 0) {
+                                        widget.store.updateCustomImageBorder(
+                                          selectedId,
+                                          width: 2.0,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (image.borderColor != null) ...[
+                            const SizedBox(height: 8),
+                            PanelComponents.buildSectionLabel(
+                              'ĐỘ DÀY VIỀN  ${image.borderWidth.toInt()}px',
+                            ),
+                            const SizedBox(height: 4),
+                            PanelComponents.buildSlider(
+                              context: context,
+                              value: image.borderWidth,
+                              min: 0,
+                              max: 20,
+                              divisions: 20,
+                              onChanged: (v) => widget.store
+                                  .updateCustomImageBorder(selectedId, width: v),
+                            ),
+                            PanelComponents.buildSectionLabel(
+                              'BO GÓC ẢNH  ${image.borderRadius.toInt()}px',
+                            ),
+                            const SizedBox(height: 4),
+                            PanelComponents.buildSlider(
+                              context: context,
+                              value: image.borderRadius,
+                              min: 0,
+                              max: 100,
+                              divisions: 100,
+                              onChanged: (v) => widget.store
+                                  .updateCustomImageBorder(selectedId,
+                                      borderRadius: v),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
                         ],
                       );
                     },
@@ -626,4 +739,5 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
       },
     );
   }
+
 }

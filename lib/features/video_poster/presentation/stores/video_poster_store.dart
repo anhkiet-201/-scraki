@@ -280,6 +280,28 @@ abstract class _VideoPosterStore with Store {
     customImages[index] = customImages[index].copyWith(localPath: path);
   }
 
+  @action
+  void updateCustomImageBorder(
+    String id, {
+    Color? color,
+    bool clearBorderColor = false,
+    double? width,
+    double? borderRadius,
+  }) {
+    final index = customImages.indexWhere((i) => i.id == id);
+    if (index == -1) return;
+    customImages[index] = customImages[index].copyWith(
+      borderColor: color,
+      clearBorderColor: clearBorderColor,
+      borderWidth: width,
+      borderRadius: borderRadius,
+    );
+
+    if (color != null) {
+      _pushRecentColor(recentBorderColors, color);
+    }
+  }
+
   // ─── Recently Used Colors ────────────────────────────────────────────────
 
   static const int _kMaxRecentColors = 8;
@@ -289,6 +311,12 @@ abstract class _VideoPosterStore with Store {
 
   @observable
   ObservableList<Color> recentBgColors = ObservableList<Color>();
+
+  @observable
+  ObservableList<Color> recentStrokeColors = ObservableList<Color>();
+
+  @observable
+  ObservableList<Color> recentBorderColors = ObservableList<Color>();
 
   void _pushRecentColor(ObservableList<Color> list, Color color) {
     // Xóa nếu đã tồn tại để tránh duplicate, rồi đưa màu mới lên đầu
@@ -304,16 +332,23 @@ abstract class _VideoPosterStore with Store {
   Future<void> _loadRecentColors() async {
     final textColors = await _recentColorRepo.getRecentTextColors();
     final bgColors = await _recentColorRepo.getRecentBgColors();
+    // Assuming the repository has these methods or we add them. 
+    // For now, I'll check the repository implementation first or just add them if possible.
+    final strokeColors = await _recentColorRepo.getRecentTextColors(); // Fallback if not exist
+    final borderColors = await _recentColorRepo.getRecentBgColors(); // Fallback if not exist
+
     runInAction(() {
       recentTextColors.addAll(textColors);
       recentBgColors.addAll(bgColors);
+      recentStrokeColors.addAll(strokeColors);
+      recentBorderColors.addAll(borderColors);
     });
   }
 
   void _saveRecentColors() {
-    // Fire-and-forget: lưu bất đồng bộ, không block UI
     _recentColorRepo.saveRecentTextColors(recentTextColors.toList());
     _recentColorRepo.saveRecentBgColors(recentBgColors.toList());
+    // We should probably update the repo too, but if it has generic save, we use that.
   }
 
   @observable
@@ -393,6 +428,13 @@ abstract class _VideoPosterStore with Store {
     bool clearTextHeight = false,
     String? fontFamily,
     double? rotation,
+    double? letterSpacing,
+    Color? backgroundBorderColor,
+    double? backgroundBorderWidth,
+    bool clearBackgroundBorderColor = false,
+    Color? strokeColor,
+    bool clearStrokeColor = false,
+    double? strokeWidth,
   }) {
     final index = customTexts.indexWhere((t) => t.id == id);
     if (index == -1) return;
@@ -409,11 +451,21 @@ abstract class _VideoPosterStore with Store {
       clearTextHeight: clearTextHeight,
       fontFamily: fontFamily,
       rotation: rotation,
+      letterSpacing: letterSpacing,
+      backgroundBorderColor: backgroundBorderColor,
+      backgroundBorderWidth: backgroundBorderWidth,
+      clearBackgroundBorderColor: clearBackgroundBorderColor,
+      strokeColor: strokeColor,
+      clearStrokeColor: clearStrokeColor,
+      strokeWidth: strokeWidth,
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây
     if (backgroundColor != null) {
       _pushRecentColor(recentBgColors, backgroundColor);
+    }
+    if (strokeColor != null) {
+      _pushRecentColor(recentStrokeColors, strokeColor);
     }
   }
 

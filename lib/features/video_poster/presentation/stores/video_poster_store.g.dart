@@ -175,6 +175,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$recentStrokeColorsAtom = Atom(
+    name: '_VideoPosterStore.recentStrokeColors',
+    context: context,
+  );
+
+  @override
+  ObservableList<ui.Color> get recentStrokeColors {
+    _$recentStrokeColorsAtom.reportRead();
+    return super.recentStrokeColors;
+  }
+
+  @override
+  set recentStrokeColors(ObservableList<ui.Color> value) {
+    _$recentStrokeColorsAtom.reportWrite(value, super.recentStrokeColors, () {
+      super.recentStrokeColors = value;
+    });
+  }
+
+  late final _$recentBorderColorsAtom = Atom(
+    name: '_VideoPosterStore.recentBorderColors',
+    context: context,
+  );
+
+  @override
+  ObservableList<ui.Color> get recentBorderColors {
+    _$recentBorderColorsAtom.reportRead();
+    return super.recentBorderColors;
+  }
+
+  @override
+  set recentBorderColors(ObservableList<ui.Color> value) {
+    _$recentBorderColorsAtom.reportWrite(value, super.recentBorderColors, () {
+      super.recentBorderColors = value;
+    });
+  }
+
   late final _$isHidingImagesForCaptureAtom = Atom(
     name: '_VideoPosterStore.isHidingImagesForCapture',
     context: context,
@@ -393,23 +429,6 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
-  @override
-  void addCustomImage(
-    String imageUrl,
-    double x,
-    double y, {
-    bool isGif = false,
-  }) {
-    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
-      name: '_VideoPosterStore.addCustomImage',
-    );
-    try {
-      return super.addCustomImage(imageUrl, x, y, isGif: isGif);
-    } finally {
-      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
   late final _$createBatchVideosAsyncAction = AsyncAction(
     '_VideoPosterStore.createBatchVideos',
     context: context,
@@ -444,6 +463,23 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super._watchFavorites();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void addCustomImage(
+    String imageUrl,
+    double x,
+    double y, {
+    bool isGif = false,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.addCustomImage',
+    );
+    try {
+      return super.addCustomImage(imageUrl, x, y, isGif: isGif);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -522,12 +558,58 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void updateCustomImageTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImageTiming',
+    );
+    try {
+      return super.updateCustomImageTiming(
+        id,
+        startTime: startTime,
+        endTime: endTime,
+        clearEndTime: clearEndTime,
+      );
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void updateCustomImageLocalPath(String id, String path) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomImageLocalPath',
     );
     try {
       return super.updateCustomImageLocalPath(id, path);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomImageBorder(
+    String id, {
+    ui.Color? color,
+    bool clearBorderColor = false,
+    double? width,
+    double? borderRadius,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomImageBorder',
+    );
+    try {
+      return super.updateCustomImageBorder(
+        id,
+        color: color,
+        clearBorderColor: clearBorderColor,
+        width: width,
+        borderRadius: borderRadius,
+      );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -620,6 +702,13 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     bool clearTextHeight = false,
     String? fontFamily,
     double? rotation,
+    double? letterSpacing,
+    ui.Color? backgroundBorderColor,
+    double? backgroundBorderWidth,
+    bool clearBackgroundBorderColor = false,
+    ui.Color? strokeColor,
+    bool clearStrokeColor = false,
+    double? strokeWidth,
   }) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomTextStyle',
@@ -639,6 +728,35 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
         clearTextHeight: clearTextHeight,
         fontFamily: fontFamily,
         rotation: rotation,
+        letterSpacing: letterSpacing,
+        backgroundBorderColor: backgroundBorderColor,
+        backgroundBorderWidth: backgroundBorderWidth,
+        clearBackgroundBorderColor: clearBackgroundBorderColor,
+        strokeColor: strokeColor,
+        clearStrokeColor: clearStrokeColor,
+        strokeWidth: strokeWidth,
+      );
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextTiming(
+    String id, {
+    double? startTime,
+    double? endTime,
+    bool clearEndTime = false,
+  }) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextTiming',
+    );
+    try {
+      return super.updateCustomTextTiming(
+        id,
+        startTime: startTime,
+        endTime: endTime,
+        clearEndTime: clearEndTime,
       );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
@@ -765,6 +883,8 @@ customImages: ${customImages},
 selectedCustomImageId: ${selectedCustomImageId},
 recentTextColors: ${recentTextColors},
 recentBgColors: ${recentBgColors},
+recentStrokeColors: ${recentStrokeColors},
+recentBorderColors: ${recentBorderColors},
 isHidingImagesForCapture: ${isHidingImagesForCapture},
 selectedCustomTextId: ${selectedCustomTextId},
 batchOutputCount: ${batchOutputCount},

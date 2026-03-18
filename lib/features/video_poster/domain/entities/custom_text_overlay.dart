@@ -26,9 +26,17 @@ class CustomTextOverlay {
 
   /// Border radius of the background box (px).
   final double backgroundRadius;
-
   final String? fontFamily;
   final double rotation;
+  final double letterSpacing;
+  final Color? backgroundBorderColor;
+  final double backgroundBorderWidth;
+
+  /// Stroke (outline) color. Null means no stroke.
+  final Color? strokeColor;
+
+  /// Stroke width in px.
+  final double strokeWidth;
 
   /// Time in seconds when the text should appear.
   final double startTime;
@@ -52,6 +60,11 @@ class CustomTextOverlay {
     this.backgroundRadius = 8.0,
     this.fontFamily,
     this.rotation = 0.0,
+    this.letterSpacing = 0.0,
+    this.backgroundBorderColor,
+    this.backgroundBorderWidth = 0.0,
+    this.strokeColor,
+    this.strokeWidth = 0.0,
     this.startTime = 0.0,
     this.endTime,
   });
@@ -74,6 +87,13 @@ class CustomTextOverlay {
     double? backgroundRadius,
     String? fontFamily,
     double? rotation,
+    double? letterSpacing,
+    Color? backgroundBorderColor,
+    double? backgroundBorderWidth,
+    bool clearBackgroundBorderColor = false,
+    Color? strokeColor,
+    bool clearStrokeColor = false,
+    double? strokeWidth,
     double? startTime,
     double? endTime,
     bool clearEndTime = false,
@@ -96,6 +116,14 @@ class CustomTextOverlay {
       backgroundRadius: backgroundRadius ?? this.backgroundRadius,
       fontFamily: fontFamily ?? this.fontFamily,
       rotation: rotation ?? this.rotation,
+      letterSpacing: letterSpacing ?? this.letterSpacing,
+      backgroundBorderColor: clearBackgroundBorderColor
+          ? null
+          : (backgroundBorderColor ?? this.backgroundBorderColor),
+      backgroundBorderWidth:
+          backgroundBorderWidth ?? this.backgroundBorderWidth,
+      strokeColor: clearStrokeColor ? null : (strokeColor ?? this.strokeColor),
+      strokeWidth: strokeWidth ?? this.strokeWidth,
       startTime: startTime ?? this.startTime,
       endTime: clearEndTime ? null : (endTime ?? this.endTime),
     );
