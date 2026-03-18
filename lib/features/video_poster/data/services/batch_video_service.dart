@@ -745,7 +745,7 @@ class BatchVideoService {
         'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
       );
       filterComplex.write('noise=alls=$noiseStr:allf=t,');
-      filterComplex.write('setpts=${ptsStr}*PTS[bg];');
+      filterComplex.write('setpts=$ptsStr*PTS[bg];');
 
       int overlayIdx = 1;
       String lastVideoLabel = '[bg]';
@@ -857,7 +857,7 @@ class BatchVideoService {
 
       ffmpegArgs.addAll([
         '-filter_complex',
-        '$fStr',
+        fStr,
         '-map',
         lastVideoLabel,
         '-an', // Remove all audio streams
@@ -1126,7 +1126,7 @@ class _VideoSpoofProfile {
       Duration(days: daysAgo, hours: hoursAgo, minutes: minutesAgo),
     );
     final recordedAt =
-        recordedTime.toUtc().toIso8601String().split('.').first + '.000000Z';
+        '${recordedTime.toUtc().toIso8601String().split('.').first}.000000Z';
 
     // GPS ngẫu nhiên trong vùng TP.HCM + Bình Dương
     final lat = _latMin + random.nextDouble() * (_latMax - _latMin);
