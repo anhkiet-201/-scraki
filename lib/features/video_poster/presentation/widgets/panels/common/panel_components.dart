@@ -9,73 +9,32 @@ class PanelComponents {
   static const Color kPanelAccentColor = Color(0xFF6366F1);
 
   static const List<Color> colorPalette = [
-    Color(0xFFFFFFFF),
-    Color(0xFFE6E1E5),
-    Color(0xFF938F99),
-    Color(0xFF1C1B1F),
-    Color(0xFF6750A4),
-    Color(0xFF9A82DB),
-    Color(0xFFCFBCFF),
-    Color(0xFFEADDFF),
-    Color(0xFF625B71),
-    Color(0xFF9A91A8),
-    Color(0xFFCCC2DC),
-    Color(0xFFE8DEF8),
-    Color(0xFF7D5260),
-    Color(0xFFB58392),
-    Color(0xFFEFB8C8),
-    Color(0xFFFFD8E4),
-    Color(0xFFB3261E),
-    Color(0xFFEC928E),
-    Color(0xFFF2B8B5),
-    Color(0xFF386A20),
-    Color(0xFF57A640),
-    Color(0xFF8FC877),
-    Color(0xFFC5EDB5),
-    Color(0xFF0061A4),
-    Color(0xFF4FA6E7),
-    Color(0xFF9ECAFF),
-    Color(0xFFD0E4FF),
-    Color(0xFF695F00),
-    Color(0xFFD2C148),
-    Color(0xFFEFE06D),
-    Color(0xFF984900),
-    Color(0xFFD66600),
-    Color(0xFFFFB68E),
-    Color(0xFFFFDDB3),
-    Color(0xFF006A6A),
-    Color(0xFF008383),
-    Color(0xFF4DDEDE),
-    Color(0xFFBFFFFF),
-    Color(0xFF5F4ABB),
-    Color(0xFF8069DF),
-    Color(0xFFC6B0FF),
-    Color(0xFFE6DEFF),
+    Color(0xFFFFFFFF), // White
+    Color(0xFF000000), // Black
+    Color(0xFF6750A4), // M3 Primary
+    Color(0xFFD0BCFF), // M3 Primary Light
+    Color(0xFF625B71), // M3 Secondary
+    Color(0xFFCCC2DC), // M3 Secondary Light
+    Color(0xFF7D5260), // M3 Tertiary
+    Color(0xFFEFB8C8), // M3 Tertiary Light
+    Color(0xFFB3261E), // M3 Error (Red)
+    Color(0xFFF2B8B5), // M3 Error Light
+    Color(0xFF0061A4), // M3 Blue
+    Color(0xFFD1E4FF), // M3 Blue Light
+    Color(0xFF386A20), // M3 Green
+    Color(0xFFC5EDB5), // M3 Green Light
   ];
 
   static const List<Color> darkColorPalette = [
+    Color(0xFFFFFFFF), // White
     Color(0xFF000000), // Black
+    Color(0xFF131313), // Deep Black
     Color(0xFF1C1B1F), // Dark Grey
-    Color(0xFF2A2A2A), // Darker Grey
-    // Red dark
-    Color(0xFF410002), // Error-6
-    Color(0xFF690005), // Error-20
-    Color(0xFF93000A), // Error-30
-    // Green dark
-    Color(0xFF072100), // Green-6
-    Color(0xFF1A3D07), // Green-20
-    // Blue dark
-    Color(0xFF001D36), // Blue-6
-    Color(0xFF003258), // Blue-20
-    // Orange dark
-    Color(0xFF331200), // Orange-10
-    Color(0xFF4D1C00), // Orange-20
-    // Teal dark
-    Color(0xFF002020), // Teal-10
-    Color(0xFF003737), // Teal-20
-    // Deep Purple dark
-    Color(0xFF1B0062), // Deep Purple-10
-    Color(0xFF2F1581), // Deep Purple-20
+    Color(0xFF2A2A2A), // Lighter Dark
+    Color(0xFF410002), // Dark Red
+    Color(0xFF072100), // Dark Green
+    Color(0xFF001D36), // Dark Blue
+    Color(0xFF331200), // Dark Orange
   ];
 
   /// Builds a small, uppercase section label.
@@ -244,7 +203,7 @@ class PanelComponents {
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: colors.map((c) {
+          children: colors.take(7).map((c) {
             final isSelected =
                 selectedColor != null &&
                 selectedColor.toARGB32() == c.toARGB32();
@@ -515,6 +474,75 @@ class PanelComponents {
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  /// A collapsible section for grouping properties.
+  static Widget buildPanelSection({
+    required String title,
+    required List<Widget> children,
+    IconData? icon,
+    bool initiallyExpanded = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Theme(
+        data: ThemeData.dark().copyWith(
+          dividerColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          leading: icon != null 
+              ? Icon(icon, size: 18, color: kPanelAccentColor.withOpacity(0.8)) 
+              : null,
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: Colors.white,
+            ),
+          ),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          iconColor: kPanelAccentColor,
+          collapsedIconColor: Colors.white30,
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  /// A horizontal row for side-by-side controls.
+  static Widget buildPanelRow({
+    required List<Widget> children,
+    double spacing = 12,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final widget = entry.value;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: idx < children.length - 1 ? spacing : 0,
+              ),
+              child: widget,
+            ),
+          );
+        }).toList(),
       ),
     );
   }

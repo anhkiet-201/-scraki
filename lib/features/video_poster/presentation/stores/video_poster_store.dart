@@ -461,6 +461,9 @@ abstract class _VideoPosterStore with Store {
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây
+    if (color != null) {
+      _pushRecentColor(recentTextColors, color);
+    }
     if (backgroundColor != null) {
       _pushRecentColor(recentBgColors, backgroundColor);
     }

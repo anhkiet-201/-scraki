@@ -200,498 +200,388 @@ class TextPropertiesPanel extends StatelessWidget {
 
   Widget _buildProperties(BuildContext context, CustomTextOverlay text) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Style Toggles ──
-          PanelComponents.buildSectionLabel('ĐỊNH DẠNG'),
-          const SizedBox(height: 8),
-          Row(
+          // ── Section: TYPOGRAPHY (VĂN BẢN) ──
+          PanelComponents.buildPanelSection(
+            title: 'CHỮ & ĐỊNH DẠNG',
+            icon: Icons.font_download_rounded,
+            initiallyExpanded: true,
             children: [
-              PanelComponents.buildToggleButton(
-                icon: Icons.format_bold_rounded,
-                active: text.fontWeight == FontWeight.bold,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  fontWeight: text.fontWeight == FontWeight.bold
-                      ? FontWeight.normal
-                      : FontWeight.bold,
-                ),
+              PanelComponents.buildSectionLabel('FONT CHỮ'),
+              const SizedBox(height: 8),
+              PanelComponents.buildFontPicker(
+                currentFont: text.fontFamily ?? 'Roboto',
+                onFontSelected: (font) =>
+                    store.updateCustomTextStyle(text.id, fontFamily: font),
               ),
-              const SizedBox(width: 8),
-              PanelComponents.buildToggleButton(
-                icon: Icons.format_italic_rounded,
-                active: text.fontStyle == FontStyle.italic,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  fontStyle: text.fontStyle == FontStyle.italic
-                      ? FontStyle.normal
-                      : FontStyle.italic,
-                ),
-              ),
-              const SizedBox(width: 16),
-              PanelComponents.buildAlignButton(
-                icon: Icons.format_align_left_rounded,
-                active: text.textAlign == TextAlign.left,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.left,
-                ),
-              ),
-              PanelComponents.buildAlignButton(
-                icon: Icons.format_align_center_rounded,
-                active: text.textAlign == TextAlign.center,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              PanelComponents.buildAlignButton(
-                icon: Icons.format_align_right_rounded,
-                active: text.textAlign == TextAlign.right,
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Font Size ──
-          PanelComponents.buildSectionLabel('CỠ CHỮ  ${text.fontSize.toInt()}px'),
-          const SizedBox(height: 4),
-          PanelComponents.buildSlider(
-            context: context,
-            value: text.fontSize,
-            min: 8,
-            max: 120,
-            onChanged: (v) => store.updateCustomTextFontSize(text.id, v),
-            accentColor: _accentColor,
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Letter Spacing ──
-          PanelComponents.buildSectionLabel('KHOẢNG CÁCH CHỮ  ${text.letterSpacing.toStringAsFixed(1)}'),
-          const SizedBox(height: 4),
-          PanelComponents.buildSlider(
-            context: context,
-            value: text.letterSpacing,
-            min: -2.0,
-            max: 10.0,
-            divisions: 60,
-            onChanged: (v) =>
-                store.updateCustomTextStyle(text.id, letterSpacing: v),
-            accentColor: _accentColor,
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Line Height ──
-          PanelComponents.buildSectionLabel(
-            'KHOẢNG CÁCH DÒNG  ${(text.textHeight ?? 1.2).toStringAsFixed(1)}x',
-          ),
-          const SizedBox(height: 4),
-          PanelComponents.buildSlider(
-            context: context,
-            value: text.textHeight ?? 1.2,
-            min: 0.8,
-            max: 3.0,
-            divisions: 44,
-            onChanged: (v) =>
-                store.updateCustomTextStyle(text.id, textHeight: v),
-            accentColor: _accentColor,
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Rotation ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              PanelComponents.buildSectionLabel('XOAY  ${text.rotation.toInt()}°'),
-              if (text.rotation != 0)
-                GestureDetector(
-                  onTap: () =>
-                      store.updateCustomTextStyle(text.id, rotation: 0),
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Text(
-                      'RESET',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6366F1),
-                        letterSpacing: 0.5,
+              const SizedBox(height: 16),
+              PanelComponents.buildPanelRow(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'CỠ CHỮ: ${text.fontSize.toInt()}px',
                       ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.fontSize,
+                        min: 8,
+                        max: 120,
+                        onChanged: (v) =>
+                            store.updateCustomTextFontSize(text.id, v),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'DÒNG: ${(text.textHeight ?? 1.2).toStringAsFixed(1)}x',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.textHeight ?? 1.2,
+                        min: 0.8,
+                        max: 3.0,
+                        divisions: 44,
+                        onChanged: (v) =>
+                            store.updateCustomTextStyle(text.id, textHeight: v),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              PanelComponents.buildPanelRow(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'K.CÁCH: ${text.letterSpacing.toStringAsFixed(1)}',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.letterSpacing,
+                        min: -5,
+                        max: 20,
+                        onChanged: (v) => store.updateCustomTextStyle(text.id,
+                            letterSpacing: v),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PanelComponents.buildSectionLabel(
+                        'XOAY: ${text.rotation.toInt()}°',
+                      ),
+                      PanelComponents.buildSlider(
+                        context: context,
+                        value: text.rotation,
+                        min: -180,
+                        max: 180,
+                        divisions: 360,
+                        onChanged: (v) =>
+                            store.updateCustomTextStyle(text.id, rotation: v),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  PanelComponents.buildToggleButton(
+                    icon: Icons.format_bold_rounded,
+                    active: text.fontWeight == FontWeight.bold,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      fontWeight: text.fontWeight == FontWeight.bold
+                          ? FontWeight.normal
+                          : FontWeight.bold,
                     ),
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          PanelComponents.buildSlider(
-            context: context,
-            value: text.rotation,
-            min: -180,
-            max: 180,
-            divisions: 360,
-            onChanged: (v) => store.updateCustomTextStyle(text.id, rotation: v),
-            accentColor: _accentColor,
-          ),
-
-          const SizedBox(height: 16),
-          // ── Timing ──
-          PanelComponents.buildSectionLabel('THỜI GIAN XUẤT HIỆN'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTimeInput(
-                  label: 'BẮT ĐẦU (s)',
-                  value: text.startTime,
-                  onChanged: (double? v) =>
-                      store.updateCustomTextTiming(text.id, startTime: v),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTimeInput(
-                  label: 'KẾT THÚC (s)',
-                  value: text.endTime,
-                  hint: 'Xuyên suốt',
-                  onChanged: (double? v) {
-                    if (v == null) {
-                      store.updateCustomTextTiming(text.id, clearEndTime: true);
-                    } else {
-                      store.updateCustomTextTiming(text.id, endTime: v);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Font Family ──
-          PanelComponents.buildSectionLabel('FONT CHỮ'),
-          const SizedBox(height: 8),
-          PanelComponents.buildFontPicker(
-            currentFont: text.fontFamily ?? 'Roboto',
-            onFontSelected: (font) =>
-                store.updateCustomTextStyle(text.id, fontFamily: font),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Text Color ──
-          PanelComponents.buildSectionLabel('MÀU CHỮ'),
-          const SizedBox(height: 8),
-          if (store.recentTextColors.isNotEmpty) ...[
-            PanelComponents.buildRecentColors(
-              colors: store.recentTextColors.toList(),
-              selectedColor: text.color,
-              onSelect: (Color c) => store.updateCustomTextStyle(text.id, color: c),
-              accentColor: _accentColor,
-            ),
-            const SizedBox(height: 10),
-            PanelComponents.buildPaletteDivider(),
-            const SizedBox(height: 8),
-          ],
-          PanelComponents.buildColorPalette(
-            context: context,
-            colors: PanelComponents.colorPalette,
-            selectedColor: text.color,
-            onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
-            accentColor: _accentColor,
-            onPickCustom: () => PanelComponents.showColorPicker(
-              context: context,
-              initialColor: text.color,
-              onColorSelected: (c) =>
-                  store.updateCustomTextStyle(text.id, color: c),
-              accentColor: _accentColor,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Background Color ──
-          PanelComponents.buildSectionLabel('MÀU NỀN'),
-          const SizedBox(height: 8),
-          if (store.recentBgColors.isNotEmpty) ...[
-            PanelComponents.buildRecentColors(
-              colors: store.recentBgColors.toList(),
-              selectedColor: text.backgroundColor,
-              onSelect: (Color c) =>
-                  store.updateCustomTextStyle(text.id, backgroundColor: c),
-              accentColor: _accentColor,
-            ),
-            const SizedBox(height: 10),
-            PanelComponents.buildPaletteDivider(),
-            const SizedBox(height: 8),
-          ],
-          Row(
-            children: [
-              // No background (transparent)
-              GestureDetector(
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  clearBackgroundColor: true,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 28,
-                  height: 28,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: text.backgroundColor == null
-                          ? _accentColor
-                          : Colors.white24,
-                      width: text.backgroundColor == null ? 2.5 : 1,
+                  PanelComponents.buildToggleButton(
+                    icon: Icons.format_italic_rounded,
+                    active: text.fontStyle == FontStyle.italic,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      fontStyle: text.fontStyle == FontStyle.italic
+                          ? FontStyle.normal
+                          : FontStyle.italic,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.block_rounded,
-                    size: 14,
-                    color: Colors.white38,
+                  const SizedBox(
+                    height: 24,
+                    child: VerticalDivider(color: Colors.white10),
                   ),
-                ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_left_rounded,
+                    active: text.textAlign == TextAlign.left,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.left,
+                    ),
+                  ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_center_rounded,
+                    active: text.textAlign == TextAlign.center,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  PanelComponents.buildAlignButton(
+                    icon: Icons.format_align_right_rounded,
+                    active: text.textAlign == TextAlign.right,
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: PanelComponents.buildColorPalette(
+            ],
+          ),
+
+          // ── Section: APPEARANCE (MÀU SẮC & NỀN) ──
+          PanelComponents.buildPanelSection(
+            title: 'MÀU SẮC & NỀN',
+            icon: Icons.palette_rounded,
+            initiallyExpanded: true,
+            children: [
+              PanelComponents.buildSectionLabel('MÀU CHỮ'),
+              const SizedBox(height: 8),
+              if (store.recentTextColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentTextColors.toList(),
+                  selectedColor: text.color,
+                  onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
+                ),
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
+              ],
+              PanelComponents.buildColorPalette(
+                context: context,
+                colors: PanelComponents.colorPalette,
+                selectedColor: text.color,
+                onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
+                onPickCustom: () => PanelComponents.showColorPicker(
                   context: context,
-                  colors: PanelComponents.darkColorPalette,
+                  initialColor: text.color,
+                  onColorSelected: (c) =>
+                      store.updateCustomTextStyle(text.id, color: c),
+                ),
+              ),
+              const SizedBox(height: 20),
+              PanelComponents.buildSectionLabel('MÀU NỀN'),
+              const SizedBox(height: 8),
+              if (store.recentBgColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentBgColors.toList(),
                   selectedColor: text.backgroundColor,
                   onSelect: (c) =>
                       store.updateCustomTextStyle(text.id, backgroundColor: c),
-                  accentColor: _accentColor,
-                  onPickCustom: () => PanelComponents.showColorPicker(
-                    context: context,
-                    initialColor: text.backgroundColor ?? Colors.black,
-                    onColorSelected: (c) => store.updateCustomTextStyle(text.id,
-                        backgroundColor: c),
-                    accentColor: _accentColor,
-                  ),
                 ),
-              ),
-            ],
-          ),
-
-          if (text.backgroundColor != null) ...[
-            const SizedBox(height: 8),
-            PanelComponents.buildSectionLabel(
-              'ĐỘ MỜ NỀN  ${(text.backgroundOpacity * 100).toInt()}%',
-            ),
-            const SizedBox(height: 4),
-            PanelComponents.buildSlider(
-              context: context,
-              value: text.backgroundOpacity,
-              min: 0.05,
-              max: 1.0,
-              divisions: 19,
-              onChanged: (v) =>
-                  store.updateCustomTextStyle(text.id, backgroundOpacity: v),
-              accentColor: _accentColor,
-            ),
-            const SizedBox(height: 8),
-            PanelComponents.buildSectionLabel(
-              'BO GÓC NỀN  ${text.backgroundRadius.toInt()}px',
-            ),
-            const SizedBox(height: 4),
-            PanelComponents.buildSlider(
-              context: context,
-              value: text.backgroundRadius,
-              min: 0,
-              max: 100,
-              divisions: 100,
-              onChanged: (v) =>
-                  store.updateCustomTextStyle(text.id, backgroundRadius: v),
-              accentColor: _accentColor,
-            ),
-            const SizedBox(height: 12),
-
-            // ── Background Border (Viền nền) ──
-            PanelComponents.buildSectionLabel('VIỀN NỀN'),
-            const SizedBox(height: 8),
-            PanelComponents.buildColorPalette(
-              context: context,
-              colors: [
-                Colors.white,
-                Colors.black,
-                ...store.recentBorderColors,
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
               ],
-              selectedColor: text.backgroundBorderColor,
-              onSelect: (c) => store.updateCustomTextStyle(
-                text.id,
-                backgroundBorderColor: c,
-              ),
-              accentColor: _accentColor,
-              onPickCustom: () => PanelComponents.showColorPicker(
-                context: context,
-                initialColor: text.backgroundBorderColor ?? Colors.white,
-                onColorSelected: (c) => store.updateCustomTextStyle(text.id,
-                    backgroundBorderColor: c),
-                accentColor: _accentColor,
-              ),
-            ),
-            if (text.backgroundBorderColor != null) ...[
-              const SizedBox(height: 4),
-              TextButton.icon(
-                onPressed: () => store.updateCustomTextStyle(
-                  text.id,
-                  clearBackgroundBorderColor: true,
-                ),
-                icon: const Icon(Icons.close_rounded,
-                    size: 14, color: Colors.redAccent),
-                label: const Text('BỎ VIỀN NỀN',
-                    style: TextStyle(color: Colors.redAccent, fontSize: 10)),
-              ),
-            ],
-
-            if (text.backgroundBorderColor != null) ...[
-              const SizedBox(height: 8),
-              PanelComponents.buildSectionLabel(
-                'ĐỘ DÀY VIỀN NỀN  ${text.backgroundBorderWidth.toInt()}px',
-              ),
-              const SizedBox(height: 4),
-              PanelComponents.buildSlider(
-                context: context,
-                value: text.backgroundBorderWidth,
-                min: 0,
-                max: 20,
-                divisions: 20,
-                onChanged: (v) => store.updateCustomTextStyle(text.id,
-                    backgroundBorderWidth: v),
-                accentColor: _accentColor,
-              ),
-            ],
-          ],
-
-          const SizedBox(height: 16),
-
-          // ── Stroke (Viền chữ) ──
-          PanelComponents.buildSectionLabel('VIỀN CHỮ'),
-          const SizedBox(height: 8),
-          if (store.recentStrokeColors.isNotEmpty) ...[
-            PanelComponents.buildRecentColors(
-              colors: store.recentStrokeColors.toList(),
-              selectedColor: text.strokeColor,
-              onSelect: (c) =>
-                  store.updateCustomTextStyle(text.id, strokeColor: c),
-              accentColor: _accentColor,
-            ),
-            const SizedBox(height: 10),
-            PanelComponents.buildPaletteDivider(),
-            const SizedBox(height: 8),
-          ],
-          Row(
-            children: [
-              // No stroke (transparent/width 0)
-              GestureDetector(
-                onTap: () => store.updateCustomTextStyle(
-                  text.id,
-                  strokeWidth: 0,
-                  clearStrokeColor: true,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 28,
-                  height: 28,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: (text.strokeWidth == 0 || text.strokeColor == null)
-                          ? _accentColor
-                          : Colors.white24,
-                      width: (text.strokeWidth == 0 || text.strokeColor == null)
-                          ? 2.5
-                          : 1,
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => store.updateCustomTextStyle(
+                      text.id,
+                      clearBackgroundColor: true,
+                    ),
+                    child: Container(
+                      width: 28, height: 28,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: text.backgroundColor == null ? _accentColor : Colors.white10,
+                          width: text.backgroundColor == null ? 2 : 1,
+                        ),
+                      ),
+                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.block_rounded,
-                    size: 14,
-                    color: Colors.white38,
+                  Expanded(
+                    child: PanelComponents.buildColorPalette(
+                      context: context,
+                      colors: PanelComponents.darkColorPalette,
+                      selectedColor: text.backgroundColor,
+                      onSelect: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
+                      onPickCustom: () => PanelComponents.showColorPicker(
+                        context: context,
+                        initialColor: text.backgroundColor ?? Colors.black,
+                        onColorSelected: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              Expanded(
-                child: PanelComponents.buildColorPalette(
-                  context: context,
-                  colors: PanelComponents.colorPalette,
-                  selectedColor: text.strokeColor,
-                  onSelect: (c) {
-                    store.updateCustomTextStyle(text.id, strokeColor: c);
-                    if (text.strokeWidth == 0) {
-                      store.updateCustomTextStyle(text.id, strokeWidth: 2.0);
-                    }
-                  },
-                  accentColor: _accentColor,
-                  onPickCustom: () => PanelComponents.showColorPicker(
-                    context: context,
-                    initialColor: text.strokeColor ?? Colors.white,
-                    onColorSelected: (c) {
-                      store.updateCustomTextStyle(text.id, strokeColor: c);
-                      if (text.strokeWidth == 0) {
-                        store.updateCustomTextStyle(text.id, strokeWidth: 2.0);
-                      }
-                    },
-                    accentColor: _accentColor,
-                  ),
+              if (text.backgroundColor != null) ...[
+                const SizedBox(height: 16),
+                PanelComponents.buildPanelRow(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel(
+                          'ĐỘ MỜ: ${(text.backgroundOpacity * 100).toInt()}%',
+                        ),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: text.backgroundOpacity,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: (v) => store.updateCustomTextStyle(text.id,
+                              backgroundOpacity: v),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel(
+                          'BO GÓC: ${text.backgroundRadius.toInt()}px',
+                        ),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: text.backgroundRadius,
+                          min: 0,
+                          max: 100,
+                          onChanged: (v) => store.updateCustomTextStyle(text.id,
+                              backgroundRadius: v),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ],
+            ],
+          ),
+
+          // ── Section: BORDER & EFFECTS (VIỀN & HIỆU ỨNG) ──
+          PanelComponents.buildPanelSection(
+            title: 'VIỀN & HIỆU ỨNG',
+            icon: Icons.auto_awesome_rounded,
+            children: [
+              PanelComponents.buildSectionLabel('VIỀN CHỮ'),
+              const SizedBox(height: 8),
+              if (store.recentStrokeColors.isNotEmpty) ...[
+                PanelComponents.buildRecentColors(
+                  colors: store.recentStrokeColors.toList(),
+                  selectedColor: text.strokeColor,
+                  onSelect: (c) =>
+                      store.updateCustomTextStyle(text.id, strokeColor: c),
+                ),
+                const SizedBox(height: 8),
+                PanelComponents.buildPaletteDivider(),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => store.updateCustomTextStyle(text.id, strokeWidth: 0, clearStrokeColor: true),
+                    child: Container(
+                      width: 28, height: 28,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: (text.strokeWidth == 0 || text.strokeColor == null) ? _accentColor : Colors.white10,
+                          width: (text.strokeWidth == 0 || text.strokeColor == null) ? 2 : 1,
+                        ),
+                      ),
+                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                    ),
+                  ),
+                  Expanded(
+                    child: PanelComponents.buildColorPalette(
+                      context: context,
+                      colors: PanelComponents.colorPalette,
+                      selectedColor: text.strokeColor,
+                      onSelect: (c) {
+                        store.updateCustomTextStyle(text.id, strokeColor: c);
+                        if (text.strokeWidth == 0) store.updateCustomTextStyle(text.id, strokeWidth: 2.0);
+                      },
+                      onPickCustom: () => PanelComponents.showColorPicker(
+                        context: context,
+                        initialColor: text.strokeColor ?? Colors.white,
+                        onColorSelected: (c) => store.updateCustomTextStyle(text.id, strokeColor: c),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (text.strokeColor != null && text.strokeWidth > 0) ...[
+                const SizedBox(height: 8),
+                PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN CHỮ: ${text.strokeWidth.toInt()}px'),
+                PanelComponents.buildSlider(
+                  context: context,
+                  value: text.strokeWidth,
+                  min: 0, max: 20,
+                  onChanged: (v) => store.updateCustomTextStyle(text.id, strokeWidth: v),
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+
+          // ── Section: TIMELINE ──
+          PanelComponents.buildPanelSection(
+            title: 'THỜI GIAN HIỂN THỊ',
+            icon: Icons.timer_rounded,
+            children: [
+              PanelComponents.buildPanelRow(
+                children: [
+                  _buildTimeInput(
+                    label: 'BẮT ĐẦU (s)',
+                    value: text.startTime,
+                    onChanged: (v) => store.updateCustomTextTiming(text.id, startTime: v),
+                  ),
+                  _buildTimeInput(
+                    label: 'KẾT THÚC (s)',
+                    value: text.endTime,
+                    hint: 'Xuyên suốt',
+                    onChanged: (v) => v == null 
+                        ? store.updateCustomTextTiming(text.id, clearEndTime: true)
+                        : store.updateCustomTextTiming(text.id, endTime: v),
+                  ),
+                ],
               ),
             ],
           ),
 
-          if (text.strokeColor != null) ...[
-            const SizedBox(height: 8),
-            PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN  ${text.strokeWidth.toInt()}px'),
-            const SizedBox(height: 4),
-            PanelComponents.buildSlider(
-              context: context,
-              value: text.strokeWidth,
-              min: 0,
-              max: 20,
-              divisions: 20,
-              onChanged: (v) =>
-                  store.updateCustomTextStyle(text.id, strokeWidth: v),
-              accentColor: _accentColor,
-            ),
-          ],
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // ── Delete ──
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: TextButton.icon(
               onPressed: () => store.removeCustomText(text.id),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.red, width: 1),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.redAccent.withOpacity(0.8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: Colors.redAccent.withOpacity(0.2)),
                 ),
               ),
-              icon: const Icon(Icons.delete_outline_rounded, size: 16),
-              label: const Text(
-                'XÓA CHỮ NÀY',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: const Text('XÓA VĂN BẢN NÀY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
             ),
           ),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -711,4 +601,3 @@ class TextPropertiesPanel extends StatelessWidget {
     );
   }
 }
-
