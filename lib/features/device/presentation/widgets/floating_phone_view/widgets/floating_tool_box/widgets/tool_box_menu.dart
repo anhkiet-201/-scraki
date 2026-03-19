@@ -9,6 +9,7 @@ class ToolBoxMenu extends StatelessWidget {
   final VoidCallback onEmailTap;
   final VoidCallback onInboxTap;
   final VoidCallback onProfileTap;
+  final VoidCallback onAuthTap;
 
   const ToolBoxMenu({
     super.key,
@@ -19,6 +20,7 @@ class ToolBoxMenu extends StatelessWidget {
     required this.onEmailTap,
     required this.onInboxTap,
     required this.onProfileTap,
+    required this.onAuthTap,
   });
 
   @override
@@ -109,6 +111,24 @@ class ToolBoxMenu extends StatelessWidget {
                   icon: Icons.person_outline_rounded,
                   label: 'Profile',
                   onTap: onProfileTap,
+                  isError: false,
+                ),
+
+                //Auth
+          const SizedBox(height: 12),
+          isCollapsed
+              ? _buildIconButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.security_rounded,
+                  label: 'Auth',
+                  onTap: onAuthTap,
+                  isError: false,
+                )
+              : _buildExpandedButton(
+                  colorScheme: colorScheme,
+                  icon: Icons.security_rounded,
+                  label: 'Auth',
+                  onTap: onAuthTap,
                   isError: false,
                 ),
         ],

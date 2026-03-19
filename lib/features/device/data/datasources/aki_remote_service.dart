@@ -101,16 +101,14 @@ class AkiRemoteService implements IAkiRemoteService {
 
   @override
   Future<void> type(String serial, String text, {AkiSelector? selector}) async {
-    final escapedText = text.replaceAll('"', '\\"');
     if (selector != null) {
-      // Format: type "<selector> || <text>"
-      // Dùng nháy kép bao toàn bộ để tránh '||' bị shell hiểu nhầm là toán tử OR
+      // Format: type selector || text
       await _runRemote(serial, [
         'type',
-        '"${selector.toSelectorString()} || $escapedText"',
+        '${selector.toSelectorString()} || $text',
       ], label: 'type');
     } else {
-      await _runRemote(serial, ['type', '"$escapedText"'], label: 'type');
+      await _runRemote(serial, ['type', text], label: 'type');
     }
   }
 
@@ -232,8 +230,15 @@ class AkiRemoteService implements IAkiRemoteService {
     required String label,
   }) async {
     // Build argument list cho ADB:
-    // adb -s <serial> shell /data/local/tmp/aki_remote <cmd> [args...]
-    final adbArgs = ['-s', serial, 'shell', _remoteWrapperPath, ...commandArgs];
+    // adb -s <serial> shell "/data/local/tmp/aki_remote 'arg1' 'arg2' ..."
+    // Sử dụng single quotes cho từng argument và escape lồng nhau để đảm bảo an toàn tuyệt đối với shell
+    final escapedArgs = commandArgs.map((arg) {
+      // Thay thế ' bằng '\'' và quấn trong '...'
+      return "'${arg.replaceAll("'", "'\\''")}'";
+    }).join(' ');
+
+    final shellCommand = '$_remoteWrapperPath $escapedArgs';
+    final adbArgs = ['-s', serial, 'shell', shellCommand];
 
     logger.d('[AkiRemoteService] [$label] adb ${adbArgs.join(' ')}');
 

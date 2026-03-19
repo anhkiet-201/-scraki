@@ -11,6 +11,7 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/text_scale_slider.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/tool_box_menu.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/email_panel.dart';
+import 'package:scraki/features/auth/presentation/widgets/auth_panel.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
@@ -107,6 +108,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               onEmailTap: () => _store.toggleEmailPanel(),
               onInboxTap: () => _store.openTikTokInbox(widget.serial),
               onProfileTap: () => _store.openTikTokProfile(widget.serial),
+              onAuthTap: () => _store.toggleAuthPanel(),
             ),
             if (_store.showJobSelector)
               JobSelectorPanel(
@@ -127,6 +129,8 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
                   _store.hideEmailPanel();
                 },
               )
+            else if (_store.showAuthPanel)
+              AuthPanel(serial: widget.serial)
             else if (widget.isGenerating || widget.posterData != null) ...[
               PosterPanel(
                 height: widget.height,

@@ -45,6 +45,24 @@ mixin _$FloatingToolBoxStore on _FloatingToolBoxStore, Store {
     });
   }
 
+  late final _$showAuthPanelAtom = Atom(
+    name: '_FloatingToolBoxStore.showAuthPanel',
+    context: context,
+  );
+
+  @override
+  bool get showAuthPanel {
+    _$showAuthPanelAtom.reportRead();
+    return super.showAuthPanel;
+  }
+
+  @override
+  set showAuthPanel(bool value) {
+    _$showAuthPanelAtom.reportWrite(value, super.showAuthPanel, () {
+      super.showAuthPanel = value;
+    });
+  }
+
   late final _$sendPowerButtonAsyncAction = AsyncAction(
     '_FloatingToolBoxStore.sendPowerButton',
     context: context,
@@ -135,10 +153,35 @@ mixin _$FloatingToolBoxStore on _FloatingToolBoxStore, Store {
   }
 
   @override
+  void toggleAuthPanel() {
+    final _$actionInfo = _$_FloatingToolBoxStoreActionController.startAction(
+      name: '_FloatingToolBoxStore.toggleAuthPanel',
+    );
+    try {
+      return super.toggleAuthPanel();
+    } finally {
+      _$_FloatingToolBoxStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void hideAuthPanel() {
+    final _$actionInfo = _$_FloatingToolBoxStoreActionController.startAction(
+      name: '_FloatingToolBoxStore.hideAuthPanel',
+    );
+    try {
+      return super.hideAuthPanel();
+    } finally {
+      _$_FloatingToolBoxStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 showJobSelector: ${showJobSelector},
-showEmailPanel: ${showEmailPanel}
+showEmailPanel: ${showEmailPanel},
+showAuthPanel: ${showAuthPanel}
     ''';
   }
 }

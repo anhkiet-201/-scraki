@@ -13,6 +13,13 @@ import 'package:dio/dio.dart' as _i361;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 
+import '../../features/auth/data/datasources/auth_remote_data_source.dart'
+    as _i107;
+import '../../features/auth/data/repositories/auth_repository_impl.dart'
+    as _i153;
+import '../../features/auth/domain/repositories/i_auth_repository.dart'
+    as _i589;
+import '../../features/auth/presentation/stores/auth_store.dart' as _i603;
 import '../../features/dashboard/presentation/stores/dashboard_store.dart'
     as _i891;
 import '../../features/device/data/datasources/adb_remote_data_source.dart'
@@ -140,6 +147,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i607.ScrcpySocketClient>(
       () => _i607.ScrcpySocketClient(),
     );
+    gh.lazySingleton<_i107.IAuthRemoteDataSource>(
+      () => _i107.AuthRemoteDataSourceFirebaseImpl(),
+    );
     gh.lazySingleton<_i260.IAkiRemoteService>(() => _i109.AkiRemoteService());
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
@@ -149,6 +159,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i391.IPosterRepository>(
       () => _i424.PosterRepositoryImpl(),
+    );
+    gh.lazySingleton<_i589.IAuthRepository>(
+      () => _i153.AuthRepositoryImpl(gh<_i107.IAuthRemoteDataSource>()),
     );
     gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
       () => _i963.FavoriteImageRemoteDataSourceImpl(),
@@ -193,6 +206,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i706.SavePosterUseCase>(
       () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
+    );
+    gh.lazySingleton<_i603.AuthStore>(
+      () => _i603.AuthStore(
+        gh<_i589.IAuthRepository>(),
+        gh<_i260.IAkiRemoteService>(),
+      ),
     );
     gh.factory<_i498.EmailStore>(
       () => _i498.EmailStore(

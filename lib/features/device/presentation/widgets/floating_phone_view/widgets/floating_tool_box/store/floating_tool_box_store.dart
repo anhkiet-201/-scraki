@@ -25,6 +25,10 @@ abstract class _FloatingToolBoxStore with Store {
   @observable
   bool showEmailPanel = false;
 
+  /// UI State: Hiển thị/ẩn panel Authenticator
+  @observable
+  bool showAuthPanel = false;
+
   /// Bật/tắt hiển thị menu chọn việc làm.
   @action
   void toggleJobSelector() {
@@ -49,6 +53,20 @@ abstract class _FloatingToolBoxStore with Store {
   @action
   void hideEmailPanel() {
     showEmailPanel = false;
+  }
+
+  /// Bật/tắt hiển thị Authenticator panel.
+  @action
+  void toggleAuthPanel() {
+    showJobSelector = false;
+    showEmailPanel = false;
+    showAuthPanel = !showAuthPanel;
+  }
+
+  /// Ẩn Authenticator panel.
+  @action
+  void hideAuthPanel() {
+    showAuthPanel = false;
   }
 
   /// Gửi POWER key để bật/tắt màn hình
