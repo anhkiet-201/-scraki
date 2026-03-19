@@ -659,7 +659,7 @@ class BatchVideoService {
           'ultrafast',
           '-crf',
           '26',
-        ] else ...[
+        ] else if (encoder == 'h264_videotoolbox') ...[
           // GPU encoders use different rate control
           '-realtime',
           '1',

@@ -328,7 +328,7 @@ class FfmpegVideoProcessingRepositoryImpl implements VideoProcessingRepository {
         'medium',
         '-crf',
         '23',
-      ] else ...[
+      ] else if (gpuEncoder == 'h264_videotoolbox') ...[
         '-realtime',
         '1',
       ],
