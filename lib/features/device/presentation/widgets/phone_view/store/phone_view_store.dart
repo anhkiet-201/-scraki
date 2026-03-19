@@ -75,6 +75,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       _dashboardStore.selectedIndex == DashboardTabs.devices;
 
   ReactionDisposer? _floatingDisposer;
+  int _retryCount = 0;
 
   _PhoneViewStore(this.serial, this.isFloatingView) {
     sessionId = isFloatingView ? '${serial}_floating' : '${serial}_grid';
@@ -253,6 +254,18 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
               sessionManagerStore.activeSessions.remove(sessionId);
               hasLostConnection = true;
             });
+
+            // Auto-Reconnect Logic
+            if (_retryCount < 3) {
+              final delaySeconds = [1, 2, 5][_retryCount];
+              _retryCount++;
+              logger.i('[PhoneViewStore] Auto-reconnect: retry $_retryCount in ${delaySeconds}s');
+              Timer(Duration(seconds: delaySeconds), () {
+                if (_isVisible || isFloatingView) {
+                  startMirroring();
+                }
+              });
+            }
           }
         },
       );
@@ -289,6 +302,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       runInAction(() {
         sessionManagerStore.activeSessions[sessionId] = mirrorSession;
         isLoading = false;
+        _retryCount = 0; // Reset retry count on success
       });
 
       return mirrorSession;
