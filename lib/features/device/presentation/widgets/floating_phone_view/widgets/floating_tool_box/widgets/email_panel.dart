@@ -1,10 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:intl/intl.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+import 'package:scraki/features/email/domain/entities/email_message.dart';
 import 'package:scraki/features/email/presentation/stores/email_store.dart';
 
 class EmailPanel extends StatefulWidget {
@@ -246,7 +247,10 @@ class _EmailPanelState extends State<EmailPanel> {
                                   final msg = _store.messages[index];
                                   final isOtp = msg.otp != null;
 
-                                  return ListTile(
+                                                                    return ListTile(
+                                    onTap: () =>
+                                        _showEmailDetailsDialog(context, msg),
+
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 8,
@@ -348,6 +352,134 @@ class _EmailPanelState extends State<EmailPanel> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEmailDetailsDialog(BuildContext context, EmailMessage msg) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 500,
+          constraints: const BoxConstraints(maxHeight: 600),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Dialog Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        msg.otp != null ? Icons.vpn_key : Icons.mail_outline,
+                        color: colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            msg.subject,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('dd/MM/yyyy HH:mm:ss').format(msg.receivedAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Body Content
+              Flexible(
+                child: SelectionArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: HtmlWidget(
+                      msg.body,
+                      textStyle: theme.textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              // Footer Actions
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (msg.otp != null)
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _store.sendOtpToDevice(widget.deviceSerial, msg.otp!);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Đã gửi OTP ${msg.otp!} qua ADB'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: Text('Gửi OTP ${msg.otp!}'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                        ),
+                      )
+                    else
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Đóng'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
