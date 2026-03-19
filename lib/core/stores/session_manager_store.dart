@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/constants/ui_constants.dart';
+import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 
 part 'session_manager_store.g.dart';
@@ -62,6 +63,85 @@ abstract class _SessionManagerStore with Store {
       floatingSerial = null;
     } else {
       floatingSerial = serial;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DEVICE TASKS (PERSISTENT OVERLAYS)
+  // ═══════════════════════════════════════════════════════════════
+  
+  @observable
+  ObservableMap<String, DeviceTaskState?> activeTasks = 
+      ObservableMap<String, DeviceTaskState?>();
+
+  @action
+  void updateDeviceTask(
+    String serial, {
+    required DeviceTaskType type,
+    double? progress,
+    String? status,
+    bool isRunning = true,
+  }) {
+    logger.i('[SessionManagerStore] updateDeviceTask: $serial, type: $type, running: $isRunning, progress: $progress');
+    if (!isRunning) {
+      activeTasks.remove(serial);
+      return;
+    }
+
+    final currentTask = activeTasks[serial];
+    if (currentTask != null && currentTask.type == type) {
+      activeTasks[serial] = currentTask.copyWith(
+        progress: progress,
+        status: status,
+      );
+    } else {
+      activeTasks[serial] = DeviceTaskState(
+        type: type,
+        progress: progress ?? 0.0,
+        status: status ?? '',
+      );
+    }
+  }
+
+  @action
+  void clearDeviceTask(String serial) {
+    logger.i('[SessionManagerStore] clearDeviceTask: $serial');
+    activeTasks.remove(serial);
+  }
+}
+
+enum DeviceTaskType { push, install, videoGen }
+
+class DeviceTaskState {
+  final DeviceTaskType type;
+  final double progress;
+  final String status;
+
+  DeviceTaskState({
+    required this.type,
+    this.progress = 0.0,
+    this.status = '',
+  });
+
+  DeviceTaskState copyWith({
+    double? progress,
+    String? status,
+  }) {
+    return DeviceTaskState(
+      type: type,
+      progress: progress ?? this.progress,
+      status: status ?? this.status,
+    );
+  }
+
+  String get label {
+    switch (type) {
+      case DeviceTaskType.push:
+        return 'Pushing files...';
+      case DeviceTaskType.install:
+        return 'Installing APK...';
+      case DeviceTaskType.videoGen:
+        return 'Generating Video...';
     }
   }
 }

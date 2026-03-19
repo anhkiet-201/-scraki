@@ -61,6 +61,24 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
     });
   }
 
+  late final _$activeTasksAtom = Atom(
+    name: '_SessionManagerStore.activeTasks',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, DeviceTaskState?> get activeTasks {
+    _$activeTasksAtom.reportRead();
+    return super.activeTasks;
+  }
+
+  @override
+  set activeTasks(ObservableMap<String, DeviceTaskState?> value) {
+    _$activeTasksAtom.reportWrite(value, super.activeTasks, () {
+      super.activeTasks = value;
+    });
+  }
+
   late final _$_SessionManagerStoreActionController = ActionController(
     name: '_SessionManagerStore',
     context: context,
@@ -79,10 +97,47 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
   }
 
   @override
+  void updateDeviceTask(
+    String serial, {
+    required DeviceTaskType type,
+    double? progress,
+    String? status,
+    bool isRunning = true,
+  }) {
+    final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
+      name: '_SessionManagerStore.updateDeviceTask',
+    );
+    try {
+      return super.updateDeviceTask(
+        serial,
+        type: type,
+        progress: progress,
+        status: status,
+        isRunning: isRunning,
+      );
+    } finally {
+      _$_SessionManagerStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void clearDeviceTask(String serial) {
+    final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
+      name: '_SessionManagerStore.clearDeviceTask',
+    );
+    try {
+      return super.clearDeviceTask(serial);
+    } finally {
+      _$_SessionManagerStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 activeSessions: ${activeSessions},
 floatingSerial: ${floatingSerial},
+activeTasks: ${activeTasks},
 deviceAspectRatio: ${deviceAspectRatio},
 isFloatingVisible: ${isFloatingVisible}
     ''';

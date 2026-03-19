@@ -30,6 +30,42 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     () => super.isFloating,
     name: '_PhoneViewStore.isFloating',
   )).value;
+  Computed<DeviceTaskState?>? _$activeTaskComputed;
+
+  @override
+  DeviceTaskState? get activeTask =>
+      (_$activeTaskComputed ??= Computed<DeviceTaskState?>(
+        () => super.activeTask,
+        name: '_PhoneViewStore.activeTask',
+      )).value;
+  Computed<bool>? _$isTaskRunningComputed;
+
+  @override
+  bool get isTaskRunning => (_$isTaskRunningComputed ??= Computed<bool>(
+    () => super.isTaskRunning,
+    name: '_PhoneViewStore.isTaskRunning',
+  )).value;
+  Computed<double>? _$taskProgressComputed;
+
+  @override
+  double get taskProgress => (_$taskProgressComputed ??= Computed<double>(
+    () => super.taskProgress,
+    name: '_PhoneViewStore.taskProgress',
+  )).value;
+  Computed<String>? _$taskStatusComputed;
+
+  @override
+  String get taskStatus => (_$taskStatusComputed ??= Computed<String>(
+    () => super.taskStatus,
+    name: '_PhoneViewStore.taskStatus',
+  )).value;
+  Computed<String>? _$taskLabelComputed;
+
+  @override
+  String get taskLabel => (_$taskLabelComputed ??= Computed<String>(
+    () => super.taskLabel,
+    name: '_PhoneViewStore.taskLabel',
+  )).value;
   Computed<String?>? _$floatingSerialComputed;
 
   @override
@@ -89,24 +125,6 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     });
   }
 
-  late final _$isPushingFileAtom = Atom(
-    name: '_PhoneViewStore.isPushingFile',
-    context: context,
-  );
-
-  @override
-  bool get isPushingFile {
-    _$isPushingFileAtom.reportRead();
-    return super.isPushingFile;
-  }
-
-  @override
-  set isPushingFile(bool value) {
-    _$isPushingFileAtom.reportWrite(value, super.isPushingFile, () {
-      super.isPushingFile = value;
-    });
-  }
-
   late final _$isDraggingFileAtom = Atom(
     name: '_PhoneViewStore.isDraggingFile',
     context: context,
@@ -122,6 +140,24 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   set isDraggingFile(bool value) {
     _$isDraggingFileAtom.reportWrite(value, super.isDraggingFile, () {
       super.isDraggingFile = value;
+    });
+  }
+
+  late final _$isDraggingApkAtom = Atom(
+    name: '_PhoneViewStore.isDraggingApk',
+    context: context,
+  );
+
+  @override
+  bool get isDraggingApk {
+    _$isDraggingApkAtom.reportRead();
+    return super.isDraggingApk;
+  }
+
+  @override
+  set isDraggingApk(bool value) {
+    _$isDraggingApkAtom.reportWrite(value, super.isDraggingApk, () {
+      super.isDraggingApk = value;
     });
   }
 
@@ -334,12 +370,12 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
-  void setDragging(String serial, bool isDragging) {
+  void setDragging(String serial, bool isDragging, {bool isApk = false}) {
     final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
       name: '_PhoneViewStore.setDragging',
     );
     try {
-      return super.setDragging(serial, isDragging);
+      return super.setDragging(serial, isDragging, isApk: isApk);
     } finally {
       _$_PhoneViewStoreActionController.endAction(_$actionInfo);
     }
@@ -362,14 +398,19 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     return '''
 isLoading: ${isLoading},
 isConnecting: ${isConnecting},
-isPushingFile: ${isPushingFile},
 isDraggingFile: ${isDraggingFile},
+isDraggingApk: ${isDraggingApk},
 error: ${error},
 hasLostConnection: ${hasLostConnection},
 lastTapTimes: ${lastTapTimes},
 isOnDevicesTab: ${isOnDevicesTab},
 session: ${session},
 isFloating: ${isFloating},
+activeTask: ${activeTask},
+isTaskRunning: ${isTaskRunning},
+taskProgress: ${taskProgress},
+taskStatus: ${taskStatus},
+taskLabel: ${taskLabel},
 floatingSerial: ${floatingSerial},
 isFloatingVisible: ${isFloatingVisible},
 isBlockedByFloating: ${isBlockedByFloating}

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:injectable/injectable.dart';
 import 'package:process_run/shell.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/utils/logger.dart';
 
 abstract class IAdbRemoteDataSource {
   Future<String> getConnectedDevicesOutput();
@@ -64,6 +65,21 @@ abstract class IAdbRemoteDataSource {
   /// Sử dụng Deep Link vào thẳng tab Hồ Sơ (Mine)
   /// [serial] - Device serial number
   Future<void> openTikTokProfile(String serial);
+
+  /// Mở trình cài đặt gói (Package Installer) cho một file APK đã được push lên thiết bị
+  Future<void> openPackageInstaller(String serial, String remotePath);
+
+  /// Cài đặt trực tiếp file APK từ máy tính lên thiết bị và theo dõi tiến trình
+  /// [serial] - Device serial number
+  /// [localPath] - Đường dẫn file APK trên máy tính
+  /// [onProgress] - Callback khi % thay đổi (0.0 đến 1.0)
+  /// [onStatus] - Callback khi trạng thái thay đổi (vd: "Streaming...", "Installing...")
+  Future<void> installPackage(
+    String serial,
+    String localPath, {
+    void Function(double progress)? onProgress,
+    void Function(String status)? onStatus,
+  });
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -410,5 +426,130 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     }
 
     throw ServerException('TikTok is not installed on device $serial');
+  }
+
+  @override
+  Future<void> openPackageInstaller(String serial, String remotePath) async {
+    try {
+      logger.i('[ADB] Attempting to open package installer for: $remotePath on $serial');
+      
+      // 1. Kiểm tra file có tồn tại không
+      final lsResult = await Process.run('adb', ['-s', serial, 'shell', 'ls', "'$remotePath'"]);
+      if (lsResult.exitCode != 0) {
+        logger.e('[ADB] File not found on device: $remotePath');
+        throw ServerException('File APK không tồn tại trên thiết bị tại đường dẫn: $remotePath');
+      }
+
+      // Đợi một chút để OS ổn định
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      // 2. Danh sách các Intent/Activity có thể mở trình cài đặt
+      final commands = [
+        // Cách 1: Intent chuẩn + NEW_TASK flag (0x10000000 = 268435456) + --user 0
+        ['-a', 'android.intent.action.VIEW', '-d', 'file://$remotePath', '-t', 'application/vnd.android.package-archive', '-f', '268435456', '--user', '0'],
+        
+        // Cách 2: Thử với đường dẫn /data/local/tmp/ nếu push vào đó (thường có quyền truy cập tốt hơn)
+        if (remotePath.startsWith('/data/local/tmp/'))
+          ['-a', 'android.intent.action.VIEW', '-d', 'file://$remotePath', '-t', 'application/vnd.android.package-archive', '-f', '268435456', '--user', '0'],
+
+        // Cách 3: Google Package Installer
+        ['-n', 'com.google.android.packageinstaller/com.android.packageinstaller.PackageInstallerActivity', '-a', 'android.intent.action.VIEW', '-d', 'file://$remotePath', '-t', 'application/vnd.android.package-archive', '-f', '268435456', '--user', '0'],
+        
+        // Cách 4: Samsung/AOSP Package Installer
+        ['-n', 'com.android.packageinstaller/.PackageInstallerActivity', '-a', 'android.intent.action.VIEW', '-d', 'file://$remotePath', '-t', 'application/vnd.android.package-archive', '-f', '268435456', '--user', '0'],
+        
+        // Cách 5: Intent ACTION_INSTALL_PACKAGE
+        ['-a', 'android.intent.action.INSTALL_PACKAGE', '-d', 'file://$remotePath', '-f', '268435456', '--user', '0'],
+      ];
+
+      bool success = false;
+      for (final args in commands) {
+        logger.i('[ADB] Trying command: am start ${args.join(' ')}');
+        final result = await Process.run('adb', [
+          '-s',
+          serial,
+          'shell',
+          'am',
+          'start',
+          ...args,
+        ]);
+
+        final out = (result.stdout as String).trim();
+        final err = (result.stderr as String).trim();
+        
+        if (out.contains('Starting: Intent') && !out.contains('Error') && !out.contains('unable to resolve')) {
+          logger.i('[ADB] Command successful: $out');
+          success = true;
+          break;
+        } else {
+          logger.w('[ADB] Command failed: $out $err');
+        }
+      }
+
+      if (!success) {
+        throw ServerException('Không thể mở trình cài đặt gói trên thiết bị này. Hãy thử cài đặt thủ công trong thư mục Download.');
+      }
+    } catch (e) {
+      logger.e('[ADB] Error opening package installer', error: e);
+      if (e is ServerException) rethrow;
+      throw ServerException('Lỗi khi mở trình cài đặt APK: $e');
+    }
+  }
+
+  @override
+  Future<void> installPackage(
+    String serial,
+    String localPath, {
+    void Function(double progress)? onProgress,
+    void Function(String status)? onStatus,
+  }) async {
+    try {
+      logger.i('[ADB] Starting install for $localPath on $serial');
+      onStatus?.call('Preparing installation...');
+
+      final process = await Process.start('adb', [
+        '-s',
+        serial,
+        'install',
+        '-r', // replace existing
+        localPath,
+      ]);
+
+      final progressRegex = RegExp(r'\[\s*(\d+)%\]');
+
+      // Đọc stdout để lấy tiến trình
+      process.stdout.transform(const SystemEncoding().decoder).listen((line) {
+        logger.v('[ADB Install] $line');
+        final match = progressRegex.firstMatch(line);
+        if (match != null) {
+          final percent = int.parse(match.group(1)!);
+          onProgress?.call(percent / 100.0);
+          onStatus?.call('Streaming APK ($percent%)...');
+        } else if (line.contains('Success')) {
+          onStatus?.call('Success');
+        } else if (line.contains('Performing Streamed Install')) {
+          onStatus?.call('Performing Streamed Install...');
+        }
+      });
+
+      // Đọc stderr để bắt lỗi
+      final errorBuffer = StringBuffer();
+      process.stderr.transform(const SystemEncoding().decoder).listen((line) {
+        errorBuffer.write(line);
+      });
+
+      final exitCode = await process.exitCode;
+      if (exitCode != 0) {
+        final error = errorBuffer.toString();
+        logger.e('[ADB] Install failed with exit code $exitCode: $error');
+        throw ServerException('Cài đặt thất bại: ${error.isEmpty ? "Unknown error" : error}');
+      }
+
+      logger.i('[ADB] Install finished successfully for $localPath');
+    } catch (e) {
+      logger.e('[ADB] Exception during install', error: e);
+      if (e is ServerException) rethrow;
+      throw ServerException('Lỗi trong quá trình cài đặt APK: $e');
+    }
   }
 }

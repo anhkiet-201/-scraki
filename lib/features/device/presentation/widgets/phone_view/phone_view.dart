@@ -12,8 +12,8 @@ import 'package:scraki/features/device/presentation/widgets/phone_view/store/pho
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'widgets/mirror_navigation_bar.dart';
+import 'widgets/device_task_overlay.dart';
 import 'widgets/drag_overlay_view.dart';
-import 'widgets/push_progress_view.dart';
 
 /// A widget that displays a mirroring view of a phone screen.
 ///
@@ -91,11 +91,26 @@ class _PhoneViewState extends State<PhoneView> {
           },
           child: DropRegion(
             formats: Formats.standardFormats,
-            onDropOver: (_) {
-              if (!widget.isFloating && !_store.isOnDevicesTab)
+            onDropOver: (event) {
+              if (!widget.isFloating && !_store.isOnDevicesTab) {
                 return DropOperation.none;
+              }
               if (_store.isBlockedByFloating) return DropOperation.none;
+
+              // Mặc định là dragging file bình thường
               _store.setDragging(widget.serial, true);
+
+              // Kiểm tra xem có file APK nào đang được kéo không (Xử lý async)
+              for (final item in event.session.items) {
+                item.dataReader?.getSuggestedName().then((name) {
+                  if (mounted &&
+                      name != null &&
+                      name.toLowerCase().endsWith('.apk')) {
+                    _store.setDragging(widget.serial, true, isApk: true);
+                  }
+                });
+              }
+
               return DropOperation.copy;
             },
             onDropLeave: (_) => _store.setDragging(widget.serial, false),
@@ -172,7 +187,7 @@ class _PhoneViewState extends State<PhoneView> {
                   children: [
                     Positioned.fill(child: _buildContent(isFloating)),
                     _buildDragOverlay(),
-                    _buildPushProgress(),
+                    DeviceTaskOverlay(store: _store),
                   ],
                 );
               },
@@ -356,18 +371,9 @@ class _PhoneViewState extends State<PhoneView> {
       builder: (_) {
         final isDragging = _store.isDraggingFile;
         if (!isDragging) return const SizedBox.shrink();
-        return const DragOverlayView();
+        return DragOverlayView(store: _store);
       },
     );
   }
 
-  Widget _buildPushProgress() {
-    return Observer(
-      builder: (_) {
-        final isPushing = _store.isPushingFile;
-        if (!isPushing) return const SizedBox.shrink();
-        return const PushProgressView();
-      },
-    );
-  }
 }

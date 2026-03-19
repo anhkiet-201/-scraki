@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/constants/ui_constants.dart';
@@ -7,6 +8,7 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/utils/android_key_codes.dart';
 import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_client.dart';
 import 'package:scraki/features/device/data/datasources/scrcpy_service.dart';
@@ -127,13 +129,28 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   bool isConnecting = false;
 
   @observable
-  bool isPushingFile = false;
-
-  @observable
   bool isDraggingFile = false;
-
+ 
+  @observable
+  bool isDraggingApk = false;
+ 
   @observable
   String? error;
+ 
+  @computed
+  DeviceTaskState? get activeTask => sessionManagerStore.activeTasks[serial];
+ 
+  @computed
+  bool get isTaskRunning => activeTask != null;
+ 
+  @computed
+  double get taskProgress => activeTask?.progress ?? 0.0;
+ 
+  @computed
+  String get taskStatus => activeTask?.status ?? '';
+ 
+  @computed
+  String get taskLabel => activeTask?.label ?? '';
 
   @observable
   bool hasLostConnection = false;
@@ -558,14 +575,16 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // ═══════════════════════════════════════════════════════════════
 
   @action
-  void setDragging(String serial, bool isDragging) {
+  void setDragging(String serial, bool isDragging, {bool isApk = false}) {
     // Only process drag events when on Devices tab (PhoneView dashboard)
     if (_dashboardStore.selectedIndex != DashboardTabs.devices) return;
 
     if (isDragging) {
       isDraggingFile = true;
+      isDraggingApk = isApk;
     } else {
       isDraggingFile = false;
+      isDraggingApk = false;
     }
   }
 
@@ -573,45 +592,100 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   Future<void> uploadFiles(String serial, List<String> paths) async {
     if (paths.isEmpty) return;
 
-    final ext = paths.first.toLowerCase().split('.').last;
-    final isVideo = const {
-      'mp4',
-      'mov',
-      'avi',
-      'mkv',
-      'webm',
-      '3gp',
-      'ts',
-      'm4v',
-      'flv',
-      'wmv',
-    }.contains(ext);
+    final isVideo = paths.every((p) {
+      final ext = p.toLowerCase().split('.').last;
+      return const {
+        'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'ts', 'm4v', 'flv', 'wmv',
+      }.contains(ext);
+    });
+    final isApk = paths.every((p) => p.toLowerCase().endsWith('.apk'));
+    
+    logger.i('[PhoneViewStore] uploadFiles: serial=$serial, count=${paths.length}, isVideo=$isVideo, isApk=$isApk');
 
     // Only upload files when on Devices tab OR if it's a video (to trigger TikTok Create)
-    if (_dashboardStore.selectedIndex != DashboardTabs.devices && !isVideo) {
+    // Hoặc nếu là APK (để cài đặt)
+    if (_dashboardStore.selectedIndex != DashboardTabs.devices &&
+        !isVideo &&
+        !isApk) {
+      logger.w('[PhoneViewStore] uploadFiles skipped: not on Devices tab (current: ${_dashboardStore.selectedIndex})');
       return;
     }
 
-    runInAction(() => isPushingFile = true);
     try {
       if (isVideo) {
         // Handle TikTok Create for video files
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.videoGen, // Reuse videoGen or define new? Let's use videoGen for consistent purple color
+          status: 'Opening TikTok...',
+        );
         await _tikTokService.openTikTokCreate(serial, paths.first);
+        
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.videoGen,
+          status: 'Done!',
+          progress: 1.0,
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
+      } else if (isApk) {
+        // Handle Silent APK installation (Persistent State)
+        final fileName = paths.first.split(RegExp(r"[/\\]")).last;
+        
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.install,
+          status: 'Starting installation...',
+        );
+
+        await _adbDataSource.installPackage(
+          serial,
+          paths.first,
+          onProgress: (p) => sessionManagerStore.updateDeviceTask(
+            serial,
+            type: DeviceTaskType.install,
+            progress: p,
+            status: 'Streaming APK (${(p * 100).toInt()}%)...',
+          ),
+          onStatus: (s) => sessionManagerStore.updateDeviceTask(
+            serial,
+            type: DeviceTaskType.install,
+            status: s,
+          ),
+        );
+        
+        logger.i('[PhoneViewStore] APK $fileName installed successfully');
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.install,
+          status: 'Success!',
+          progress: 1.0,
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
       } else {
         // Normal file push via scrcpy
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.push,
+          status: 'Pushing ${paths.length} files...',
+        );
         await _scrcpyService.pushFiles(serial, paths);
         logger.i(
-          '[SessionManagerStore] Successfully pushed ${paths.length} files to $serial',
+          '[PhoneViewStore] Successfully pushed ${paths.length} files to $serial',
         );
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.push,
+          status: 'Success!',
+          progress: 1.0,
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
       }
     } catch (e) {
-      logger.e(
-        '[SessionManagerStore] Failed to push files to $serial',
-        error: e,
-      );
-      runInAction(() => error = 'Failed to push files: $e');
+      logger.e('[PhoneViewStore] Failed to process files for $serial', error: e);
+      runInAction(() => error = 'Failed to process files: $e');
     } finally {
-      runInAction(() => isPushingFile = false);
+      sessionManagerStore.clearDeviceTask(serial);
     }
   }
 
