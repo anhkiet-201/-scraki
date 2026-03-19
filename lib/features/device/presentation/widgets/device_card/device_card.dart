@@ -5,6 +5,7 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/widgets/status_badge.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+import 'package:scraki/features/device/presentation/stores/device_nickname_store.dart';
 import 'package:scraki/core/widgets/box_card_menu.dart';
 
 import '../phone_view/phone_view.dart';
@@ -30,6 +31,24 @@ class _DeviceCardState extends State<DeviceCard>
   final Observable<bool> _isHovered = Observable(false);
   final Observable<bool> _hasFocus = Observable(false);
   final FocusNode _cardFocusNode = FocusNode();
+  
+  // Stores and controllers
+  final _nicknameController = TextEditingController();
+  final _deviceGroupStore = getIt<DeviceGroupStore>();
+  final _nicknameStore = getIt<DeviceNicknameStore>();
+
+  @override
+  void initState() {
+    super.initState();
+    _setupFocusListener();
+  }
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    _cardFocusNode.dispose();
+    super.dispose();
+  }
 
   void _setupFocusListener() {
     _cardFocusNode.addListener(() {
@@ -41,9 +60,45 @@ class _DeviceCardState extends State<DeviceCard>
     FocusScope.of(context).requestFocus(_cardFocusNode);
   }
 
+  void _handleRename(BuildContext context) {
+    final currentNickname = _nicknameStore.getNickname(
+      widget.device.serial,
+      widget.device.modelName,
+    );
+    _nicknameController.text = currentNickname;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đổi tên thiết bị'),
+        content: TextField(
+          controller: _nicknameController,
+          decoration: const InputDecoration(
+            labelText: 'Tên gợi nhớ',
+            hintText: 'Nhập tên thiết bị...',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newName = _nicknameController.text.trim();
+              _nicknameStore.saveNickname(widget.device.serial, newName);
+              Navigator.pop(context);
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showContextMenu(BuildContext context, Offset position) {
-    final store = getIt<DeviceGroupStore>();
-    final allGroups = store.groups;
+    final allGroups = _deviceGroupStore.groups;
     final deviceGroups = allGroups
         .where((g) => g.deviceSerials.contains(widget.device.serial))
         .toList();
@@ -56,6 +111,12 @@ class _DeviceCardState extends State<DeviceCard>
       position: position,
       width: 250,
       items: [
+        BoxCardMenuItem(
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('Đổi tên'),
+          onTap: () => _handleRename(context),
+        ),
+        const Divider(height: 1, indent: 16, endIndent: 16),
         if (availableGroups.isNotEmpty) ...[
           const BoxCardMenuHeader(title: 'Add to Group'),
           ...availableGroups.map(
@@ -66,7 +127,7 @@ class _DeviceCardState extends State<DeviceCard>
               ),
               label: Text(group.name),
               onTap: () =>
-                  store.addDeviceToGroup(group.id, widget.device.serial),
+                  _deviceGroupStore.addDeviceToGroup(group.id, widget.device.serial),
             ),
           ),
         ],
@@ -81,7 +142,7 @@ class _DeviceCardState extends State<DeviceCard>
               ),
               label: Text(group.name),
               onTap: () =>
-                  store.removeDeviceFromGroup(group.id, widget.device.serial),
+                  _deviceGroupStore.removeDeviceFromGroup(group.id, widget.device.serial),
             ),
           ),
         ],
@@ -92,7 +153,6 @@ class _DeviceCardState extends State<DeviceCard>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    _setupFocusListener();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Observer(
@@ -162,13 +222,18 @@ class _DeviceCardState extends State<DeviceCard>
   }
 
   Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
-    final store = getIt<DeviceGroupStore>();
-    // Need to observe store to update dots
+    // Need to observe both stores to update nicknames and group dots
     return Observer(
       builder: (_) {
-        final deviceGroups = store.groups
+        final deviceGroups = _deviceGroupStore.groups
             .where((g) => g.deviceSerials.contains(widget.device.serial))
             .toList();
+            
+        final modelName = widget.device.modelName;
+        final displayName = _nicknameStore.getNickname(
+          widget.device.serial,
+          modelName,
+        );
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -198,10 +263,11 @@ class _DeviceCardState extends State<DeviceCard>
                       children: [
                         Flexible(
                           child: Text(
-                            widget.device.modelName,
+                            displayName,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: colorScheme.onSurface,
+                              fontSize: 12
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),

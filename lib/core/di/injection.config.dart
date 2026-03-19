@@ -28,6 +28,8 @@ import '../../features/device/data/datasources/aki_remote_service.dart'
     as _i109;
 import '../../features/device/data/datasources/device_group_remote_data_source.dart'
     as _i521;
+import '../../features/device/data/datasources/device_nickname_remote_data_source.dart'
+    as _i619;
 import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
 import '../../features/device/data/datasources/scrcpy_socket_client.dart'
@@ -38,18 +40,24 @@ import '../../features/device/data/datasources/video_worker_manager.dart'
     as _i3;
 import '../../features/device/data/repositories/device_group_repository_firebase_impl.dart'
     as _i936;
+import '../../features/device/data/repositories/device_nickname_repository_impl.dart'
+    as _i317;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
 import '../../features/device/domain/repositories/device_group_repository.dart'
     as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
+import '../../features/device/domain/repositories/i_device_nickname_repository.dart'
+    as _i708;
 import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
     as _i229;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
+import '../../features/device/presentation/stores/device_nickname_store.dart'
+    as _i391;
 import '../../features/email/data/datasources/credential_remote_data_source.dart'
     as _i296;
 import '../../features/email/data/datasources/imap_remote_data_source.dart'
@@ -239,6 +247,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i730.SettingsConfigProvider>(),
       ),
     );
+    gh.lazySingleton<_i619.IDeviceNicknameRemoteDataSource>(
+      () => _i619.DeviceNicknameRemoteDataSourceImpl(
+        gh<_i730.SettingsConfigProvider>(),
+      ),
+    );
     gh.lazySingleton<_i510.DeviceGroupRepository>(
       () => _i936.DeviceGroupRepositoryFirebaseImpl(
         gh<_i521.DeviceGroupRemoteDataSource>(),
@@ -249,6 +262,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i510.DeviceGroupRepository>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i891.DashboardStore>(),
+      ),
+    );
+    gh.lazySingleton<_i708.IDeviceNicknameRepository>(
+      () => _i317.DeviceNicknameRepositoryImpl(
+        gh<_i619.IDeviceNicknameRemoteDataSource>(),
       ),
     );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
@@ -262,6 +280,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i420.FetchJobsUseCase>(
       () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.singleton<_i391.DeviceNicknameStore>(
+      () => _i391.DeviceNicknameStore(
+        gh<_i708.IDeviceNicknameRepository>(),
+        gh<_i151.SettingsStore>(),
+      ),
     );
     gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(

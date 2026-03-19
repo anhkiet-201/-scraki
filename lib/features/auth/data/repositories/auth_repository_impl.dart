@@ -1,6 +1,5 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import 'package:uuid/uuid.dart';
 import 'package:scraki/core/error/failures.dart';
 import '../../domain/entities/auth_token.dart';
 import '../../domain/repositories/i_auth_repository.dart';
