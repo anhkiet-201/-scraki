@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
 
@@ -100,10 +101,6 @@ class BatchVideoService {
   final Map<String, ({String transfer, String primaries, String pixFmt})>
   _colorInfoCache = {};
 
-  Future<({String transfer, String primaries, String pixFmt})>
-  _probeVideoColorCached(String path) async {
-    return _colorInfoCache[path] ??= await _probeVideoColor(path);
-  }
 
   // Track running processes for cancellation
   final List<Process> _activeProcesses = [];
@@ -146,19 +143,28 @@ class BatchVideoService {
       baseOutputDir = config.outputDir!;
     } else {
       try {
-        // Fallback to current directory if path_provider fails (unlikely on desktop)
-        final desktopPath = await getApplicationDocumentsDirectory()
-            .then(
-              (dir) =>
-                  '${Directory(dir.parent.path).path}${Platform.pathSeparator}Desktop',
-            )
-            .catchError((_) => Directory.current.path);
-
-        // Double check if desktop exists, some OS might have different structure
-        final desktopDir = Directory(desktopPath);
-        if (await desktopDir.exists()) {
-          baseOutputDir = desktopPath;
+        final documentsDir = await getApplicationDocumentsDirectory();
+        
+        if (Platform.isWindows) {
+          // On Windows, Desktop is usually a sibling of Documents in the User profile
+          final userProfile = Platform.environment['USERPROFILE'];
+          if (userProfile != null) {
+            final desktopPath = p.join(userProfile, 'Desktop');
+            if (await Directory(desktopPath).exists()) {
+              baseOutputDir = desktopPath;
+            } else {
+              baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
+            }
+          } else {
+            baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
+          }
         } else {
+          // macOS/Linux
+          baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
+        }
+
+        // Double check if desktop exists
+        if (!await Directory(baseOutputDir).exists()) {
           baseOutputDir = Directory.current.path;
         }
       } catch (_) {
@@ -166,11 +172,10 @@ class BatchVideoService {
       }
     }
 
-    final outputDir =
-        '$baseOutputDir${Platform.pathSeparator}output_vids_$timestamp';
+    final outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
 
     final tempDir = Directory(
-      '${Directory.systemTemp.path}/scraki_segments_$timestamp',
+      p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'),
     );
     await tempDir.create(recursive: true);
 
@@ -197,7 +202,7 @@ class BatchVideoService {
           // Warm up the color cache with the probe result (no extra ffprobe needed)
           _colorInfoCache[path] = probeResults[i].colorInfo;
         } else {
-          yield '⚠️  Bỏ qua: ${_basename(path)} (quá ngắn: ${duration}s)';
+          yield '⚠️  Bỏ qua: ${p.basename(path)} (quá ngắn: ${duration}s)';
         }
       }
 
@@ -283,7 +288,7 @@ class BatchVideoService {
         }
         if (_cancelled) break;
 
-        final outputPath = '${tempDir.path}/${req.id}.mp4';
+        final outputPath = p.join(tempDir.path, '${req.id}.mp4');
         segmentFileMap[req] = outputPath;
 
         late Future<void> task;
@@ -400,12 +405,18 @@ class BatchVideoService {
   /// Cancels the running batch by killing all tracked ffmpeg processes.
   void cancel() {
     _cancelled = true;
-    for (final process in _activeProcesses) {
+    final processes = List<Process>.from(_activeProcesses);
+    _activeProcesses.clear();
+    for (final process in processes) {
       try {
-        process.kill();
+        if (Platform.isWindows) {
+          process.kill();
+        } else {
+          // sigterm is gentler on Unix
+          process.kill(ProcessSignal.sigterm);
+        }
       } catch (_) {}
     }
-    _activeProcesses.clear();
   }
 
   // ─── Constants ────────────────────────────────────────────────────────────
@@ -413,7 +424,7 @@ class BatchVideoService {
   /// Opt-5: Tăng concurrency lên 2x processors vì ffmpeg là I/O + GPU bound,
   /// không phải thuần CPU bound như Dart isolates.
   static int get _maxConcurrentTasks =>
-      (Platform.numberOfProcessors * 2).clamp(4, 16);
+      (Platform.numberOfProcessors * 2).clamp(4, 10);
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
@@ -430,6 +441,14 @@ class BatchVideoService {
   /// Kết hợp 2 lần gọi ffprobe thành 1 để giảm I/O overhead.
   Future<({int duration, ({String transfer, String primaries, String pixFmt}) colorInfo})>
   _probeSourceVideo(String path) async {
+    // Check cache for color info
+    if (_colorInfoCache.containsKey(path)) {
+      // We still need duration, but we can reuse the color info if we have to.
+      // However, most calls to this need both. Since ffprobe is called anyway
+      // for duration, we might as well get fresh color info unless we find a way
+      // to cache duration too (which we do for valid videos in createBatchVideos).
+    }
+
     try {
       final result = await Process.run(_ffprobeBin, [
         '-v', 'error',
@@ -458,10 +477,15 @@ class BatchVideoService {
         }
       }
 
-      return (
+      final info = (
         duration: durationSec.round(),
         colorInfo: (transfer: transfer, primaries: primaries, pixFmt: pixFmt),
       );
+      
+      // Update cache
+      _colorInfoCache[path] = info.colorInfo;
+      
+      return info;
     } catch (_) {
       return (
         duration: 0,
@@ -483,8 +507,15 @@ class BatchVideoService {
     void Function(double)? onProgress,
     void Function(String)? onLogMsg,
   }) async {
+    // Validate input exists
+    if (!await File(input).exists()) {
+      onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] Lỗi: Không tìm thấy file nguồn');
+      return null;
+    }
+
     // Dùng cache thay vì gọi ffprobe lại
-    final colorInfo = await _probeVideoColorCached(input);
+    final probeResult = await _probeSourceVideo(input);
+    final colorInfo = probeResult.colorInfo;
     final isHdr = _isHdr(transfer: colorInfo.transfer, pixFmt: colorInfo.pixFmt);
 
     return _runSegmentEncode(
@@ -536,100 +567,157 @@ class BatchVideoService {
 
     final gpuEncoder = await _getGpuEncoder();
 
-    Future<String?> runWithFilter(String vf) async {
-      try {
-        final process = await Process.start(_ffmpegBin, [
-          '-hide_banner',
-          '-y',
-          '-hwaccel',
-          'auto', // Enable HW Decoding
-          '-ss', startSeconds.toString(),
-          '-i', input,
-          '-t', duration.toString(),
-          '-vf', vf,
-          '-an', // Always remove audio for anti-reup
-          // Force normalized SDR output — critical for concat compatibility
-          '-pix_fmt', 'yuv420p',
-          '-color_range', 'tv',
-          '-colorspace', 'bt709',
-          '-color_primaries', 'bt709',
-          '-color_trc', 'bt709',
-          '-c:v', gpuEncoder,
-          if (gpuEncoder == 'libx264') ...[
-            '-preset',
-            'ultrafast',
-            '-crf',
-            '26',
-          ] else ...[
-            // GPU encoders use different rate control
-            '-realtime',
-            '1',
-          ],
-          '-movflags', '+faststart',
-          output,
-        ]);
-        _activeProcesses.add(process);
+    // Attempt with preferred filter (HDR-aware if applicable)
+    final result = await _runWithFilter(
+      vfFilter,
+      gpuEncoder,
+      input: input,
+      startSeconds: startSeconds,
+      duration: duration,
+      output: output,
+      processName: processName,
+      onProgress: onProgress,
+      onLogMsg: onLogMsg,
+    );
 
-        final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-        // Capture full stderr for error reporting
-        final stderrBuf = StringBuffer();
-        process.stderr.listen((data) {
-          final out = String.fromCharCodes(data);
-          stderrBuf.write(out);
-          if (onProgress == null || _cancelled) return;
-          final match = regex.firstMatch(out);
-          if (match != null) {
-            final h = int.parse(match.group(1)!);
-            final m = int.parse(match.group(2)!);
-            final s = double.parse(match.group(3)!);
-            final currentSeconds = h * 3600 + m * 60 + s;
-            final percent = (currentSeconds / duration).clamp(0.0, 1.0);
-            onProgress(percent);
-          }
-        });
-
-        final exitCode = await process.exitCode;
-        _activeProcesses.remove(process);
-
-        if (exitCode != 0 || !File(output).existsSync()) {
-          final errorLines = stderrBuf
-              .toString()
-              .split('\n')
-              .where(
-                (l) => l.toLowerCase().contains('error') || l.startsWith('  '),
-              )
-              .take(5)
-              .join('\n');
-          if (errorLines.isNotEmpty) {
-            onLogMsg?.call(
-              '  ❌ [${processName ?? _basename(input)}] FFmpeg lỗi:\n$errorLines',
-            );
-          }
-          return null;
-        }
-        return output;
-      } catch (e) {
+    // If initial attempt failed (e.g. GPU error or zscale failure), retry with CPU fallback
+    if (result == null && !_cancelled) {
+      final fallbackEncoder = 'libx264';
+      if (gpuEncoder != fallbackEncoder) {
         onLogMsg?.call(
-          '  ❌ [${processName ?? _basename(input)}] Exception: $e',
+          '  ⚠️ [${processName ?? p.basename(input)}] Encode GPU thất bại, thử fallback CPU...',
         );
-        return null;
+        final fallbackFilter = isHdr ? '$baseFilter,format=yuv420p' : '$baseFilter,format=yuv420p';
+        return _runWithFilter(
+          fallbackFilter,
+          fallbackEncoder,
+          input: input,
+          startSeconds: startSeconds,
+          duration: duration,
+          output: output,
+          processName: processName,
+          onProgress: onProgress,
+          onLogMsg: onLogMsg,
+        );
       }
     }
 
-    // Attempt with preferred filter (HDR-aware if applicable)
-    final result = await runWithFilter(vfFilter);
-
     // If HDR tonemapping failed (e.g. zscale not available), retry with
     // simple SDR fallback — colors may be clipped but video will be created.
-    if (result == null && isHdr) {
+    if (result == null && isHdr && !_cancelled) {
       onLogMsg?.call(
-        '  ⚠️ [${processName ?? _basename(input)}] zscale tonemapping thất bại, thử fallback SDR...',
+        '  ⚠️ [${processName ?? p.basename(input)}] zscale tonemapping thất bại, thử fallback SDR...',
       );
       final fallbackFilter = '$baseFilter,format=yuv420p';
-      return runWithFilter(fallbackFilter);
+      return _runWithFilter(
+        fallbackFilter,
+        gpuEncoder,
+        input: input,
+        startSeconds: startSeconds,
+        duration: duration,
+        output: output,
+        processName: processName,
+        onProgress: onProgress,
+        onLogMsg: onLogMsg,
+      );
     }
 
     return result;
+  }
+
+  Future<String?> _runWithFilter(
+    String vf,
+    String encoder, {
+    required String input,
+    required int startSeconds,
+    required int duration,
+    required String output,
+    String? processName,
+    void Function(double)? onProgress,
+    void Function(String)? onLogMsg,
+  }) async {
+    try {
+      final process = await Process.start(_ffmpegBin, [
+        '-hide_banner',
+        '-y',
+        '-hwaccel',
+        'auto', // Enable HW Decoding
+        '-ss', startSeconds.toString(),
+        '-i', input,
+        '-t', duration.toString(),
+        '-vf', vf,
+        '-an', // Always remove audio for anti-reup
+        // Force normalized SDR output — critical for concat compatibility
+        '-pix_fmt', 'yuv420p',
+        '-color_range', 'tv',
+        '-colorspace', 'bt709',
+        '-color_primaries', 'bt709',
+        '-color_trc', 'bt709',
+        '-c:v', encoder,
+        if (encoder == 'libx264') ...[
+          '-preset',
+          'ultrafast',
+          '-crf',
+          '26',
+        ] else ...[
+          // GPU encoders use different rate control
+          '-realtime',
+          '1',
+        ],
+        '-movflags', '+faststart',
+        output,
+      ]);
+      _activeProcesses.add(process);
+
+      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+      // Capture full stderr for error reporting
+      final stderrList = <String>[];
+      
+      process.stderr.listen((data) {
+        final out = String.fromCharCodes(data);
+        
+        // Keep last 10 lines for error reporting
+        final lines = out.split('\n');
+        for (final line in lines) {
+          if (line.trim().isNotEmpty) {
+            stderrList.add(line);
+            if (stderrList.length > 15) stderrList.removeAt(0);
+          }
+        }
+
+        if (onProgress == null || _cancelled) return;
+        final match = regex.firstMatch(out);
+        if (match != null) {
+          final h = int.parse(match.group(1)!);
+          final m = int.parse(match.group(2)!);
+          final s = double.parse(match.group(3)!);
+          final currentSeconds = h * 3600 + m * 60 + s;
+          final percent = (currentSeconds / duration).clamp(0.0, 1.0);
+          onProgress(percent);
+        }
+      });
+
+      final exitCode = await process.exitCode;
+      _activeProcesses.remove(process);
+
+      if (exitCode != 0 || !File(output).existsSync()) {
+        final errorLog = stderrList.join('\n');
+        if (errorLog.isNotEmpty && !_cancelled) {
+          onLogMsg?.call(
+            '  ❌ [${processName ?? p.basename(input)}] FFmpeg lỗi (exit $exitCode):\n$errorLog',
+          );
+        }
+        return null;
+      }
+      return output;
+    } catch (e) {
+      if (!_cancelled) {
+        onLogMsg?.call(
+          '  ❌ [${processName ?? p.basename(input)}] Exception: $e',
+        );
+      }
+      return null;
+    }
   }
 
   /// Builds a concat list, selects diverse segments, and runs ffmpeg with
@@ -657,7 +745,7 @@ class BatchVideoService {
 
     // Write concat list to a temp file
     final concatFile = File(
-      '${Directory.systemTemp.path}/scraki_concat_${outputIndex}_${DateTime.now().millisecondsSinceEpoch}.txt',
+      p.join(Directory.systemTemp.path, 'scraki_concat_${outputIndex}_${DateTime.now().millisecondsSinceEpoch}.txt'),
     );
     final buffer = StringBuffer();
     for (final seg in segments) {
@@ -702,7 +790,7 @@ class BatchVideoService {
       for (var i = 0; i < config.textOverlays.length; i++) {
         final overlay = config.textOverlays[i];
         final file = File(
-          '${Directory.systemTemp.path}/scraki_text_${outputIndex}_${i}_${DateTime.now().millisecondsSinceEpoch}.png',
+          p.join(Directory.systemTemp.path, 'scraki_text_${outputIndex}_${i}_${DateTime.now().millisecondsSinceEpoch}.png'),
         );
         await file.writeAsBytes(overlay.bytes);
         textOverlayFiles.add(file);
@@ -939,47 +1027,6 @@ class BatchVideoService {
           if (file.existsSync()) await file.delete();
         } catch (_) {}
       }
-    }
-  }
-
-  /// Cross-platform basename (last path component after / or \).
-  String _basename(String path) {
-    return path.split(RegExp(r'[/\\]')).last;
-  }
-
-  /// Uses ffprobe to read color_transfer, color_primaries and pix_fmt
-  /// from the first video stream. Returns empty strings on error.
-  Future<({String transfer, String primaries, String pixFmt})> _probeVideoColor(
-    String path,
-  ) async {
-    try {
-      final result = await Process.run(_ffprobeBin, [
-        '-v',
-        'error',
-        '-select_streams',
-        'v:0',
-        '-show_entries',
-        'stream=color_transfer,color_primaries,pix_fmt',
-        '-of',
-        'default=noprint_wrappers=1:nokey=0',
-        path,
-      ]);
-      final out = (result.stdout as String);
-      String transfer = '';
-      String primaries = '';
-      String pixFmt = '';
-      for (final line in out.split('\n')) {
-        if (line.startsWith('color_transfer=')) {
-          transfer = line.split('=').last.trim();
-        } else if (line.startsWith('color_primaries=')) {
-          primaries = line.split('=').last.trim();
-        } else if (line.startsWith('pix_fmt=')) {
-          pixFmt = line.split('=').last.trim();
-        }
-      }
-      return (transfer: transfer, primaries: primaries, pixFmt: pixFmt);
-    } catch (_) {
-      return (transfer: '', primaries: '', pixFmt: '');
     }
   }
 
