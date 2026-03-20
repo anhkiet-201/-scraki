@@ -4,6 +4,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/auth/domain/entities/auth_token.dart';
 import 'package:scraki/features/auth/presentation/stores/auth_store.dart';
+import 'package:scraki/features/settings/presentation/stores/settings_store.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
 
 class AuthPanel extends StatefulWidget {
@@ -17,12 +18,16 @@ class AuthPanel extends StatefulWidget {
 
 class _AuthPanelState extends State<AuthPanel> {
   late final AuthStore _store;
+  late final SettingsStore _settingsStore;
 
   @override
   void initState() {
     super.initState();
     _store = getIt<AuthStore>();
+    _settingsStore = getIt<SettingsStore>();
+    
     _store.init();
+    _store.loadTokens(_settingsStore.deviceGroupCollection, widget.serial);
   }
 
   @override
@@ -119,7 +124,12 @@ class _AuthPanelState extends State<AuthPanel> {
               Expanded(
                 child: Observer(
                   builder: (_) => FilledButton.icon(
-                    onPressed: _store.isLoading ? null : () => _store.captureFromScreen(widget.serial),
+                    onPressed: _store.isLoading 
+                      ? null 
+                      : () => _store.captureFromScreen(
+                          _settingsStore.deviceGroupCollection, 
+                          widget.serial
+                        ),
                     icon: _store.isLoading 
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.screenshot_monitor_rounded),
@@ -224,7 +234,11 @@ class _AuthPanelState extends State<AuthPanel> {
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      onPressed: () => _store.deleteToken(token.id),
+                      onPressed: () => _store.deleteToken(
+                        _settingsStore.deviceGroupCollection,
+                        widget.serial,
+                        token.id,
+                      ),
                       icon: Icon(Icons.delete_outline_rounded, size: 18, color: colorScheme.error),
                     ),
                   ],
@@ -278,6 +292,8 @@ class _AuthPanelState extends State<AuthPanel> {
                 return;
               }
               _store.addToken(
+                _settingsStore.deviceGroupCollection,
+                widget.serial,
                 nameController.text.trim().isEmpty ? 'Manual Account' : nameController.text.trim(),
                 'Manual',
                 secret,

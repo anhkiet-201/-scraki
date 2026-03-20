@@ -6,28 +6,44 @@ import '../models/auth_token_model.dart';
 import '../../domain/entities/auth_token.dart';
 
 abstract class IAuthRemoteDataSource {
-  Future<Either<Failure, String>> getRawAuthTokens();
-  Future<Either<Failure, Unit>> saveRawAuthTokens(String rawText);
-  Future<Either<Failure, List<AuthToken>>> getAuthTokens();
+  Future<Either<Failure, String>> getRawAuthTokens(
+    String groupCollection,
+    String serial,
+  );
+  Future<Either<Failure, Unit>> saveRawAuthTokens(
+    String groupCollection,
+    String serial,
+    String rawText,
+  );
+  Future<Either<Failure, List<AuthToken>>> getAuthTokens(
+    String groupCollection,
+    String serial,
+  );
 }
 
 @LazySingleton(as: IAuthRemoteDataSource)
 class AuthRemoteDataSourceFirebaseImpl implements IAuthRemoteDataSource {
   static const String _collectionName = 'app_configs';
-  static const String _documentId = 'auth_tokens';
+  // static const String _documentId = 'auth_tokens'; // Không dùng ID cố định nữa
   static const String _fieldKey = 'raw_text';
 
   final FirebaseFirestore _firestore;
 
   AuthRemoteDataSourceFirebaseImpl() : _firestore = FirebaseFirestore.instance;
 
-  DocumentReference get _document =>
-      _firestore.collection(_collectionName).doc(_documentId);
+  DocumentReference _getDocument(String groupCollection, String serial) {
+    // Tạo document ID phân tách theo group và serial
+    final documentId = 'auth_tokens_${groupCollection}_$serial';
+    return _firestore.collection(_collectionName).doc(documentId);
+  }
 
   @override
-  Future<Either<Failure, String>> getRawAuthTokens() async {
+  Future<Either<Failure, String>> getRawAuthTokens(
+    String groupCollection,
+    String serial,
+  ) async {
     try {
-      final snapshot = await _document.get();
+      final snapshot = await _getDocument(groupCollection, serial).get();
       if (!snapshot.exists) {
         return const Right('');
       }
@@ -41,9 +57,13 @@ class AuthRemoteDataSourceFirebaseImpl implements IAuthRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, Unit>> saveRawAuthTokens(String rawText) async {
+  Future<Either<Failure, Unit>> saveRawAuthTokens(
+    String groupCollection,
+    String serial,
+    String rawText,
+  ) async {
     try {
-      await _document.set({
+      await _getDocument(groupCollection, serial).set({
         _fieldKey: rawText,
         'updated_at': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -54,8 +74,11 @@ class AuthRemoteDataSourceFirebaseImpl implements IAuthRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, List<AuthToken>>> getAuthTokens() async {
-    final rawEither = await getRawAuthTokens();
+  Future<Either<Failure, List<AuthToken>>> getAuthTokens(
+    String groupCollection,
+    String serial,
+  ) async {
+    final rawEither = await getRawAuthTokens(groupCollection, serial);
     return rawEither.fold(
       (failure) => Left(failure),
       (rawText) {

@@ -24,7 +24,7 @@ abstract class _AuthStoreBase with Store {
   @action
   void init() {
     _startTimer();
-    loadTokens();
+    // loadTokens(); // Không nạp global nữa, AuthPanel sẽ gọi loadTokens với serial
   }
 
   @observable
@@ -45,11 +45,11 @@ abstract class _AuthStoreBase with Store {
   Timer? _timer;
 
   @action
-  Future<void> loadTokens() async {
+  Future<void> loadTokens(String groupCollection, String serial) async {
     isLoading = true;
     errorMessage = null;
     try {
-      final result = await _repository.getAuthTokens().timeout(
+      final result = await _repository.getAuthTokens(groupCollection, serial).timeout(
         const Duration(seconds: 10),
         onTimeout: () => Left(ApiFailure('Request timed out (10s)')),
       );
@@ -69,7 +69,13 @@ abstract class _AuthStoreBase with Store {
   }
 
   @action
-  Future<void> addToken(String name, String issuer, String secret) async {
+  Future<void> addToken(
+    String groupCollection,
+    String serial,
+    String name,
+    String issuer,
+    String secret,
+  ) async {
     isLoading = true;
     errorMessage = null;
     try {
@@ -79,13 +85,15 @@ abstract class _AuthStoreBase with Store {
         issuer: issuer,
         secret: secret,
       );
-      final result = await _repository.addAuthToken(token).timeout(
+      final result = await _repository
+          .addAuthToken(groupCollection, serial, token)
+          .timeout(
         const Duration(seconds: 10),
         onTimeout: () => Left(ApiFailure('Request timed out (10s)')),
       );
       result.fold(
         (failure) => errorMessage = failure.message,
-        (_) => loadTokens(),
+        (_) => loadTokens(groupCollection, serial),
       );
     } catch (e) {
       errorMessage = 'Unexpected error: $e';
@@ -95,17 +103,23 @@ abstract class _AuthStoreBase with Store {
   }
 
   @action
-  Future<void> deleteToken(String id) async {
+  Future<void> deleteToken(
+    String groupCollection,
+    String serial,
+    String id,
+  ) async {
     isLoading = true;
     errorMessage = null;
     try {
-      final result = await _repository.deleteAuthToken(id).timeout(
+      final result = await _repository
+          .deleteAuthToken(groupCollection, serial, id)
+          .timeout(
         const Duration(seconds: 10),
         onTimeout: () => Left(ApiFailure('Request timed out (10s)')),
       );
       result.fold(
         (failure) => errorMessage = failure.message,
-        (_) => loadTokens(),
+        (_) => loadTokens(groupCollection, serial),
       );
     } catch (e) {
       errorMessage = 'Unexpected error: $e';
@@ -115,7 +129,7 @@ abstract class _AuthStoreBase with Store {
   }
 
   @action
-  Future<void> captureFromScreen(String serial) async {
+  Future<void> captureFromScreen(String groupCollection, String serial) async {
     isLoading = true;
     errorMessage = null;
     try {
@@ -135,7 +149,13 @@ abstract class _AuthStoreBase with Store {
         final cleanText = text.replaceAll(' ', '');
         
         if (cleanText.length == 32 && RegExp(r'^[A-Z2-7]{32}$').hasMatch(cleanText)) {
-          await addToken('Captured Account', 'Captured Issuer', cleanText);
+          await addToken(
+            groupCollection,
+            serial,
+            'Captured Account',
+            'Captured Issuer',
+            cleanText,
+          );
           return;
         }
       }

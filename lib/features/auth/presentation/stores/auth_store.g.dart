@@ -105,8 +105,10 @@ mixin _$AuthStore on _AuthStoreBase, Store {
   );
 
   @override
-  Future<void> loadTokens() {
-    return _$loadTokensAsyncAction.run(() => super.loadTokens());
+  Future<void> loadTokens(String groupCollection, String serial) {
+    return _$loadTokensAsyncAction.run(
+      () => super.loadTokens(groupCollection, serial),
+    );
   }
 
   late final _$addTokenAsyncAction = AsyncAction(
@@ -115,9 +117,15 @@ mixin _$AuthStore on _AuthStoreBase, Store {
   );
 
   @override
-  Future<void> addToken(String name, String issuer, String secret) {
+  Future<void> addToken(
+    String groupCollection,
+    String serial,
+    String name,
+    String issuer,
+    String secret,
+  ) {
     return _$addTokenAsyncAction.run(
-      () => super.addToken(name, issuer, secret),
+      () => super.addToken(groupCollection, serial, name, issuer, secret),
     );
   }
 
@@ -127,8 +135,10 @@ mixin _$AuthStore on _AuthStoreBase, Store {
   );
 
   @override
-  Future<void> deleteToken(String id) {
-    return _$deleteTokenAsyncAction.run(() => super.deleteToken(id));
+  Future<void> deleteToken(String groupCollection, String serial, String id) {
+    return _$deleteTokenAsyncAction.run(
+      () => super.deleteToken(groupCollection, serial, id),
+    );
   }
 
   late final _$captureFromScreenAsyncAction = AsyncAction(
@@ -137,9 +147,9 @@ mixin _$AuthStore on _AuthStoreBase, Store {
   );
 
   @override
-  Future<void> captureFromScreen(String serial) {
+  Future<void> captureFromScreen(String groupCollection, String serial) {
     return _$captureFromScreenAsyncAction.run(
-      () => super.captureFromScreen(serial),
+      () => super.captureFromScreen(groupCollection, serial),
     );
   }
 
