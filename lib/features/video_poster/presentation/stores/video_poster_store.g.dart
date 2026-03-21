@@ -399,6 +399,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$isPreviewModeAtom = Atom(
+    name: '_VideoPosterStore.isPreviewMode',
+    context: context,
+  );
+
+  @override
+  bool get isPreviewMode {
+    _$isPreviewModeAtom.reportRead();
+    return super.isPreviewMode;
+  }
+
+  @override
+  set isPreviewMode(bool value) {
+    _$isPreviewModeAtom.reportWrite(value, super.isPreviewMode, () {
+      super.isPreviewMode = value;
+    });
+  }
+
   late final _$activeNavIndexAtom = Atom(
     name: '_VideoPosterStore.activeNavIndex',
     context: context,
@@ -788,6 +806,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void togglePreviewMode() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.togglePreviewMode',
+    );
+    try {
+      return super.togglePreviewMode();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void addSourceVideos(List<String> paths) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.addSourceVideos',
@@ -895,6 +925,7 @@ playbackSpeed: ${playbackSpeed},
 duration: ${duration},
 position: ${position},
 isPlaying: ${isPlaying},
+isPreviewMode: ${isPreviewMode},
 activeNavIndex: ${activeNavIndex}
     ''';
   }

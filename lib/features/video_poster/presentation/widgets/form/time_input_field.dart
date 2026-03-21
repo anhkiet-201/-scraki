@@ -6,6 +6,7 @@ class TimeInputField extends StatefulWidget {
   final double? initialValue;
   final void Function(double?) onChanged;
   final String? hint;
+  final double maxValue;
 
   const TimeInputField({
     super.key,
@@ -13,6 +14,7 @@ class TimeInputField extends StatefulWidget {
     required this.initialValue,
     required this.onChanged,
     this.hint,
+    this.maxValue = 9999.0,
   });
 
   @override
@@ -56,7 +58,7 @@ class _TimeInputFieldState extends State<TimeInputField> {
 
   void _adjustValue(double delta) {
     final current = double.tryParse(_controller.text) ?? 0.0;
-    final newValue = (current + delta).clamp(0.0, 9999.0);
+    final newValue = (current + delta).clamp(0.0, widget.maxValue);
     final text = _formatValue(newValue);
     _controller.text = text;
     widget.onChanged(newValue);
@@ -117,7 +119,12 @@ class _TimeInputFieldState extends State<TimeInputField> {
                       ),
                       onChanged: (v) {
                         final d = double.tryParse(v);
-                        widget.onChanged(d);
+                        if (d != null && d > widget.maxValue) {
+                          _controller.text = _formatValue(widget.maxValue);
+                          widget.onChanged(widget.maxValue);
+                        } else {
+                          widget.onChanged(d);
+                        }
                       },
                     ),
                     Positioned(

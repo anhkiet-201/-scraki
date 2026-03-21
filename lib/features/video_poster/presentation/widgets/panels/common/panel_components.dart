@@ -570,12 +570,14 @@ class PanelComponents {
     required double? value,
     required void Function(double?) onChanged,
     String? hint,
+    double maxValue = 9999.0,
   }) {
     return TimeInputField(
       label: label,
       initialValue: value,
       onChanged: onChanged,
       hint: hint,
+      maxValue: maxValue,
     );
   }
 }

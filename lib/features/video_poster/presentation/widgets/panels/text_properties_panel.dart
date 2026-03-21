@@ -551,12 +551,14 @@ class TextPropertiesPanel extends StatelessWidget {
                 label: 'BẮT ĐẦU (s)',
                 value: text.startTime,
                 onChanged: (v) => store.updateCustomTextTiming(text.id, startTime: v),
+                maxValue: 40.0,
               ),
               const SizedBox(height: 12),
               _buildTimeInput(
                 label: 'KẾT THÚC (s)',
                 value: text.endTime,
                 hint: 'Xuyên suốt',
+                maxValue: 40.0,
                 onChanged: (v) => v == null 
                     ? store.updateCustomTextTiming(text.id, clearEndTime: true)
                     : store.updateCustomTextTiming(text.id, endTime: v),
@@ -574,12 +576,14 @@ class TextPropertiesPanel extends StatelessWidget {
     required double? value,
     required void Function(double?) onChanged,
     String? hint,
+    double maxValue = 9999.0,
   }) {
     return TimeInputField(
       label: label,
       initialValue: value,
       onChanged: onChanged,
       hint: hint,
+      maxValue: maxValue,
     );
   }
 }

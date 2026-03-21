@@ -224,14 +224,93 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           const Spacer(),
           Observer(
             builder: (_) {
-              if (store.isBatchCreating) return const SizedBox.shrink();
-              return _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
-                store.resetProject();
-              });
+              return Row(
+                children: [
+                   _buildModeToggle(),
+                   const SizedBox(width: 12),
+                  _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
+                    store.resetProject();
+                  }),
+                ],
+              );
             },
           ),
           const SizedBox(width: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeToggle() {
+    return Observer(
+      builder: (_) {
+        final isPreview = store.isPreviewMode;
+        return Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildModeOption(
+                label: 'CHỈNH SỬA',
+                icon: Icons.edit_note_rounded,
+                isActive: !isPreview,
+                onTap: () {
+                  if (isPreview) store.togglePreviewMode();
+                },
+              ),
+              _buildModeOption(
+                label: 'XEM TRƯỚC',
+                icon: Icons.play_circle_outline_rounded,
+                isActive: isPreview,
+                onTap: () {
+                  if (!isPreview) store.togglePreviewMode();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModeOption({
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF6366F1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? Colors.white : Colors.white30,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: isActive ? Colors.white : Colors.white30,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -464,7 +543,15 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
 
                                       // Custom Image Overlays
                                       if (!store.isHidingImagesForCapture)
-                                        ...store.customImages.map(
+                                        ...store.customImages.where((image) {
+                                          if (!store.isPreviewMode) return true;
+                                          final pos = store.position.inMilliseconds / 1000.0;
+                                          if (pos < image.startTime) return false;
+                                          if (image.endTime != null && pos > image.endTime!) {
+                                            return false;
+                                          }
+                                          return true;
+                                        }).map(
                                           (image) => ImageOverlayItem(
                                             key: ValueKey(image.id),
                                             id: image.id,
@@ -493,7 +580,15 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                         ),
 
                                       // Free-form custom text overlays
-                                      ...store.customTexts.map(
+                                      ...store.customTexts.where((text) {
+                                          if (!store.isPreviewMode) return true;
+                                          final pos = store.position.inMilliseconds / 1000.0;
+                                          if (pos < text.startTime) return false;
+                                          if (text.endTime != null && pos > text.endTime!) {
+                                            return false;
+                                          }
+                                          return true;
+                                        }).map(
                                         (text) => VideoOverlayItem(
                                           key: ValueKey(text.id),
                                           label: text.label,

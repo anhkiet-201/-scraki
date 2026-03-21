@@ -514,6 +514,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
             PanelComponents.buildTimeInput(
               label: 'BẮT ĐẦU (s)',
               value: image.startTime,
+              maxValue: 40.0,
               onChanged: (v) => widget.store.updateCustomImageTiming(selectedId, startTime: v),
             ),
             const SizedBox(height: 12),
@@ -521,6 +522,7 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
               label: 'KẾT THÚC (s)',
               value: image.endTime,
               hint: 'Xuyên suốt',
+              maxValue: 40.0,
               onChanged: (v) => v == null 
                   ? widget.store.updateCustomImageTiming(selectedId, clearEndTime: true)
                   : widget.store.updateCustomImageTiming(selectedId, endTime: v),

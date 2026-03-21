@@ -670,13 +670,21 @@ abstract class _VideoPosterStore with Store {
   late final VideoController videoController;
 
   @observable
-  Duration duration = Duration.zero;
+  Duration duration = const Duration(seconds: 40);
 
   @observable
   Duration position = Duration.zero;
 
   @observable
   bool isPlaying = false;
+
+  @observable
+  bool isPreviewMode = false;
+
+  @action
+  void togglePreviewMode() {
+    isPreviewMode = !isPreviewMode;
+  }
 
   // Stream subscriptions (private)
   StreamSubscription<Duration>? _durationSub;
@@ -750,10 +758,17 @@ abstract class _VideoPosterStore with Store {
     );
 
     _durationSub = player.stream.duration.listen(
-      (d) => runInAction(() => duration = d),
+      (d) => runInAction(() => duration = const Duration(seconds: 40)),
     );
     _positionSub = player.stream.position.listen(
-      (p) => runInAction(() => position = p),
+      (p) => runInAction(() {
+        if (p >= const Duration(seconds: 40)) {
+          player.seek(Duration.zero);
+          if (!isPlaying) player.pause();
+        } else {
+          position = p;
+        }
+      }),
     );
     _playingSub = player.stream.playing.listen(
       (p) => runInAction(() => isPlaying = p),
