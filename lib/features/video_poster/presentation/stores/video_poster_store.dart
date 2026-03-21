@@ -332,10 +332,8 @@ abstract class _VideoPosterStore with Store {
   Future<void> _loadRecentColors() async {
     final textColors = await _recentColorRepo.getRecentTextColors();
     final bgColors = await _recentColorRepo.getRecentBgColors();
-    // Assuming the repository has these methods or we add them. 
-    // For now, I'll check the repository implementation first or just add them if possible.
-    final strokeColors = await _recentColorRepo.getRecentTextColors(); // Fallback if not exist
-    final borderColors = await _recentColorRepo.getRecentBgColors(); // Fallback if not exist
+    final strokeColors = await _recentColorRepo.getRecentStrokeColors();
+    final borderColors = await _recentColorRepo.getRecentBorderColors();
 
     runInAction(() {
       recentTextColors.addAll(textColors);
@@ -348,7 +346,8 @@ abstract class _VideoPosterStore with Store {
   void _saveRecentColors() {
     _recentColorRepo.saveRecentTextColors(recentTextColors.toList());
     _recentColorRepo.saveRecentBgColors(recentBgColors.toList());
-    // We should probably update the repo too, but if it has generic save, we use that.
+    _recentColorRepo.saveRecentStrokeColors(recentStrokeColors.toList());
+    _recentColorRepo.saveRecentBorderColors(recentBorderColors.toList());
   }
 
   @observable

@@ -57,7 +57,7 @@ class PanelComponents {
         Expanded(
           child: Container(
             height: 1,
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
           ),
         ),
         const SizedBox(width: 8),
@@ -74,7 +74,7 @@ class PanelComponents {
         Expanded(
           child: Container(
             height: 1,
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
           ),
         ),
       ],
@@ -99,7 +99,7 @@ class PanelComponents {
         activeTrackColor: accentColor,
         inactiveTrackColor: Colors.white12,
         thumbColor: Colors.white,
-        overlayColor: accentColor.withOpacity(0.2),
+        overlayColor: accentColor.withValues(alpha: 0.2),
       ),
       child: Slider(
         value: value.clamp(min, max),
@@ -143,7 +143,7 @@ class PanelComponents {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: accentColor.withOpacity(0.4),
+                          color: accentColor.withValues(alpha: 0.4),
                           blurRadius: 6,
                         ),
                       ]
@@ -161,7 +161,7 @@ class PanelComponents {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white24, width: 1),
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
             ),
             child: const Icon(
               Icons.colorize_rounded,
@@ -400,44 +400,52 @@ class PanelComponents {
 
   /// List of supported font families.
   static const fontFamilies = <String>[
+    // Modern Sans
     'Be Vietnam Pro',
     'Noto Sans',
     'Inter',
     'Roboto',
     'Nunito',
     'Lato',
-    'Source Sans 3',
     'Open Sans',
     'Barlow',
     'DM Sans',
     'Lexend',
     'Manrope',
     'Work Sans',
-    'Josefin Sans',
-    'Saira Condensed',
-    'Chakra Petch',
-    'Barlow Condensed',
-    'Exo 2',
     'Kanit',
-    'Oswald',
     'Montserrat',
     'Raleway',
+
+    // Bold / Display (Font dày đều)
+    'Anton',
+    'Alfa Slab One',
+    'Lilita One',
+    'Titan One',
+    'Bowlby One',
+    'Paytone One',
+    'Bungee',
+    'Bevan',
+    'Oswald',
+    'Coiny',
+    'Lobster',
+    'Pattaya',
+    'Righteous',
+    'Chakra Petch',
+    'Saira Condensed',
+    'Barlow Condensed',
+    'Exo 2',
+
+    // Rounded / Soft
     'Quicksand',
     'Comfortaa',
-    'Merriweather',
-    'Playfair Display',
-    'Lora',
-    'Noto Serif',
-    'Bitter',
-    'Zilla Slab',
     'Cabin',
-    'Righteous',
-    'Dancing Script',
+
+    // Handwriting / Script (Dày)
     'Pacifico',
-    'Lobster',
     'Patrick Hand',
-    'Coiny',
-    'Viaoda Libre',
+    'Itim',
+    'Dancing Script',
   ];
 
   /// Builds a font picker dropdown.
@@ -497,9 +505,9 @@ class PanelComponents {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Theme(
         data: ThemeData.dark().copyWith(
@@ -509,7 +517,7 @@ class PanelComponents {
         child: ExpansionTile(
           initiallyExpanded: initiallyExpanded,
           leading: icon != null 
-              ? Icon(icon, size: 18, color: kPanelAccentColor.withOpacity(0.8)) 
+              ? Icon(icon, size: 18, color: kPanelAccentColor.withValues(alpha: 0.8)) 
               : null,
           title: Text(
             title,
