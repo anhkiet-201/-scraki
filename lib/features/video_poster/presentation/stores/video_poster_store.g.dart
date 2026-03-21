@@ -381,6 +381,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$realDurationAtom = Atom(
+    name: '_VideoPosterStore.realDuration',
+    context: context,
+  );
+
+  @override
+  Duration get realDuration {
+    _$realDurationAtom.reportRead();
+    return super.realDuration;
+  }
+
+  @override
+  set realDuration(Duration value) {
+    _$realDurationAtom.reportWrite(value, super.realDuration, () {
+      super.realDuration = value;
+    });
+  }
+
   late final _$isPlayingAtom = Atom(
     name: '_VideoPosterStore.isPlaying',
     context: context,
@@ -854,6 +872,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void seekProject(Duration p) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.seekProject',
+    );
+    try {
+      return super.seekProject(p);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void disposePlayer() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.disposePlayer',
@@ -924,6 +954,7 @@ batchOutputDir: ${batchOutputDir},
 playbackSpeed: ${playbackSpeed},
 duration: ${duration},
 position: ${position},
+realDuration: ${realDuration},
 isPlaying: ${isPlaying},
 isPreviewMode: ${isPreviewMode},
 activeNavIndex: ${activeNavIndex}

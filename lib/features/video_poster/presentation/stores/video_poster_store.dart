@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -676,6 +676,9 @@ abstract class _VideoPosterStore with Store {
   Duration position = Duration.zero;
 
   @observable
+  Duration realDuration = Duration.zero;
+
+  @observable
   bool isPlaying = false;
 
   @observable
@@ -688,9 +691,9 @@ abstract class _VideoPosterStore with Store {
 
   // Stream subscriptions (private)
   StreamSubscription<Duration>? _durationSub;
-  StreamSubscription<Duration>? _positionSub;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<double>? _rateSub;
+  Timer? _playbackTimer;
 
   // ─── Navigation State ─────────────────────────────────────────────────────
 
@@ -709,7 +712,6 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void addSourceVideos(List<String> paths) {
-    // Only add videos when on Video Editor tab to prevent conflicts with PhoneView
     if (paths.isEmpty ||
         _dashboardStore.selectedIndex != _kVideoEditorTabIndex) {
       return;
@@ -717,7 +719,6 @@ abstract class _VideoPosterStore with Store {
     final wasEmpty = sourceVideoPaths.isEmpty;
     sourceVideoPaths.addAll(paths);
 
-    // Auto-load and play the first video when media is added for the first time
     if (wasEmpty && sourceVideoPaths.isNotEmpty) {
       currentVideoIndex = 0;
       _playCurrentVideo();
@@ -736,7 +737,6 @@ abstract class _VideoPosterStore with Store {
       return;
     }
 
-    // If removed the current or a previous video, adjust index
     if (index <= currentVideoIndex) {
       currentVideoIndex = (currentVideoIndex - 1).clamp(
         0,
@@ -757,34 +757,66 @@ abstract class _VideoPosterStore with Store {
       ),
     );
 
-    _durationSub = player.stream.duration.listen(
-      (d) => runInAction(() => duration = const Duration(seconds: 40)),
-    );
-    _positionSub = player.stream.position.listen(
-      (p) => runInAction(() {
-        if (p >= const Duration(seconds: 40)) {
-          player.seek(Duration.zero);
-          if (!isPlaying) player.pause();
+    player.setPlaylistMode(PlaylistMode.loop);
+
+    _durationSub = player.stream.duration.listen((Duration d) {
+      runInAction(() => realDuration = d);
+    });
+
+    _playingSub = player.stream.playing.listen((bool p) {
+      runInAction(() {
+        isPlaying = p;
+        if (p) {
+          _startPlaybackTimer();
         } else {
-          position = p;
+          _stopPlaybackTimer();
         }
-      }),
-    );
-    _playingSub = player.stream.playing.listen(
-      (p) => runInAction(() => isPlaying = p),
-    );
-    _rateSub = player.stream.rate.listen(
-      (r) => runInAction(() => playbackSpeed = r),
-    );
+      });
+    });
+
+    _rateSub = player.stream.rate.listen((double r) {
+      runInAction(() => playbackSpeed = r);
+    });
+  }
+
+  void _startPlaybackTimer() {
+    _stopPlaybackTimer();
+    _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      runInAction(() {
+        final newPos = position + const Duration(milliseconds: 100);
+        if (newPos >= const Duration(seconds: 40)) {
+          position = Duration.zero;
+          if (realDuration > Duration.zero) {
+            player.seek(Duration.zero);
+          }
+        } else {
+          position = newPos;
+        }
+      });
+    });
+  }
+
+  void _stopPlaybackTimer() {
+    _playbackTimer?.cancel();
+    _playbackTimer = null;
+  }
+
+  @action
+  void seekProject(Duration p) {
+    position = p;
+    if (realDuration > Duration.zero) {
+      final targetMs = p.inMilliseconds % realDuration.inMilliseconds;
+      player.seek(Duration(milliseconds: targetMs));
+    }
   }
 
   /// Dispose player, controller, subscriptions, and any running batch job.
   @action
   void disposePlayer() {
+    _stopPlaybackTimer();
     cancelBatchVideos();
     _favoritesSubscription?.cancel();
     _durationSub?.cancel();
-    _positionSub?.cancel();
     _playingSub?.cancel();
     _rateSub?.cancel();
     player.dispose();
@@ -798,6 +830,7 @@ abstract class _VideoPosterStore with Store {
     customImages.clear();
     currentVideoIndex = 0;
     player.stop();
+    position = Duration.zero;
 
     // Clear batch output data
     batchLogs.clear();
@@ -809,7 +842,6 @@ abstract class _VideoPosterStore with Store {
     activeNavIndex = index;
   }
 
-  /// Play a specific video by index
   @action
   void playVideoAtIndex(int index) {
     if (index < 0 || index >= sourceVideoPaths.length) return;
@@ -823,14 +855,10 @@ abstract class _VideoPosterStore with Store {
     player.play();
   }
 
-  /// Capture preview widget as PNG at 720x1280 resolution
   @action
   Future<Uint8List> capturePreviewAsPng() async {
     try {
       if (previewKey.currentContext == null) {
-        debugPrint(
-          'Warning: previewKey.currentContext is null. UI likely not rendered.',
-        );
         throw 'Please add at least one text or video element before exporting.';
       }
 
@@ -840,9 +868,7 @@ abstract class _VideoPosterStore with Store {
       selectCustomImage(null);
       isHidingImagesForCapture = true;
 
-      // Wait until all Google Fonts have finished loading
       await GoogleFonts.pendingFonts();
-
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
       final renderObject = previewKey.currentContext?.findRenderObject();
@@ -850,21 +876,15 @@ abstract class _VideoPosterStore with Store {
         throw 'Preview render object not found.';
       }
 
-      // Standardize export to 1080p — pixel ratio 1.5 on 720px = 1080px
       const pixelRatio = 1.5;
-
       final image = await renderObject.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
       isHidingImagesForCapture = false;
-      // Restore selection
-      if (previousTextSelection != null)
-        selectCustomText(previousTextSelection);
-      if (previousImageSelection != null)
-        selectCustomImage(previousImageSelection);
+      if (previousTextSelection != null) selectCustomText(previousTextSelection);
+      if (previousImageSelection != null) selectCustomImage(previousImageSelection);
 
       if (byteData == null) throw 'Failed to encode overlay image.';
-
       return byteData.buffer.asUint8List();
     } catch (e) {
       debugPrint('Error capturing preview: $e');
@@ -873,15 +893,11 @@ abstract class _VideoPosterStore with Store {
   }
 
   Future<String> _downloadNetworkImage(String url, String ext) async {
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File(
-        '${tempDir.path}/temp_img_${DateTime.now().millisecondsSinceEpoch}$ext',
-      );
-      await tempFile.writeAsBytes(response.bodyBytes);
-      return tempFile.path;
-    }
-    throw 'HTTP ${response.statusCode}';
+    final dio = Dio();
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = '${tempDir.path}/temp_img_${DateTime.now().millisecondsSinceEpoch}$ext';
+    
+    await dio.download(url, tempPath);
+    return tempPath;
   }
 }

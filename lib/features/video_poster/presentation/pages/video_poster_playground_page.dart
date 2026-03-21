@@ -61,7 +61,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           const SingleActivator(LogicalKeyboardKey.space, control: true): () {
             if (store.player.state.position >= store.player.state.duration &&
                 store.player.state.duration > Duration.zero) {
-              store.player.seek(Duration.zero);
+              store.seekProject(Duration.zero);
               store.player.play();
             } else {
               store.player.playOrPause();
@@ -129,9 +129,14 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                             isPlaying: store.isPlaying,
                                             position: store.position,
                                             duration: store.duration,
-                                            onPlayPause: () =>
-                                                store.player.playOrPause(),
-                                            onSeek: (d) => store.player.seek(d),
+                                            onPlayPause: () {
+                                              if (store.isPlaying) {
+                                                store.player.pause();
+                                              } else {
+                                                store.player.play();
+                                              }
+                                            },
+                                            onSeek: (p) => store.seekProject(p),
                                           ),
                                         ),
                                       ),
@@ -534,7 +539,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                 return Container(
                                                   color:
                                                       candidateData.isNotEmpty
-                                                      ? Colors.white.withOpacity(0.1)
+                                                      ? Colors.white.withValues(alpha: 0.1)
                                                       : Colors.transparent,
                                                 );
                                               },
