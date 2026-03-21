@@ -482,8 +482,12 @@ class TextPropertiesPanel extends StatelessWidget {
                 PanelComponents.buildRecentColors(
                   colors: store.recentStrokeColors.toList(),
                   selectedColor: text.strokeColor,
-                  onSelect: (c) =>
-                      store.updateCustomTextStyle(text.id, strokeColor: c),
+                  onSelect: (c) {
+                    store.updateCustomTextStyle(text.id, strokeColor: c);
+                    if (text.strokeWidth == 0) {
+                      store.updateCustomTextStyle(text.id, strokeWidth: 2.0);
+                    }
+                  },
                 ),
                 const SizedBox(height: 8),
                 PanelComponents.buildPaletteDivider(),
@@ -529,8 +533,8 @@ class TextPropertiesPanel extends StatelessWidget {
                 PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN CHỮ: ${text.strokeWidth.toInt()}px'),
                 PanelComponents.buildSlider(
                   context: context,
-                  value: text.strokeWidth,
-                  min: 0, max: 20,
+                  value: text.strokeWidth.clamp(1.0, 20.0),
+                  min: 1, max: 20,
                   onChanged: (v) => store.updateCustomTextStyle(text.id, strokeWidth: v),
                 ),
               ],

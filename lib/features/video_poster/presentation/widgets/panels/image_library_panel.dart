@@ -440,8 +440,12 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
               PanelComponents.buildRecentColors(
                 colors: widget.store.recentBorderColors.toList(),
                 selectedColor: image.borderColor,
-                onSelect: (c) =>
-                    widget.store.updateCustomImageBorder(selectedId, color: c),
+                onSelect: (c) {
+                  widget.store.updateCustomImageBorder(selectedId, color: c);
+                  if (image.borderWidth == 0) {
+                    widget.store.updateCustomImageBorder(selectedId, width: 2.0);
+                  }
+                },
               ),
               const SizedBox(height: 8),
               PanelComponents.buildPaletteDivider(),
@@ -494,8 +498,8 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
               PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN: ${image.borderWidth.toInt()}px'),
               PanelComponents.buildSlider(
                 context: context,
-                value: image.borderWidth,
-                min: 0, max: 20,
+                value: image.borderWidth.clamp(1.0, 20.0),
+                min: 1, max: 20,
                 onChanged: (v) => widget.store.updateCustomImageBorder(selectedId, width: v),
               ),
             ],
