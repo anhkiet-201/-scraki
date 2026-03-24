@@ -71,6 +71,18 @@ class TikTokPostService implements ITikTokPostService {
     );
 
     try {
+
+      // 0. Kill TikTok app trước khi mở share intent
+      logger.i('[TikTokPostService] Đang đóng ứng dụng TikTok (nếu đang bật)...');
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'am',
+        'force-stop',
+        packageName,
+      ]);
+
       // 1. Push file
       await _scrcpyService.pushFiles(serial, [localVideoPath]);
 
