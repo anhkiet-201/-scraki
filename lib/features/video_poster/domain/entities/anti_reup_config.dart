@@ -4,7 +4,7 @@ part 'anti_reup_config.freezed.dart';
 part 'anti_reup_config.g.dart';
 
 @freezed
-class AntiReupConfig with _$AntiReupConfig {
+abstract class AntiReupConfig with _$AntiReupConfig {
   const factory AntiReupConfig({
     /// Whether parameters should be randomized within safe ranges
     @Default(true) bool isRandomized,

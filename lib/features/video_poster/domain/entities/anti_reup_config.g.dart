@@ -6,8 +6,8 @@ part of 'anti_reup_config.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$AntiReupConfigImpl _$$AntiReupConfigImplFromJson(Map<String, dynamic> json) =>
-    _$AntiReupConfigImpl(
+_AntiReupConfig _$AntiReupConfigFromJson(Map<String, dynamic> json) =>
+    _AntiReupConfig(
       isRandomized: json['isRandomized'] as bool? ?? true,
       speedMultiplier: (json['speedMultiplier'] as num?)?.toDouble() ?? 1.05,
       enableVisualNoise: json['enableVisualNoise'] as bool? ?? true,
@@ -19,15 +19,14 @@ _$AntiReupConfigImpl _$$AntiReupConfigImplFromJson(Map<String, dynamic> json) =>
       targetDuration: (json['targetDuration'] as num?)?.toDouble(),
     );
 
-Map<String, dynamic> _$$AntiReupConfigImplToJson(
-  _$AntiReupConfigImpl instance,
-) => <String, dynamic>{
-  'isRandomized': instance.isRandomized,
-  'speedMultiplier': instance.speedMultiplier,
-  'enableVisualNoise': instance.enableVisualNoise,
-  'noiseLevel': instance.noiseLevel,
-  'colorShiftIntensity': instance.colorShiftIntensity,
-  'enableAudioPitchShift': instance.enableAudioPitchShift,
-  'stripMetadata': instance.stripMetadata,
-  'targetDuration': instance.targetDuration,
-};
+Map<String, dynamic> _$AntiReupConfigToJson(_AntiReupConfig instance) =>
+    <String, dynamic>{
+      'isRandomized': instance.isRandomized,
+      'speedMultiplier': instance.speedMultiplier,
+      'enableVisualNoise': instance.enableVisualNoise,
+      'noiseLevel': instance.noiseLevel,
+      'colorShiftIntensity': instance.colorShiftIntensity,
+      'enableAudioPitchShift': instance.enableAudioPitchShift,
+      'stripMetadata': instance.stripMetadata,
+      'targetDuration': instance.targetDuration,
+    };

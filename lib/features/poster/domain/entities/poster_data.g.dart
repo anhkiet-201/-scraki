@@ -6,9 +6,7 @@ part of 'poster_data.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$PosterDataImpl _$$PosterDataImplFromJson(
-  Map<String, dynamic> json,
-) => _$PosterDataImpl(
+_PosterData _$PosterDataFromJson(Map<String, dynamic> json) => _PosterData(
   jobTitle: json['jobTitle'] as String,
   companyName: json['companyName'] as String,
   location: json['location'] as String,
@@ -17,10 +15,10 @@ _$PosterDataImpl _$$PosterDataImplFromJson(
       (json['requirements'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList() ??
-      const [],
+      const <String>[],
   benefits:
       (json['benefits'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const [],
+      const <String>[],
   contactInfo: json['contactInfo'] as String,
   backgroundUrl: json['backgroundUrl'] as String?,
   qrCodeData: json['qrCodeData'] as String?,
@@ -29,11 +27,11 @@ _$PosterDataImpl _$$PosterDataImplFromJson(
   slug: json['slug'] as String?,
   imageUrls:
       (json['imageUrls'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const [],
+      const <String>[],
   tikTokCaption: json['tikTokCaption'] as String?,
 );
 
-Map<String, dynamic> _$$PosterDataImplToJson(_$PosterDataImpl instance) =>
+Map<String, dynamic> _$PosterDataToJson(_PosterData instance) =>
     <String, dynamic>{
       'jobTitle': instance.jobTitle,
       'companyName': instance.companyName,

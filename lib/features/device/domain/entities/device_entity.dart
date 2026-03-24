@@ -7,7 +7,7 @@ enum DeviceStatus { connected, offline, unauthorized }
 enum ConnectionType { usb, tcp }
 
 @freezed
-class DeviceEntity with _$DeviceEntity {
+abstract class DeviceEntity with _$DeviceEntity {
   const factory DeviceEntity({
     required String id,
     required String serial,

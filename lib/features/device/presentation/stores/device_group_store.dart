@@ -76,11 +76,16 @@ abstract class _DeviceGroupStore with Store {
           .toSet();
 
       devices = devices.where((d) {
-        final matchesDevice =
-            d.serial.toLowerCase().contains(query) ||
+        final matchesDevice = d.serial.toLowerCase().contains(query) ||
             d.modelName.toLowerCase().contains(query);
+
+        // Check if nickname matches
+        final nickname = getNicknameForDevice(d.serial) ?? d.modelName;
+        final matchesNickname = nickname.toLowerCase().contains(query);
+
         final matchesGroup = serialsInMatchingGroups.contains(d.serial);
-        return matchesDevice || matchesGroup;
+
+        return matchesDevice || matchesNickname || matchesGroup;
       }).toList();
     }
 
@@ -247,6 +252,107 @@ abstract class _DeviceGroupStore with Store {
       }
     }
     return null;
+  }
+
+  String? getNicknameForDevice(String deviceSerial) {
+    for (final group in groups) {
+      if (group.deviceSerials.contains(deviceSerial)) {
+        return group.deviceNicknames[deviceSerial];
+      }
+    }
+    return null;
+  }
+
+  @action
+  Future<void> saveNicknameForDevice(String deviceSerial, String nickname) async {
+    logger.i(
+      '[DeviceGroupStore] Trying to save nickname "$nickname" for device "$deviceSerial". Total groups: ${groups.length}',
+    );
+    bool foundDeviceInAnyGroup = false;
+
+    for (final group in groups) {
+      if (group.deviceSerials.contains(deviceSerial)) {
+        foundDeviceInAnyGroup = true;
+        logger.i(
+          '[DeviceGroupStore] Found device in group: ${group.name}. Current nickname: ${group.deviceNicknames[deviceSerial]}',
+        );
+
+        if (group.deviceNicknames[deviceSerial] != nickname) {
+          logger.i(
+            '[DeviceGroupStore] Nickname changed. Proceeding to update group in Firebase...',
+          );
+          final newNicknames = Map<String, String>.from(group.deviceNicknames);
+          if (nickname.isEmpty) {
+            newNicknames.remove(deviceSerial);
+          } else {
+            newNicknames[deviceSerial] = nickname;
+          }
+          
+          final updatedGroup = group.copyWith(deviceNicknames: newNicknames);
+          final result = await _repository.updateGroup(updatedGroup);
+          result.fold(
+            (failure) {
+              logger.e('[DeviceGroupStore] Lỗi lưu nickname: ${failure.message}');
+              errorMessage = failure.message;
+            },
+            (_) {
+              logger.i(
+                '[DeviceGroupStore] Saved nickname $nickname for device $deviceSerial to group ${group.name}',
+              );
+              final index = groups.indexWhere((g) => g.id == group.id);
+              if (index != -1) groups[index] = updatedGroup;
+            },
+          );
+        } else {
+          logger.i(
+            '[DeviceGroupStore] Nickname is already assigned to this device in Firebase. Skipping update.',
+          );
+        }
+        break; // Update the first matching group only
+      }
+    }
+
+    if (!foundDeviceInAnyGroup) {
+      if (groups.isNotEmpty) {
+        logger.w(
+          '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Automatically adding it to the first group: ${groups.first.name} before saving nickname.',
+        );
+        final targetGroup = groups.first;
+
+        final newSerials = List<String>.from(targetGroup.deviceSerials);
+        newSerials.add(deviceSerial);
+
+        final newNicknames = Map<String, String>.from(targetGroup.deviceNicknames);
+        newNicknames[deviceSerial] = nickname;
+
+        final updatedGroup = targetGroup.copyWith(
+          deviceSerials: newSerials,
+          deviceNicknames: newNicknames,
+        );
+
+        final result = await _repository.updateGroup(updatedGroup);
+        result.fold(
+          (failure) {
+            logger.e(
+              '[DeviceGroupStore] Lỗi thêm device & nickname vào group: ${failure.message}',
+            );
+            errorMessage = failure.message;
+          },
+          (_) {
+            logger.i(
+              '[DeviceGroupStore] Automatically saved orphaned device $deviceSerial with nickname $nickname to group ${targetGroup.name}',
+            );
+            final index = groups.indexWhere((g) => g.id == targetGroup.id);
+            if (index != -1) groups[index] = updatedGroup;
+          },
+        );
+      } else {
+        logger.w(
+          '[DeviceGroupStore] FATAL: Device $deviceSerial is NOT in any group, and there are NO GROUPS available to assign it to! Cannot save nickname.',
+        );
+        errorMessage = 'Không có Device Group nào để lưu thông tin thiết bị!';
+      }
+    }
   }
 
   @action

@@ -4,7 +4,7 @@ part 'poster_data.freezed.dart';
 part 'poster_data.g.dart';
 
 @freezed
-class PosterData with _$PosterData {
+abstract class PosterData with _$PosterData {
   const factory PosterData({
     required String jobTitle,
     required String companyName,
@@ -12,10 +12,10 @@ class PosterData with _$PosterData {
     required String salaryRange,
 
     /// Short bullet points (3-5 items)
-    @Default([]) List<String> requirements,
+    @Default(<String>[]) List<String> requirements,
 
     /// Short bullet points (3-5 items)
-    @Default([]) List<String> benefits,
+    @Default(<String>[]) List<String> benefits,
 
     required String contactInfo,
 
@@ -28,7 +28,7 @@ class PosterData with _$PosterData {
     // ID/Slug for fetching details
     String? slug,
     // Images extracted from details
-    @Default([]) List<String> imageUrls,
+    @Default(<String>[]) List<String> imageUrls,
     // AI generated TikTok Caption
     String? tikTokCaption,
   }) = _PosterData;

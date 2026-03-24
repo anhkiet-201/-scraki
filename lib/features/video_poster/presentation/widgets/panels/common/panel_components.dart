@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -398,6 +399,54 @@ class PanelComponents {
     );
   }
 
+  /// Returns a safe font style, falling back to Roboto if the font family is not found.
+  static TextStyle getSafeFont(
+    String fontFamily, {
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    double? height,
+    double? letterSpacing,
+    List<ui.Shadow>? shadows,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
+    double? decorationThickness,
+  }) {
+    try {
+      return GoogleFonts.getFont(
+        fontFamily,
+        color: color,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        fontStyle: fontStyle,
+        height: height,
+        letterSpacing: letterSpacing,
+        shadows: shadows,
+        decoration: decoration,
+        decorationColor: decorationColor,
+        decorationStyle: decorationStyle,
+        decorationThickness: decorationThickness,
+      );
+    } catch (e) {
+      debugPrint('Font $fontFamily not found, falling back to Roboto: $e');
+      return GoogleFonts.roboto(
+        color: color,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        fontStyle: fontStyle,
+        height: height,
+        letterSpacing: letterSpacing,
+        shadows: shadows,
+        decoration: decoration,
+        decorationColor: decorationColor,
+        decorationStyle: decorationStyle,
+        decorationThickness: decorationThickness,
+      );
+    }
+  }
+
   /// List of supported font families.
   static const fontFamilies = <String>[
     // Modern Sans
@@ -482,7 +531,7 @@ class PanelComponents {
               value: font,
               child: Text(
                 font,
-                style: GoogleFonts.getFont(
+                style: getSafeFont(
                   font,
                   color: Colors.white,
                   fontSize: 14,

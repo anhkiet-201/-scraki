@@ -1,5 +1,5 @@
-// dart format width=80
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format width=80
 
 // **************************************************************************
 // InjectableConfigGenerator
@@ -28,8 +28,6 @@ import '../../features/device/data/datasources/aki_remote_service.dart'
     as _i109;
 import '../../features/device/data/datasources/device_group_remote_data_source.dart'
     as _i521;
-import '../../features/device/data/datasources/device_nickname_remote_data_source.dart'
-    as _i619;
 import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
 import '../../features/device/data/datasources/scrcpy_socket_client.dart'
@@ -40,16 +38,12 @@ import '../../features/device/data/datasources/video_worker_manager.dart'
     as _i3;
 import '../../features/device/data/repositories/device_group_repository_firebase_impl.dart'
     as _i936;
-import '../../features/device/data/repositories/device_nickname_repository_impl.dart'
-    as _i317;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
 import '../../features/device/domain/repositories/device_group_repository.dart'
     as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
-import '../../features/device/domain/repositories/i_device_nickname_repository.dart'
-    as _i708;
 import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
@@ -135,28 +129,31 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
-    gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
     );
+    gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
+    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
+    gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
+    gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
+    gh.lazySingleton<_i607.ScrcpySocketClient>(
+      () => _i607.ScrcpySocketClient(),
+    );
+    gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
     gh.lazySingleton<_i763.RecentColorRepository>(
       () => _i763.RecentColorRepository(),
     );
     gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
-    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
-    gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
-    gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
-    gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
-    gh.lazySingleton<_i607.ScrcpySocketClient>(
-      () => _i607.ScrcpySocketClient(),
-    );
     gh.lazySingleton<_i107.IAuthRemoteDataSource>(
       () => _i107.AuthRemoteDataSourceFirebaseImpl(),
+    );
+    gh.lazySingleton<_i589.IAuthRepository>(
+      () => _i153.AuthRepositoryImpl(gh<_i107.IAuthRemoteDataSource>()),
     );
     gh.lazySingleton<_i260.IAkiRemoteService>(() => _i109.AkiRemoteService());
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
@@ -168,13 +165,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i391.IPosterRepository>(
       () => _i424.PosterRepositoryImpl(),
     );
-    gh.lazySingleton<_i589.IAuthRepository>(
-      () => _i153.AuthRepositoryImpl(gh<_i107.IAuthRemoteDataSource>()),
+    gh.lazySingleton<_i603.AuthStore>(
+      () => _i603.AuthStore(
+        gh<_i589.IAuthRepository>(),
+        gh<_i260.IAkiRemoteService>(),
+      ),
     );
     gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
       () => _i963.FavoriteImageRemoteDataSourceImpl(),
     );
-    gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
     gh.lazySingleton<_i583.IImapRemoteDataSource>(
       () => _i583.ImapRemoteDataSourceImpl(),
     );
@@ -184,13 +183,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i296.ICredentialRemoteDataSource>(
       () => _i296.CredentialRemoteDataSourceFirebaseImpl(),
     );
-    gh.factory<_i1029.GetSettingsUseCase>(
-      () => settingsUseCaseModule.getSettingsUseCase(
-        gh<_i657.ISettingsRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i229.ITikTokPostService>(
-      () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
+    gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
+      () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
     );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(
@@ -198,41 +193,21 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i583.IImapRemoteDataSource>(),
       ),
     );
-    gh.factory<_i1056.SettingsEmailStore>(
-      () => _i1056.SettingsEmailStore(gh<_i482.IEmailRepository>()),
+    gh.lazySingleton<_i229.ITikTokPostService>(
+      () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
     );
-    gh.singleton<_i151.SettingsStore>(
-      () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
+    gh.lazySingleton<_i985.DeviceRepository>(
+      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
     );
     gh.lazySingleton<_i147.FavoriteImageRepository>(
       () => _i650.FavoriteImageRepositoryImpl(
         gh<_i963.FavoriteImageRemoteDataSource>(),
       ),
     );
-    gh.lazySingleton<_i985.DeviceRepository>(
-      () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
-    );
-    gh.factory<_i706.SavePosterUseCase>(
-      () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
-    );
-    gh.lazySingleton<_i603.AuthStore>(
-      () => _i603.AuthStore(
-        gh<_i589.IAuthRepository>(),
-        gh<_i260.IAkiRemoteService>(),
+    gh.factory<_i1029.GetSettingsUseCase>(
+      () => settingsUseCaseModule.getSettingsUseCase(
+        gh<_i657.ISettingsRepository>(),
       ),
-    );
-    gh.factory<_i498.EmailStore>(
-      () => _i498.EmailStore(
-        gh<_i482.IEmailRepository>(),
-        gh<_i985.DeviceRepository>(),
-        gh<_i260.IAkiRemoteService>(),
-      ),
-    );
-    gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
-      () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
-    );
-    gh.singleton<_i730.SettingsConfigProvider>(
-      () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
     );
     gh.lazySingleton<_i563.DeviceManagerStore>(
       () => _i563.DeviceManagerStore(gh<_i985.DeviceRepository>()),
@@ -242,13 +217,46 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i284.RecruitmentRemoteDataSource>(),
       ),
     );
-    gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
-      () => _i521.DeviceGroupRemoteDataSourceImpl(
-        gh<_i730.SettingsConfigProvider>(),
+    gh.factory<_i706.SavePosterUseCase>(
+      () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
+    );
+    gh.factory<_i1056.SettingsEmailStore>(
+      () => _i1056.SettingsEmailStore(gh<_i482.IEmailRepository>()),
+    );
+    gh.factory<_i498.EmailStore>(
+      () => _i498.EmailStore(
+        gh<_i482.IEmailRepository>(),
+        gh<_i985.DeviceRepository>(),
+        gh<_i260.IAkiRemoteService>(),
       ),
     );
-    gh.lazySingleton<_i619.IDeviceNicknameRemoteDataSource>(
-      () => _i619.DeviceNicknameRemoteDataSourceImpl(
+    gh.lazySingleton<_i833.FetchJobDetailUseCase>(
+      () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.lazySingleton<_i420.FetchJobsUseCase>(
+      () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.lazySingleton<_i405.ParseJobTextUseCase>(
+      () => _i405.ParseJobTextUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
+      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.singleton<_i151.SettingsStore>(
+      () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
+    );
+    gh.factory<_i876.PosterCreationStore>(
+      () => _i876.PosterCreationStore(
+        gh<_i405.ParseJobTextUseCase>(),
+        gh<_i420.FetchJobsUseCase>(),
+        gh<_i545.SearchJobsWithAiUseCase>(),
+      ),
+    );
+    gh.singleton<_i730.SettingsConfigProvider>(
+      () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
+    );
+    gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
+      () => _i521.DeviceGroupRemoteDataSourceImpl(
         gh<_i730.SettingsConfigProvider>(),
       ),
     );
@@ -264,35 +272,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i891.DashboardStore>(),
       ),
     );
-    gh.lazySingleton<_i708.IDeviceNicknameRepository>(
-      () => _i317.DeviceNicknameRepositoryImpl(
-        gh<_i619.IDeviceNicknameRemoteDataSource>(),
-      ),
-    );
-    gh.lazySingleton<_i833.FetchJobDetailUseCase>(
-      () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
-      () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i405.ParseJobTextUseCase>(
-      () => _i405.ParseJobTextUseCase(gh<_i481.RecruitmentRepository>()),
-    );
-    gh.lazySingleton<_i420.FetchJobsUseCase>(
-      () => _i420.FetchJobsUseCase(gh<_i481.RecruitmentRepository>()),
-    );
     gh.singleton<_i391.DeviceNicknameStore>(
-      () => _i391.DeviceNicknameStore(
-        gh<_i708.IDeviceNicknameRepository>(),
-        gh<_i151.SettingsStore>(),
-      ),
-    );
-    gh.factory<_i876.PosterCreationStore>(
-      () => _i876.PosterCreationStore(
-        gh<_i405.ParseJobTextUseCase>(),
-        gh<_i420.FetchJobsUseCase>(),
-        gh<_i545.SearchJobsWithAiUseCase>(),
-      ),
+      () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
     );
     return this;
   }

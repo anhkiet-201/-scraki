@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../panels/common/panel_components.dart';
 import 'video_overlay_item_store.dart';
 
 /// Draggable and interactive text overlay item for video preview.
@@ -195,7 +195,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                     focusNode: _store.focusNode,
                                     autofocus: true,
                                     style: widget.fontFamily != null
-                                        ? GoogleFonts.getFont(
+                                        ? PanelComponents.getSafeFont(
                                             widget.fontFamily!,
                                             color: widget.color,
                                             fontSize: _store.fontSize,
@@ -238,7 +238,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                               ? _TextWithLineBackgrounds(
                                   text: _store.label,
                                   style: widget.fontFamily != null
-                                      ? GoogleFonts.getFont(
+                                      ? PanelComponents.getSafeFont(
                                           widget.fontFamily!,
                                           color: widget.color,
                                           fontSize: _store.fontSize,
@@ -275,14 +275,14 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                           Text(
                                             _store.label,
                                             style: (widget.fontFamily != null
-                                                    ? GoogleFonts.getFont(
-                                                        widget.fontFamily!,
-                                                        fontSize: _store.fontSize,
-                                                        fontWeight: widget.fontWeight,
-                                                        fontStyle: widget.fontStyle,
-                                                        height: widget.textHeight,
-                                                        letterSpacing: widget.letterSpacing,
-                                                      )
+                                            ? PanelComponents.getSafeFont(
+                                                widget.fontFamily!,
+                                                fontSize: _store.fontSize,
+                                                fontWeight: widget.fontWeight,
+                                                fontStyle: widget.fontStyle,
+                                                height: widget.textHeight,
+                                                letterSpacing: widget.letterSpacing,
+                                              )
                                                     : TextStyle(
                                                         fontSize: _store.fontSize,
                                                         fontWeight: widget.fontWeight,
@@ -304,15 +304,15 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                                         Text(
                                           _store.label,
                                           style: widget.fontFamily != null
-                                              ? GoogleFonts.getFont(
-                                                  widget.fontFamily!,
-                                                  color: widget.color,
-                                                  fontSize: _store.fontSize,
-                                                  fontWeight: widget.fontWeight,
-                                                  fontStyle: widget.fontStyle,
-                                                  height: widget.textHeight,
-                                                  letterSpacing: widget.letterSpacing,
-                                                )
+                                          ? PanelComponents.getSafeFont(
+                                              widget.fontFamily!,
+                                              color: widget.color,
+                                              fontSize: _store.fontSize,
+                                              fontWeight: widget.fontWeight,
+                                              fontStyle: widget.fontStyle,
+                                              height: widget.textHeight,
+                                              letterSpacing: widget.letterSpacing,
+                                            )
                                               : TextStyle(
                                                   color: widget.color,
                                                   fontSize: _store.fontSize,

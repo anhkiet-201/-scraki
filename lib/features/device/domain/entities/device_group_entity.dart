@@ -3,13 +3,14 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'device_group_entity.freezed.dart';
 
 @freezed
-class DeviceGroupEntity with _$DeviceGroupEntity {
+abstract class DeviceGroupEntity with _$DeviceGroupEntity {
   const factory DeviceGroupEntity({
     required String id,
     required String name,
     required int colorValue,
     required List<String> deviceSerials,
-    @Default({}) Map<String, String> deviceEmails,
+    @Default(<String, String>{}) Map<String, String> deviceEmails,
+    @Default(<String, String>{}) Map<String, String> deviceNicknames,
   }) = _DeviceGroupEntity;
 
   const DeviceGroupEntity._();
@@ -26,6 +27,7 @@ class DeviceGroupEntity with _$DeviceGroupEntity {
       colorValue: colorValue,
       deviceSerials: [],
       deviceEmails: {},
+      deviceNicknames: {},
     );
   }
 }

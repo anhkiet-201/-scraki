@@ -97,7 +97,8 @@ class ModernPoster extends PosterTemplate {
                       'jobTitle',
                       (text, s) => Text(
                         text,
-                        style: GoogleFonts.robotoCondensed(
+                        style: GoogleFonts.getFont(
+                          'Roboto Condensed',
                           fontSize:
                               20 * scale, // Reduced from 22 (and 26, 30 prev)
                           fontWeight: FontWeight.bold,

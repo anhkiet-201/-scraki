@@ -8,6 +8,7 @@
 #import "VideoDecoderPlugin.h"
 
 // FFmpeg imports
+#define AVMediaType FFMPEG_AVMediaType
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -15,12 +16,11 @@ extern "C" {
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 }
+#undef AVMediaType
 
-// System imports (rename conflicting types)
-#define AVMediaType SystemAVMediaType
+// System imports
 #import <AVFoundation/AVFoundation.h>
 #import <CoreVideo/CoreVideo.h>
-#undef AVMediaType
 
 #include <thread>
 #include <queue>
@@ -30,8 +30,8 @@ extern "C" {
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#ifndef be64toh
 #include <libkern/OSByteOrder.h>
+#ifndef be64toh
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #endif
 
@@ -44,7 +44,7 @@ extern "C" {
 @property(nonatomic, weak) id<FlutterTextureRegistry> registry;
 
 // State
-@property(nonatomic, assign) std::atomic<bool>* isDecoding;
+@property(nonatomic, assign) std::atomic<bool>* isDecodingPtr;
 @property(nonatomic, assign) std::thread* decoderThread;
 @property(nonatomic, assign) std::mutex* pixelBufferMutex;
 @property(nonatomic, assign) CVPixelBufferRef latestPixelBuffer;
@@ -70,7 +70,7 @@ extern "C" {
     self = [super init];
     if (self) {
         _registry = registry;
-        _isDecoding = new std::atomic<bool>(false);
+        _isDecodingPtr = new std::atomic<bool>(false);
         _pixelBufferMutex = new std::mutex();
         _latestPixelBuffer = nil;
         _socketFd = -1;
@@ -87,7 +87,7 @@ extern "C" {
 
 - (void)dealloc {
     [self stop];
-    delete _isDecoding;
+    delete _isDecodingPtr;
     delete _pixelBufferMutex;
 }
 
@@ -106,7 +106,7 @@ extern "C" {
     NSLog(@"[VideoDecoder] Created session for %@:%d with TextureID: %lld", host, port, _textureId);
     
     // Start thread
-    *_isDecoding = true;
+    *_isDecodingPtr = true;
     _decoderThread = new std::thread([self, host, port]() {
         [self decoderThreadMain:host port:port];
     });
@@ -116,10 +116,10 @@ extern "C" {
 }
 
 - (void)stop {
-    if (!*_isDecoding) return; // Already stopped
+    if (!*_isDecodingPtr) return; // Already stopped
     
     NSLog(@"[VideoDecoder] Stopping session TextureID: %lld", _textureId);
-    *_isDecoding = false;
+    *_isDecodingPtr = false;
     
     // Close socket to unblock recv()
     if (_socketFd >= 0) {
@@ -224,7 +224,7 @@ extern "C" {
     int payloadSize = 0;
     bool isConfigPacket = false;
     
-    while (*_isDecoding) {
+    while (*_isDecodingPtr) {
         ssize_t bytesRead = recv(_socketFd, tempBuf, sizeof(tempBuf), 0);
         if (bytesRead <= 0) break;
         

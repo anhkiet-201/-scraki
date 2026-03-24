@@ -7,6 +7,7 @@ class DeviceGroupModel extends HiveObject {
   int colorValue;
   List<String> deviceSerials;
   Map<String, String> deviceEmails;
+  Map<String, String> deviceNicknames;
 
   DeviceGroupModel({
     required this.id,
@@ -14,6 +15,7 @@ class DeviceGroupModel extends HiveObject {
     required this.colorValue,
     required this.deviceSerials,
     this.deviceEmails = const {},
+    this.deviceNicknames = const {},
   });
 
   factory DeviceGroupModel.fromEntity(DeviceGroupEntity entity) {
@@ -23,6 +25,7 @@ class DeviceGroupModel extends HiveObject {
       colorValue: entity.colorValue,
       deviceSerials: entity.deviceSerials,
       deviceEmails: entity.deviceEmails,
+      deviceNicknames: entity.deviceNicknames,
     );
   }
 
@@ -44,6 +47,14 @@ class DeviceGroupModel extends HiveObject {
             return MapEntry(originalKey, value.toString());
           }) ??
           {},
+      deviceNicknames:
+          (json['deviceNicknames'] as Map<String, dynamic>?)?.map((key, value) {
+            final originalKey = key
+                .replaceAll('_dot_', '.')
+                .replaceAll('_colon_', ':');
+            return MapEntry(originalKey, value.toString());
+          }) ??
+          {},
     );
   }
 
@@ -57,6 +68,10 @@ class DeviceGroupModel extends HiveObject {
         final safeKey = key.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
         return MapEntry(safeKey, value);
       }),
+      'deviceNicknames': deviceNicknames.map((key, value) {
+        final safeKey = key.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
+        return MapEntry(safeKey, value);
+      }),
     };
   }
 
@@ -67,6 +82,7 @@ class DeviceGroupModel extends HiveObject {
       colorValue: colorValue,
       deviceSerials: deviceSerials,
       deviceEmails: deviceEmails,
+      deviceNicknames: deviceNicknames,
     );
   }
 }
@@ -87,6 +103,7 @@ class DeviceGroupModelAdapter extends TypeAdapter<DeviceGroupModel> {
       colorValue: fields[2] as int,
       deviceSerials: (fields[3] as List).cast<String>(),
       deviceEmails: (fields[4] as Map?)?.cast<String, String>() ?? {},
+      deviceNicknames: (fields[5] as Map?)?.cast<String, String>() ?? {},
     );
   }
 
@@ -102,8 +119,10 @@ class DeviceGroupModelAdapter extends TypeAdapter<DeviceGroupModel> {
       ..write(obj.colorValue)
       ..writeByte(3)
       ..write(obj.deviceSerials)
-      ..writeByte(4)
-      ..write(obj.deviceEmails);
+      ..writeByte(106)
+      ..write(obj.deviceEmails)
+      ..writeByte(5)
+      ..write(obj.deviceNicknames);
   }
 
   @override

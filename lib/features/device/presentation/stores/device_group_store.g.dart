@@ -124,6 +124,18 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
     );
   }
 
+  late final _$saveNicknameForDeviceAsyncAction = AsyncAction(
+    '_DeviceGroupStore.saveNicknameForDevice',
+    context: context,
+  );
+
+  @override
+  Future<void> saveNicknameForDevice(String deviceSerial, String nickname) {
+    return _$saveNicknameForDeviceAsyncAction.run(
+      () => super.saveNicknameForDevice(deviceSerial, nickname),
+    );
+  }
+
   late final _$saveEmailForDeviceAsyncAction = AsyncAction(
     '_DeviceGroupStore.saveEmailForDevice',
     context: context,

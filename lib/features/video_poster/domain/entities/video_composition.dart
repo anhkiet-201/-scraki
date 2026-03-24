@@ -4,7 +4,7 @@ import 'package:scraki/features/video_poster/domain/entities/anti_reup_config.da
 part 'video_composition.freezed.dart';
 
 @freezed
-class VideoComposition with _$VideoComposition {
+abstract class VideoComposition with _$VideoComposition {
   const factory VideoComposition({
     required String id,
     required List<String> sourceVideoPaths,
