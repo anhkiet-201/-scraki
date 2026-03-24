@@ -515,6 +515,11 @@ abstract class _VideoPosterStore with Store {
 
     _batchService = BatchVideoService();
 
+    // Fix: Tạm thời tắt isPreviewMode và dừng video để khi chụp PNG UI
+    // không bị dính logic render text theo thời gian thực (giúp hiển thị tất cả text).
+    isPreviewMode = false;
+    player.pause();
+
     // 1. Group text overlays by timing and capture each group as PNG
     final timedOverlays = <TimedOverlay>[];
     if (customTexts.isNotEmpty) {
