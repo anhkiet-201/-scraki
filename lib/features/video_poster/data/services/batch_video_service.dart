@@ -1040,7 +1040,7 @@ class BatchVideoService {
           }
           
           if (scaleExpr != '1.0') {
-            filterBlock += ",scale='iw*$scaleExpr':'ih*$scaleExpr':eval=frame";
+            filterBlock += ",scale='bitand(iw*$scaleExpr,-2)':'bitand(ih*$scaleExpr,-2)':eval=frame";
           }
 
           // Combine X logic
