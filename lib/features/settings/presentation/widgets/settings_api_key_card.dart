@@ -75,7 +75,7 @@ class SettingsApiKeyCard extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Enter API key...',
                 hintStyle: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 prefixIcon: Icon(
                   Icons.key,
@@ -84,7 +84,7 @@ class SettingsApiKeyCard extends StatelessWidget {
                 ),
                 filled: true,
                 fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withOpacity(0.5),
+                    .withValues(alpha: 0.5),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,

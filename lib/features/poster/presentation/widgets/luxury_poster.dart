@@ -48,7 +48,7 @@ class LuxuryPoster extends PosterTemplate {
               SizedBox(height: 20 * scale),
 
               Divider(
-                color: gold.withOpacity(0.3),
+                color: gold.withValues(alpha: 0.3),
                 indent: 35 * scale,
                 endIndent: 35 * scale,
               ),
@@ -124,7 +124,7 @@ class LuxuryPoster extends PosterTemplate {
                   Container(
                     height: 25 * scale,
                     width: 1,
-                    color: gold.withOpacity(0.3),
+                    color: gold.withValues(alpha: 0.3),
                     margin: EdgeInsets.symmetric(horizontal: 10 * scale),
                   ),
                   Expanded(
@@ -223,7 +223,7 @@ class LuxuryPoster extends PosterTemplate {
                 width: double.infinity,
                 padding: EdgeInsets.all(10 * scale),
                 decoration: BoxDecoration(
-                  color: gold.withOpacity(0.1),
+                  color: gold.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4 * scale),
                 ),
                 child: wrapEditable(

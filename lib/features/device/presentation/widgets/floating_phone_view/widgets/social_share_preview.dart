@@ -20,11 +20,11 @@ class SocialSharePreview extends StatelessWidget {
         margin: const EdgeInsets.all(16),
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 700),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+          color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -82,7 +82,7 @@ class SocialSharePreview extends StatelessWidget {
                           decoration: BoxDecoration(
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),

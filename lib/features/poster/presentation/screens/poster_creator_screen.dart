@@ -138,7 +138,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
             decoration: InputDecoration(
               hintText: 'Tìm kiếm công việc (AI)...',
               hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
               ),
               prefixIcon: Icon(
                 Icons.smart_toy_rounded,
@@ -150,8 +150,8 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
                 vertical: 8,
               ),
               isDense: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
-                0.3,
+              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
               ),
               filled: true,
               border: OutlineInputBorder(
@@ -237,7 +237,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.2)
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
               : theme.colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -476,7 +476,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -522,7 +522,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
           'Chọn một công việc từ cột bên trái\nđể bắt đầu thiết kế',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -627,7 +627,7 @@ class _PosterCreatorScreenState extends State<PosterCreatorScreen> {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 offset: const Offset(0, -4),
                 blurRadius: 16,
               ),

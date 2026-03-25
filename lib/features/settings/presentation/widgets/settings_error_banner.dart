@@ -14,7 +14,7 @@ class SettingsErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.error.withOpacity(0.3)),
+        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

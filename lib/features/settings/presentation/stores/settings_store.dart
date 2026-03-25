@@ -59,27 +59,21 @@ abstract class _SettingsStore with Store {
 
   @action
   void updateApiKey(String newKey) {
-    if (settings == null) {
-      settings = SettingsEntity.empty();
-    }
+    settings ??= SettingsEntity.empty();
     settings = settings!.copyWith(aiApiKey: newKey);
     errorMessage = null;
   }
 
   @action
   void updatePhoneNumber(String newPhone) {
-    if (settings == null) {
-      settings = SettingsEntity.empty();
-    }
+    settings ??= SettingsEntity.empty();
     settings = settings!.copyWith(posterPhoneNumber: newPhone);
     errorMessage = null;
   }
 
   @action
   void updateDeviceGroupCollection(String collection) {
-    if (settings == null) {
-      settings = SettingsEntity.empty();
-    }
+    settings ??= SettingsEntity.empty();
     settings = settings!.copyWith(deviceGroupCollection: collection);
     errorMessage = null;
   }

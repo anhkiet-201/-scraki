@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
 
+enum TextAnimationType {
+  none,
+  fade,
+  zoom,
+  slideUp,
+  slideDown,
+  slideLeft,
+  slideRight,
+}
+
 /// Represents a free-form text overlay on the video canvas.
 /// All position values (x, y) are normalized [0.0, 1.0] relative to
 /// the 720x1280 virtual canvas.
@@ -44,6 +54,15 @@ class CustomTextOverlay {
   /// Time in seconds when the text should disappear. Null means until the end.
   final double? endTime;
 
+  final TextAnimationType animationInType;
+  final double animationInDuration;
+  final TextAnimationType animationOutType;
+  final double animationOutDuration;
+
+  bool get isAnimated =>
+      animationInType != TextAnimationType.none ||
+      animationOutType != TextAnimationType.none;
+
   const CustomTextOverlay({
     required this.id,
     required this.label,
@@ -67,6 +86,10 @@ class CustomTextOverlay {
     this.strokeWidth = 0.0,
     this.startTime = 0.0,
     this.endTime,
+    this.animationInType = TextAnimationType.none,
+    this.animationInDuration = 0.1,
+    this.animationOutType = TextAnimationType.none,
+    this.animationOutDuration = 0.1,
   });
 
   CustomTextOverlay copyWith({
@@ -97,6 +120,10 @@ class CustomTextOverlay {
     double? startTime,
     double? endTime,
     bool clearEndTime = false,
+    TextAnimationType? animationInType,
+    double? animationInDuration,
+    TextAnimationType? animationOutType,
+    double? animationOutDuration,
   }) {
     return CustomTextOverlay(
       id: id ?? this.id,
@@ -126,6 +153,10 @@ class CustomTextOverlay {
       strokeWidth: strokeWidth ?? this.strokeWidth,
       startTime: startTime ?? this.startTime,
       endTime: clearEndTime ? null : (endTime ?? this.endTime),
+      animationInType: animationInType ?? this.animationInType,
+      animationInDuration: animationInDuration ?? this.animationInDuration,
+      animationOutType: animationOutType ?? this.animationOutType,
+      animationOutDuration: animationOutDuration ?? this.animationOutDuration,
     );
   }
 }

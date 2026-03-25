@@ -17,11 +17,31 @@ class TimedOverlay {
   final Uint8List bytes;
   final double startTime;
   final double? endTime;
+  final bool isAnimated;
+  final String animationInType;
+  final double animationInDuration;
+  final String animationOutType;
+  final double animationOutDuration;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final double rotation;
 
   const TimedOverlay({
     required this.bytes,
     required this.startTime,
     this.endTime,
+    this.isAnimated = false,
+    this.animationInType = 'none',
+    this.animationInDuration = 0.1,
+    this.animationOutType = 'none',
+    this.animationOutDuration = 0.1,
+    this.x = 0.5,
+    this.y = 0.5,
+    this.width = 0.0,
+    this.height = 0.0,
+    this.rotation = 0.0,
   });
 }
 
@@ -913,30 +933,161 @@ class BatchVideoService {
         final overlay = config.textOverlays[i];
         int textInputIdx = 1 + i;
 
-        final int textJX = random.nextInt(9) - 4;
-        final int textJY = random.nextInt(9) - 4;
-        final double textOpacity = 0.96 + (random.nextDouble() * 0.04);
+        if (!overlay.isAnimated) {
+          final int textJX = random.nextInt(9) - 4;
+          final int textJY = random.nextInt(9) - 4;
+          final double textOpacity = 0.96 + (random.nextDouble() * 0.04);
 
-        String jitterLabel = '[text_jitter$i]';
-        filterComplex.write(
-          '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$jitterLabel;',
-        );
+          String jitterLabel = '[text_jitter$i]';
+          filterComplex.write(
+            '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$jitterLabel;',
+          );
 
-        String enableFilter = "enable='between(t,${overlay.startTime},";
-        if (overlay.endTime != null) {
-          enableFilter += "${overlay.endTime})'";
+          String enableFilter = "enable='between(t,${overlay.startTime},";
+          if (overlay.endTime != null) {
+            enableFilter += "${overlay.endTime})'";
+          } else {
+            enableFilter += "99999)'";
+          }
+
+          String nextVideoLabel = '[ov$overlayIdx]';
+          filterComplex.write(
+            '$lastVideoLabel$jitterLabel'
+            'overlay=$textJX:$textJY:$enableFilter:shortest=1$nextVideoLabel;',
+          );
+
+          lastVideoLabel = nextVideoLabel;
+          overlayIdx++;
         } else {
-          enableFilter += "99999)'";
+          // --- Animated Text Logic ---
+          // Dimensions and positioning
+          final int targetW = (overlay.width * 1.5).round();
+          final int targetH = (overlay.height * 1.5).round();
+          int finalW = targetW;
+          int finalH = targetH;
+          if (overlay.rotation != 0) {
+            final double angle = overlay.rotation * pi / 180;
+            finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs()).round();
+            finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs()).round();
+          }
+
+          final int centerX = (overlay.x * 1080).round();
+          final int centerY = (overlay.y * 1920).round();
+          final int targetX = centerX - (finalW ~/ 2);
+          final int targetY = centerY - (finalH ~/ 2);
+
+          String filterBlock = '[$textInputIdx:v]scale=$targetW:$targetH,format=rgba';
+          
+          if (overlay.rotation != 0) {
+            filterBlock += ',rotate=${overlay.rotation}*PI/180:c=black@0:ow=$finalW:oh=$finalH';
+          }
+
+          final start = overlay.startTime;
+          final end = overlay.endTime ?? 40.0;
+          final totalDur = (end - start).abs();
+          
+          String xExprIn = '';
+          String yExprIn = '';
+          String xExprOut = '';
+          String yExprOut = '';
+
+          // Build IN logic
+          if (overlay.animationInType != 'none') {
+            final durIn = totalDur * overlay.animationInDuration;
+            if (overlay.animationInType == 'fade') {
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            } else if (overlay.animationInType == 'slideUp') {
+              final int startY = targetY + 100;
+              yExprIn = '$startY - 100*(t-$start)/$durIn';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            } else if (overlay.animationInType == 'slideDown') {
+              final int startY = targetY - 100;
+              yExprIn = '$startY + 100*(t-$start)/$durIn';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            } else if (overlay.animationInType == 'slideLeft') {
+              final int startX = targetX + 100;
+              xExprIn = '$startX - 100*(t-$start)/$durIn';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            } else if (overlay.animationInType == 'slideRight') {
+              final int startX = targetX - 100;
+              xExprIn = '$startX + 100*(t-$start)/$durIn';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            } else if (overlay.animationInType == 'zoom') {
+              final int startY = targetY + 30;
+              yExprIn = '$startY - 30*(t-$start)/$durIn';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+            }
+          }
+
+          // Build OUT logic
+          if (overlay.animationOutType != 'none' && totalDur > 0) {
+            final durOut = totalDur * overlay.animationOutDuration;
+            final startOut = end - durOut;
+            if (overlay.animationOutType == 'fade') {
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            } else if (overlay.animationOutType == 'slideUp') {
+              yExprOut = '$targetY - 100*(t-$startOut)/$durOut';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            } else if (overlay.animationOutType == 'slideDown') {
+              yExprOut = '$targetY + 100*(t-$startOut)/$durOut';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            } else if (overlay.animationOutType == 'slideLeft') {
+              xExprOut = '$targetX - 100*(t-$startOut)/$durOut';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            } else if (overlay.animationOutType == 'slideRight') {
+              xExprOut = '$targetX + 100*(t-$startOut)/$durOut';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            } else if (overlay.animationOutType == 'zoom') {
+              final int endY = targetY + 30;
+              yExprOut = '$targetY + 30*(t-$startOut)/$durOut';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+            }
+          }
+
+          // Combine X logic
+          String finalXExpr = '$targetX';
+          if (xExprIn.isEmpty && xExprOut.isNotEmpty) {
+            final startOut = end - (totalDur * overlay.animationOutDuration);
+            finalXExpr = 'if(gt(t\\,$startOut)\\,$xExprOut\\,$targetX)';
+          } else if (xExprIn.isNotEmpty && xExprOut.isEmpty) {
+            final endIn = start + (totalDur * overlay.animationInDuration);
+            finalXExpr = 'if(lt(t\\,$endIn)\\,$xExprIn\\,$targetX)';
+          } else if (xExprIn.isNotEmpty && xExprOut.isNotEmpty) {
+            final endIn = start + (totalDur * overlay.animationInDuration);
+            final startOut = end - (totalDur * overlay.animationOutDuration);
+            finalXExpr = 'if(lt(t\\,$endIn)\\,$xExprIn\\,if(gt(t\\,$startOut)\\,$xExprOut\\,$targetX))';
+          }
+
+          // Combine Y logic
+          String finalYExpr = '$targetY';
+          if (yExprIn.isEmpty && yExprOut.isNotEmpty) {
+            final startOut = end - (totalDur * overlay.animationOutDuration);
+            finalYExpr = 'if(gt(t\\,$startOut)\\,$yExprOut\\,$targetY)';
+          } else if (yExprIn.isNotEmpty && yExprOut.isEmpty) {
+            final endIn = start + (totalDur * overlay.animationInDuration);
+            finalYExpr = 'if(lt(t\\,$endIn)\\,$yExprIn\\,$targetY)';
+          } else if (yExprIn.isNotEmpty && yExprOut.isNotEmpty) {
+            final endIn = start + (totalDur * overlay.animationInDuration);
+            final startOut = end - (totalDur * overlay.animationOutDuration);
+            finalYExpr = 'if(lt(t\\,$endIn)\\,$yExprIn\\,if(gt(t\\,$startOut)\\,$yExprOut\\,$targetY))';
+          }
+          
+          String xExpr = finalXExpr;
+          String yExpr = finalYExpr;
+          String preOverlayLabel = '[text_anim$i]';
+          filterComplex.write('$filterBlock$preOverlayLabel;');
+
+          String enableFilter = "enable='between(t,$start,$end)'";
+          String nextVideoLabel = '[ov$overlayIdx]';
+          
+          filterComplex.write(
+            '$lastVideoLabel$preOverlayLabel'
+            'overlay=x=\'$xExpr\':y=\'$yExpr\':$enableFilter:shortest=1$nextVideoLabel;'
+          );
+
+          lastVideoLabel = nextVideoLabel;
+          overlayIdx++;
         }
-
-        String nextVideoLabel = '[ov$overlayIdx]';
-        filterComplex.write(
-          '$lastVideoLabel$jitterLabel'
-          'overlay=$textJX:$textJY:$enableFilter:shortest=1$nextVideoLabel;',
-        );
-
-        lastVideoLabel = nextVideoLabel;
-        overlayIdx++;
       }
 
       // Final processing

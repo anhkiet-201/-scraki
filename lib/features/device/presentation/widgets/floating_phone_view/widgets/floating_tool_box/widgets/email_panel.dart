@@ -241,7 +241,7 @@ class _EmailPanelState extends State<EmailPanel> {
                               )
                             : ListView.separated(
                                 itemCount: _store.messages.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final msg = _store.messages[index];

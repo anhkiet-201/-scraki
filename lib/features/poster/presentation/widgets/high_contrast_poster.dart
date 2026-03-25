@@ -249,7 +249,7 @@ class HighContrastPoster extends PosterTemplate {
               child: Container(
                 width: 100 * scale,
                 height: 200 * scale,
-                color: const Color(0xFFFFD700).withOpacity(0.1),
+                color: const Color(0xFFFFD700).withValues(alpha: 0.1),
               ),
             ),
           ),

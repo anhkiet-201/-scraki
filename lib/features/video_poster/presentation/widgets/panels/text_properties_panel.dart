@@ -20,7 +20,7 @@ class TextPropertiesPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF111111),
         border: Border(
-          right: BorderSide(color: Colors.white.withOpacity(0.06)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
       ),
       child: Column(
@@ -181,7 +181,7 @@ class TextPropertiesPanel extends StatelessWidget {
             Icon(
               Icons.text_fields_rounded,
               size: 40,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
             const SizedBox(height: 12),
             Text(
@@ -189,7 +189,7 @@ class TextPropertiesPanel extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 height: 1.6,
               ),
             ),
@@ -539,6 +539,151 @@ class TextPropertiesPanel extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
+            ],
+          ),
+
+          // ── Section: HIỆU ỨNG VÀO (IN) ──
+          PanelComponents.buildPanelSection(
+            title: 'HIỆU ỨNG XUẤT HIỆN (IN)',
+            icon: Icons.login_rounded,
+            children: [
+              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<TextAnimationType>(
+                    value: text.animationInType,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontFamily: 'Roboto',
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không có (Static)')),
+                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Nhạt dần (Fade)')),
+                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Thu/Phóng (Zoom)')),
+                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt lên (Slide Up)')),
+                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt xuống (Slide Down)')),
+                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt trái (Slide Left)')),
+                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt phải (Slide Right)')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        store.updateCustomTextAnimationIn(text.id, v, text.animationInDuration);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              if (text.animationInType != TextAnimationType.none) ...[
+                const SizedBox(height: 16),
+                Builder(
+                  builder: (context) {
+                    final totalDuration = (text.endTime ?? 40.0) - text.startTime;
+                    final maxIn = 1.0 - (text.animationOutType != TextAnimationType.none ? text.animationOutDuration : 0.0);
+                    final safeMaxIn = maxIn < 0.05 ? 0.05 : maxIn;
+                    final safeValue = text.animationInDuration.clamp(0.01, safeMaxIn).toDouble();
+                    final inSeconds = totalDuration * safeValue;
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆU ỨNG: ${(safeValue * 100).toInt()}% (${inSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: safeValue,
+                          min: 0.01,
+                          max: 1.0,
+                          divisions: 99,
+                          onChanged: (v) => store.updateCustomTextAnimationIn(text.id, text.animationInType, v),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+
+          // ── Section: HIỆU ỨNG RA (OUT) ──
+          PanelComponents.buildPanelSection(
+            title: 'HIỆU ỨNG BIẾN MẤT (OUT)',
+            icon: Icons.logout_rounded,
+            children: [
+              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<TextAnimationType>(
+                    value: text.animationOutType,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontFamily: 'Roboto',
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không có (Static)')),
+                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Nhạt dần (Fade)')),
+                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Thu/Phóng (Zoom)')),
+                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt lên (Slide Up)')),
+                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt xuống (Slide Down)')),
+                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt trái (Slide Left)')),
+                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt phải (Slide Right)')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        store.updateCustomTextAnimationOut(text.id, v, text.animationOutDuration);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              if (text.animationOutType != TextAnimationType.none) ...[
+                const SizedBox(height: 16),
+                Builder(
+                  builder: (context) {
+                    final totalDuration = (text.endTime ?? 40.0) - text.startTime;
+                    final maxOut = 1.0 - (text.animationInType != TextAnimationType.none ? text.animationInDuration : 0.0);
+                    final safeMaxOut = maxOut < 0.05 ? 0.05 : maxOut;
+                    final safeValue = text.animationOutDuration.clamp(0.01, safeMaxOut).toDouble();
+                    final outSeconds = totalDuration * safeValue;
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆU ỨNG: ${(safeValue * 100).toInt()}% (${outSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSlider(
+                          context: context,
+                          value: 1.0 - safeValue,
+                          min: 0.0,
+                          max: 1.0,
+                          divisions: 99,
+                          isReversed: true,
+                          onChanged: (v) => store.updateCustomTextAnimationOut(text.id, text.animationOutType, 1.0 - v),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ],
           ),
 

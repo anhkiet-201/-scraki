@@ -91,14 +91,15 @@ class PanelComponents {
     int? divisions,
     required void Function(double) onChanged,
     Color accentColor = kPanelAccentColor,
+    bool isReversed = false,
   }) {
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
         trackHeight: 2,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-        activeTrackColor: accentColor,
-        inactiveTrackColor: Colors.white12,
+        activeTrackColor: isReversed ? Colors.white12 : accentColor,
+        inactiveTrackColor: isReversed ? accentColor : Colors.white12,
         thumbColor: Colors.white,
         overlayColor: accentColor.withValues(alpha: 0.2),
       ),

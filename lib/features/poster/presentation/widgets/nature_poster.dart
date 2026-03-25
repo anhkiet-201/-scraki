@@ -29,7 +29,7 @@ class NaturePoster extends PosterTemplate {
               width: 200 * scale,
               height: 200 * scale,
               decoration: BoxDecoration(
-                color: const Color(0xFF88B04B).withOpacity(0.2),
+                color: const Color(0xFF88B04B).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(100 * scale),
                 ),
@@ -43,7 +43,7 @@ class NaturePoster extends PosterTemplate {
               width: 150 * scale,
               height: 150 * scale,
               decoration: BoxDecoration(
-                color: darkGreen.withOpacity(0.1),
+                color: darkGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -139,7 +139,7 @@ class NaturePoster extends PosterTemplate {
                     borderRadius: BorderRadius.circular(20 * scale),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: Offset(0, 4),
                       ),
@@ -309,7 +309,7 @@ class NaturePoster extends PosterTemplate {
         Container(
           padding: EdgeInsets.all(5 * scale),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 12 * scale, color: color),

@@ -28,7 +28,7 @@ class NeonPoster extends PosterTemplate {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.purpleAccent.withOpacity(0.2),
+                    Colors.purpleAccent.withValues(alpha: 0.2),
                     Colors.transparent,
                   ],
                 ),
@@ -55,7 +55,7 @@ class NeonPoster extends PosterTemplate {
                     borderRadius: BorderRadius.circular(8 * scale),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.cyanAccent.withOpacity(0.5),
+                        color: Colors.cyanAccent.withValues(alpha: 0.5),
                         blurRadius: 10 * scale,
                       ),
                     ],
@@ -122,7 +122,7 @@ class NeonPoster extends PosterTemplate {
                 Container(
                   padding: EdgeInsets.all(14 * scale),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16 * scale),
                     border: Border.all(color: Colors.white24),
                   ),

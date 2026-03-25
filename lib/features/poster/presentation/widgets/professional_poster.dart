@@ -169,7 +169,7 @@ class ProfessionalPoster extends PosterTemplate {
                     width: double.infinity,
                     padding: EdgeInsets.all(12 * scale),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0056B3).withOpacity(0.1),
+                      color: const Color(0xFF0056B3).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8 * scale),
                     ),
                     child: Column(

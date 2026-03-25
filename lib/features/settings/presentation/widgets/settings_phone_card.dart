@@ -73,7 +73,7 @@ class SettingsPhoneCard extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'e.g. 0987654321',
                 hintStyle: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 prefixIcon: Icon(
                   Icons.phone_outlined,
@@ -82,7 +82,7 @@ class SettingsPhoneCard extends StatelessWidget {
                 ),
                 filled: true,
                 fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withOpacity(0.5),
+                    .withValues(alpha: 0.5),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,

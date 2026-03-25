@@ -216,7 +216,7 @@ class AbstractPoster extends PosterTemplate {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: Offset(4, 4),
             blurRadius: 8,
           ),

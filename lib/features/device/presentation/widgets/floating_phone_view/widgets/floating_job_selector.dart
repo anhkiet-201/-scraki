@@ -222,7 +222,7 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount:
                       _store.availableJobs.length + (_store.hasMore ? 1 : 0),
-                  separatorBuilder: (_, __) => Divider(
+                  separatorBuilder: (_, _) => Divider(
                     height: 1,
                     indent: 64,
                     endIndent: 16,

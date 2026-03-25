@@ -58,7 +58,7 @@ class GeometricPoster extends PosterTemplate {
                     style: GoogleFonts.montserrat(
                       fontSize: 13 * scale,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       letterSpacing: 2,
                     ),
                     textScaler: TextScaler.linear(s),
@@ -114,7 +114,7 @@ class GeometricPoster extends PosterTemplate {
                       borderRadius: BorderRadius.circular(16 * scale),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: Offset(0, 5),
                         ),
