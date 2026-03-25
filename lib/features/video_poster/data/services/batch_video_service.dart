@@ -997,25 +997,20 @@ class BatchVideoService {
             if (overlay.animationInType == 'fade') {
               filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
             } else if (overlay.animationInType == 'slideUp') {
-              final int startY = targetY + 100;
-              yExprIn = '$startY - 100*(t-$start)/$durIn';
-              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+              final int startY = targetY + 75;
+              yExprIn = '$startY - 75*(t-$start)/$durIn';
             } else if (overlay.animationInType == 'slideDown') {
-              final int startY = targetY - 100;
-              yExprIn = '$startY + 100*(t-$start)/$durIn';
-              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+              final int startY = targetY - 75;
+              yExprIn = '$startY + 75*(t-$start)/$durIn';
             } else if (overlay.animationInType == 'slideLeft') {
-              final int startX = targetX + 100;
-              xExprIn = '$startX - 100*(t-$start)/$durIn';
-              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+              final int startX = targetX + 75;
+              xExprIn = '$startX - 75*(t-$start)/$durIn';
             } else if (overlay.animationInType == 'slideRight') {
-              final int startX = targetX - 100;
-              xExprIn = '$startX + 100*(t-$start)/$durIn';
-              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
+              final int startX = targetX - 75;
+              xExprIn = '$startX + 75*(t-$start)/$durIn';
             } else if (overlay.animationInType == 'zoom') {
               final int startY = targetY + 30;
               yExprIn = '$startY - 30*(t-$start)/$durIn';
-              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
             }
           }
 
@@ -1026,21 +1021,16 @@ class BatchVideoService {
             if (overlay.animationOutType == 'fade') {
               filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
             } else if (overlay.animationOutType == 'slideUp') {
-              yExprOut = '$targetY - 100*(t-$startOut)/$durOut';
-              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+              yExprOut = '$targetY - 75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideDown') {
-              yExprOut = '$targetY + 100*(t-$startOut)/$durOut';
-              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+              yExprOut = '$targetY + 75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideLeft') {
-              xExprOut = '$targetX - 100*(t-$startOut)/$durOut';
-              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+              xExprOut = '$targetX - 75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideRight') {
-              xExprOut = '$targetX + 100*(t-$startOut)/$durOut';
-              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
+              xExprOut = '$targetX + 75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'zoom') {
               final int endY = targetY + 30;
               yExprOut = '$targetY + 30*(t-$startOut)/$durOut';
-              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
             }
           }
 

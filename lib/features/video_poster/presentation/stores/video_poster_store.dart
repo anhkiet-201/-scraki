@@ -581,38 +581,68 @@ abstract class _VideoPosterStore with Store {
     isPreviewMode = false;
     player.pause();
 
-    // 1. Group text overlays by timing and capture each group as PNG
+    // 1. Process text overlays: group static texts, isolate animated ones
     final timedOverlays = <TimedOverlay>[];
     if (customTexts.isNotEmpty) {
       try {
         final originalTexts = List<CustomTextOverlay>.from(customTexts);
-        final groupedTexts = <String, List<CustomTextOverlay>>{};
+        
+        // Static texts can be grouped by timing
+        final staticGroupedDocs = <String, List<CustomTextOverlay>>{};
+        // Animated texts are handled individually
+        final animatedTexts = <CustomTextOverlay>[];
+
         for (final text in originalTexts) {
-          final key = '${text.startTime}_${text.endTime}';
-          groupedTexts.putIfAbsent(key, () => []).add(text);
+          if (text.isAnimated) {
+            animatedTexts.add(text);
+          } else {
+            final key = '${text.startTime}_${text.endTime}';
+            staticGroupedDocs.putIfAbsent(key, () => []).add(text);
+          }
         }
 
-        // Use runInAction to modify observables
-        for (final group in groupedTexts.values) {
+        // Helper to capture a specific set of texts
+        Future<void> captureGroup(List<CustomTextOverlay> group, {CustomTextOverlay? animInfo}) async {
           runInAction(() {
             customTexts.clear();
             customTexts.addAll(group);
           });
-
-          // Wait for UI to update
+          
+          // Wait for UI to update (RepaintBoundary)
           await Future<void>.delayed(const Duration(milliseconds: 200));
-
+          
           final bytes = await capturePreviewAsPng();
           timedOverlays.add(
             TimedOverlay(
               bytes: bytes,
               startTime: group.first.startTime,
               endTime: group.first.endTime,
+              isAnimated: animInfo != null,
+              animationInType: animInfo?.animationInType.name ?? 'none',
+              animationInDuration: animInfo?.animationInDuration ?? 0.1,
+              animationOutType: animInfo?.animationOutType.name ?? 'none',
+              animationOutDuration: animInfo?.animationOutDuration ?? 0.1,
+              // We capture full screen PNGs (1080x1920 at 1.5x),
+              // Logical size is 720x1280.
+              x: 0.5, 
+              y: 0.5,
+              width: 720,
+              height: 1280,
             ),
           );
         }
 
-        // Restore original texts
+        // Capture static groups
+        for (final group in staticGroupedDocs.values) {
+          await captureGroup(group);
+        }
+
+        // Capture individual animated texts
+        for (final text in animatedTexts) {
+          await captureGroup([text], animInfo: text);
+        }
+
+        // Restore original texts for UI
         runInAction(() {
           customTexts.clear();
           customTexts.addAll(originalTexts);
