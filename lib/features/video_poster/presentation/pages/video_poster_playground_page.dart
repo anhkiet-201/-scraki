@@ -632,19 +632,29 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                       text.id,
                                                       x,
                                                       y,
-                                                    ),
+                                                      ),
                                                 onSelect: (_) =>
                                                     store.selectCustomText(text.id),
                                                 onResize: (_, size) =>
                                                     store.updateCustomTextFontSize(
                                                       text.id,
                                                       size,
-                                                    ),
+                                                      ),
                                                 onTextChange: (_, val) =>
                                                     store.updateCustomTextLabel(
                                                       text.id,
                                                       val,
-                                                    ),
+                                                      ),
+                                                // Animation props
+                                                animationInType: text.animationInType,
+                                                animationInDuration: text.animationInDuration,
+                                                animationOutType: text.animationOutType,
+                                                animationOutDuration: text.animationOutDuration,
+                                                isPreviewMode: store.isPreviewMode,
+                                                currentTime: store.position.inMilliseconds / 1000.0,
+                                                startTime: text.startTime,
+                                                endTime: text.endTime ?? (store.duration.inMilliseconds.toDouble()) / 1000.0,
+                                                triggerPreviewCounter: store.animationPreviewCounters[text.id] ?? 0,
                                               );
                                             },
                                           );

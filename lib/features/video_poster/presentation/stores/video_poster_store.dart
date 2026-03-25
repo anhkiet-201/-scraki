@@ -397,6 +397,15 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
+  @observable
+  ObservableMap<String, int> animationPreviewCounters = ObservableMap<String, int>();
+
+  @action
+  void triggerPreviewAnimation(String id) {
+    final current = animationPreviewCounters[id] ?? 0;
+    animationPreviewCounters[id] = current + 1;
+  }
+
   @action
   void selectCustomText(String? id) {
     if (id != null) {

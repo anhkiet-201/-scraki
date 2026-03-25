@@ -610,6 +610,26 @@ class TextPropertiesPanel extends StatelessWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => store.triggerPreviewAnimation(text.id),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _accentColor,
+                      side: BorderSide(color: _accentColor.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
+                    label: const Text(
+                      '▶ XEM TRƯỚC HIỆU ỨNG',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ],
           ),

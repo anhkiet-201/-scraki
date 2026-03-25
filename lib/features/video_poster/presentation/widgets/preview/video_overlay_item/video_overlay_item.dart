@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import '../../panels/common/panel_components.dart';
 import 'video_overlay_item_store.dart';
+import '../../../../domain/entities/custom_text_overlay.dart';
 
 /// Draggable and interactive text overlay item for video preview.
 /// Fully self-contained — no dependency on any global store.
@@ -37,6 +38,17 @@ class VideoOverlayItem extends StatefulWidget {
   final double opacity;
   final GlobalKey? captureKey;
 
+  // Animation metadata
+  final TextAnimationType animationInType;
+  final double animationInDuration;
+  final TextAnimationType animationOutType;
+  final double animationOutDuration;
+  final bool isPreviewMode;
+  final double currentTime;
+  final double startTime;
+  final double endTime;
+  final int triggerPreviewCounter;
+
   const VideoOverlayItem({
     super.key,
     required this.label,
@@ -67,14 +79,26 @@ class VideoOverlayItem extends StatefulWidget {
     required this.onSelect,
     required this.onResize,
     required this.onTextChange,
+    // Animation defaults
+    this.animationInType = TextAnimationType.none,
+    this.animationInDuration = 0.1,
+    this.animationOutType = TextAnimationType.none,
+    this.animationOutDuration = 0.1,
+    this.isPreviewMode = false,
+    this.currentTime = 0.0,
+    this.startTime = 0.0,
+    this.endTime = 10.0,
+    this.triggerPreviewCounter = 0,
   });
 
   @override
   State<VideoOverlayItem> createState() => _VideoOverlayItemState();
 }
 
-class _VideoOverlayItemState extends State<VideoOverlayItem> {
+class _VideoOverlayItemState extends State<VideoOverlayItem>
+    with TickerProviderStateMixin {
   late VideoOverlayItemStore _store;
+  late AnimationController _animController;
 
   @override
   void initState() {
@@ -93,6 +117,39 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
       onTextChange: widget.onTextChange,
     );
     _store.setSelected(widget.isSelected);
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    if (widget.isPreviewMode) {
+      _syncAnimationToTime();
+    } else {
+      _animController.value = 1.0;
+    }
+  }
+
+  void _syncAnimationToTime() {
+    final totalDur = widget.endTime - widget.startTime;
+    if (totalDur <= 0) {
+      _animController.value = 1.0;
+      return;
+    }
+
+    final relativeTime = widget.currentTime - widget.startTime;
+    final inTime = totalDur * widget.animationInDuration;
+    final outStartTime = totalDur * (1.0 - widget.animationOutDuration);
+
+    if (relativeTime < inTime) {
+      _animController.value = (relativeTime / inTime).clamp(0.0, 1.0);
+    } else if (relativeTime > outStartTime) {
+      final outDur = totalDur * widget.animationOutDuration;
+      _animController.value =
+          ((widget.endTime - widget.currentTime) / outDur).clamp(0.0, 1.0);
+    } else {
+      _animController.value = 1.0;
+    }
   }
 
   @override
@@ -102,12 +159,66 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
     _store.updatePosition(widget.x, widget.y);
     _store.updateFontSize(widget.fontSize);
     _store.setSelected(widget.isSelected);
+
+    if (widget.isPreviewMode) {
+      _syncAnimationToTime();
+    } else {
+      // Trigger one-off preview if counter increased
+      if (widget.triggerPreviewCounter > oldWidget.triggerPreviewCounter) {
+        _animController.forward(from: 0.0);
+      } else if (oldWidget.isPreviewMode && !widget.isPreviewMode) {
+        // Reset to full visibility when leaving preview mode
+        _animController.value = 1.0;
+      }
+    }
   }
 
   @override
   void dispose() {
     _store.dispose();
+    _animController.dispose();
     super.dispose();
+  }
+
+  Widget _applyAnimation(Widget child, double progress) {
+    // Determine active animation type
+    final totalDur = widget.endTime - widget.startTime;
+    final relativeTime = widget.currentTime - widget.startTime;
+    final inTime = totalDur * widget.animationInDuration;
+
+    final type = (widget.isPreviewMode && relativeTime > inTime)
+        ? widget.animationOutType
+        : widget.animationInType;
+
+    if (type == TextAnimationType.none) return child;
+
+    return switch (type) {
+      TextAnimationType.fade => Opacity(
+          opacity: progress,
+          child: child,
+        ),
+      TextAnimationType.zoom => Transform.scale(
+          scale: progress,
+          child: child,
+        ),
+      TextAnimationType.slideUp => Transform.translate(
+          offset: Offset(0, 50 * (1 - progress)),
+          child: child,
+        ),
+      TextAnimationType.slideDown => Transform.translate(
+          offset: Offset(0, -50 * (1 - progress)),
+          child: child,
+        ),
+      TextAnimationType.slideLeft => Transform.translate(
+          offset: Offset(50 * (1 - progress), 0),
+          child: child,
+        ),
+      TextAnimationType.slideRight => Transform.translate(
+          offset: Offset(-50 * (1 - progress), 0),
+          child: child,
+        ),
+      _ => child,
+    };
   }
 
   @override
@@ -171,9 +282,14 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
                           angle: widget.rotation * (math.pi / 180),
                           child: RepaintBoundary(
                             key: widget.captureKey,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
+                            child: AnimatedBuilder(
+                              animation: _animController,
+                              builder: (context, child) {
+                                return _applyAnimation(child!, _animController.value);
+                              },
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
                                 // ── Main Content Box ──
                                 AnimatedContainer(
                                   key: _store.contentKey,
@@ -565,10 +681,11 @@ class _VideoOverlayItemState extends State<VideoOverlayItem> {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildHandle({
     double? top,
