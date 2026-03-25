@@ -48,6 +48,7 @@ class VideoOverlayItem extends StatefulWidget {
   final double startTime;
   final double endTime;
   final int triggerPreviewCounter;
+  final int triggerOutPreviewCounter;
 
   const VideoOverlayItem({
     super.key,
@@ -89,6 +90,7 @@ class VideoOverlayItem extends StatefulWidget {
     this.startTime = 0.0,
     this.endTime = 10.0,
     this.triggerPreviewCounter = 0,
+    this.triggerOutPreviewCounter = 0,
   });
 
   @override
@@ -99,6 +101,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
     with TickerProviderStateMixin {
   late VideoOverlayItemStore _store;
   late AnimationController _animController;
+  bool _isPreviewingOut = false;
 
   @override
   void initState() {
@@ -121,7 +124,14 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    );
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && !widget.isPreviewMode) {
+          setState(() {
+            _isPreviewingOut = false;
+            _animController.value = 1.0;
+          });
+        }
+      });
 
     if (widget.isPreviewMode) {
       _syncAnimationToTime();
@@ -163,8 +173,12 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
     if (widget.isPreviewMode) {
       _syncAnimationToTime();
     } else {
-      // Trigger one-off preview if counter increased
+      // Trigger one-off previews
       if (widget.triggerPreviewCounter > oldWidget.triggerPreviewCounter) {
+        setState(() => _isPreviewingOut = false);
+        _animController.forward(from: 0.0);
+      } else if (widget.triggerOutPreviewCounter > oldWidget.triggerOutPreviewCounter) {
+        setState(() => _isPreviewingOut = true);
         _animController.forward(from: 0.0);
       } else if (oldWidget.isPreviewMode && !widget.isPreviewMode) {
         // Reset to full visibility when leaving preview mode
@@ -184,37 +198,47 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
     // Determine active animation type
     final totalDur = widget.endTime - widget.startTime;
     final relativeTime = widget.currentTime - widget.startTime;
-    final inTime = totalDur * widget.animationInDuration;
+    final outStartTime = totalDur * (1.0 - widget.animationOutDuration);
 
-    final type = (widget.isPreviewMode && relativeTime > inTime)
-        ? widget.animationOutType
-        : widget.animationInType;
+    final isOutPhase = widget.isPreviewMode 
+        ? (relativeTime > outStartTime)
+        : _isPreviewingOut;
+
+    final type = isOutPhase ? widget.animationOutType : widget.animationInType;
+    // For manual preview (non-preview mode), animController always goes 0 -> 1.
+    // For sync preview mode, animController already goes 1 -> 0 during out phase.
+    final rawProgress = (isOutPhase && !widget.isPreviewMode) 
+        ? (1.0 - progress) 
+        : progress;
+
+    // Apply easing curve for smoother animation
+    final effectiveProgress = Curves.easeInOut.transform(rawProgress);
 
     if (type == TextAnimationType.none) return child;
 
     return switch (type) {
       TextAnimationType.fade => Opacity(
-          opacity: progress,
+          opacity: effectiveProgress,
           child: child,
         ),
       TextAnimationType.zoom => Transform.scale(
-          scale: progress,
+          scale: effectiveProgress,
           child: child,
         ),
       TextAnimationType.slideUp => Transform.translate(
-          offset: Offset(0, 50 * (1 - progress)),
+          offset: Offset(0, 50 * (1 - effectiveProgress)),
           child: child,
         ),
       TextAnimationType.slideDown => Transform.translate(
-          offset: Offset(0, -50 * (1 - progress)),
+          offset: Offset(0, -50 * (1 - effectiveProgress)),
           child: child,
         ),
       TextAnimationType.slideLeft => Transform.translate(
-          offset: Offset(50 * (1 - progress), 0),
+          offset: Offset(50 * (1 - effectiveProgress), 0),
           child: child,
         ),
       TextAnimationType.slideRight => Transform.translate(
-          offset: Offset(-50 * (1 - progress), 0),
+          offset: Offset(-50 * (1 - effectiveProgress), 0),
           child: child,
         ),
       _ => child,

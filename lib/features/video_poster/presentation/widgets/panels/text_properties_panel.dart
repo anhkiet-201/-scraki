@@ -568,13 +568,13 @@ class TextPropertiesPanel extends StatelessWidget {
                       fontFamily: 'Roboto',
                     ),
                     items: const [
-                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không có (Static)')),
-                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Nhạt dần (Fade)')),
-                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Thu/Phóng (Zoom)')),
-                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt lên (Slide Up)')),
-                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt xuống (Slide Down)')),
-                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt trái (Slide Left)')),
-                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt phải (Slide Right)')),
+                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không hiệu ứng')),
+                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Hiện dần (Fade)')),
+                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Phóng to (Zoom)')),
+                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt từ dưới lên')),
+                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt từ trên xuống')),
+                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt từ phải sang')),
+                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt từ trái sang')),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -589,22 +589,22 @@ class TextPropertiesPanel extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final totalDuration = (text.endTime ?? 40.0) - text.startTime;
-                    final maxIn = 1.0 - (text.animationOutType != TextAnimationType.none ? text.animationOutDuration : 0.0);
-                    final safeMaxIn = maxIn < 0.05 ? 0.05 : maxIn;
-                    final safeValue = text.animationInDuration.clamp(0.01, safeMaxIn).toDouble();
+                    // Current Out duration limit based on In
+                    final maxIn = (1.0 - text.animationOutDuration).clamp(0.05, 1.0);
+                    final safeValue = text.animationInDuration.clamp(0.01, maxIn).toDouble();
                     final inSeconds = totalDuration * safeValue;
                     
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆU ỨNG: ${(safeValue * 100).toInt()}% (${inSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆN: ${(safeValue * 100).toInt()}% (${inSeconds.toStringAsFixed(1)}s)'),
                         PanelComponents.buildSlider(
                           context: context,
                           value: safeValue,
-                          min: 0.01,
+                          min: 0.0,
                           max: 1.0,
                           divisions: 99,
-                          onChanged: (v) => store.updateCustomTextAnimationIn(text.id, text.animationInType, v),
+                          onChanged: (v) => store.updateCustomTextAnimationIn(text.id, text.animationInType, v.clamp(0.01, maxIn)),
                         ),
                       ],
                     );
@@ -625,7 +625,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
                     label: const Text(
-                      '▶ XEM TRƯỚC HIỆU ỨNG',
+                      '▶ XEM TRƯỚC HIỆU ỨNG VÀO',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -660,13 +660,13 @@ class TextPropertiesPanel extends StatelessWidget {
                       fontFamily: 'Roboto',
                     ),
                     items: const [
-                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không có (Static)')),
-                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Nhạt dần (Fade)')),
-                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Thu/Phóng (Zoom)')),
-                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt lên (Slide Up)')),
-                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt xuống (Slide Down)')),
-                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt trái (Slide Left)')),
-                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt phải (Slide Right)')),
+                      DropdownMenuItem(value: TextAnimationType.none, child: Text('Không hiệu ứng')),
+                      DropdownMenuItem(value: TextAnimationType.fade, child: Text('Mờ dần (Fade)')),
+                      DropdownMenuItem(value: TextAnimationType.zoom, child: Text('Thu nhỏ (Zoom)')),
+                      DropdownMenuItem(value: TextAnimationType.slideUp, child: Text('Trượt lên trên')),
+                      DropdownMenuItem(value: TextAnimationType.slideDown, child: Text('Trượt xuống dưới')),
+                      DropdownMenuItem(value: TextAnimationType.slideLeft, child: Text('Trượt sang trái')),
+                      DropdownMenuItem(value: TextAnimationType.slideRight, child: Text('Trượt sang phải')),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -681,27 +681,57 @@ class TextPropertiesPanel extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final totalDuration = (text.endTime ?? 40.0) - text.startTime;
-                    final maxOut = 1.0 - (text.animationInType != TextAnimationType.none ? text.animationInDuration : 0.0);
-                    final safeMaxOut = maxOut < 0.05 ? 0.05 : maxOut;
-                    final safeValue = text.animationOutDuration.clamp(0.01, safeMaxOut).toDouble();
+                    // Limit Out duration so it doesn't overlap with In
+                    final maxOut = (1.0 - text.animationInDuration).clamp(0.05, 1.0);
+                    final safeValue = text.animationOutDuration.clamp(0.01, maxOut).toDouble();
                     final outSeconds = totalDuration * safeValue;
+                    
+                    // Full track visual [0.0, 1.0] but isReversed: true
+                    // Value is (1.0 - duration) so it sits at the end.
+                    final minVisualLimit = (1.0 - maxOut).toDouble();
+                    final visualValue = (1.0 - safeValue).clamp(minVisualLimit, 1.0);
                     
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆU ỨNG: ${(safeValue * 100).toInt()}% (${outSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSectionLabel('THỜI GIAN MỜ: ${(safeValue * 100).toInt()}% (${outSeconds.toStringAsFixed(1)}s)'),
                         PanelComponents.buildSlider(
                           context: context,
-                          value: 1.0 - safeValue,
+                          value: visualValue,
                           min: 0.0,
                           max: 1.0,
                           divisions: 99,
                           isReversed: true,
-                          onChanged: (v) => store.updateCustomTextAnimationOut(text.id, text.animationOutType, 1.0 - v),
+                          onChanged: (v) {
+                            // Convert visual value back to duration: duration = 1.0 - visual
+                            // Limit visual value to at least 1.0 - maxOut
+                            final cappedVisual = v.clamp(minVisualLimit, 1.0);
+                            store.updateCustomTextAnimationOut(text.id, text.animationOutType, 1.0 - cappedVisual);
+                          },
                         ),
                       ],
                     );
                   },
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => store.triggerPreviewAnimationOut(text.id),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _accentColor,
+                      side: BorderSide(color: _accentColor.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
+                    label: const Text(
+                      '▶ XEM TRƯỚC HIỆU ỨNG RA',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ],
             ],

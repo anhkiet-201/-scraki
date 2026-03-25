@@ -475,9 +475,9 @@ class PanelComponents {
     'Pacifico',
     'Borel',
     'Mynerve',
-    'Playwrite Netherland',
-    'Playwrite France Moderne',
-    'Playwrite Portugal',
+    'Shantell Sans',
+    'Sedgwick Ave Display',
+    'Sansita Swashed',
     'Gluten',
     'Festive',
   ];

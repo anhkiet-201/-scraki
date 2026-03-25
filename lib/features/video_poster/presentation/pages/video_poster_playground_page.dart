@@ -655,6 +655,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                 startTime: text.startTime,
                                                 endTime: text.endTime ?? (store.duration.inMilliseconds.toDouble()) / 1000.0,
                                                 triggerPreviewCounter: store.animationPreviewCounters[text.id] ?? 0,
+                                                triggerOutPreviewCounter: store.animationOutPreviewCounters[text.id] ?? 0,
                                               );
                                             },
                                           );

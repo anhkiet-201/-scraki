@@ -400,10 +400,19 @@ abstract class _VideoPosterStore with Store {
   @observable
   ObservableMap<String, int> animationPreviewCounters = ObservableMap<String, int>();
 
+  @observable
+  ObservableMap<String, int> animationOutPreviewCounters = ObservableMap<String, int>();
+
   @action
   void triggerPreviewAnimation(String id) {
     final current = animationPreviewCounters[id] ?? 0;
     animationPreviewCounters[id] = current + 1;
+  }
+
+  @action
+  void triggerPreviewAnimationOut(String id) {
+    final current = animationOutPreviewCounters[id] ?? 0;
+    animationOutPreviewCounters[id] = current + 1;
   }
 
   @action
