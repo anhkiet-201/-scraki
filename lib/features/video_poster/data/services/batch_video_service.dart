@@ -990,7 +990,7 @@ class BatchVideoService {
           String yExprIn = '';
           String xExprOut = '';
           String yExprOut = '';
-
+          String scaleExpr = '1.0';
           // Build IN logic
           if (overlay.animationInType != 'none') {
             final durIn = totalDur * overlay.animationInDuration;
@@ -1009,8 +1009,11 @@ class BatchVideoService {
               final int startX = targetX - 75;
               xExprIn = '$startX + 75*(t-$start)/$durIn';
             } else if (overlay.animationInType == 'zoom') {
-              final int startY = targetY + 30;
-              yExprIn = '$startY - 30*(t-$start)/$durIn';
+              final endIn = start + durIn;
+              scaleExpr = 'if(lt(t,$endIn),(t-$start)/$durIn,1.0)';
+              xExprIn = '$centerX-w/2';
+              yExprIn = '$centerY-h/2';
+              filterBlock += ',fade=t=in:st=$start:d=$durIn:alpha=1';
             }
           }
 
@@ -1021,17 +1024,23 @@ class BatchVideoService {
             if (overlay.animationOutType == 'fade') {
               filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
             } else if (overlay.animationOutType == 'slideUp') {
-              yExprOut = '$targetY - 75*(t-$startOut)/$durOut';
+              yExprOut = '$targetY-75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideDown') {
-              yExprOut = '$targetY + 75*(t-$startOut)/$durOut';
+              yExprOut = '$targetY+75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideLeft') {
-              xExprOut = '$targetX - 75*(t-$startOut)/$durOut';
+              xExprOut = '$targetX-75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'slideRight') {
-              xExprOut = '$targetX + 75*(t-$startOut)/$durOut';
+              xExprOut = '$targetX+75*(t-$startOut)/$durOut';
             } else if (overlay.animationOutType == 'zoom') {
-              final int endY = targetY + 30;
-              yExprOut = '$targetY + 30*(t-$startOut)/$durOut';
+              scaleExpr = 'if(gt(t,$startOut),1.0-(t-$startOut)/$durOut,$scaleExpr)';
+              xExprOut = '$centerX-w/2';
+              yExprOut = '$centerY-h/2';
+              filterBlock += ',fade=t=out:st=$startOut:d=$durOut:alpha=1';
             }
+          }
+          
+          if (scaleExpr != '1.0') {
+            filterBlock += ",scale='iw*$scaleExpr':'ih*$scaleExpr':eval=frame";
           }
 
           // Combine X logic

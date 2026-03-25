@@ -226,19 +226,19 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
           child: child,
         ),
       TextAnimationType.slideUp => Transform.translate(
-          offset: Offset(0, 50 * (1 - effectiveProgress)),
+          offset: Offset(0, isOutPhase ? -50 * (1 - rawProgress) : 50 * (1 - rawProgress)),
           child: child,
         ),
       TextAnimationType.slideDown => Transform.translate(
-          offset: Offset(0, -50 * (1 - effectiveProgress)),
+          offset: Offset(0, isOutPhase ? 50 * (1 - rawProgress) : -50 * (1 - rawProgress)),
           child: child,
         ),
       TextAnimationType.slideLeft => Transform.translate(
-          offset: Offset(50 * (1 - effectiveProgress), 0),
+          offset: Offset(isOutPhase ? -50 * (1 - rawProgress) : 50 * (1 - rawProgress), 0),
           child: child,
         ),
       TextAnimationType.slideRight => Transform.translate(
-          offset: Offset(-50 * (1 - effectiveProgress), 0),
+          offset: Offset(isOutPhase ? 50 * (1 - rawProgress) : -50 * (1 - rawProgress), 0),
           child: child,
         ),
       _ => child,
