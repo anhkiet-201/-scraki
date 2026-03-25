@@ -186,7 +186,10 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         buildDefaultDragHandles: false,
                         itemCount: images.length,
-                        onReorder: (oldIndex, newIndex) {
+                        onReorderItem: (oldIndex, newIndex) {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
                           widget.store.reorderCustomImage(oldIndex, newIndex);
                         },
                         itemBuilder: (context, index) {
@@ -540,11 +543,11 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
             child: TextButton.icon(
               onPressed: () => widget.store.removeCustomImage(selectedId),
               style: TextButton.styleFrom(
-                foregroundColor: Colors.redAccent.withOpacity(0.8),
+                foregroundColor: Colors.redAccent.withValues(alpha: 0.8),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(color: Colors.redAccent.withOpacity(0.2)),
+                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.2)),
                 ),
               ),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),

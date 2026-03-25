@@ -594,59 +594,66 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                           }
                                           return true;
                                         }).map(
-                                        (text) => VideoOverlayItem(
-                                          key: ValueKey(text.id),
-                                          label: text.label,
-                                          x: text.x,
-                                          y: text.y,
-                                          type: text.id,
-                                          constraints: virtualConstraints,
-                                          color: text.color,
-                                          fontSize: text.fontSize,
-                                          textHeight: text.textHeight,
-                                          fontWeight: text.fontWeight,
-                                          fontStyle: text.fontStyle,
-                                          textAlign: text.textAlign,
-                                          backgroundColor: text.backgroundColor,
-                                          backgroundOpacity: text.backgroundOpacity,
-                                          backgroundRadius: text.backgroundRadius,
-                                          backgroundBorderColor:
-                                              text.backgroundBorderColor,
-                                          backgroundBorderWidth:
-                                              text.backgroundBorderWidth,
-                                          fontFamily: text.fontFamily,
-                                          rotation: text.rotation,
-                                          strokeColor: text.strokeColor,
-                                          strokeWidth: text.strokeWidth,
-                                          letterSpacing: text.letterSpacing,
-                                          isSelected:
-                                              store.selectedCustomTextId ==
-                                              text.id,
-                                          onPositionUpdate: (_, x, y) =>
-                                              store.updateCustomTextPosition(
-                                                text.id,
-                                                x,
-                                                y,
-                                              ),
-                                          onSelect: (_) =>
-                                              store.selectCustomText(text.id),
-                                          onResize: (_, size) =>
-                                              store.updateCustomTextFontSize(
-                                                text.id,
-                                                size,
-                                              ),
-                                          onTextChange: (_, val) =>
-                                              store.updateCustomTextLabel(
-                                                text.id,
-                                                val,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                        (text) {
+                                          final isAnimated = text.isAnimated;
+                                          return Observer(
+                                            key: ValueKey('text_wrapper_${text.id}'),
+                                            builder: (context) {
+                                              final shouldHide = store.isHidingAnimatedTextsForCapture && isAnimated;
+                                              
+                                              return VideoOverlayItem(
+                                                key: ValueKey(text.id),
+                                                label: text.label,
+                                                x: text.x,
+                                                y: text.y,
+                                                type: text.id,
+                                                constraints: virtualConstraints,
+                                                color: text.color,
+                                                fontSize: text.fontSize,
+                                                textHeight: text.textHeight,
+                                                fontWeight: text.fontWeight,
+                                                fontStyle: text.fontStyle,
+                                                textAlign: text.textAlign,
+                                                backgroundColor: text.backgroundColor,
+                                                backgroundOpacity: text.backgroundOpacity,
+                                                backgroundRadius: text.backgroundRadius,
+                                                backgroundBorderColor: text.backgroundBorderColor,
+                                                backgroundBorderWidth: text.backgroundBorderWidth,
+                                                fontFamily: text.fontFamily,
+                                                rotation: text.rotation,
+                                                strokeColor: text.strokeColor,
+                                                strokeWidth: text.strokeWidth,
+                                                letterSpacing: text.letterSpacing,
+                                                isSelected: store.selectedCustomTextId == text.id,
+                                                opacity: shouldHide ? 0.0 : 1.0,
+                                                captureKey: isAnimated ? store.getTextCaptureKey(text.id) : null,
+                                                onPositionUpdate: (_, x, y) =>
+                                                    store.updateCustomTextPosition(
+                                                      text.id,
+                                                      x,
+                                                      y,
+                                                    ),
+                                                onSelect: (_) =>
+                                                    store.selectCustomText(text.id),
+                                                onResize: (_, size) =>
+                                                    store.updateCustomTextFontSize(
+                                                      text.id,
+                                                      size,
+                                                    ),
+                                                onTextChange: (_, val) =>
+                                                    store.updateCustomTextLabel(
+                                                      text.id,
+                                                      val,
+                                                    ),
+                                              );
+                                            },
+                                          );
+                                        }),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                           ),
                         ),
                       ),
