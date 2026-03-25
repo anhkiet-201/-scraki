@@ -233,6 +233,28 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
+  late final _$isHidingAnimatedTextsForCaptureAtom = Atom(
+    name: '_VideoPosterStore.isHidingAnimatedTextsForCapture',
+    context: context,
+  );
+
+  @override
+  bool get isHidingAnimatedTextsForCapture {
+    _$isHidingAnimatedTextsForCaptureAtom.reportRead();
+    return super.isHidingAnimatedTextsForCapture;
+  }
+
+  @override
+  set isHidingAnimatedTextsForCapture(bool value) {
+    _$isHidingAnimatedTextsForCaptureAtom.reportWrite(
+      value,
+      super.isHidingAnimatedTextsForCapture,
+      () {
+        super.isHidingAnimatedTextsForCapture = value;
+      },
+    );
+  }
+
   late final _$selectedCustomTextIdAtom = Atom(
     name: '_VideoPosterStore.selectedCustomTextId',
     context: context,
@@ -800,6 +822,38 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void updateCustomTextAnimationIn(
+    String id,
+    TextAnimationType type,
+    double duration,
+  ) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextAnimationIn',
+    );
+    try {
+      return super.updateCustomTextAnimationIn(id, type, duration);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateCustomTextAnimationOut(
+    String id,
+    TextAnimationType type,
+    double duration,
+  ) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateCustomTextAnimationOut',
+    );
+    try {
+      return super.updateCustomTextAnimationOut(id, type, duration);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setBatchOutputCount(int count) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setBatchOutputCount',
@@ -946,6 +1000,7 @@ recentBgColors: ${recentBgColors},
 recentStrokeColors: ${recentStrokeColors},
 recentBorderColors: ${recentBorderColors},
 isHidingImagesForCapture: ${isHidingImagesForCapture},
+isHidingAnimatedTextsForCapture: ${isHidingAnimatedTextsForCapture},
 selectedCustomTextId: ${selectedCustomTextId},
 batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},

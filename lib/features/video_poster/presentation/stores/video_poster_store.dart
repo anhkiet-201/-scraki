@@ -220,6 +220,13 @@ abstract class _VideoPosterStore with Store {
   void selectCustomImage(String? id) {
     if (id != null) {
       selectedCustomTextId = null; // deselect text if selecting image
+      
+      // Move selected item to the end of the list for visual z-ordering
+      final index = customImages.indexWhere((i) => i.id == id);
+      if (index != -1 && index != customImages.length - 1) {
+        final item = customImages.removeAt(index);
+        customImages.add(item);
+      }
     }
     selectedCustomImageId = id;
   }
@@ -354,6 +361,15 @@ abstract class _VideoPosterStore with Store {
   bool isHidingImagesForCapture = false;
 
   @observable
+  bool isHidingAnimatedTextsForCapture = false;
+
+  final Map<String, GlobalKey> _textCaptureKeys = {};
+
+  GlobalKey getTextCaptureKey(String id) {
+    return _textCaptureKeys.putIfAbsent(id, () => GlobalKey());
+  }
+
+  @observable
   String? selectedCustomTextId;
 
   @action
@@ -385,6 +401,13 @@ abstract class _VideoPosterStore with Store {
   void selectCustomText(String? id) {
     if (id != null) {
       selectedCustomImageId = null; // deselect image if selecting text
+      
+      // Move selected item to the end of the list for visual z-ordering
+      final index = customTexts.indexWhere((t) => t.id == id);
+      if (index != -1 && index != customTexts.length - 1) {
+        final item = customTexts.removeAt(index);
+        customTexts.add(item);
+      }
     }
     selectedCustomTextId = id;
   }
@@ -484,6 +507,26 @@ abstract class _VideoPosterStore with Store {
       startTime: startTime,
       endTime: endTime,
       clearEndTime: clearEndTime,
+    );
+  }
+
+  @action
+  void updateCustomTextAnimationIn(String id, TextAnimationType type, double duration) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      animationInType: type,
+      animationInDuration: duration,
+    );
+  }
+
+  @action
+  void updateCustomTextAnimationOut(String id, TextAnimationType type, double duration) {
+    final index = customTexts.indexWhere((t) => t.id == id);
+    if (index == -1) return;
+    customTexts[index] = customTexts[index].copyWith(
+      animationOutType: type,
+      animationOutDuration: duration,
     );
   }
 
