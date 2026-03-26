@@ -79,58 +79,56 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
           left: _store.position.dx,
           top: _store.position.dy,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                      offset: const Offset(0, 10),
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 40,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 20),
                     ),
                     BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      spreadRadius: -2,
+                      color: colorScheme.primary.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      spreadRadius: -4,
                     ),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                     child: Container(
                       width: _store.width,
                       height: _store.height,
                       decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(alpha: 0.8),
+                        color: colorScheme.surface.withValues(alpha: 0.65),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 1,
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 1.2,
                         ),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Stack(
+                      child: Column(
                         children: [
-                          Column(
-                            children: [
-                              // 1. Header Component
-                              FloatingWindowHeader(
-                                title: _deviceTitle,
-                                onClose: widget.onClose,
-                                onDragUpdate: (details) {
-                                  runInAction(() {
-                                    final newPosition = _store
-                                        .getClampedPosition(
-                                          _store.position + details.delta,
-                                          widget.parentSize,
-                                        );
-                                    _store.updatePosition(newPosition);
-                                  });
-                                },
-                              ),
+                          // 1. Header Component
+                          FloatingWindowHeader(
+                            title: _deviceTitle,
+                            onClose: widget.onClose,
+                            onDragUpdate: (details) {
+                              runInAction(() {
+                                final newPosition = _store.getClampedPosition(
+                                  _store.position + details.delta,
+                                  widget.parentSize,
+                                );
+                                _store.updatePosition(newPosition);
+                              });
+                            },
+                          ),
 
                               // View Content
                               Expanded(
@@ -139,7 +137,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                                     horizontal: 2,
                                   ),
                                   decoration: const BoxDecoration(
-                                    color: Colors.black,
+                                    color: Colors.transparent,
                                   ),
                                   child: SizedBox(
                                     width: _store.width,
@@ -159,53 +157,45 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                                 ),
                               ),
 
-                              // 2. Resize Handle Component
-                              FloatingResizeHandle(
-                                onResizeUpdate: (details) {
-                                  runInAction(() {
-                                    // Calculate combined delta for proportional scaling
-                                    final delta =
-                                        details.delta.dx + details.delta.dy;
+                          // 2. Resize Handle Component
+                          FloatingResizeHandle(
+                            onResizeUpdate: (details) {
+                              runInAction(() {
+                                final delta =
+                                    details.delta.dx + details.delta.dy;
 
-                                    // Calculate constraints
-                                    double maxAllowedWidth = 1200.0;
-                                    if (!widget.parentSize.isEmpty) {
-                                      final maxWidthByX =
-                                          widget.parentSize.width -
-                                          _store.position.dx;
-                                      final maxHeightAvailable =
-                                          widget.parentSize.height -
+                                double maxAllowedWidth = 1200.0;
+                                if (!widget.parentSize.isEmpty) {
+                                  final maxWidthByX = widget.parentSize.width -
+                                      _store.position.dx;
+                                  final maxHeightAvailable =
+                                      widget.parentSize.height -
                                           _store.position.dy -
                                           52;
-                                      final maxWidthByY =
-                                          maxHeightAvailable * aspectRatio;
+                                  final maxWidthByY =
+                                      maxHeightAvailable * aspectRatio;
 
-                                      maxAllowedWidth = [
-                                        maxWidthByX,
-                                        maxWidthByY,
-                                        1200.0,
-                                      ].reduce((a, b) => a < b ? a : b);
-                                    }
+                                  maxAllowedWidth = [
+                                    maxWidthByX,
+                                    maxWidthByY,
+                                    1200.0,
+                                  ].reduce((a, b) => a < b ? a : b);
+                                }
 
-                                    final newWidth = (_store.width + delta)
-                                        .clamp(240.0, maxAllowedWidth);
+                                final newWidth = (_store.width + delta)
+                                    .clamp(240.0, maxAllowedWidth);
 
-                                    final newHeight =
-                                        (newWidth / aspectRatio) + 40 + 12;
-                                    _store.updateDimensions(
-                                      newWidth,
-                                      newHeight,
-                                    );
-                                    _store.updatePosition(
-                                      _store.getClampedPosition(
-                                        _store.position,
-                                        widget.parentSize,
-                                      ),
-                                    );
-                                  });
-                                },
-                              ),
-                            ],
+                                final newHeight =
+                                    (newWidth / aspectRatio) + 48 + 16;
+                                _store.updateDimensions(newWidth, newHeight);
+                                _store.updatePosition(
+                                  _store.getClampedPosition(
+                                    _store.position,
+                                    widget.parentSize,
+                                  ),
+                                );
+                              });
+                            },
                           ),
                         ],
                       ),

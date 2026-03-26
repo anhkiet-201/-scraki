@@ -12,20 +12,20 @@ class FloatingResizeHandle extends StatelessWidget {
     return GestureDetector(
       onPanUpdate: onResizeUpdate,
       child: Container(
-        height: 12,
+        height: 16,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: Colors.transparent,
           borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(20),
           ),
         ),
         child: Center(
           child: Container(
-            width: 30,
+            width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: colorScheme.onSurface.withValues(alpha: 0.2),
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
