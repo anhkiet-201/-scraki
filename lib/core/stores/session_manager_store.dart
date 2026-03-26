@@ -78,11 +78,11 @@ abstract class _SessionManagerStore with Store {
   void updateDeviceTask(
     String serial, {
     required DeviceTaskType type,
-    double? progress,
     String? status,
+    DeviceTaskPhase phase = DeviceTaskPhase.running,
     bool isRunning = true,
   }) {
-    logger.i('[SessionManagerStore] updateDeviceTask: $serial, type: $type, running: $isRunning, progress: $progress');
+    logger.i('[SessionManagerStore] updateDeviceTask: $serial, type: $type, phase: $phase');
     if (!isRunning) {
       activeTasks.remove(serial);
       return;
@@ -90,15 +90,12 @@ abstract class _SessionManagerStore with Store {
 
     final currentTask = activeTasks[serial];
     if (currentTask != null && currentTask.type == type) {
-      activeTasks[serial] = currentTask.copyWith(
-        progress: progress,
-        status: status,
-      );
+      activeTasks[serial] = currentTask.copyWith(status: status, phase: phase);
     } else {
       activeTasks[serial] = DeviceTaskState(
         type: type,
-        progress: progress ?? 0.0,
         status: status ?? '',
+        phase: phase,
       );
     }
   }
@@ -112,36 +109,38 @@ abstract class _SessionManagerStore with Store {
 
 enum DeviceTaskType { push, install, videoGen }
 
+enum DeviceTaskPhase { running, success, failed }
+
 class DeviceTaskState {
   final DeviceTaskType type;
-  final double progress;
   final String status;
+  final DeviceTaskPhase phase;
 
   DeviceTaskState({
     required this.type,
-    this.progress = 0.0,
     this.status = '',
+    this.phase = DeviceTaskPhase.running,
   });
 
   DeviceTaskState copyWith({
-    double? progress,
     String? status,
+    DeviceTaskPhase? phase,
   }) {
     return DeviceTaskState(
       type: type,
-      progress: progress ?? this.progress,
       status: status ?? this.status,
+      phase: phase ?? this.phase,
     );
   }
 
   String get label {
     switch (type) {
       case DeviceTaskType.push:
-        return 'Pushing files...';
+        return 'Đẩy file';
       case DeviceTaskType.install:
-        return 'Installing APK...';
+        return 'Cài đặt APK';
       case DeviceTaskType.videoGen:
-        return 'Generating Video...';
+        return 'TikTok';
     }
   }
 }

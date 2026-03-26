@@ -100,8 +100,8 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
   void updateDeviceTask(
     String serial, {
     required DeviceTaskType type,
-    double? progress,
     String? status,
+    DeviceTaskPhase phase = DeviceTaskPhase.running,
     bool isRunning = true,
   }) {
     final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
@@ -111,8 +111,8 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
       return super.updateDeviceTask(
         serial,
         type: type,
-        progress: progress,
         status: status,
+        phase: phase,
         isRunning: isRunning,
       );
     } finally {

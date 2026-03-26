@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:injectable/injectable.dart';
@@ -504,52 +505,16 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     void Function(String status)? onStatus,
   }) async {
     try {
-      logger.i('[ADB] Starting install for $localPath on $serial');
-      onStatus?.call('Preparing installation...');
-
-      final process = await Process.start('adb', [
-        '-s',
-        serial,
-        'install',
-        '-r', // replace existing
-        localPath,
-      ]);
-
-      final progressRegex = RegExp(r'\[\s*(\d+)%\]');
-
-      // Đọc stdout để lấy tiến trình
-      process.stdout.transform(const SystemEncoding().decoder).listen((line) {
-        logger.v('[ADB Install] $line');
-        final match = progressRegex.firstMatch(line);
-        if (match != null) {
-          final percent = int.parse(match.group(1)!);
-          onProgress?.call(percent / 100.0);
-          onStatus?.call('Streaming APK ($percent%)...');
-        } else if (line.contains('Success')) {
-          onStatus?.call('Success');
-        } else if (line.contains('Performing Streamed Install')) {
-          onStatus?.call('Performing Streamed Install...');
-        }
-      });
-
-      // Đọc stderr để bắt lỗi
-      final errorBuffer = StringBuffer();
-      process.stderr.transform(const SystemEncoding().decoder).listen((line) {
-        errorBuffer.write(line);
-      });
-
-      final exitCode = await process.exitCode;
-      if (exitCode != 0) {
-        final error = errorBuffer.toString();
-        logger.e('[ADB] Install failed with exit code $exitCode: $error');
-        throw ServerException('Cài đặt thất bại: ${error.isEmpty ? "Unknown error" : error}');
+      logger.i('[ADB] Simple install: $localPath on $serial');
+      final result = await Process.run('adb', ['-s', serial, 'install', '-r', localPath]);
+      
+      final out = (result.stdout as String).trim();
+      if (!out.contains('Success') && result.exitCode != 0) {
+        throw ServerException('Cài đặt thất bại: $out ${result.stderr}');
       }
-
-      logger.i('[ADB] Install finished successfully for $localPath');
     } catch (e) {
-      logger.e('[ADB] Exception during install', error: e);
       if (e is ServerException) rethrow;
-      throw ServerException('Lỗi trong quá trình cài đặt APK: $e');
+      throw ServerException('Lỗi cài đặt: $e');
     }
   }
 }

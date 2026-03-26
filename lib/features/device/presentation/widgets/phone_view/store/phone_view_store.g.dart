@@ -45,13 +45,6 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     () => super.isTaskRunning,
     name: '_PhoneViewStore.isTaskRunning',
   )).value;
-  Computed<double>? _$taskProgressComputed;
-
-  @override
-  double get taskProgress => (_$taskProgressComputed ??= Computed<double>(
-    () => super.taskProgress,
-    name: '_PhoneViewStore.taskProgress',
-  )).value;
   Computed<String>? _$taskStatusComputed;
 
   @override
@@ -382,6 +375,18 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
+  void cancelActiveTask() {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.cancelActiveTask',
+    );
+    try {
+      return super.cancelActiveTask();
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   bool checkDoubleTap(String serial) {
     final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
       name: '_PhoneViewStore.checkDoubleTap',
@@ -408,7 +413,6 @@ session: ${session},
 isFloating: ${isFloating},
 activeTask: ${activeTask},
 isTaskRunning: ${isTaskRunning},
-taskProgress: ${taskProgress},
 taskStatus: ${taskStatus},
 taskLabel: ${taskLabel},
 floatingSerial: ${floatingSerial},

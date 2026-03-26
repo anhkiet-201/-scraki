@@ -112,48 +112,68 @@ class ScrcpyService {
     }
   }
 
-  Future<void> pushFiles(String serial, List<String> filePaths) async {
+  Future<void> pushFiles(
+    String serial,
+    List<String> filePaths, {
+    void Function(double progress)? onProgress,
+  }) async {
+    // adb push ghi tiến trình ra stderr: "[ 50%] /sdcard/Download/file.mp4"
+    final progressRegex = RegExp(r'\[\s*(\d+)%\]');
+    final total = filePaths.length;
+
     try {
-      for (final path in filePaths) {
-        logger.i('[ScrcpyService] Pushing file to $serial: $path');
-        // Use Process.run directly to avoid shell parsing issues with spaces/special characters
-        final pushResult = await Process.run('adb', [
-          '-s',
-          serial,
-          'push',
-          path,
-          '/sdcard/Download/',
+      for (int i = 0; i < total; i++) {
+        final path = filePaths[i];
+        final fileBaseProgress = i / total;
+        final fileRangeSize = 1.0 / total;
+
+        logger.i('[ScrcpyService] Pushing file ${i + 1}/$total: $path');
+
+        final pushProcess = await Process.start('adb', [
+          '-s', serial, 'push', path, '/sdcard/Download/',
         ]);
 
-        if (pushResult.exitCode != 0) {
-          throw Exception('adb push failed: ${pushResult.stderr}');
+        final stderrBuf = StringBuffer();
+
+        // Stream stderr: parse "[XX%] filename"
+        pushProcess.stderr
+            .transform<String>(utf8.decoder)
+            .listen((String chunk) {
+          stderrBuf.write(chunk);
+          for (final part in chunk.split(RegExp(r'[\r\n]'))) {
+            final match = progressRegex.firstMatch(part);
+            if (match != null) {
+              final percent = int.tryParse(match.group(1) ?? '') ?? 0;
+              // Progress tổng = tiến trình file hiện tại trong range của nó
+              final overall = fileBaseProgress + (percent / 100.0) * fileRangeSize;
+              onProgress?.call(overall.clamp(0.0, 1.0));
+            }
+          }
+        });
+
+        // Drain stdout
+        pushProcess.stdout.drain<void>();
+
+        final exitCode = await pushProcess.exitCode;
+        if (exitCode != 0) {
+          throw Exception('adb push failed: ${stderrBuf.toString()}');
         }
 
-        // Notify MediaScanner to scan the pushed file.
-        // Single-quote the URI so Android sh does not interpret special chars
-        // like spaces, '(', ')' as shell syntax.
-        // Process.run uses CreateProcess on Windows (not cmd.exe), so single-quotes
-        // inside the argument string are passed through to ADB and then to sh correctly.
+        // Notify MediaScanner
         final fileName = path.split(RegExp(r'[/\\]')).last;
-        // Escape any literal single-quotes in the filename using POSIX '\'' trick.
         final escapedFileName = fileName.replaceAll("'", "'\\''");
         final uri = 'file:///sdcard/Download/$escapedFileName';
-        final scanCmd =
-            "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d '$uri'";
-
         final scanResult = await Process.run('adb', [
-          '-s',
-          serial,
-          'shell',
-          scanCmd,
+          '-s', serial, 'shell',
+          "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d '$uri'",
         ]);
-
         if (scanResult.exitCode != 0) {
-          logger.w(
-            '[ScrcpyService] MediaScanner failed (non-critical): ${scanResult.stderr}',
-          );
+          logger.w('[ScrcpyService] MediaScanner failed: ${scanResult.stderr}');
         }
       }
+
+      // Đảm bảo progress đạt 100% sau khi xong
+      onProgress?.call(1.0);
     } catch (e) {
       logger.e('[ScrcpyService] Failed to push files to $serial', error: e);
       rethrow;
