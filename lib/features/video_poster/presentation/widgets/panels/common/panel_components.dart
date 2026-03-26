@@ -154,7 +154,9 @@ class PanelComponents {
       children: [
         ...colors.map((c) {
           final isSelected = selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
-          final borderColor = isSelected ? accentColor : Colors.transparent;
+          final borderColor = isSelected 
+              ? accentColor 
+              : (isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1));
               
           return GestureDetector(
             onTap: () => onSelect(c),
@@ -252,8 +254,10 @@ class PanelComponents {
                   color: c,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? accentColor : Colors.transparent,
-                    width: isSelected ? 2.5 : 1.5,
+                    color: isSelected 
+                        ? accentColor 
+                        : (isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1)),
+                    width: isSelected ? 2.5 : 1,
                   ),
                 ),
               ),
