@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
+import 'package:scraki/core/widgets/box_card.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/presentation/widgets/device_card/device_card.dart';
 
@@ -23,46 +24,63 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
       final colorScheme = Theme.of(context).colorScheme;
       final theme = Theme.of(context);
       return Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceVariant.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.05),
-              width: 1,
-            ),
-          ),
+        child: BoxCard(
+          width: 420,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.devices_rounded,
-                  size: 64,
-                  color: colorScheme.primary.withValues(alpha: 0.3),
+              // Layered Icon with soft glow
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          colorScheme.primary.withValues(alpha: 0.15),
+                          colorScheme.primary.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.devices_other_rounded,
+                      size: 56,
+                      color: colorScheme.primary.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'NO DEVICES DETECTED',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: colorScheme.onSurface.withValues(alpha: 0.9),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Text(
-                'No devices detected',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Connect your devices via USB or TCP to get started. Make sure ADB is enabled.',
+                'Connect your devices via USB or TCP to get started. Ensure ADB debugging is enabled in the developer options.',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                  height: 1.5,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  height: 1.6,
+                  letterSpacing: 0.2,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -78,27 +96,25 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
         return LayoutBuilder(
           builder: (context, constraints) {
             final availableWidth = constraints.maxWidth;
-            const maxItemWidth = 320.0;
-            const spacing = 16.0;
+            const maxItemWidth = 300.0;
+            const spacing = 20.0;
 
-            final contentWidth =
-                availableWidth - 32; // Balanced padding for fixed 80dp sidebar
+            final contentWidth = availableWidth - 48; // Sidebar + Margins
 
             final crossAxisCount =
                 ((contentWidth + spacing) / (maxItemWidth + spacing))
                     .ceil()
                     .clamp(1, 10);
 
-            // Wrap only puts spacing BETWEEN items (count - 1)
             final itemWidth =
                 (contentWidth - ((crossAxisCount - 1) * spacing)) /
                 crossAxisCount;
 
-            final totalHeight = (itemWidth / deviceRatio) + 56;
+            final totalHeight = (itemWidth / deviceRatio) + 60; // Extra room for header
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Wrap(
                 spacing: spacing,
                 runSpacing: spacing,

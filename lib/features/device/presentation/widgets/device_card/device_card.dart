@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
@@ -177,6 +178,7 @@ class _DeviceCardState extends State<DeviceCard>
     super.build(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
     return Observer(
       builder: (_) {
         return MouseRegion(
@@ -186,54 +188,49 @@ class _DeviceCardState extends State<DeviceCard>
             onTap: () => _handleCardTap(context),
             onSecondaryTapDown: (details) =>
                 _showContextMenu(context, details.globalPosition),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.fastOutSlowIn,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  if (_isHovered.value || _hasFocus.value)
-                    BoxShadow(
-                      color: colorScheme.shadow.withValues(alpha: 0.12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: _isHovered.value
+                        ? colorScheme.surface.withValues(alpha: 0.8)
+                        : colorScheme.surface.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _hasFocus.value
+                          ? colorScheme.primary.withValues(alpha: 0.5)
+                          : colorScheme.outlineVariant.withValues(alpha: 0.2),
+                      width: _hasFocus.value ? 1.5 : 1.0,
                     ),
-                ],
-              ),
-              child: Card(
-                elevation: 0,
-                color: _isHovered.value
-                    ? colorScheme.surfaceContainerLow
-                    : colorScheme.surfaceContainerLowest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: _hasFocus.value
-                        ? colorScheme.primary
-                        : (_isHovered.value
-                              ? colorScheme.outline
-                              : colorScheme.outlineVariant.withValues(
-                                  alpha: 0.3,
-                                )),
-                    width: _hasFocus.value ? 2.0 : 1.0,
+                    boxShadow: [
+                      if (_isHovered.value || _hasFocus.value)
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.05),
+                          blurRadius: 16,
+                          spreadRadius: -4,
+                        ),
+                    ],
                   ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 56,
-                      child: _buildHeader(theme, colorScheme),
-                    ),
-                    Expanded(
-                      child: PhoneView(
-                        serial: widget.device.serial,
-                        fit: BoxFit.fill,
-                        focusNode: _cardFocusNode,
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 52,
+                        child: _buildHeader(theme, colorScheme),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: PhoneView(
+                          serial: widget.device.serial,
+                          fit: BoxFit.fill,
+                          focusNode: _cardFocusNode,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -287,9 +284,10 @@ class _DeviceCardState extends State<DeviceCard>
                           child: Text(
                             displayName,
                             style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                              fontSize: 12
+                              fontWeight: FontWeight.w800,
+                              color: colorScheme.onSurface.withValues(alpha: 0.9),
+                              fontSize: 13,
+                              letterSpacing: 0.2,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
