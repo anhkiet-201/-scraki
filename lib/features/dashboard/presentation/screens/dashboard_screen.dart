@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
@@ -194,140 +195,280 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildNavigationRail(ThemeData theme, DashboardStore store) {
     return Observer(
       builder: (_) {
-        return NavigationRail(
-          selectedIndex: store.selectedIndex,
-          onDestinationSelected: (index) {
-            store.setSelectedIndex(index);
-            // PageController jump is handled by reaction
-          },
-          extended: false,
-          leading: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Icon(Icons.bolt, color: theme.colorScheme.primary, size: 32),
+        return ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withValues(alpha: 0.5),
+                border: Border(
+                  right: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: NavigationRail(
+                backgroundColor: Colors.transparent,
+                selectedIndex: store.selectedIndex,
+                onDestinationSelected: (index) {
+                  store.setSelectedIndex(index);
+                },
+                extended: false,
+                labelType: NavigationRailLabelType.none,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Hero(
+                    tag: 'app_logo',
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.bolt_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+                unselectedIconTheme: IconThemeData(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  size: 24,
+                ),
+                selectedIconTheme: IconThemeData(
+                  color: theme.colorScheme.primary,
+                  size: 26,
+                ),
+                indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.devices_outlined),
+                    selectedIcon: Icon(Icons.devices_rounded),
+                    label: Text('Devices'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.post_add_rounded),
+                    selectedIcon: Icon(Icons.post_add_rounded),
+                    label: Text('Posters'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.video_library_outlined),
+                    selectedIcon: Icon(Icons.video_library_rounded),
+                    label: Text('Video Posters'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.terminal_outlined),
+                    selectedIcon: Icon(Icons.terminal_rounded),
+                    label: Text('Scripts'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings_rounded),
+                    label: Text('Settings'),
+                  ),
+                ],
+              ),
+            ),
           ),
-          destinations: const [
-            NavigationRailDestination(
-              icon: Icon(Icons.devices),
-              selectedIcon: Icon(Icons.devices_rounded),
-              label: Text('Devices'),
-            ),
-            NavigationRailDestination(
-              icon: Icon(Icons.post_add),
-              selectedIcon: Icon(Icons.post_add_outlined),
-              label: Text('Posters'),
-            ),
-            NavigationRailDestination(
-              icon: Icon(Icons.video_library_outlined),
-              selectedIcon: Icon(Icons.video_library),
-              label: Text('Video Posters'),
-            ),
-            NavigationRailDestination(
-              icon: Icon(Icons.terminal_outlined),
-              selectedIcon: Icon(Icons.terminal),
-              label: Text('Scripts'),
-            ),
-            NavigationRailDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: Text('Settings'),
-            ),
-          ],
         );
       },
     );
   }
 
   Widget _buildTopBar(ThemeData theme, DashboardStore dashboardStore) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-      color: theme.colorScheme.surface,
-      child: Row(
-        children: [
-          Expanded(child: DeviceSearchBar(dashboardStore: dashboardStore)),
-          const SizedBox(width: 16),
-          IconButton.filledTonal(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => deviceManagerStore.loadDevices(),
-            tooltip: 'Refresh',
+    final colorScheme = theme.colorScheme;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          decoration: BoxDecoration(
+            color: colorScheme.surface.withValues(alpha: 0.5),
+            border: Border(
+              bottom: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            icon: const Icon(Icons.add),
-            onPressed: () {},
-            tooltip: 'Add Device',
+          child: Row(
+            children: [
+              Expanded(child: DeviceSearchBar(dashboardStore: dashboardStore)),
+              const SizedBox(width: 16),
+              _buildActionButton(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Refresh',
+                onPressed: () => deviceManagerStore.loadDevices(),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              ),
+              const SizedBox(width: 12),
+              _buildActionButton(
+                icon: Icons.add_rounded,
+                tooltip: 'Add Device',
+                onPressed: () {},
+                color: colorScheme.primary.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 16),
+              _buildConnectButton(theme),
+            ],
           ),
-          const SizedBox(width: 8),
-          Observer(
-            builder: (_) {
-              final isLoading = deviceManagerStore.isLoading;
-              final count = deviceManagerStore.connectedBoxCount;
-
-              return Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.tertiary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: FilledButton.icon(
-                  icon: isLoading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: theme.colorScheme.onTertiary,
-                          ),
-                        )
-                      : const Icon(Icons.cast_connected, size: 20),
-                  label: Text(
-                    isLoading ? 'Connecting...' : 'Connect Boxes ($count/96)',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  onPressed: isLoading
-                      ? null
-                      : () => deviceManagerStore.connectToBox(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.tertiary,
-                    foregroundColor: theme.colorScheme.onTertiary,
-                    disabledBackgroundColor: theme.colorScheme.tertiary
-                        .withValues(alpha: 0.8),
-                    disabledForegroundColor: theme.colorScheme.onTertiary
-                        .withValues(alpha: 0.8),
-                    elevation: 0, // Handled by Container shadow
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  Widget _buildActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, color: color, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectButton(ThemeData theme) {
+    return Observer(
+      builder: (_) {
+        final isLoading = deviceManagerStore.isLoading;
+        final count = deviceManagerStore.connectedBoxCount;
+        final colorScheme = theme.colorScheme;
+
+        return Container(
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(21),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.tertiary.withValues(alpha: 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: FilledButton.icon(
+            icon: isLoading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.onTertiary,
+                    ),
+                  )
+                : const Icon(Icons.cast_connected_rounded, size: 18),
+            label: Text(
+              isLoading ? 'Connecting...' : 'Connect Boxes ($count/96)',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                fontSize: 13,
+              ),
+            ),
+            onPressed: isLoading ? null : () => deviceManagerStore.connectToBox(),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.tertiary,
+              foregroundColor: colorScheme.onTertiary,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(21),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildErrorView(String message) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Error: $message',
-            style: const TextStyle(color: Colors.red),
-            textAlign: TextAlign.center,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: colorScheme.error.withValues(alpha: 0.1),
+            width: 1,
           ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: deviceManagerStore.loadDevices,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
-          ),
-        ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.report_problem_rounded,
+                size: 48,
+                color: colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Oops! Something went wrong',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onErrorContainer,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: deviceManagerStore.loadDevices,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text(
+                  'Try to Refresh',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.error,
+                  foregroundColor: colorScheme.onError,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

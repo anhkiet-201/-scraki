@@ -29,34 +29,42 @@ class BoxCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
+          // Shadow mờ hơn và rộng hơn để tạo chiều sâu
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 32,
+            spreadRadius: 0,
+            offset: const Offset(0, 12),
           ),
+          // Subtle glow của primary color
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 10,
-            spreadRadius: -2,
+            color: colorScheme.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: -4,
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          // Tăng độ nhòe lên 16/16 để hiệu ứng kính rõ rệt hơn
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(alpha: 0.7),
+              // Màu nền kính với độ trong suốt tinh tế
+              color: colorScheme.surface.withValues(alpha: 0.65),
+              // Viền kính (Glass border) với gradient nhẹ
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 1.2,
               ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Material(color: Colors.transparent, child: child),
+            child: Material(
+              color: Colors.transparent,
+              child: child,
+            ),
           ),
         ),
       ),

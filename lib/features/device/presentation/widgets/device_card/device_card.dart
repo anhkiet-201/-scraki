@@ -109,21 +109,32 @@ class _DeviceCardState extends State<DeviceCard>
     BoxCardMenu.show<void>(
       context: context,
       position: position,
-      width: 250,
+      width: 240,
       items: [
         BoxCardMenuItem(
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('Đổi tên'),
+          icon: const Icon(Icons.drive_file_rename_outline_rounded),
+          label: const Text('Đổi tên thiết bị'),
           onTap: () => _handleRename(context),
         ),
-        const Divider(height: 1, indent: 16, endIndent: 16),
         if (availableGroups.isNotEmpty) ...[
-          const BoxCardMenuHeader(title: 'Add to Group'),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          const BoxCardMenuHeader(
+            title: 'Add to Group',
+            icon: Icons.group_add_rounded,
+          ),
           ...availableGroups.map(
             (group) => BoxCardMenuItem(
-              icon: Icon(
-                Icons.add_circle_outline,
-                color: Color(group.colorValue),
+              icon: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Color(group.colorValue).withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1.5,
+                  ),
+                ),
               ),
               label: Text(group.name),
               onTap: () =>
@@ -133,12 +144,23 @@ class _DeviceCardState extends State<DeviceCard>
         ],
         if (deviceGroups.isNotEmpty) ...[
           const Divider(height: 1, indent: 16, endIndent: 16),
-          const BoxCardMenuHeader(title: 'Remove from Group'),
+          const BoxCardMenuHeader(
+            title: 'Remove from Group',
+            icon: Icons.group_remove_rounded,
+          ),
           ...deviceGroups.map(
             (group) => BoxCardMenuItem(
-              icon: Icon(
-                Icons.remove_circle_outline,
-                color: Color(group.colorValue),
+              icon: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Color(group.colorValue).withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1.5,
+                  ),
+                ),
               ),
               label: Text(group.name),
               onTap: () =>
