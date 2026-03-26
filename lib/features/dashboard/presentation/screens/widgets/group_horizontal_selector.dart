@@ -35,13 +35,13 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
     }
 
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.transparent, // Let parent glass backdrop show through
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -60,88 +60,88 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
               );
             },
           ),
-          const VerticalDivider(width: 24, indent: 8, endIndent: 8),
+          const VerticalDivider(width: 32, indent: 8, endIndent: 8),
           // Group List
           Expanded(
             child: Observer(
               builder: (_) {
                 if (store.groups.isEmpty) {
-                  return Text(
-                    'No groups created',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.outline,
+                  return Center(
+                    child: Text(
+                      'No groups created',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.6),
+                      ),
                     ),
                   );
                 }
 
-                return Listener(
-                  onPointerSignal: (pointerSignal) {
-                    if (pointerSignal is PointerScrollEvent) {
-                      final scrollDelta = pointerSignal.scrollDelta.dy;
-                      // Determine the scroll direction based on the event delta
-                      // And adjust the ListView's scroll position
-                      final currentPosition = _scrollController.position.pixels;
-                      final maxScrollExtent =
-                          _scrollController.position.maxScrollExtent;
+                return ListView.builder(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: store.groups.length,
+                  itemBuilder: (context, index) {
+                    final group = store.groups[index];
 
-                      double newPosition = currentPosition + scrollDelta;
-                      if (newPosition < 0) {
-                        newPosition = 0;
-                      } else if (newPosition > maxScrollExtent) {
-                        newPosition = maxScrollExtent;
-                      }
-
-                      _scrollController.jumpTo(newPosition);
-                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Observer(
+                        key: ValueKey('group_${group.id}'),
+                        builder: (_) {
+                          final isSelected =
+                              store.selectedGroupId == group.id;
+                          return _GroupChip(
+                            label: group.name,
+                            isSelected: isSelected,
+                            color: Color(group.colorValue),
+                            count: group.deviceSerials.length,
+                            onTap: () => store.selectGroup(group.id),
+                            onDelete: () => _showDeleteConfirmation(
+                              context,
+                              store,
+                              group,
+                            ),
+                          );
+                        },
+                      ),
+                    );
                   },
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    itemCount: store.groups.length,
-                    itemBuilder: (context, index) {
-                      final group = store.groups[index];
-
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Observer(
-                          key: ValueKey('group_${group.id}'),
-                          builder: (_) {
-                            final isSelected =
-                                store.selectedGroupId == group.id;
-                            return _GroupChip(
-                              label: group.name,
-                              isSelected: isSelected,
-                              color: Color(group.colorValue),
-                              count: group.deviceSerials.length,
-                              onTap: () => store.selectGroup(group.id),
-                              onDelete: () => _showDeleteConfirmation(
-                                context,
-                                store,
-                                group,
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
                 );
               },
             ),
           ),
           // Add Button
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, size: 24),
-            tooltip: 'Create Group',
-            onPressed: () {
-              showDialog<void>(
-                context: context,
-                builder: (_) => const CreateGroupDialog(),
-              );
-            },
-          ),
+          const SizedBox(width: 12),
+          _buildAddGroupButton(theme),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddGroupButton(ThemeData theme) {
+    return Tooltip(
+      message: 'Create Group',
+      child: Material(
+        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => const CreateGroupDialog(),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: Icon(
+              Icons.add_rounded,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -251,56 +251,58 @@ class _GroupChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? color : color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
+            color: isSelected ? color.withValues(alpha: 0.9) : color.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? color : theme.colorScheme.outlineVariant,
-              width: isSelected ? 2.0 : 1.0,
+              color: isSelected ? color : color.withValues(alpha: 0.1),
+              width: 1.0,
             ),
             boxShadow: [
               if (isSelected)
                 BoxShadow(
-                  color: color.withValues(alpha: 0.4),
+                  color: color.withValues(alpha: 0.3),
                   blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  offset: const Offset(0, 4),
                 ),
             ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!isSelected)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+              // Colorful Dot with Glow (Same as Context Menu)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    if (!isSelected)
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.6),
+                        blurRadius: 4,
+                      ),
+                  ],
                 ),
-              if (!isSelected) const SizedBox(width: 8),
+              ),
+              const SizedBox(width: 10),
               Text(
                 count != null ? '$label ($count)' : label,
                 style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? Colors.white
-                      : theme.colorScheme.onSurface,
-                  letterSpacing: isSelected ? 0.5 : 0,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? Colors.white : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  letterSpacing: isSelected ? 0.3 : 0,
                 ),
               ),
               if (onDelete != null && isSelected) ...[
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: () {
-                    // Prevent propagation to the chip's onTap
-                    onDelete!();
-                  },
+                  onTap: onDelete,
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
@@ -308,7 +310,7 @@ class _GroupChip extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.close,
+                      Icons.close_rounded,
                       size: 14,
                       color: Colors.white,
                     ),
