@@ -47,7 +47,7 @@ class PanelComponents {
         fontSize: 9,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
-        color: isLight ? const Color(0xFF64748B) : Colors.white38,
+        color: isLight ? const Color(0xFF64748B) : Colors.white38, // Using Slate 500 for light mode
       ),
     );
   }
@@ -101,20 +101,27 @@ class PanelComponents {
     
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
-        trackHeight: 2,
-        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(
+          enabledThumbRadius: 7,
+          elevation: 2,
+          pressedElevation: 4,
+        ),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
         activeTrackColor: isReversed ? inactiveColor : accentColor,
         inactiveTrackColor: isReversed ? accentColor : inactiveColor,
-        thumbColor: thumbColor,
-        overlayColor: accentColor.withValues(alpha: 0.2),
+        thumbColor: isLight ? Colors.white : thumbColor,
+        overlayColor: accentColor.withValues(alpha: 0.15),
       ),
-      child: Slider(
-        value: value.clamp(min, max),
-        min: min,
-        max: max,
-        divisions: divisions,
-        onChanged: onChanged,
+      child: SizedBox(
+        height: 32,
+        child: Slider(
+          value: value.clamp(min, max),
+          min: min,
+          max: max,
+          divisions: divisions,
+          onChanged: onChanged,
+        ),
       ),
     );
   }
@@ -171,15 +178,15 @@ class PanelComponents {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white24,
+                color: isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white12,
                 width: 1,
               ),
-              color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
+              color: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.03),
             ),
             child: Icon(
               Icons.colorize_rounded,
               size: 14,
-              color: isLight ? const Color(0xFF64748B) : Colors.white70,
+              color: isLight ? const Color(0xFF94A3B8) : Colors.white60,
             ),
           ),
         ),
@@ -388,12 +395,20 @@ class PanelComponents {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-          border: null,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: active && isLight
+              ? [
+                  BoxShadow(
+                    color: accentColor.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
         ),
         child: Icon(
           icon,
@@ -528,16 +543,20 @@ class PanelComponents {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: isLight 
-            ? Colors.black.withValues(alpha: 0.05) 
+            ? Colors.black.withValues(alpha: 0.03) 
             : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
-        border: null,
+        border: Border.all(
+          color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+          width: 0.5,
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: fontFamilies.contains(currentFont) ? currentFont : 'Roboto',
-          dropdownColor: isLight ? Colors.white : const Color(0xFF1A1A1A),
+          dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(12),
+          elevation: 8,
           icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: isLight ? const Color(0xFF64748B) : Colors.white38,
@@ -588,7 +607,8 @@ class PanelComponents {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: null,
+        // Subtle border for light mode sections
+        border: isLight ? Border.all(color: Colors.black.withValues(alpha: 0.02)) : null,
       ),
       child: Theme(
         data: (isLight ? ThemeData.light() : ThemeData.dark()).copyWith(

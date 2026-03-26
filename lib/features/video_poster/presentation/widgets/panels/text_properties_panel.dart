@@ -80,23 +80,36 @@ class TextPropertiesPanel extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: store.addCustomText,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accentColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: isLight ? [
+                  BoxShadow(
+                    color: _accentColor.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ] : null,
               ),
-              icon: const Icon(Icons.text_fields_rounded, size: 18),
-              label: const Text(
-                '+ THÊM CHỮ',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
+              child: ElevatedButton.icon(
+                onPressed: store.addCustomText,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.text_fields_rounded, size: 20),
+                label: const Text(
+                  'THÊM VĂN BẢN MỚI',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
             ),
@@ -129,10 +142,12 @@ class TextPropertiesPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive
-                    ? _accentColor.withValues(alpha: 0.15)
+                    ? _accentColor.withValues(alpha: isLight ? 0.08 : 0.15)
                     : (isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.04)),
-                borderRadius: BorderRadius.circular(8),
-                border: null,
+                borderRadius: BorderRadius.circular(10),
+                border: isActive && isLight 
+                    ? Border.all(color: _accentColor.withValues(alpha: 0.1)) 
+                    : null,
               ),
               child: Row(
                 children: [
@@ -598,6 +613,8 @@ class TextPropertiesPanel extends StatelessWidget {
                     value: text.animationInType,
                     isExpanded: true,
                     dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.circular(12),
+                    elevation: 8,
                     icon: Icon(
                       Icons.arrow_drop_down_rounded, 
                       color: isLight ? const Color(0xFF94A3B8) : Colors.white54,
@@ -697,6 +714,8 @@ class TextPropertiesPanel extends StatelessWidget {
                     value: text.animationOutType,
                     isExpanded: true,
                     dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.circular(12),
+                    elevation: 8,
                     icon: Icon(
                       Icons.arrow_drop_down_rounded, 
                       color: isLight ? const Color(0xFF94A3B8) : Colors.white54,

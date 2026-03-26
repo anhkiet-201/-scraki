@@ -220,10 +220,17 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                                   margin: const EdgeInsets.only(right: 12),
                                   decoration: BoxDecoration(
                                     color: isLight ? Colors.black.withValues(alpha: 0.02) : const Color(0xFF1A1A1A),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: isSelected
                                         ? Border.all(color: PanelComponents.kPanelAccentColor, width: 2)
-                                        : null,
+                                        : Border.all(color: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.transparent),
+                                    boxShadow: isSelected && isLight ? [
+                                      BoxShadow(
+                                        color: PanelComponents.kPanelAccentColor.withValues(alpha: 0.15),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ] : null,
                                   ),
                                   child: Stack(
                                     children: [
@@ -280,10 +287,10 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                                           },
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              color: Colors.redAccent.withValues(alpha: 0.9),
+                                              color: Colors.redAccent.withValues(alpha: 0.85),
                                               borderRadius: const BorderRadius.only(
-                                                bottomLeft: Radius.circular(8),
-                                                topRight: Radius.circular(8),
+                                                bottomLeft: Radius.circular(10),
+                                                topRight: Radius.circular(10),
                                               ),
                                             ),
                                             padding: const EdgeInsets.all(4),
@@ -317,10 +324,10 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
                                               },
                                               child: Container(
                                                 decoration: BoxDecoration(
-                                                  color: Colors.black.withValues(alpha: 0.4),
+                                                  color: Colors.black.withValues(alpha: 0.3),
                                                   borderRadius: const BorderRadius.only(
-                                                    topLeft: Radius.circular(8),
-                                                    bottomRight: Radius.circular(8),
+                                                    topLeft: Radius.circular(10),
+                                                    bottomRight: Radius.circular(10),
                                                   ),
                                                 ),
                                                 padding: const EdgeInsets.all(4),
@@ -598,17 +605,37 @@ class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
             style: TextStyle(color: isLight ? const Color(0xFF0F172A) : Colors.white, fontSize: 13),
             decoration: InputDecoration(
               hintText: 'Tìm kiếm GIF trên Giphy...',
-              hintStyle: TextStyle(color: isLight ? const Color(0xFF94A3B8) : Colors.white30),
+              hintStyle: TextStyle(
+                color: isLight ? const Color(0xFF94A3B8) : Colors.white30,
+                fontSize: 13,
+              ),
               prefixIcon: Icon(
                 Icons.search_rounded,
                 color: isLight ? const Color(0xFF94A3B8) : Colors.white30,
                 size: 18,
               ),
               filled: true,
-              fillColor: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
+              fillColor: isLight ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(
+                  color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                  width: 0.5,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                  width: 0.5,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: PanelComponents.kPanelAccentColor.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),

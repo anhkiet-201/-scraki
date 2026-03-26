@@ -24,10 +24,10 @@ class MediaLibraryPanel extends StatelessWidget {
           child: Text(
             "TÀI NGUYÊN",
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
-              color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF1E293B) : Colors.white,
+              color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF94A3B8) : Colors.white38,
             ),
           ),
         ),
@@ -74,29 +74,46 @@ class MediaLibraryPanel extends StatelessWidget {
                       final path = store.sourceVideoPaths[index];
                       final isActive =
                           index == store.currentVideoIndex && store.isPlaying;
-                      return ListTile(
-                        dense: true,
-                        selected: isActive,
-                        selectedTileColor: Colors.black.withValues(alpha: 0.05),
-                        leading: Icon(
-                          Icons.movie_outlined,
-                          size: 16,
-                          color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-                        ),
-                        title: Text(
-                          path.split('/').last,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isActive
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isActive ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.light ? const Color(0xFF1E293B) : Colors.white70),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isActive 
+                                ? const Color(0xFF6366F1).withValues(alpha: Theme.of(context).brightness == Brightness.light ? 0.08 : 0.15) 
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: isActive && Theme.of(context).brightness == Brightness.light 
+                                ? Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1)) 
+                                : null,
                           ),
-                        ),
-                        onTap: () => onVideoTap(index),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, size: 14),
-                          onPressed: () => store.removeSourceVideo(index),
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(
+                              Icons.movie_outlined,
+                              size: 16,
+                              color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+                            ),
+                            title: Text(
+                              path.split('/').last,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isActive ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.light ? const Color(0xFF475569) : Colors.white70),
+                              ),
+                            ),
+                            onTap: () => onVideoTap(index),
+                            trailing: IconButton(
+                              icon: Icon(
+                                Icons.close_rounded, 
+                                size: 14, 
+                                color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFCBD5E1) : Colors.white24,
+                              ),
+                              onPressed: () => store.removeSourceVideo(index),
+                            ),
+                          ),
                         ),
                       );
                     },

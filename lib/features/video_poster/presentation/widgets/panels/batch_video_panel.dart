@@ -75,13 +75,25 @@ class BatchVideoPanel extends StatelessWidget {
                 enabled: !isCreating,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
+                  fillColor: isLight ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                      width: 0.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                      width: 0.5,
+                    ),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF6366F1),
+                    borderSide: BorderSide(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                   ),
@@ -263,13 +275,13 @@ class BatchVideoPanel extends StatelessWidget {
                       ? Colors.redAccent
                       : const Color(0xFF6366F1),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  elevation: isLight ? 4 : 0,
-                  shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  disabledBackgroundColor: isLight ? Colors.black12 : Colors.white10,
+                  disabledBackgroundColor: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
                 ),
                 child: isCreating
                     ? Row(

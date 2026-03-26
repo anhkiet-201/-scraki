@@ -67,6 +67,7 @@ class _TimeInputFieldState extends State<TimeInputField> {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,11 +75,11 @@ class _TimeInputFieldState extends State<TimeInputField> {
           padding: const EdgeInsets.only(left: 2),
           child: Text(
             widget.label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.5,
-              color: Colors.white38,
+              color: isLight ? const Color(0xFF64748B) : Colors.white38,
             ),
           ),
         ),
@@ -86,17 +87,22 @@ class _TimeInputFieldState extends State<TimeInputField> {
         Container(
           height: 38,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: isLight 
+                ? Colors.black.withValues(alpha: 0.03) 
+                : Colors.white.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(
+              color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.08),
+            ),
           ),
           child: Row(
             children: [
               _buildAdjustButton(
                 icon: Icons.remove_rounded,
                 onPressed: () => _adjustValue(-0.1),
+                isLight: isLight,
               ),
-              const VerticalDivider(width: 1, color: Colors.white10),
+              const SizedBox(width: 1), // Replaced divider with space
               Expanded(
                 child: Stack(
                   alignment: Alignment.center,
@@ -104,15 +110,18 @@ class _TimeInputFieldState extends State<TimeInputField> {
                     TextField(
                       controller: _controller,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isLight ? const Color(0xFF0F172A) : Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
                         hintText: widget.hint,
-                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
+                        hintStyle: TextStyle(
+                          color: isLight ? const Color(0xFF94A3B8) : Colors.white24, 
+                          fontSize: 13,
+                        ),
                         contentPadding: const EdgeInsets.only(left: 4, right: 14),
                         border: InputBorder.none,
                         isDense: true,
@@ -143,10 +152,11 @@ class _TimeInputFieldState extends State<TimeInputField> {
                   ],
                 ),
               ),
-              const VerticalDivider(width: 1, color: Colors.white10),
+              const SizedBox(width: 1),
               _buildAdjustButton(
                 icon: Icons.add_rounded,
                 onPressed: () => _adjustValue(0.1),
+                isLight: isLight,
               ),
             ],
           ),
@@ -158,6 +168,7 @@ class _TimeInputFieldState extends State<TimeInputField> {
   Widget _buildAdjustButton({
     required IconData icon,
     required VoidCallback onPressed,
+    required bool isLight,
   }) {
     return Material(
       color: Colors.transparent,
@@ -171,7 +182,11 @@ class _TimeInputFieldState extends State<TimeInputField> {
           width: 32,
           height: double.infinity,
           alignment: Alignment.center,
-          child: Icon(icon, size: 16, color: Colors.white54),
+          child: Icon(
+            icon, 
+            size: 16, 
+            color: isLight ? const Color(0xFF94A3B8) : Colors.white54,
+          ),
         ),
       ),
     );
