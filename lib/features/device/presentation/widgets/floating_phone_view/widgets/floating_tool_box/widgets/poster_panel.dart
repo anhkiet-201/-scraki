@@ -51,8 +51,9 @@ class _PosterPanelState extends State<PosterPanel> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           FloatingToolBoxCard(
-            height: 75,
+            height: 60,
             width: (widget.height - 87) * _aspectRatio,
+            padding: EdgeInsets.zero,
             child: widget.isGenerating || widget.posterData == null
                 ? const SizedBox()
                 : TemplateSelector(
@@ -68,56 +69,76 @@ class _PosterPanelState extends State<PosterPanel> {
                         .toList(),
                   ),
           ),
+          const SizedBox(height: 8),
           FloatingToolBoxCard(
             width: (widget.height - 87) * _aspectRatio,
             height: widget.height - 87,
+            padding: EdgeInsets.zero,
             child: widget.isGenerating
                 ? GeminiSkeletonLayout()
                 : widget.errorMessage != null
                 ? Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          color: Colors.red,
-                          size: 32,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.error_outline_rounded,
+                            color: Colors.red,
+                            size: 32,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
+                        Text(
+                          'LỖI KHỞI TẠO',
+                          style: TextStyle(
+                            color: Colors.red.withValues(alpha: 0.8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           widget.errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
+                          style: TextStyle(
+                            color: Colors.red.withValues(alpha: 0.6),
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         if (widget.onRetry != null) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           ElevatedButton.icon(
                             onPressed: widget.onRetry,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.withValues(
-                                alpha: 0.1,
-                              ),
-                              foregroundColor: Colors.red,
-                              shadowColor: Colors.transparent,
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: Colors.red.withValues(alpha: 0.5),
-                                ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            icon: const Icon(Icons.refresh, size: 18),
-                            label: const Text('Thử lại'),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text(
+                              'THỬ LẠI',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5),
+                            ),
                           ),
                         ],
                       ],

@@ -74,10 +74,31 @@ abstract class _FloatingToolBoxStore with Store {
   Future<void> sendPowerButton(String serial) async {
     try {
       await _adbDataSource.sendPowerKey(serial);
-    } catch (e) {
-      // Log error hoặc show snackbar
-      // Tạm thời ignore error
-    }
+    } catch (_) {}
+  }
+
+  /// Gửi BACK key (keycode 4)
+  @action
+  Future<void> sendBackButton(String serial) async {
+    try {
+      await _adbDataSource.sendKeyEvent(serial, 4);
+    } catch (_) {}
+  }
+
+  /// Gửi HOME key (keycode 3)
+  @action
+  Future<void> sendHomeButton(String serial) async {
+    try {
+      await _adbDataSource.sendKeyEvent(serial, 3);
+    } catch (_) {}
+  }
+
+  /// Gửi RECENT APPS key (keycode 187)
+  @action
+  Future<void> sendRecentAppsButton(String serial) async {
+    try {
+      await _adbDataSource.sendKeyEvent(serial, 187);
+    } catch (_) {}
   }
 
   /// Mở trang Inbox TikTok qua ADB intent (Global / Asia / Lite).

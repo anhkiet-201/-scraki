@@ -16,15 +16,10 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
 /// Floating Tool Box widget với thiết kế Glassmorphism.
-///
-/// Cung cấp các công cụ nhanh:
-/// - Power: Bật/tắt màn hình
-/// - Poster: Tạo ảnh tuyển dụng (AI Job Poster)
-///
-/// Tự động thu gọn khi không gian hẹp.
 class FloatingToolBox extends StatefulWidget {
   final String serial;
   final double height;
+  final FloatingToolBoxStore store;
   final double availableSpace;
   final void Function(PosterData) onJobSelected;
   final PosterData? posterData;
@@ -36,6 +31,7 @@ class FloatingToolBox extends StatefulWidget {
     super.key,
     required this.serial,
     required this.height,
+    required this.store,
     required this.availableSpace,
     required this.onJobSelected,
     this.posterData,
@@ -49,41 +45,27 @@ class FloatingToolBox extends StatefulWidget {
 }
 
 class FloatingToolBoxState extends State<FloatingToolBox> {
-  late final FloatingToolBoxStore _store;
   late final PosterCustomizationStore _customizationStore;
   final GlobalKey _posterKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _store = FloatingToolBoxStore();
     _customizationStore = PosterCustomizationStore();
   }
 
-  /// Chụp ảnh widget poster thành file ảnh PNG.
   Future<File?> capturePoster() async {
-    // Clear selection so no borders are captured
     _customizationStore.selectField(null);
-
-    // Wait for frame to repaint to remove highlights
     await Future<void>.delayed(const Duration(milliseconds: 100));
-
     try {
-      final boundary =
-          _posterKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
+      final boundary = _posterKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return null;
-
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData?.buffer.asUint8List();
-
       if (pngBytes == null) return null;
-
       final tempDir = await getTemporaryDirectory();
-      final file = File(
-        '${tempDir.path}/poster_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
+      final file = File('${tempDir.path}/poster_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(pngBytes);
       return file;
     } catch (e) {
@@ -99,65 +81,108 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
     return Observer(
       builder: (_) {
         return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ToolBoxMenu(
               isCollapsed: _isCollapsed,
               height: widget.height,
-              onPowerTap: () => _store.sendPowerButton(widget.serial),
-              onPosterTap: () => _store.toggleJobSelector(),
-              onEmailTap: () => _store.toggleEmailPanel(),
-              onInboxTap: () => _store.openTikTokInbox(widget.serial),
-              onProfileTap: () => _store.openTikTokProfile(widget.serial),
-              onAuthTap: () => _store.toggleAuthPanel(),
+              onPowerTap: () => widget.store.sendPowerButton(widget.serial),
+              onPosterTap: () => widget.store.toggleJobSelector(),
+              onEmailTap: () => widget.store.toggleEmailPanel(),
+              onInboxTap: () => widget.store.openTikTokInbox(widget.serial),
+              onProfileTap: () => widget.store.openTikTokProfile(widget.serial),
+              onAuthTap: () => widget.store.toggleAuthPanel(),
             ),
-            if (_store.showJobSelector)
-              JobSelectorPanel(
-                height: widget.height,
-                onJobSelected: (job) {
-                  _store.hideJobSelector();
-                  widget.onJobSelected(job);
-                },
-                onCancel: () {
-                  _store.hideJobSelector();
-                },
-              )
-            else if (_store.showEmailPanel)
-              EmailPanel(
-                height: widget.height,
-                deviceSerial: widget.serial,
-                onCancel: () {
-                  _store.hideEmailPanel();
-                },
-              )
-            else if (_store.showAuthPanel)
-              AuthPanel(serial: widget.serial)
-            else if (widget.isGenerating || widget.posterData != null) ...[
-              PosterPanel(
-                height: widget.height,
-                isGenerating: widget.isGenerating,
-                posterData: widget.posterData,
-                customizationStore: _customizationStore,
-                posterKey: _posterKey,
-                errorMessage: widget.errorMessage,
-                onRetry: widget.onRetry,
-              ),
-              Column(
-                children: [
-                  CaptionPanel(
-                    caption: widget.posterData?.tikTokCaption,
-                    availableSpace: widget.availableSpace,
-                    height: widget.height,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.05, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
                   ),
-                  TextScaleSlider(
-                    posterData: widget.posterData,
-                    customizationStore: _customizationStore,
-                  ),
-                ],
+                );
+              },
+              child: Container(
+                key: ValueKey(widget.store.showJobSelector || 
+                              widget.store.showEmailPanel || 
+                              widget.store.showAuthPanel || 
+                              widget.posterData != null || 
+                              widget.isGenerating),
+                alignment: Alignment.topLeft,
+                child: _buildPanel(),
               ),
-            ],
+            ),
           ],
         );
       },
     );
+  }
+
+  Widget _buildPanel() {
+    if (widget.store.showJobSelector) {
+      return JobSelectorPanel(
+        key: const ValueKey('job_selector'),
+        height: widget.height,
+        onJobSelected: (job) {
+          widget.store.hideJobSelector();
+          widget.onJobSelected(job);
+        },
+        onCancel: () {
+          widget.store.hideJobSelector();
+        },
+      );
+    } else if (widget.store.showEmailPanel) {
+      return EmailPanel(
+        key: const ValueKey('email_panel'),
+        height: widget.height,
+        deviceSerial: widget.serial,
+        onCancel: () {
+          widget.store.hideEmailPanel();
+        },
+      );
+    } else if (widget.store.showAuthPanel) {
+      return AuthPanel(
+        key: const ValueKey('auth_panel'),
+        serial: widget.serial,
+      );
+    } else if (widget.isGenerating || widget.posterData != null) {
+      return Row(
+        key: const ValueKey('poster_panel_group'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PosterPanel(
+            height: widget.height,
+            isGenerating: widget.isGenerating,
+            posterData: widget.posterData,
+            customizationStore: _customizationStore,
+            posterKey: _posterKey,
+            errorMessage: widget.errorMessage,
+            onRetry: widget.onRetry,
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CaptionPanel(
+                caption: widget.posterData?.tikTokCaption,
+                availableSpace: widget.availableSpace,
+                height: widget.height,
+              ),
+              TextScaleSlider(
+                posterData: widget.posterData,
+                customizationStore: _customizationStore,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink(key: ValueKey('empty_panel'));
   }
 }

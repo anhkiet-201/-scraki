@@ -20,6 +20,7 @@ class JobSelectorPanel extends StatelessWidget {
     return FloatingToolBoxCard(
       width: 450,
       height: height,
+      padding: EdgeInsets.zero,
       child: FloatingJobSelector(
         onJobSelected: onJobSelected,
         onCancel: onCancel,

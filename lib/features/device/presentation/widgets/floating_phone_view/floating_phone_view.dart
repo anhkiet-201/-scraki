@@ -12,24 +12,29 @@ import 'widgets/floating_window_header.dart';
 import 'widgets/floating_resize_handle.dart';
 import 'store/floating_phone_view_store.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
+import 'widgets/floating_tool_box/store/floating_tool_box_store.dart';
 
 /// Widget hiển thị cửa sổ điện thoại nổi (Floating Window).
-///
-/// Bao gồm:
-/// - Header: Tiêu đề và nút đóng, hỗ trợ kéo thả
-/// - Content: Hiển thị màn hình điện thoại (PhoneView)
-/// - Resize Handle: Cho phép thay đổi kích thước
-/// - ToolBox: Các công cụ hỗ trợ (Power, Poster)
 class FloatingPhoneView extends StatefulWidget {
   final String serial;
   final VoidCallback onClose;
   final Size parentSize;
+  final PosterData? posterData;
+  final bool isGenerating;
+  final String? errorMessage;
+  final void Function(PosterData)? onJobSelected;
+  final VoidCallback? onRetry;
 
   const FloatingPhoneView({
     super.key,
     required this.serial,
     required this.onClose,
     required this.parentSize,
+    this.posterData,
+    this.isGenerating = false,
+    this.errorMessage,
+    this.onJobSelected,
+    this.onRetry,
   });
 
   @override
@@ -40,6 +45,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
     with SessionManagerStoreMixin {
   late final FloatingPhoneViewStore _store;
   late final DeviceManagerStore _deviceManagerStore;
+  late final FloatingToolBoxStore _toolBoxStore;
 
   final GlobalKey<FloatingToolBoxState> _toolBoxKey = GlobalKey();
 
@@ -48,6 +54,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
     super.initState();
     _store = FloatingPhoneViewStore(widget.parentSize);
     _deviceManagerStore = inject<DeviceManagerStore>();
+    _toolBoxStore = FloatingToolBoxStore();
   }
 
   @override
@@ -56,7 +63,6 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
     super.dispose();
   }
 
-  /// Trả về modelName của thiết bị; fallback về serial nếu không tìm thấy.
   String get _deviceTitle {
     try {
       return _deviceManagerStore.devices
@@ -115,7 +121,6 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                       ),
                       child: Column(
                         children: [
-                          // 1. Header Component
                           FloatingWindowHeader(
                             title: _deviceTitle,
                             onClose: widget.onClose,
@@ -161,39 +166,18 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                           FloatingResizeHandle(
                             onResizeUpdate: (details) {
                               runInAction(() {
-                                final delta =
-                                    details.delta.dx + details.delta.dy;
-
+                                final delta = details.delta.dx + details.delta.dy;
                                 double maxAllowedWidth = 1200.0;
                                 if (!widget.parentSize.isEmpty) {
-                                  final maxWidthByX = widget.parentSize.width -
-                                      _store.position.dx;
-                                  final maxHeightAvailable =
-                                      widget.parentSize.height -
-                                          _store.position.dy -
-                                          52;
-                                  final maxWidthByY =
-                                      maxHeightAvailable * aspectRatio;
-
-                                  maxAllowedWidth = [
-                                    maxWidthByX,
-                                    maxWidthByY,
-                                    1200.0,
-                                  ].reduce((a, b) => a < b ? a : b);
+                                  final maxWidthByX = widget.parentSize.width - _store.position.dx;
+                                  final maxHeightAvailable = widget.parentSize.height - _store.position.dy - 52;
+                                  final maxWidthByY = maxHeightAvailable * aspectRatio;
+                                  maxAllowedWidth = [maxWidthByX, maxWidthByY, 1200.0].reduce((a, b) => a < b ? a : b);
                                 }
-
-                                final newWidth = (_store.width + delta)
-                                    .clamp(240.0, maxAllowedWidth);
-
-                                final newHeight =
-                                    (newWidth / aspectRatio) + 48 + 16;
+                                final newWidth = (_store.width + delta).clamp(240.0, maxAllowedWidth);
+                                final newHeight = (newWidth / aspectRatio) + 48 + 16;
                                 _store.updateDimensions(newWidth, newHeight);
-                                _store.updatePosition(
-                                  _store.getClampedPosition(
-                                    _store.position,
-                                    widget.parentSize,
-                                  ),
-                                );
+                                _store.updatePosition(_store.getClampedPosition(_store.position, widget.parentSize));
                               });
                             },
                           ),
@@ -207,44 +191,18 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                 key: _toolBoxKey,
                 serial: widget.serial,
                 height: _store.height,
-                availableSpace: _store.getToolBoxAvailableSpace(
-                  widget.parentSize,
-                ),
-                posterData: _store.selectedPosterData,
-                isGenerating: _store.isGeneratingPoster,
-                errorMessage: _store.errorMessage,
-                onJobSelected: (job) => _handleJobSelection(job),
-                onRetry: () {
-                  if (_store.lastSelectedJob != null) {
-                    _handleJobSelection(_store.lastSelectedJob!);
-                  }
-                },
+                store: _toolBoxStore,
+                availableSpace: _store.getToolBoxAvailableSpace(widget.parentSize),
+                posterData: widget.posterData,
+                isGenerating: widget.isGenerating,
+                errorMessage: widget.errorMessage,
+                onJobSelected: (job) => widget.onJobSelected?.call(job),
+                onRetry: widget.onRetry,
               ),
             ],
           ),
         );
       },
     );
-  }
-
-  Future<void> _handleJobSelection(PosterData job) async {
-    runInAction(() {
-      _store.setGeneratingPoster(true);
-      _store.setErrorMessage(null);
-      _store.setLastSelectedJob(job);
-    });
-
-    final posterStore = inject<PosterCreationStore>();
-    await posterStore.selectJob(job);
-
-    runInAction(() {
-      _store.setGeneratingPoster(false);
-      if (posterStore.currentPosterData != null) {
-        _store.setSelectedPosterData(posterStore.currentPosterData);
-      }
-      if (posterStore.errorMessage != null) {
-        _store.setErrorMessage(posterStore.errorMessage);
-      }
-    });
   }
 }

@@ -55,41 +55,75 @@ class _EmailPanelState extends State<EmailPanel> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final onSurface = colorScheme.onSurface;
 
     return FloatingToolBoxCard(
       width: 480,
       height: widget.height,
-      padding: const EdgeInsets.all(0),
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
-          // Header
+          // Modern Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color: onSurface.withValues(alpha: 0.05),
+                  width: 1,
                 ),
               ),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.mark_email_read_outlined,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Email OTP Reader',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.mark_email_read_outlined,
+                    color: colorScheme.primary,
+                    size: 20,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'EMAIL OTP READER',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: onSurface,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tự động đọc mã OTP từ hòm thư',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: onSurface.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 IconButton(
                   onPressed: widget.onCancel,
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Close panel',
+                  icon: const Icon(Icons.close_rounded),
+                  color: onSurface.withValues(alpha: 0.4),
+                  iconSize: 22,
+                  hoverColor: colorScheme.error.withValues(alpha: 0.1),
                 ),
               ],
             ),
@@ -97,7 +131,7 @@ class _EmailPanelState extends State<EmailPanel> {
 
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20),
               child: Observer(
                 builder: (context) {
                   return Column(
@@ -107,24 +141,50 @@ class _EmailPanelState extends State<EmailPanel> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextField(
-                              controller: _emailController,
-                              onChanged: _store.setTargetEmail,
-                              decoration: InputDecoration(
-                                hintText:
-                                    'Nhập email hoặc để trống để tự lấy qua ADB...',
-                                isDense: true,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              height: 44,
+                              child: TextField(
+                                controller: _emailController,
+                                onChanged: _store.setTargetEmail,
+                                decoration: InputDecoration(
+                                  hintText: 'Nhập email (để trống nếu lấy qua ADB)...',
+                                  hintStyle: TextStyle(
+                                    fontSize: 13,
+                                    color: onSurface.withValues(alpha: 0.4),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  filled: true,
+                                  fillColor: onSurface.withValues(alpha: 0.04),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: onSurface.withValues(alpha: 0.1),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: onSurface.withValues(alpha: 0.08),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: colorScheme.primary.withValues(alpha: 0.4),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: onSurface,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           ElevatedButton.icon(
                             onPressed: _store.isLoading
                                 ? null
@@ -161,9 +221,14 @@ class _EmailPanelState extends State<EmailPanel> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colorScheme.primary,
                               foregroundColor: colorScheme.onPrimary,
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                                horizontal: 20,
                                 vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             icon: _store.isLoading
@@ -175,8 +240,15 @@ class _EmailPanelState extends State<EmailPanel> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Icon(Icons.sync, size: 18),
-                            label: const Text('Connect'),
+                                : const Icon(Icons.sync_rounded, size: 18),
+                            label: const Text(
+                              'CONNECT',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -186,26 +258,31 @@ class _EmailPanelState extends State<EmailPanel> {
                       // Error message
                       if (_store.errorMessage != null)
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
-                            color: colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
+                            color: colorScheme.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.error.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.error_outline,
-                                color: colorScheme.onErrorContainer,
-                                size: 20,
+                                Icons.error_outline_rounded,
+                                color: colorScheme.error,
+                                size: 18,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   _store.errorMessage!,
                                   style: TextStyle(
-                                    color: colorScheme.onErrorContainer,
-                                    fontSize: 13,
+                                    color: colorScheme.error,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -218,129 +295,155 @@ class _EmailPanelState extends State<EmailPanel> {
                         child: _store.messages.isEmpty
                             ? Center(
                                 child: _store.isLoading || _store.isListening
-                                    ? const CircularProgressIndicator()
+                                    ? Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const CircularProgressIndicator(strokeWidth: 3),
+                                          const SizedBox(height: 20),
+                                          Text(
+                                            'ĐANG ĐỢI EMAIL MỚI...',
+                                            style: TextStyle(
+                                              color: onSurface.withValues(alpha: 0.4),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                        ],
+                                      )
                                     : Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
-                                            Icons.inbox_outlined,
-                                            size: 48,
-                                            color: colorScheme.onSurface
-                                                .withValues(alpha: 0.3),
+                                            Icons.inbox_rounded,
+                                            size: 64,
+                                            color: onSurface.withValues(alpha: 0.05),
                                           ),
                                           const SizedBox(height: 16),
                                           Text(
-                                            'Chưa có email nào.',
+                                            'CHƯA CÓ EMAIL NÀO',
                                             style: TextStyle(
-                                              color: colorScheme.onSurface
-                                                  .withValues(alpha: 0.5),
+                                              color: onSurface.withValues(alpha: 0.3),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              letterSpacing: 1,
                                             ),
                                           ),
                                         ],
                                       ),
                               )
                             : ListView.separated(
+                                padding: const EdgeInsets.only(top: 8),
                                 itemCount: _store.messages.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
+                                separatorBuilder: (_, _) => const SizedBox(height: 10),
                                 itemBuilder: (context, index) {
                                   final msg = _store.messages[index];
                                   final isOtp = msg.otp != null;
 
-                                                                    return ListTile(
-                                    onTap: () =>
-                                        _showEmailDetailsDialog(context, msg),
-
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    leading: CircleAvatar(
-                                      backgroundColor: isOtp
-                                          ? colorScheme.primaryContainer
-                                          : colorScheme.surfaceContainerHighest,
-                                      child: Icon(
-                                        isOtp
-                                            ? Icons.vpn_key
-                                            : Icons.mail_outline,
-                                        color: isOtp
-                                            ? colorScheme.onPrimaryContainer
-                                            : colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      msg.subject,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          DateFormat(
-                                            'HH:mm:ss',
-                                          ).format(msg.receivedAt),
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
+                                  return Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _showEmailDetailsDialog(context, msg),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: onSurface.withValues(alpha: 0.03),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: onSurface.withValues(alpha: 0.05),
+                                            width: 1,
+                                          ),
                                         ),
-                                      ],
-                                    ),
-                                    trailing: isOtp
-                                        ? InkWell(
-                                            onTap: () async {
-                                              await _store.sendOtpToDevice(
-                                                widget.deviceSerial,
-                                                msg.otp!,
-                                              );
-                                              if (context.mounted &&
-                                                  _store.errorMessage == null) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Đã gửi OTP ${msg.otp!} qua ADB',
-                                                    ),
-                                                    duration: const Duration(
-                                                      seconds: 2,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            },
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
-                                                  ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 44,
+                                              height: 44,
                                               decoration: BoxDecoration(
-                                                color: colorScheme.primary,
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                              child: Text(
-                                                msg.otp!,
-                                                style: TextStyle(
-                                                  color: colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold,
-                                                  letterSpacing: 1.5,
+                                                color: (isOtp ? colorScheme.primary : colorScheme.onSurface).withValues(alpha: 0.08),
+                                                borderRadius: BorderRadius.circular(14),
+                                                border: Border.all(
+                                                  color: (isOtp ? colorScheme.primary : colorScheme.onSurface).withValues(alpha: 0.15),
                                                 ),
                                               ),
+                                              child: Icon(
+                                                isOtp ? Icons.vpn_key_rounded : Icons.mail_rounded,
+                                                color: isOtp ? colorScheme.primary : onSurface.withValues(alpha: 0.5),
+                                                size: 20,
+                                              ),
                                             ),
-                                          )
-                                        : null,
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    msg.subject,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 13,
+                                                      color: onSurface,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    DateFormat('HH:mm:ss').format(msg.receivedAt),
+                                                    style: TextStyle(
+                                                      color: onSurface.withValues(alpha: 0.5),
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (isOtp) ...[
+                                              const SizedBox(width: 12),
+                                              InkWell(
+                                                onTap: () async {
+                                                  await _store.sendOtpToDevice(
+                                                    widget.deviceSerial,
+                                                    msg.otp!,
+                                                  );
+                                                  if (context.mounted &&
+                                                      _store.errorMessage == null) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Đã gửi OTP ${msg.otp!} qua ADB'),
+                                                        behavior: SnackBarBehavior.floating,
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                borderRadius: BorderRadius.circular(10),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: colorScheme.primary.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(
+                                                      color: colorScheme.primary.withValues(alpha: 0.3),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    msg.otp!,
+                                                    style: TextStyle(
+                                                      color: colorScheme.primary,
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 13,
+                                                      letterSpacing: 1.5,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   );
                                 },
                               ),

@@ -52,15 +52,15 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
     final onSurface = colorScheme.onSurface;
 
     return Column(
-      mainAxisSize: MainAxisSize.min, // Shrink to fit
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Modern Header
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: onSurface.withValues(alpha: 0.1),
+                color: onSurface.withValues(alpha: 0.05),
                 width: 1,
               ),
             ),
@@ -68,10 +68,14 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
                 ),
                 child: Icon(
                   Icons.work_rounded,
@@ -79,25 +83,26 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Chọn việc làm',
+                      'CHỌN VIỆC LÀM',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: onSurface,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Tạo poster từ tin tuyển dụng',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: onSurface.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        color: onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -107,56 +112,62 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
               IconButton(
                 icon: const Icon(Icons.close_rounded),
                 onPressed: widget.onCancel,
-                color: onSurface.withValues(alpha: 0.8),
+                color: onSurface.withValues(alpha: 0.4),
                 iconSize: 22,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                hoverColor: colorScheme.error.withValues(alpha: 0.1),
               ),
             ],
           ),
         ),
 
-        // SearchBar
+        // Modern SearchBar
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: SizedBox(
-            height: 40,
+            height: 44,
             child: TextField(
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm công việc...',
                 hintStyle: TextStyle(
                   fontSize: 14,
-                  color: onSurface.withValues(alpha: 0.5),
+                  color: onSurface.withValues(alpha: 0.4),
                 ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
                   size: 20,
-                  color: onSurface.withValues(alpha: 0.5),
+                  color: colorScheme.primary.withValues(alpha: 0.6),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 filled: true,
-                fillColor: onSurface.withValues(alpha: 0.05),
+                fillColor: onSurface.withValues(alpha: 0.04),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: colorScheme.primary.withValues(alpha: 0.5),
+                    color: onSurface.withValues(alpha: 0.1),
                     width: 1,
                   ),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: onSurface.withValues(alpha: 0.08),
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
               ),
-              style: TextStyle(fontSize: 14, color: onSurface),
+              style: TextStyle(
+                fontSize: 14,
+                color: onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -170,13 +181,19 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(strokeWidth: 2),
-                      SizedBox(height: 16),
+                      CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      ),
+                      const SizedBox(height: 20),
                       Text(
-                        'Đang tải...',
+                        'ĐANG TẢI DỮ LIỆU...',
                         style: TextStyle(
-                          color: onSurface.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w500,
+                          color: onSurface.withValues(alpha: 0.5),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 1,
                         ),
                       ),
                     ],
@@ -191,15 +208,17 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                     children: [
                       Icon(
                         Icons.search_off_rounded,
-                        size: 48,
-                        color: onSurface.withValues(alpha: 0.5),
+                        size: 64,
+                        color: onSurface.withValues(alpha: 0.1),
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Text(
-                        'Không việc làm',
+                        'KHÔNG TÌM THẤY VIỆC LÀM',
                         style: TextStyle(
-                          color: onSurface.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w500,
+                          color: onSurface.withValues(alpha: 0.4),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 1,
                         ),
                       ),
                     ],
@@ -219,23 +238,19 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                   return false;
                 },
                 child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   itemCount:
                       _store.availableJobs.length + (_store.hasMore ? 1 : 0),
-                  separatorBuilder: (_, _) => Divider(
-                    height: 1,
-                    indent: 64,
-                    endIndent: 16,
-                    color: onSurface.withValues(alpha: 0.1),
-                  ),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     if (index == _store.availableJobs.length) {
                       return const Padding(
-                        padding: EdgeInsets.only(top: 8, bottom: 8),
+                        padding: EdgeInsets.symmetric(vertical: 20),
                         child: Center(
                           child: SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 28,
+                            height: 28,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
@@ -246,46 +261,78 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => widget.onJobSelected(job),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: onSurface.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: onSurface.withValues(alpha: 0.05),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: colorScheme.tertiary
-                                    .withValues(alpha: 0.1),
-                                child: Text(
-                                  job.jobTitle.isNotEmpty
-                                      ? job.jobTitle[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    color: colorScheme.tertiary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      colorScheme.tertiary
+                                          .withValues(alpha: 0.2),
+                                      colorScheme.tertiary
+                                          .withValues(alpha: 0.05),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: colorScheme.tertiary
+                                        .withValues(alpha: 0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    job.jobTitle.isNotEmpty
+                                        ? job.jobTitle[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      color: colorScheme.tertiary,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                    ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       job.jobTitle,
-                                      maxLines: 2,
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
                                         color: onSurface,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
+                                        Icon(
+                                          Icons.location_on_rounded,
+                                          size: 12,
+                                          color:
+                                              onSurface.withValues(alpha: 0.4),
+                                        ),
+                                        const SizedBox(width: 4),
                                         Expanded(
                                           child: Text(
                                             job.location,
@@ -294,7 +341,7 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: onSurface.withValues(
-                                                alpha: 0.9,
+                                                alpha: 0.6,
                                               ),
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -305,31 +352,32 @@ class _FloatingJobSelectorState extends State<FloatingJobSelector> {
                                   ],
                                 ),
                               ),
-                              if (job.salaryRange.isNotEmpty)
+                              if (job.salaryRange.isNotEmpty) ...[
+                                const SizedBox(width: 12),
                                 Container(
-                                  margin: const EdgeInsets.only(left: 8),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
+                                    color: Colors.green.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: Colors.green.withValues(
-                                        alpha: 0.3,
-                                      ),
+                                      color:
+                                          Colors.green.withValues(alpha: 0.2),
+                                      width: 1,
                                     ),
                                   ),
                                   child: Text(
                                     job.salaryRange,
                                     style: const TextStyle(
                                       fontSize: 11,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w800,
                                       color: Colors.green,
                                     ),
                                   ),
                                 ),
+                              ],
                             ],
                           ),
                         ),
