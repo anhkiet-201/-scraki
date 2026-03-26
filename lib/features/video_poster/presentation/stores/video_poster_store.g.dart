@@ -277,6 +277,50 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
+  late final _$animationPreviewCountersAtom = Atom(
+    name: '_VideoPosterStore.animationPreviewCounters',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, int> get animationPreviewCounters {
+    _$animationPreviewCountersAtom.reportRead();
+    return super.animationPreviewCounters;
+  }
+
+  @override
+  set animationPreviewCounters(ObservableMap<String, int> value) {
+    _$animationPreviewCountersAtom.reportWrite(
+      value,
+      super.animationPreviewCounters,
+      () {
+        super.animationPreviewCounters = value;
+      },
+    );
+  }
+
+  late final _$animationOutPreviewCountersAtom = Atom(
+    name: '_VideoPosterStore.animationOutPreviewCounters',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, int> get animationOutPreviewCounters {
+    _$animationOutPreviewCountersAtom.reportRead();
+    return super.animationOutPreviewCounters;
+  }
+
+  @override
+  set animationOutPreviewCounters(ObservableMap<String, int> value) {
+    _$animationOutPreviewCountersAtom.reportWrite(
+      value,
+      super.animationOutPreviewCounters,
+      () {
+        super.animationOutPreviewCounters = value;
+      },
+    );
+  }
+
   late final _$batchOutputCountAtom = Atom(
     name: '_VideoPosterStore.batchOutputCount',
     context: context,
@@ -698,6 +742,30 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void triggerPreviewAnimation(String id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.triggerPreviewAnimation',
+    );
+    try {
+      return super.triggerPreviewAnimation(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void triggerPreviewAnimationOut(String id) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.triggerPreviewAnimationOut',
+    );
+    try {
+      return super.triggerPreviewAnimationOut(id);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void selectCustomText(String? id) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.selectCustomText',
@@ -1002,6 +1070,8 @@ recentBorderColors: ${recentBorderColors},
 isHidingImagesForCapture: ${isHidingImagesForCapture},
 isHidingAnimatedTextsForCapture: ${isHidingAnimatedTextsForCapture},
 selectedCustomTextId: ${selectedCustomTextId},
+animationPreviewCounters: ${animationPreviewCounters},
+animationOutPreviewCounters: ${animationOutPreviewCounters},
 batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},
 batchLogs: ${batchLogs},
