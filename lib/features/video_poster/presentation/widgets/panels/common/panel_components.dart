@@ -27,7 +27,6 @@ class PanelComponents {
   ];
 
   static const List<Color> darkColorPalette = [
-    Color(0xFFFFFFFF), // White
     Color(0xFF000000), // Black
     Color(0xFF131313), // Deep Black
     Color(0xFF1C1B1F), // Dark Grey
@@ -36,6 +35,19 @@ class PanelComponents {
     Color(0xFF072100), // Dark Green
     Color(0xFF001D36), // Dark Blue
     Color(0xFF331200), // Dark Orange
+  ];
+
+  static const List<Color> vibrantColorPalette = [
+    Color(0xFFFFFFFF), // White
+    Color(0xFF6366F1), // Indigo
+    Color(0xFF10B981), // Emerald
+    Color(0xFFF59E0B), // Amber
+    Color(0xFFEF4444), // Rose
+    Color(0xFF8B5CF6), // Violet
+    Color(0xFFEC4899), // Pink
+    Color(0xFF0EA5E9), // Sky Blue
+    Color(0xFFF97316), // Orange
+    Color(0xFF84CC16), // Lime
   ];
 
   /// Builds a small, uppercase section label.

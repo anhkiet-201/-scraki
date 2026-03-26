@@ -401,7 +401,7 @@ class TextPropertiesPanel extends StatelessWidget {
               ],
               PanelComponents.buildColorPalette(
                 context: context,
-                colors: PanelComponents.colorPalette,
+                colors: PanelComponents.vibrantColorPalette,
                 selectedColor: text.color,
                 onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
                 onPickCustom: () => PanelComponents.showColorPicker(
@@ -455,7 +455,7 @@ class TextPropertiesPanel extends StatelessWidget {
                   Expanded(
                     child: PanelComponents.buildColorPalette(
                       context: context,
-                      colors: PanelComponents.darkColorPalette,
+                      colors: PanelComponents.vibrantColorPalette,
                       selectedColor: text.backgroundColor,
                       onSelect: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
                       onPickCustom: () => PanelComponents.showColorPicker(

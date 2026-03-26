@@ -3,10 +3,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 
-class BatchVideoPanel extends StatelessWidget {
+class BatchVideoPanel extends StatefulWidget {
   final VideoPosterStore store;
 
   const BatchVideoPanel({super.key, required this.store});
+
+  @override
+  State<BatchVideoPanel> createState() => _BatchVideoPanelState();
+}
+
+class _BatchVideoPanelState extends State<BatchVideoPanel> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +45,7 @@ class BatchVideoPanel extends StatelessWidget {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         border: null,
       ),
       child: Text(
@@ -51,7 +64,7 @@ class BatchVideoPanel extends StatelessWidget {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Observer(
       builder: (context) {
-        final isCreating = store.isBatchCreating;
+        final isCreating = widget.store.isBatchCreating;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -69,7 +82,7 @@ class BatchVideoPanel extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               TextFormField(
-                initialValue: store.batchOutputCount.toString(),
+                initialValue: widget.store.batchOutputCount.toString(),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 enabled: !isCreating,
@@ -110,7 +123,7 @@ class BatchVideoPanel extends StatelessWidget {
                 onChanged: (val) {
                   final count = int.tryParse(val);
                   if (count != null) {
-                    store.setBatchOutputCount(count);
+                    widget.store.setBatchOutputCount(count);
                   }
                 },
               ),
@@ -140,7 +153,7 @@ class BatchVideoPanel extends StatelessWidget {
       ),
       child: Observer(
         builder: (context) {
-          final logs = store.batchLogs;
+          final logs = widget.store.batchLogs;
           if (logs.isEmpty) {
             return Center(
               child: Padding(
@@ -161,47 +174,52 @@ class BatchVideoPanel extends StatelessWidget {
 
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: logs.length,
-              itemBuilder: (context, index) {
-                final log = logs[index];
-                final isError = log.toLowerCase().contains('error') || log.toLowerCase().contains('failed');
-                final isSuccess = log.toLowerCase().contains('success') || log.toLowerCase().contains('done');
-                
-                Color logColor = isLight ? const Color(0xFF475569) : Colors.greenAccent;
-                if (isError) logColor = Colors.redAccent;
-                if (isSuccess) logColor = isLight ? const Color(0xFF10B981) : Colors.greenAccent;
+            child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: logs.length,
+                itemBuilder: (context, index) {
+                  final log = logs[index];
+                  final isError = log.toLowerCase().contains('error') || log.toLowerCase().contains('failed');
+                  final isSuccess = log.toLowerCase().contains('success') || log.toLowerCase().contains('done');
+                  
+                  Color logColor = isLight ? const Color(0xFF475569) : Colors.greenAccent;
+                  if (isError) logColor = Colors.redAccent;
+                  if (isSuccess) logColor = isLight ? const Color(0xFF10B981) : Colors.greenAccent;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '> ',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11,
-                          color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          log,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '> ',
                           style: TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 11,
-                            color: logColor,
-                            height: 1.4,
-                            fontWeight: (isError || isSuccess) ? FontWeight.bold : FontWeight.normal,
+                            color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        Expanded(
+                          child: SelectableText(
+                            log,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: logColor,
+                              height: 1.4,
+                              fontWeight: (isError || isSuccess) ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           );
         },
@@ -213,9 +231,9 @@ class BatchVideoPanel extends StatelessWidget {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Observer(
       builder: (context) {
-        final isCreating = store.isBatchCreating;
-        final hasVideos = store.sourceVideoPaths.isNotEmpty;
-        final outputDir = store.batchOutputDir;
+        final isCreating = widget.store.isBatchCreating;
+        final hasVideos = widget.store.sourceVideoPaths.isNotEmpty;
+        final outputDir = widget.store.batchOutputDir;
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -265,9 +283,9 @@ class BatchVideoPanel extends StatelessWidget {
                     ? null
                     : () {
                         if (isCreating) {
-                          store.cancelBatchVideos();
+                          widget.store.cancelBatchVideos();
                         } else {
-                          store.createBatchVideos();
+                          widget.store.createBatchVideos();
                         }
                       },
                 style: ElevatedButton.styleFrom(
