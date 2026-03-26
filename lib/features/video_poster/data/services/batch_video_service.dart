@@ -669,20 +669,31 @@ class BatchVideoService {
         '-an', // Always remove audio for anti-reup
         // Force normalized SDR output — critical for concat compatibility
         '-pix_fmt', 'yuv420p',
-        '-color_range', 'tv',
         '-colorspace', 'bt709',
-        '-color_primaries', 'bt709',
         '-color_trc', 'bt709',
+        '-color_primaries', 'bt709',
         '-c:v', encoder,
         if (encoder == 'libx264') ...[
           '-preset',
           'ultrafast',
-          '-crf',
-          '26',
+          '-b:v',
+          '10M',
+          '-maxrate',
+          '12M',
+          '-bufsize',
+          '20M',
         ] else if (encoder == 'h264_videotoolbox') ...[
-          // GPU encoders use different rate control
+          '-b:v',
+          '10M',
           '-realtime',
           '1',
+        ] else ...[
+          '-b:v',
+          '10M',
+          '-maxrate',
+          '12M',
+          '-bufsize',
+          '20M',
         ],
         '-movflags', '+faststart',
         output,
@@ -1101,15 +1112,29 @@ class BatchVideoService {
         '-an', // Remove all audio streams
         '-r',
         '30',
+        '-vsync',
+        'cfr',
         '-c:v',
         gpuEncoder,
+        '-b:v',
+        '10M',
+        '-maxrate',
+        '12M',
+        '-bufsize',
+        '20M',
+        '-pix_fmt',
+        'yuv420p',
+        '-colorspace',
+        'bt709',
+        '-color_trc',
+        'bt709',
+        '-color_primaries',
+        'bt709',
         if (gpuEncoder == 'libx264') ...[
           '-x264-params',
           'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
           '-preset',
           spoofProfile.preset,
-          '-crf',
-          spoofProfile.crf.toString(),
         ],
         '-map_metadata',
         '-1',
@@ -1296,7 +1321,6 @@ class _VideoSpoofProfile {
   final String androidVersion;
   final String creationTime;
   final String gpsIso6709;
-  final int crf;
   final String preset;
   final String jitterId; // file-size jitter
   final String videoId; // UUID for CapCut
@@ -1306,7 +1330,6 @@ class _VideoSpoofProfile {
     required this.androidVersion,
     required this.creationTime,
     required this.gpsIso6709,
-    required this.crf,
     required this.preset,
     required this.jitterId,
     required this.videoId,
@@ -1336,9 +1359,6 @@ class _VideoSpoofProfile {
         '$lonSign${lon.abs().toStringAsFixed(4)}'
         '+0/';
 
-    // Random CRF 23–28
-    final crf = 23 + random.nextInt(6);
-
     // Random preset
     final preset = _presets[random.nextInt(_presets.length)];
 
@@ -1365,7 +1385,6 @@ class _VideoSpoofProfile {
       androidVersion: device.android,
       creationTime: recordedAt,
       gpsIso6709: gps,
-      crf: crf,
       preset: preset,
       jitterId: jitterId,
       videoId: genUuid(),
