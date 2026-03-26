@@ -16,16 +16,15 @@ class TextPropertiesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
-        border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
+        color: isLight ? Colors.white : const Color(0xFF111111),
+        border: null,
       ),
       child: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           Expanded(
             child: Observer(
               builder: (_) {
@@ -45,10 +44,13 @@ class TextPropertiesPanel extends StatelessWidget {
                     if (texts.isNotEmpty)
                       _buildTextList(context, texts.toList(), selectedId),
                     if (selected != null) ...[
-                      const Divider(color: Colors.white10, height: 1),
+                      Divider(
+                        color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10, 
+                        height: 1,
+                      ),
                       Expanded(child: _buildProperties(context, selected)),
                     ] else
-                      Expanded(child: _buildEmptyHint()),
+                      Expanded(child: _buildEmptyHint(context)),
                   ],
                 );
               },
@@ -59,19 +61,20 @@ class TextPropertiesPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'VĂN BẢN',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
-              color: Colors.white38,
+              color: isLight ? const Color(0xFF94A3B8) : Colors.white38,
             ),
           ),
           const SizedBox(height: 12),
@@ -108,6 +111,7 @@ class TextPropertiesPanel extends StatelessWidget {
     List<CustomTextOverlay> texts,
     String? selectedId,
   ) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       constraints: const BoxConstraints(maxHeight: 400),
       child: ListView.builder(
@@ -126,18 +130,16 @@ class TextPropertiesPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isActive
                     ? _accentColor.withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.04),
+                    : (isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.04)),
                 borderRadius: BorderRadius.circular(8),
-                border: isActive
-                    ? Border.all(color: _accentColor, width: 1)
-                    : null,
+                border: null,
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.text_fields_rounded,
                     size: 14,
-                    color: isActive ? _accentColor : Colors.white38,
+                    color: isActive ? _accentColor : (isLight ? const Color(0xFF94A3B8) : Colors.white38),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -147,7 +149,9 @@ class TextPropertiesPanel extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isActive ? Colors.white : Colors.white54,
+                        color: isActive 
+                            ? (isLight ? _accentColor : Colors.white) 
+                            : (isLight ? const Color(0xFF475569) : Colors.white54),
                         fontWeight: isActive
                             ? FontWeight.bold
                             : FontWeight.normal,
@@ -156,10 +160,10 @@ class TextPropertiesPanel extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: () => store.removeCustomText(t.id),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 14,
-                      color: Colors.white24,
+                      color: isLight ? const Color(0xFFCBD5E1) : Colors.white24,
                     ),
                   ),
                 ],
@@ -171,7 +175,8 @@ class TextPropertiesPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyHint() {
+  Widget _buildEmptyHint(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -181,7 +186,7 @@ class TextPropertiesPanel extends StatelessWidget {
             Icon(
               Icons.text_fields_rounded,
               size: 40,
-              color: Colors.white.withValues(alpha: 0.1),
+              color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
             ),
             const SizedBox(height: 12),
             Text(
@@ -189,7 +194,7 @@ class TextPropertiesPanel extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.25),
+                color: isLight ? const Color(0xFF94A3B8) : Colors.white.withValues(alpha: 0.25),
                 height: 1.6,
               ),
             ),
@@ -200,19 +205,22 @@ class TextPropertiesPanel extends StatelessWidget {
   }
 
   Widget _buildProperties(BuildContext context, CustomTextOverlay text) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
           // ── Section: TYPOGRAPHY (VĂN BẢN) ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'CHỮ & ĐỊNH DẠNG',
             icon: Icons.font_download_rounded,
             initiallyExpanded: true,
             children: [
-              PanelComponents.buildSectionLabel('FONT CHỮ'),
+              PanelComponents.buildSectionLabel('FONT CHỮ', context: context),
               const SizedBox(height: 8),
               PanelComponents.buildFontPicker(
+                context: context,
                 currentFont: text.fontFamily ?? 'Roboto',
                 onFontSelected: (font) =>
                     store.updateCustomTextStyle(text.id, fontFamily: font),
@@ -225,6 +233,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     children: [
                       PanelComponents.buildSectionLabel(
                         'CỠ CHỮ: ${text.fontSize.toInt()}px',
+                        context: context,
                       ),
                       PanelComponents.buildSlider(
                         context: context,
@@ -241,6 +250,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     children: [
                       PanelComponents.buildSectionLabel(
                         'DÒNG: ${(text.textHeight ?? 1.2).toStringAsFixed(1)}x',
+                        context: context,
                       ),
                       PanelComponents.buildSlider(
                         context: context,
@@ -263,6 +273,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     children: [
                       PanelComponents.buildSectionLabel(
                         'K.CÁCH: ${text.letterSpacing.toStringAsFixed(1)}',
+                        context: context,
                       ),
                       PanelComponents.buildSlider(
                         context: context,
@@ -279,6 +290,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     children: [
                       PanelComponents.buildSectionLabel(
                         'XOAY: ${text.rotation.toInt()}°',
+                        context: context,
                       ),
                       PanelComponents.buildSlider(
                         context: context,
@@ -298,6 +310,7 @@ class TextPropertiesPanel extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   PanelComponents.buildToggleButton(
+                    context: context,
                     icon: Icons.format_bold_rounded,
                     active: text.fontWeight == FontWeight.bold,
                     onTap: () => store.updateCustomTextStyle(
@@ -308,6 +321,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     ),
                   ),
                   PanelComponents.buildToggleButton(
+                    context: context,
                     icon: Icons.format_italic_rounded,
                     active: text.fontStyle == FontStyle.italic,
                     onTap: () => store.updateCustomTextStyle(
@@ -317,11 +331,9 @@ class TextPropertiesPanel extends StatelessWidget {
                           : FontStyle.italic,
                     ),
                   ),
-                  const SizedBox(
-                    height: 24,
-                    child: VerticalDivider(color: Colors.white10),
-                  ),
+                  const SizedBox(width: 8),
                   PanelComponents.buildAlignButton(
+                    context: context,
                     icon: Icons.format_align_left_rounded,
                     active: text.textAlign == TextAlign.left,
                     onTap: () => store.updateCustomTextStyle(
@@ -330,6 +342,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     ),
                   ),
                   PanelComponents.buildAlignButton(
+                    context: context,
                     icon: Icons.format_align_center_rounded,
                     active: text.textAlign == TextAlign.center,
                     onTap: () => store.updateCustomTextStyle(
@@ -338,6 +351,7 @@ class TextPropertiesPanel extends StatelessWidget {
                     ),
                   ),
                   PanelComponents.buildAlignButton(
+                    context: context,
                     icon: Icons.format_align_right_rounded,
                     active: text.textAlign == TextAlign.right,
                     onTap: () => store.updateCustomTextStyle(
@@ -352,20 +366,22 @@ class TextPropertiesPanel extends StatelessWidget {
 
           // ── Section: APPEARANCE (MÀU SẮC & NỀN) ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'MÀU SẮC & NỀN',
             icon: Icons.palette_rounded,
             initiallyExpanded: true,
             children: [
-              PanelComponents.buildSectionLabel('MÀU CHỮ'),
+              PanelComponents.buildSectionLabel('MÀU CHỮ', context: context),
               const SizedBox(height: 8),
               if (store.recentTextColors.isNotEmpty) ...[
                 PanelComponents.buildRecentColors(
+                  context: context,
                   colors: store.recentTextColors.toList(),
                   selectedColor: text.color,
                   onSelect: (c) => store.updateCustomTextStyle(text.id, color: c),
                 ),
                 const SizedBox(height: 8),
-                PanelComponents.buildPaletteDivider(),
+                PanelComponents.buildPaletteDivider(context: context),
                 const SizedBox(height: 8),
               ],
               PanelComponents.buildColorPalette(
@@ -381,17 +397,18 @@ class TextPropertiesPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              PanelComponents.buildSectionLabel('MÀU NỀN'),
+              PanelComponents.buildSectionLabel('MÀU NỀN', context: context),
               const SizedBox(height: 8),
               if (store.recentBgColors.isNotEmpty) ...[
                 PanelComponents.buildRecentColors(
+                  context: context,
                   colors: store.recentBgColors.toList(),
                   selectedColor: text.backgroundColor,
                   onSelect: (c) =>
                       store.updateCustomTextStyle(text.id, backgroundColor: c),
                 ),
                 const SizedBox(height: 8),
-                PanelComponents.buildPaletteDivider(),
+                PanelComponents.buildPaletteDivider(context: context),
                 const SizedBox(height: 8),
               ],
               Row(
@@ -407,11 +424,17 @@ class TextPropertiesPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: text.backgroundColor == null ? _accentColor : Colors.white10,
+                          color: text.backgroundColor == null 
+                              ? _accentColor 
+                              : (isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white10),
                           width: text.backgroundColor == null ? 2 : 1,
                         ),
                       ),
-                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                      child: Icon(
+                        Icons.block_rounded, 
+                        size: 14, 
+                        color: isLight ? const Color(0xFF94A3B8) : Colors.white38,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -438,6 +461,7 @@ class TextPropertiesPanel extends StatelessWidget {
                       children: [
                         PanelComponents.buildSectionLabel(
                           'ĐỘ MỜ: ${(text.backgroundOpacity * 100).toInt()}%',
+                          context: context,
                         ),
                         PanelComponents.buildSlider(
                           context: context,
@@ -454,6 +478,7 @@ class TextPropertiesPanel extends StatelessWidget {
                       children: [
                         PanelComponents.buildSectionLabel(
                           'BO GÓC: ${text.backgroundRadius.toInt()}px',
+                          context: context,
                         ),
                         PanelComponents.buildSlider(
                           context: context,
@@ -473,13 +498,15 @@ class TextPropertiesPanel extends StatelessWidget {
 
           // ── Section: BORDER & EFFECTS (VIỀN & HIỆU ỨNG) ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'VIỀN & HIỆU ỨNG',
             icon: Icons.auto_awesome_rounded,
             children: [
-              PanelComponents.buildSectionLabel('VIỀN CHỮ'),
+              PanelComponents.buildSectionLabel('VIỀN CHỮ', context: context),
               const SizedBox(height: 8),
               if (store.recentStrokeColors.isNotEmpty) ...[
                 PanelComponents.buildRecentColors(
+                  context: context,
                   colors: store.recentStrokeColors.toList(),
                   selectedColor: text.strokeColor,
                   onSelect: (c) {
@@ -490,7 +517,7 @@ class TextPropertiesPanel extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 8),
-                PanelComponents.buildPaletteDivider(),
+                PanelComponents.buildPaletteDivider(context: context),
                 const SizedBox(height: 8),
               ],
               Row(
@@ -503,11 +530,17 @@ class TextPropertiesPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: (text.strokeWidth == 0 || text.strokeColor == null) ? _accentColor : Colors.white10,
+                          color: (text.strokeWidth == 0 || text.strokeColor == null) 
+                              ? _accentColor 
+                              : (isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white10),
                           width: (text.strokeWidth == 0 || text.strokeColor == null) ? 2 : 1,
                         ),
                       ),
-                      child: const Icon(Icons.block_rounded, size: 14, color: Colors.white38),
+                      child: Icon(
+                        Icons.block_rounded, 
+                        size: 14, 
+                        color: isLight ? const Color(0xFF94A3B8) : Colors.white38,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -530,7 +563,10 @@ class TextPropertiesPanel extends StatelessWidget {
               ),
               if (text.strokeColor != null && text.strokeWidth > 0) ...[
                 const SizedBox(height: 8),
-                PanelComponents.buildSectionLabel('ĐỘ DÀY VIỀN CHỮ: ${text.strokeWidth.toInt()}px'),
+                PanelComponents.buildSectionLabel(
+                  'ĐỘ DÀY VIỀN CHỮ: ${text.strokeWidth.toInt()}px',
+                  context: context,
+                ),
                 PanelComponents.buildSlider(
                   context: context,
                   value: text.strokeWidth.clamp(1.0, 20.0),
@@ -544,27 +580,31 @@ class TextPropertiesPanel extends StatelessWidget {
 
           // ── Section: HIỆU ỨNG VÀO (IN) ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'HIỆU ỨNG XUẤT HIỆN (IN)',
             icon: Icons.login_rounded,
             children: [
-              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG'),
+              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG', context: context),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white10),
+                  border: Border.all(color: isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white10),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<TextAnimationType>(
                     value: text.animationInType,
                     isExpanded: true,
-                    dropdownColor: const Color(0xFF1E1E1E),
-                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
-                    style: const TextStyle(
+                    dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
+                    icon: Icon(
+                      Icons.arrow_drop_down_rounded, 
+                      color: isLight ? const Color(0xFF94A3B8) : Colors.white54,
+                    ),
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
+                      color: isLight ? const Color(0xFF0F172A) : Colors.white,
                       fontFamily: 'Roboto',
                     ),
                     items: const [
@@ -597,7 +637,10 @@ class TextPropertiesPanel extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        PanelComponents.buildSectionLabel('THỜI GIAN HIỆN: ${(safeValue * 100).toInt()}% (${inSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSectionLabel(
+                          'THỜI GIAN HIỆN: ${(safeValue * 100).toInt()}% (${inSeconds.toStringAsFixed(1)}s)',
+                          context: context,
+                        ),
                         PanelComponents.buildSlider(
                           context: context,
                           value: safeValue,
@@ -636,27 +679,31 @@ class TextPropertiesPanel extends StatelessWidget {
 
           // ── Section: HIỆU ỨNG RA (OUT) ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'HIỆU ỨNG BIẾN MẤT (OUT)',
             icon: Icons.logout_rounded,
             children: [
-              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG'),
+              PanelComponents.buildSectionLabel('LOẠI HIỆU ỨNG', context: context),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white10),
+                  border: Border.all(color: isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white10),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<TextAnimationType>(
                     value: text.animationOutType,
                     isExpanded: true,
-                    dropdownColor: const Color(0xFF1E1E1E),
-                    icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
-                    style: const TextStyle(
+                    dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
+                    icon: Icon(
+                      Icons.arrow_drop_down_rounded, 
+                      color: isLight ? const Color(0xFF94A3B8) : Colors.white54,
+                    ),
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
+                      color: isLight ? const Color(0xFF0F172A) : Colors.white,
                       fontFamily: 'Roboto',
                     ),
                     items: const [
@@ -694,7 +741,10 @@ class TextPropertiesPanel extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        PanelComponents.buildSectionLabel('THỜI GIAN MỜ: ${(safeValue * 100).toInt()}% (${outSeconds.toStringAsFixed(1)}s)'),
+                        PanelComponents.buildSectionLabel(
+                          'THỜI GIAN MỜ: ${(safeValue * 100).toInt()}% (${outSeconds.toStringAsFixed(1)}s)',
+                          context: context,
+                        ),
                         PanelComponents.buildSlider(
                           context: context,
                           value: visualValue,
@@ -739,6 +789,7 @@ class TextPropertiesPanel extends StatelessWidget {
 
           // ── Section: TIMELINE ──
           PanelComponents.buildPanelSection(
+            context: context,
             title: 'THỜI GIAN HIỂN THỊ',
             icon: Icons.timer_rounded,
             children: [

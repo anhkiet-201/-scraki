@@ -39,43 +39,45 @@ class PanelComponents {
   ];
 
   /// Builds a small, uppercase section label.
-  static Widget buildSectionLabel(String label) {
+  static Widget buildSectionLabel(String label, {BuildContext? context}) {
+    final isLight = context != null ? Theme.of(context).brightness == Brightness.light : false;
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 9,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
-        color: Colors.white38,
+        color: isLight ? const Color(0xFF64748B) : Colors.white38,
       ),
     );
   }
 
   /// Builds a stylized divider with text in the middle.
-  static Widget buildPaletteDivider() {
+  static Widget buildPaletteDivider({BuildContext? context}) {
+    final isLight = context != null ? Theme.of(context).brightness == Brightness.light : false;
+    final dividerColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.08);
+    final textColor = isLight ? Colors.black26 : Colors.white24;
+
     return Row(
       children: [
-        Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.08),
-          ),
+        const Expanded(
+          child: SizedBox.shrink(),
         ),
         const SizedBox(width: 8),
-        const Text(
+        Text(
           'OR',
           style: TextStyle(
             fontSize: 8,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
-            color: Colors.white24,
+            color: textColor,
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Container(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.08),
+            color: dividerColor,
           ),
         ),
       ],
@@ -93,14 +95,18 @@ class PanelComponents {
     Color accentColor = kPanelAccentColor,
     bool isReversed = false,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final thumbColor = isLight ? accentColor : Colors.white;
+    final inactiveColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white12;
+    
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
         trackHeight: 2,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-        activeTrackColor: isReversed ? Colors.white12 : accentColor,
-        inactiveTrackColor: isReversed ? accentColor : Colors.white12,
-        thumbColor: Colors.white,
+        activeTrackColor: isReversed ? inactiveColor : accentColor,
+        inactiveTrackColor: isReversed ? accentColor : inactiveColor,
+        thumbColor: thumbColor,
         overlayColor: accentColor.withValues(alpha: 0.2),
       ),
       child: Slider(
@@ -122,13 +128,15 @@ class PanelComponents {
     required VoidCallback onPickCustom,
     Color accentColor = kPanelAccentColor,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         ...colors.map((c) {
-          final isSelected =
-              selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
+          final isSelected = selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
+          final borderColor = isSelected ? accentColor : Colors.transparent;
+              
           return GestureDetector(
             onTap: () => onSelect(c),
             child: AnimatedContainer(
@@ -139,7 +147,7 @@ class PanelComponents {
                 color: c,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? accentColor : Colors.white24,
+                  color: borderColor,
                   width: isSelected ? 2.5 : 1,
                 ),
                 boxShadow: isSelected
@@ -162,13 +170,16 @@ class PanelComponents {
             height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white24, width: 1),
-              color: Colors.white.withValues(alpha: 0.05),
+              border: Border.all(
+                color: isLight ? Colors.black.withValues(alpha: 0.1) : Colors.white24,
+                width: 1,
+              ),
+              color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.colorize_rounded,
               size: 14,
-              color: Colors.white70,
+              color: isLight ? const Color(0xFF64748B) : Colors.white70,
             ),
           ),
         ),
@@ -178,25 +189,30 @@ class PanelComponents {
 
   /// Builds a horizontal wrap of recently used colors.
   static Widget buildRecentColors({
+    required BuildContext context,
     required List<Color> colors,
     required Color? selectedColor,
     required void Function(Color) onSelect,
     Color accentColor = kPanelAccentColor,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = isLight ? const Color(0xFF94A3B8) : Colors.white30;
+    final textColor = isLight ? const Color(0xFF94A3B8) : Colors.white30;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(Icons.history_rounded, size: 10, color: Colors.white30),
-            SizedBox(width: 4),
+            Icon(Icons.history_rounded, size: 10, color: iconColor),
+            const SizedBox(width: 4),
             Text(
               'GẦN ĐÂY',
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
-                color: Colors.white30,
+                color: textColor,
               ),
             ),
           ],
@@ -206,9 +222,7 @@ class PanelComponents {
           spacing: 6,
           runSpacing: 6,
           children: colors.take(7).map((c) {
-            final isSelected =
-                selectedColor != null &&
-                selectedColor.toARGB32() == c.toARGB32();
+            final isSelected = selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
             return GestureDetector(
               onTap: () => onSelect(c),
               child: AnimatedContainer(
@@ -219,7 +233,7 @@ class PanelComponents {
                   color: c,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? accentColor : Colors.white38,
+                    color: isSelected ? accentColor : Colors.transparent,
                     width: isSelected ? 2.5 : 1.5,
                   ),
                 ),
@@ -239,19 +253,21 @@ class PanelComponents {
     Color accentColor = kPanelAccentColor,
   }) async {
     Color pickedColor = initialColor;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    
     await showDialog<void>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: isLight ? Colors.white : const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.palette_rounded, size: 18, color: accentColor),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'CHỌN MÀU',
               style: TextStyle(
-                color: Colors.white,
+                color: isLight ? const Color(0xFF0F172A) : Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
@@ -277,6 +293,7 @@ class PanelComponents {
                   pickerAreaBorderRadius: const BorderRadius.all(
                     Radius.circular(12),
                   ),
+                  hexInputBar: true,
                 ),
                 const SizedBox(height: 12),
                 ClipRRect(
@@ -288,11 +305,11 @@ class PanelComponents {
                           height: 32,
                           color: initialColor,
                           alignment: Alignment.center,
-                          child: const Text(
+                          child: Text(
                             'CŨ',
                             style: TextStyle(
                               fontSize: 9,
-                              color: Colors.white70,
+                              color: isLight ? Colors.black54 : Colors.white70,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -303,11 +320,11 @@ class PanelComponents {
                           height: 32,
                           color: pickedColor,
                           alignment: Alignment.center,
-                          child: const Text(
+                          child: Text(
                             'MỚI',
                             style: TextStyle(
                               fontSize: 9,
-                              color: Colors.white70,
+                              color: isLight ? Colors.black54 : Colors.white70,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -323,7 +340,12 @@ class PanelComponents {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('HỦY', style: TextStyle(color: Colors.white38)),
+            child: Text(
+              'HỦY',
+              style: TextStyle(
+                color: isLight ? const Color(0xFF64748B) : Colors.white38,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -349,28 +371,34 @@ class PanelComponents {
 
   /// Builds a toggle button (e.g., Bold, Italic).
   static Widget buildToggleButton({
+    required BuildContext context,
     required IconData icon,
     required bool active,
     required VoidCallback onTap,
     Color accentColor = kPanelAccentColor,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final backgroundColor = active 
+        ? accentColor.withValues(alpha: 0.15) 
+        : (isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.04));
+    final iconColor = active 
+        ? accentColor 
+        : (isLight ? const Color(0xFF64748B) : Colors.white38);
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: active ? accentColor.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active ? accentColor : Colors.white10,
-            width: 1,
-          ),
+          border: null,
         ),
         child: Icon(
           icon,
           size: 18,
-          color: active ? accentColor : Colors.white38,
+          color: iconColor,
         ),
       ),
     );
@@ -378,23 +406,29 @@ class PanelComponents {
 
   /// Builds a small alignment toggle button.
   static Widget buildAlignButton({
+    required BuildContext context,
     required IconData icon,
     required bool active,
     required VoidCallback onTap,
     Color accentColor = kPanelAccentColor,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = active 
+        ? accentColor 
+        : (isLight ? const Color(0xFF94A3B8) : Colors.white24);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: active ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(
           icon,
-          size: 16,
-          color: active ? accentColor : Colors.white24,
+          size: 18,
+          color: iconColor,
         ),
       ),
     );
@@ -484,28 +518,35 @@ class PanelComponents {
 
   /// Builds a font picker dropdown.
   static Widget buildFontPicker({
+    required BuildContext context,
     required String currentFont,
     required void Function(String) onFontSelected,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: isLight 
+            ? Colors.black.withValues(alpha: 0.05) 
+            : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: null,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: fontFamilies.contains(currentFont) ? currentFont : 'Roboto',
-          dropdownColor: const Color(0xFF1A1A1A),
+          dropdownColor: isLight ? Colors.white : const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(12),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down_rounded,
-            color: Colors.white38,
+            color: isLight ? const Color(0xFF64748B) : Colors.white38,
           ),
           isExpanded: true,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: TextStyle(
+            color: isLight ? const Color(0xFF0F172A) : Colors.white, 
+            fontSize: 13,
+          ),
           onChanged: (String? newValue) {
             if (newValue != null) {
               onFontSelected(newValue);
@@ -518,7 +559,7 @@ class PanelComponents {
                 font,
                 style: getSafeFont(
                   font,
-                  color: Colors.white,
+                  color: isLight ? const Color(0xFF0F172A) : Colors.white,
                   fontSize: 14,
                 ),
               ),
@@ -531,22 +572,29 @@ class PanelComponents {
 
   /// A collapsible section for grouping properties.
   static Widget buildPanelSection({
+    required BuildContext context,
     required String title,
     required List<Widget> children,
     IconData? icon,
     bool initiallyExpanded = false,
   }) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final backgroundColor = isLight 
+        ? Colors.black.withValues(alpha: 0.02) 
+        : Colors.white.withValues(alpha: 0.02);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: null,
       ),
       child: Theme(
-        data: ThemeData.dark().copyWith(
+        data: (isLight ? ThemeData.light() : ThemeData.dark()).copyWith(
           dividerColor: Colors.transparent,
           hoverColor: Colors.transparent,
+          splashColor: Colors.transparent,
         ),
         child: ExpansionTile(
           initiallyExpanded: initiallyExpanded,
@@ -555,18 +603,18 @@ class PanelComponents {
               : null,
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.8,
-              color: Colors.white,
+              color: isLight ? const Color(0xFF1E293B) : Colors.white,
             ),
           ),
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           iconColor: kPanelAccentColor,
-          collapsedIconColor: Colors.white30,
+          collapsedIconColor: isLight ? const Color(0xFF94A3B8) : Colors.white30,
           children: children,
         ),
       ),

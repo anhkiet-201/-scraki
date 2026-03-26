@@ -39,17 +39,23 @@ class FloatingGlassControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 400,
-      height: 64,
+      width: 440,
+      height: 68,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(34),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1), // Softer shadow
+            blurRadius: 5,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(34),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
@@ -58,29 +64,31 @@ class FloatingGlassControls extends StatelessWidget {
                   icon: Icon(
                     isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: Colors.white,
-                    size: 32,
+                    size: 34,
                   ),
                   onPressed: onPlayPause,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   _formatDuration(position),
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontFamily: 'monospace',
-                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 Expanded(
                   child: SliderTheme(
                     data: SliderTheme.of(context).copyWith(
-                      trackHeight: 2,
+                      trackHeight: 3,
                       thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 4,
+                        enabledThumbRadius: 6,
                       ),
                       activeTrackColor: const Color(0xFF6366F1),
-                      inactiveTrackColor: Colors.white10,
+                      inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
                       thumbColor: Colors.white,
+                      overlayColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
                     ),
                     child: Slider(
                       value: position.inMilliseconds.toDouble().clamp(
@@ -95,10 +103,10 @@ class FloatingGlassControls extends StatelessWidget {
                 ),
                 Text(
                   _formatDuration(duration),
-                  style: const TextStyle(
-                    fontSize: 10,
+                  style: TextStyle(
+                    fontSize: 11,
                     fontFamily: 'monospace',
-                    color: Colors.white30,
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ],

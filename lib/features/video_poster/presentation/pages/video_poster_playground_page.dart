@@ -47,14 +47,15 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-        cardColor: const Color(0xFF1A1A1A),
-        colorScheme: const ColorScheme.dark(
+      data: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.white,
+        cardColor: const Color(0xFFF8FAFC),
+        colorScheme: const ColorScheme.light(
           primary: Color(0xFF6366F1),
-          surface: Color(0xFF1A1A1A),
-          onSurface: Colors.white,
+          surface: Colors.white,
+          onSurface: Color(0xFF0F172A),
         ),
+        dividerColor: Colors.transparent,
       ),
       child: CallbackShortcuts(
         bindings: {
@@ -112,7 +113,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                     children: [
                                       Positioned.fill(
                                         child: Container(
-                                          color: Colors.black,
+                                          color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF1F5F9) : Colors.black,
                                           child: Center(
                                             child: _buildInteractivePreview(),
                                           ),
@@ -199,10 +200,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F).withValues(alpha: 0.8),
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        color: Colors.white.withValues(alpha: 0.8),
+        border: null,
       ),
       child: Row(
         children: [
@@ -223,7 +222,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               fontSize: 16,
               fontWeight: FontWeight.w300,
               letterSpacing: 2,
-              color: Colors.white,
+              color: Color(0xFF475569),
             ),
           ),
           const Spacer(),
@@ -253,7 +252,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
         return Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -303,7 +302,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             Icon(
               icon,
               size: 16,
-              color: isActive ? Colors.white : Colors.white30,
+              color: isActive ? Colors.white : const Color(0xFF94A3B8),
             ),
             const SizedBox(width: 8),
             Text(
@@ -311,7 +310,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: isActive ? Colors.white : Colors.white30,
+                color: isActive ? Colors.white : const Color(0xFF94A3B8),
               ),
             ),
           ],
@@ -332,20 +331,20 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isOutline ? Colors.transparent : Colors.white10,
-          border: isOutline ? Border.all(color: Colors.white10) : null,
+          color: isOutline ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
+          border: isOutline ? Border.all(color: Colors.black.withValues(alpha: 0.1)) : null,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: Colors.white70),
+            Icon(icon, size: 16, color: const Color(0xFF475569)),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Color(0xFF1E293B),
               ),
             ),
           ],
@@ -360,10 +359,8 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     return Container(
       width: 64,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F),
-        border: Border(
-          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        color: Colors.white,
+        border: null,
       ),
       child: Column(
         children: [
@@ -400,7 +397,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   ),
                   child: Icon(
                     icon,
-                    color: active ? Colors.white : Colors.white38,
+                    color: active ? Colors.white : const Color(0xFF94A3B8),
                     size: 22,
                   ),
                 ),
@@ -410,7 +407,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                   style: TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.bold,
-                    color: active ? Colors.white : Colors.white24,
+                    color: active ? const Color(0xFF6366F1) : const Color(0xFFCBD5E1),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -428,7 +425,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     return _ImageDropZone(
       store: store,
       child: Container(
-        color: Colors.black,
+        color: const Color(0xFFF1F5F9), // Slate 100 for workspace area
         padding: const EdgeInsets.all(20),
         child: Center(
           child: AspectRatio(
@@ -443,13 +440,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                     Observer(
                       warnWhenNoObservables: false,
                       builder: (context) {
+                        final isLight = Theme.of(context).brightness == Brightness.light;
                         if (store.sourceVideoPaths.isEmpty) {
                           return Container(
-                            color: Colors.black,
-                            child: const Center(
+                            color: isLight ? Colors.white : Colors.black,
+                            child: Center(
                               child: Text(
                                 'No Video Selected',
-                                style: TextStyle(color: Colors.white24),
+                                style: TextStyle(
+                                  color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
+                                ),
                               ),
                             ),
                           );

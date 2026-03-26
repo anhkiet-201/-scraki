@@ -10,59 +10,64 @@ class BatchVideoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF131313),
-        border: Border(
-          left: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        color: isLight ? const Color(0xFFF8FAFC) : const Color(0xFF131313),
+        border: null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(),
-          _buildConfiguration(),
-          Expanded(child: _buildLogView()),
-          _buildFooter(),
+          _buildHeader(context),
+          _buildConfiguration(context),
+          Expanded(child: _buildLogView(context)),
+          _buildFooter(context),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        border: null,
       ),
-      child: const Text(
+      child: Text(
         'TẠO VIDEO HÀNG LOẠT',
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.5,
+          color: isLight ? const Color(0xFF475569) : Colors.white70,
         ),
       ),
     );
   }
 
-  Widget _buildConfiguration() {
+  Widget _buildConfiguration(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Observer(
       builder: (context) {
         final isCreating = store.isBatchCreating;
 
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Số lượng video (1-999):',
-                style: TextStyle(fontSize: 12, color: Colors.white54),
+              Text(
+                'SỐ LƯỢNG VIDEO',
+                style: TextStyle(
+                  fontSize: 10, 
+                  fontWeight: FontWeight.bold,
+                  color: isLight ? const Color(0xFF94A3B8) : Colors.white38,
+                  letterSpacing: 1,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               TextFormField(
                 initialValue: store.batchOutputCount.toString(),
                 keyboardType: TextInputType.number,
@@ -70,17 +75,26 @@ class BatchVideoPanel extends StatelessWidget {
                 enabled: !isCreating,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+                  fillColor: isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF6366F1),
+                      width: 1.5,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 14,
                   ),
                 ),
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(
+                  fontSize: 14, 
+                  fontWeight: FontWeight.bold,
+                  color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                ),
                 onChanged: (val) {
                   final count = int.tryParse(val);
                   if (count != null) {
@@ -95,53 +109,96 @@ class BatchVideoPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildLogView() {
+  Widget _buildLogView(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      color: Colors.black,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : Colors.black,
+        borderRadius: BorderRadius.circular(12),
+        border: null,
+        boxShadow: [
+          if (isLight)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
       child: Observer(
         builder: (context) {
           final logs = store.batchLogs;
           if (logs.isEmpty) {
-            return const Center(
-              child: Text(
-                'Log hệ thống sẽ hiển thị tại đây...',
-                style: TextStyle(
-                  color: Colors.white24,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'Log hệ thống sẽ hiển thị tại đây...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isLight ? const Color(0xFFCBD5E1) : Colors.white24,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
+                  ),
                 ),
               ),
             );
           }
 
-          return ListView.builder(
-            reverse:
-                false, // In practice, auto-scroll is better but reverse breaks top-down logical reading if we just reverse the list.
-            // Better approach for auto-scroll is scrolling to bottom, or simply reversing and inserting at index 0. We'll use simple list for now.
-            padding: const EdgeInsets.all(16),
-            itemCount: logs.length,
-            itemBuilder: (context, index) {
-              final log = logs[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  log,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: Colors.greenAccent,
-                    height: 1.4,
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: logs.length,
+              itemBuilder: (context, index) {
+                final log = logs[index];
+                final isError = log.toLowerCase().contains('error') || log.toLowerCase().contains('failed');
+                final isSuccess = log.toLowerCase().contains('success') || log.toLowerCase().contains('done');
+                
+                Color logColor = isLight ? const Color(0xFF475569) : Colors.greenAccent;
+                if (isError) logColor = Colors.redAccent;
+                if (isSuccess) logColor = isLight ? const Color(0xFF10B981) : Colors.greenAccent;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '> ',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          log,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            color: logColor,
+                            height: 1.4,
+                            fontWeight: (isError || isSuccess) ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Observer(
       builder: (context) {
         final isCreating = store.isBatchCreating;
@@ -151,10 +208,8 @@ class BatchVideoPanel extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
-            border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-            ),
+            color: isLight ? const Color(0xFFF8FAFC) : const Color(0xFF1A1A1A),
+            border: null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,29 +218,35 @@ class BatchVideoPanel extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
+                    color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: null,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Thư mục lưu:',
-                        style: TextStyle(fontSize: 10, color: Colors.white54),
+                      Text(
+                        'THƯ MỤC LƯU:',
+                        style: TextStyle(
+                          fontSize: 9, 
+                          fontWeight: FontWeight.w900,
+                          color: isLight ? const Color(0xFF94A3B8) : Colors.white38,
+                          letterSpacing: 1,
+                        ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       SelectableText(
                         outputDir,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isLight ? const Color(0xFF475569) : Colors.white70,
                           fontFamily: 'monospace',
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
               ],
               ElevatedButton(
                 onPressed: (!hasVideos && !isCreating)
@@ -202,17 +263,19 @@ class BatchVideoPanel extends StatelessWidget {
                       ? Colors.redAccent
                       : const Color(0xFF6366F1),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  elevation: isLight ? 4 : 0,
+                  shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  disabledBackgroundColor: Colors.white10,
+                  disabledBackgroundColor: isLight ? Colors.black12 : Colors.white10,
                 ),
                 child: isCreating
-                    ? const Row(
+                    ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
+                          const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
@@ -220,12 +283,13 @@ class BatchVideoPanel extends StatelessWidget {
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Text(
                             'DỪNG XỬ LÝ',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w900,
                               letterSpacing: 1,
+                              fontSize: 12,
                             ),
                           ),
                         ],
@@ -233,18 +297,23 @@ class BatchVideoPanel extends StatelessWidget {
                     : const Text(
                         'TẠO VIDEO',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 1,
+                          fontSize: 12,
                         ),
                       ),
               ),
               if (!hasVideos)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
                   child: Text(
                     'Vui lòng thêm video nguồn trước',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: Colors.redAccent),
+                    style: TextStyle(
+                      fontSize: 10, 
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                    ),
                   ),
                 ),
             ],

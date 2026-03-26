@@ -19,18 +19,19 @@ class MediaLibraryPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(24),
+        Padding(
+          padding: const EdgeInsets.all(24),
           child: Text(
             "TÀI NGUYÊN",
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
+              color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF1E293B) : Colors.white,
             ),
           ),
         ),
-        const Divider(height: 1, color: Colors.white10),
+        const SizedBox(height: 1),
         Expanded(
           child: DropRegion(
             formats: Formats.standardFormats,
@@ -76,11 +77,11 @@ class MediaLibraryPanel extends StatelessWidget {
                       return ListTile(
                         dense: true,
                         selected: isActive,
-                        selectedTileColor: Colors.white.withValues(alpha: 0.1),
+                        selectedTileColor: Colors.black.withValues(alpha: 0.05),
                         leading: Icon(
                           Icons.movie_outlined,
                           size: 16,
-                          color: isActive ? Colors.greenAccent : Colors.white70,
+                          color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
                         ),
                         title: Text(
                           path.split('/').last,
@@ -89,7 +90,7 @@ class MediaLibraryPanel extends StatelessWidget {
                             fontWeight: isActive
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            color: isActive ? Colors.greenAccent : Colors.white,
+                            color: isActive ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.light ? const Color(0xFF1E293B) : Colors.white70),
                           ),
                         ),
                         onTap: () => onVideoTap(index),

@@ -61,7 +61,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
     return Scaffold(
+      backgroundColor: isLight ? Colors.white : theme.scaffoldBackgroundColor,
       body: MeshBackground(
         child: Row(
           children: [
@@ -75,12 +78,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                     filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withValues(alpha: 0.4),
+                        color: theme.colorScheme.surface.withValues(alpha: isLight ? 0.9 : 0.4),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
+                        border: null,
                       ),
                       child: PageView(
                         controller: _pageController,
@@ -214,6 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildCustomSidebar(ThemeData theme, DashboardStore store) {
+    final isLight = theme.brightness == Brightness.light;
     return Observer(
       builder: (_) {
         return Container(
@@ -228,15 +229,17 @@ class _DashboardScreenState extends State<DashboardScreen>
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [
                         theme.colorScheme.primary,
-                        theme.colorScheme.secondary,
+                        theme.colorScheme.primary.withValues(alpha: 0.7),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        color: theme.colorScheme.primary.withValues(alpha: isLight ? 0.2 : 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -294,7 +297,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                    color: isLight ? Colors.black.withValues(alpha: 0.05) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     shape: BoxShape.circle,
                   ),
                   child: CircleAvatar(
@@ -320,6 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }) {
     final isSelected = store.selectedIndex == index;
     final colorScheme = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
@@ -355,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: Icon(
                 icon,
                 size: 24,
-                color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                color: isSelected ? Colors.white : (isLight ? const Color(0xFF64748B) : colorScheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -369,12 +373,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
+        border: null,
       ),
       child: Row(
         children: [
