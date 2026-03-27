@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -22,20 +23,10 @@ class DeviceRepositoryImpl implements DeviceRepository {
       // Chạy Parsing ở Isolate để tránh block UI khi lượng device lớn [Rule #10]
       final List<DeviceEntity> devices = await compute<String, List<DeviceEntity>>(AdbOutputParser.parseDevices, output);
 
-      // Lấy tên thân thiện song song cho tất cả connected devices
-      // Dùng isolated try-catch cho từng device để tránh lỗi 1 device làm hỏng cả list (vd: ADB quá tải)
-      final namedDevices = await Future.wait(
-        devices.map((device) async {
-          if (device.status != DeviceStatus.connected) return device;
-          try {
-            final friendlyName = await _remoteDataSource.getDeviceName(device.serial);
-            if (friendlyName == null) return device;
-            return device.copyWith(modelName: friendlyName);
-          } catch (e) {
-            // Log lỗi nhưng không quăng lỗi để Future.wait tiếp tục
-            return device;
-          }
-        }),
+      // Chạy việc lấy tên đồng loạt ở Isolate để tránh hàng trăm process manager callbacks làm treo Main UI [Rule #10]
+      final List<DeviceEntity> namedDevices = await compute<_NameFetchInput, List<DeviceEntity>>(
+        _fetchDeviceNames,
+        _NameFetchInput(devices),
       );
 
       return Right(namedDevices);
@@ -61,12 +52,10 @@ class DeviceRepositoryImpl implements DeviceRepository {
   @override
   Future<Either<Failure, Unit>> disconnectDevice(String serial) async {
     try {
-      await _remoteDataSource.disconnect(serial); // Changed method name
+      await _remoteDataSource.disconnect(serial);
       return const Right(unit);
-    } on ServerException catch (e) {
-      return Left(AdbFailure(e.message));
     } catch (e) {
-      return Left(const AdbFailure('Unexpected error during disconnect'));
+      return Left(AdbFailure(e.toString()));
     }
   }
 
@@ -105,4 +94,39 @@ class DeviceRepositoryImpl implements DeviceRepository {
       return Left(const AdbFailure('Unexpected error inputting text'));
     }
   }
+}
+
+class _NameFetchInput {
+  final List<DeviceEntity> devices;
+  _NameFetchInput(this.devices);
+}
+
+/// Hàm tĩnh chạy ở Isolate để lấy tên hàng loạt thiết bị [Rule #10, #31]
+Future<List<DeviceEntity>> _fetchDeviceNames(_NameFetchInput input) async {
+  return await Future.wait(
+    input.devices.map((device) async {
+      // Chỉ lấy tên cho thiết bị đã kết nối
+      if (device.status != DeviceStatus.connected) return device;
+
+      try {
+        // Dùng trực tiếp Process.run trong Isolate để tránh overhead của Shell/DataSource
+        final result = await Process.run('adb', [
+          '-s',
+          device.serial,
+          'shell',
+          'settings',
+          'get',
+          'global',
+          'device_name',
+        ]).timeout(const Duration(seconds: 2));
+
+        final name = (result.stdout as String).trim();
+        // Android trả về 'null' (string) nếu chưa được đặt tên
+        if (name.isEmpty || name == 'null') return device;
+        return device.copyWith(modelName: name);
+      } catch (_) {
+        return device; // Giữ nguyên trạng thái cũ nếu lỗi/timeout
+      }
+    }),
+  );
 }
