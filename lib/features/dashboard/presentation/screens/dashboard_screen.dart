@@ -49,11 +49,29 @@ class _DashboardScreenState extends State<DashboardScreen>
         deviceManagerStore.loadDevicesFuture == null) {
       deviceManagerStore.loadDevices();
     }
+
+    // Show error snackbar when error happens but list is not empty
+    _errorDisposer = reaction((_) => deviceManagerStore.errorMessage, (error) {
+      if (error != null && deviceManagerStore.devices.isNotEmpty) {
+        if (!mounted) return;
+        final localTheme = Theme.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: localTheme.colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
   }
+
+  ReactionDisposer? _errorDisposer;
 
   @override
   void dispose() {
     _selectionDisposer?.call();
+    _errorDisposer?.call();
     _pageController.dispose();
     super.dispose();
   }

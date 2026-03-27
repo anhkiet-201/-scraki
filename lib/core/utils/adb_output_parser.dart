@@ -7,9 +7,9 @@ class AdbOutputParser {
 
     // Regex matches: "SERIAL  status  details..."
     // Group 1: Serial
-    // Group 2: Status (device|offline|unauthorized)
+    // Group 2: Status
     // Group 3: Details (product:x model:y ...)
-    final deviceRegex = RegExp(r'^(\S+)\s+(device|offline|unauthorized)(.*)$');
+    final deviceRegex = RegExp(r'^(\S+)\s+(device|offline|unauthorized|connecting|authorizing|no permissions|recovery|sideload)(.*)$');
 
     for (var line in lines) {
       line = line.trim();
@@ -51,10 +51,14 @@ class AdbOutputParser {
     switch (status) {
       case 'device':
         return DeviceStatus.connected;
-      case 'offline':
-        return DeviceStatus.offline;
       case 'unauthorized':
+      case 'authorizing':
         return DeviceStatus.unauthorized;
+      case 'offline':
+      case 'connecting':
+      case 'no permissions':
+      case 'recovery':
+      case 'sideload':
       default:
         return DeviceStatus.offline;
     }

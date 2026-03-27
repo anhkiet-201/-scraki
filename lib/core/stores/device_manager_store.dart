@@ -66,13 +66,39 @@ abstract class _DeviceManagerStore with Store {
       (failure) {
         runInAction(() {
           errorMessage = failure.message;
-          devices.clear();
+          logger.e('[DeviceManagerStore] Load devices failed: ${failure.message}');
+          // Không clear devices khi lỗi, giữ lại trạng thái cũ
         });
       },
-      (list) {
+      (newList) {
         runInAction(() {
-          devices.clear();
-          devices.addAll(list);
+          logger.i('[DeviceManagerStore] Received ${newList.length} devices from ADB');
+          
+          // Smart Diff & Patch Update [Rule #10, #31]
+          final Set<String> newSerials = newList.map((d) => d.serial).toSet();
+          
+          // 1. Loại bỏ thiết bị không còn kết nối trước để ổn định index
+          devices.removeWhere((d) => !newSerials.contains(d.serial));
+
+          // 2. Map serial -> index hiện tại sau khi đã xóa
+          final Map<String, int> currentIndices = {};
+          for (int i = 0; i < devices.length; i++) {
+            currentIndices[devices[i].serial] = i;
+          }
+
+          // 3. Cập nhật thuộc tính hoặc thêm mới
+          for (final newDevice in newList) {
+            final existingIndex = currentIndices[newDevice.serial];
+            if (existingIndex != null) {
+              if (devices[existingIndex] != newDevice) {
+                // Chỉ cập nhật nếu có thay đổi (Status, ModelName...)
+                devices[existingIndex] = newDevice;
+              }
+            } else {
+              logger.i('[DeviceManagerStore] Adding NEW device: ${newDevice.serial}');
+              devices.add(newDevice);
+            }
+          }
         });
       },
     );

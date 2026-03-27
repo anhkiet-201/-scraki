@@ -20,14 +20,18 @@ class DeviceRepositoryImpl implements DeviceRepository {
       final devices = AdbOutputParser.parseDevices(output);
 
       // Lấy tên thân thiện song song cho tất cả connected devices
+      // Dùng isolated try-catch cho từng device để tránh lỗi 1 device làm hỏng cả list (vd: ADB quá tải)
       final namedDevices = await Future.wait(
         devices.map((device) async {
           if (device.status != DeviceStatus.connected) return device;
-          final friendlyName = await _remoteDataSource.getDeviceName(
-            device.serial,
-          );
-          if (friendlyName == null) return device;
-          return device.copyWith(modelName: friendlyName);
+          try {
+            final friendlyName = await _remoteDataSource.getDeviceName(device.serial);
+            if (friendlyName == null) return device;
+            return device.copyWith(modelName: friendlyName);
+          } catch (e) {
+            // Log lỗi nhưng không quăng lỗi để Future.wait tiếp tục
+            return device;
+          }
         }),
       );
 
