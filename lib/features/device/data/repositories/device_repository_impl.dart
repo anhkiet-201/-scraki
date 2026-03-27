@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/error/exceptions.dart';
@@ -17,7 +18,9 @@ class DeviceRepositoryImpl implements DeviceRepository {
   Future<Either<Failure, List<DeviceEntity>>> getConnectedDevices() async {
     try {
       final output = await _remoteDataSource.getConnectedDevicesOutput();
-      final devices = AdbOutputParser.parseDevices(output);
+      
+      // Chạy Parsing ở Isolate để tránh block UI khi lượng device lớn [Rule #10]
+      final List<DeviceEntity> devices = await compute<String, List<DeviceEntity>>(AdbOutputParser.parseDevices, output);
 
       // Lấy tên thân thiện song song cho tất cả connected devices
       // Dùng isolated try-catch cho từng device để tránh lỗi 1 device làm hỏng cả list (vd: ADB quá tải)

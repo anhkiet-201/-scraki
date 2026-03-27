@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
@@ -62,42 +63,48 @@ abstract class _DeviceManagerStore with Store {
 
   Future<void> _loadDevicesInternal() async {
     final result = await _repository.getConnectedDevices();
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         runInAction(() {
           errorMessage = failure.message;
           logger.e('[DeviceManagerStore] Load devices failed: ${failure.message}');
-          // Không clear devices khi lỗi, giữ lại trạng thái cũ
         });
       },
-      (newList) {
-        runInAction(() {
-          logger.i('[DeviceManagerStore] Received ${newList.length} devices from ADB');
-          
-          // Smart Diff & Patch Update [Rule #10, #31]
-          final Set<String> newSerials = newList.map((d) => d.serial).toSet();
-          
-          // 1. Loại bỏ thiết bị không còn kết nối trước để ổn định index
-          devices.removeWhere((d) => !newSerials.contains(d.serial));
+      (newList) async {
+        // Chuyển việc tính toán Diff sang Isolate để tránh block UI [Rule #10]
+        final currentList = devices.toList();
+        final diff = await compute<_DiffInput, _DiffResult>(
+          _DeviceDiffHelper.calculateDiff,
+          _DiffInput(currentList, newList),
+        );
 
-          // 2. Map serial -> index hiện tại sau khi đã xóa
-          final Map<String, int> currentIndices = {};
-          for (int i = 0; i < devices.length; i++) {
-            currentIndices[devices[i].serial] = i;
+        runInAction(() {
+          logger.i(
+            '[DeviceManagerStore] Syncing ${newList.length} devices (Added: ${diff.toAdd.length}, Updated: ${diff.toUpdate.length}, Removed: ${diff.serialsToRemove.length})',
+          );
+
+          // 1. Loại bỏ các thiết bị không còn kết nối
+          if (diff.serialsToRemove.isNotEmpty) {
+            devices.removeWhere((d) => diff.serialsToRemove.contains(d.serial));
           }
 
-          // 3. Cập nhật thuộc tính hoặc thêm mới
-          for (final newDevice in newList) {
-            final existingIndex = currentIndices[newDevice.serial];
-            if (existingIndex != null) {
-              if (devices[existingIndex] != newDevice) {
-                // Chỉ cập nhật nếu có thay đổi (Status, ModelName...)
-                devices[existingIndex] = newDevice;
-              }
-            } else {
-              logger.i('[DeviceManagerStore] Adding NEW device: ${newDevice.serial}');
-              devices.add(newDevice);
+          // 2. Map serial -> index hiện tại để update nhanh
+          final Map<String, int> currentIndices = {
+            for (int i = 0; i < devices.length; i++) devices[i].serial: i
+          };
+
+          // 3. Thực hiện update và add
+          // Update các device đang tồn tại
+          for (final update in diff.toUpdate) {
+            final idx = currentIndices[update.serial];
+            if (idx != null) {
+              devices[idx] = update;
             }
+          }
+
+          // Thêm mới các device
+          if (diff.toAdd.isNotEmpty) {
+            devices.addAll(diff.toAdd);
           }
         });
       },
@@ -233,5 +240,50 @@ abstract class _DeviceManagerStore with Store {
     // 5. Final Reload
     await _loadDevicesInternal();
     logger.i('[DeviceManagerStore] Done. $connectedBoxCount boxes connected.');
+  }
+}
+
+class _DiffInput {
+  final List<DeviceEntity> currentList;
+  final List<DeviceEntity> newList;
+  _DiffInput(this.currentList, this.newList);
+}
+
+class _DiffResult {
+  final List<DeviceEntity> toAdd;
+  final List<DeviceEntity> toUpdate;
+  final Set<String> serialsToRemove;
+  _DiffResult(this.toAdd, this.toUpdate, this.serialsToRemove);
+}
+
+class _DeviceDiffHelper {
+  static _DiffResult calculateDiff(_DiffInput input) {
+    final currentMap = {for (final d in input.currentList) d.serial: d};
+    final newSerials = input.newList.map((d) => d.serial).toSet();
+
+    final toAdd = <DeviceEntity>[];
+    final toUpdate = <DeviceEntity>[];
+    final serialsToRemove = <String>{};
+
+    // Tìm device mới hoặc cần update
+    for (final newDevice in input.newList) {
+      final existing = currentMap[newDevice.serial];
+      if (existing != null) {
+        if (existing != newDevice) {
+          toUpdate.add(newDevice);
+        }
+      } else {
+        toAdd.add(newDevice);
+      }
+    }
+
+    // Tìm device đã mất kết nối
+    for (final oldDevice in input.currentList) {
+      if (!newSerials.contains(oldDevice.serial)) {
+        serialsToRemove.add(oldDevice.serial);
+      }
+    }
+
+    return _DiffResult(toAdd, toUpdate, serialsToRemove);
   }
 }
