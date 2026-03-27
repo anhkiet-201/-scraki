@@ -30,15 +30,15 @@ class DashboardTabs {
 /// Performance profiles for different viewing modes.
 class PerformanceProfiles {
   static const grid = ScrcpyOptions(
-    bitRate: 100000, // 1 Mbps
+    bitRate: 200000, // 1 Mbps
     maxFps: 10,
     control: false,
     maxSize: 360,
   );
 
   static const floating = ScrcpyOptions(
-    bitRate: 2500000, // 2.5 Mbps
-    maxFps: 30,
+    bitRate: 2500000, // 25 Mbps
+    maxFps: 60,
     control: true,
   );
 }
