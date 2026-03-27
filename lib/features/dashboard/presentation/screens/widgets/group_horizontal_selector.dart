@@ -53,7 +53,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
             builder: (_) {
               final isSelected = store.selectedGroupId == null;
               return _GroupChip(
-                label: 'All Devices',
+                label: 'Tất cả thiết bị',
                 isSelected: isSelected,
                 color: theme.colorScheme.primary,
                 onTap: () => store.selectGroup(null),
@@ -68,7 +68,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                 if (store.groups.isEmpty) {
                   return Center(
                     child: Text(
-                      'No groups created',
+                      'Chưa có nhóm nào',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.outline.withValues(alpha: 0.6),
                       ),
@@ -76,37 +76,61 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                   );
                 }
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: store.groups.length,
-                  itemBuilder: (context, index) {
-                    final group = store.groups[index];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Observer(
-                        key: ValueKey('group_${group.id}'),
-                        builder: (_) {
-                          final isSelected =
-                              store.selectedGroupId == group.id;
-                          return _GroupChip(
-                            label: group.name,
-                            isSelected: isSelected,
-                            color: Color(group.colorValue),
-                            count: group.deviceSerials.length,
-                            onTap: () => store.selectGroup(group.id),
-                            onDelete: () => _showDeleteConfirmation(
-                              context,
-                              store,
-                              group,
-                            ),
-                          );
-                        },
-                      ),
-                    );
+                return Listener(
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      final newOffset = _scrollController.offset + pointerSignal.scrollDelta.dy;
+                      if (newOffset < 0) {
+                        _scrollController.jumpTo(0);
+                      } else if (newOffset > _scrollController.position.maxScrollExtent) {
+                        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                      } else {
+                        _scrollController.jumpTo(newOffset);
+                      }
+                    }
                   },
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.trackpad,
+                        PointerDeviceKind.stylus,
+                      },
+                    ),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: store.groups.length,
+                      itemBuilder: (context, index) {
+                        final group = store.groups[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Observer(
+                            key: ValueKey('group_${group.id}'),
+                            builder: (_) {
+                              final isSelected =
+                                  store.selectedGroupId == group.id;
+                              return _GroupChip(
+                                label: group.name,
+                                isSelected: isSelected,
+                                color: Color(group.colorValue),
+                                count: group.deviceSerials.length,
+                                onTap: () => store.selectGroup(group.id),
+                                onDelete: () => _showDeleteConfirmation(
+                                  context,
+                                  store,
+                                  group,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 );
               },
             ),
@@ -121,7 +145,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
 
   Widget _buildAddGroupButton(ThemeData theme) {
     return Tooltip(
-      message: 'Create Group',
+      message: 'Tạo nhóm',
       child: Material(
         color: theme.colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -177,7 +201,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Delete "${group.name}"?',
+                  'Xóa "${group.name}"?',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -185,7 +209,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'This will remove the group but devices will remain unaffected.',
+                  'Hành động này sẽ xóa nhóm, các thiết bị bên trong sẽ không bị ảnh hưởng.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -197,7 +221,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: const Text('Hủy'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -212,7 +236,7 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                           foregroundColor: theme.colorScheme.onError,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('Delete'),
+                        child: const Text('Xóa'),
                       ),
                     ),
                   ],
