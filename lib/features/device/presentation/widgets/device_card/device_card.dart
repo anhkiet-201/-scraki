@@ -192,8 +192,7 @@ class _DeviceCardState extends State<DeviceCard>
               borderRadius: BorderRadius.circular(20),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                child: Container(
                   decoration: BoxDecoration(
                     color: _isHovered.value
                         ? colorScheme.surface.withValues(alpha: 0.8)
@@ -241,102 +240,47 @@ class _DeviceCardState extends State<DeviceCard>
   }
 
   Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
-    // Need to observe both stores to update nicknames and group dots
     return Observer(
       builder: (_) {
         final deviceGroups = _deviceGroupStore.groups
             .where((g) => g.deviceSerials.contains(widget.device.serial))
             .toList();
-            
-        final modelName = widget.device.modelName;
+
         final displayName = _nicknameStore.getNickname(
           widget.device.serial,
-          modelName,
+          widget.device.modelName,
         );
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  widget.device.connectionType == ConnectionType.tcp
-                      ? Icons.wifi_rounded
-                      : Icons.usb_rounded,
-                  color: colorScheme.onSecondaryContainer,
-                  size: 18,
-                ),
+              _ConnectionIcon(
+                connectionType: widget.device.connectionType,
+                colorScheme: colorScheme,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            displayName,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: colorScheme.onSurface.withValues(alpha: 0.9),
-                              fontSize: 13,
-                              letterSpacing: 0.2,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Group Dots
-                        if (deviceGroups.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          ...deviceGroups.map(
-                            (g) => Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Color(g.colorValue),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: colorScheme.surface,
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      widget.device.serial,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.7,
-                        ),
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                child: _DeviceIdentity(
+                  displayName: displayName,
+                  serial: widget.device.serial,
+                  deviceGroups: deviceGroups,
+                  theme: theme,
+                  colorScheme: colorScheme,
                 ),
               ),
+              const SizedBox(width: 4),
               StatusBadge(status: widget.device.status),
+              const SizedBox(width: 2),
               IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded, size: 16),
                 onPressed: widget.onDisconnect,
                 style: IconButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  foregroundColor: colorScheme.onSurfaceVariant,
+                  foregroundColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  hoverColor: colorScheme.errorContainer.withValues(alpha: 0.1),
                 ),
+                tooltip: 'Ngắt kết nối',
               ),
             ],
           ),
@@ -347,4 +291,137 @@ class _DeviceCardState extends State<DeviceCard>
 
   @override
   bool get wantKeepAlive => true;
+}
+
+/// [Rule #18] Component hóa Icon kết nối
+class _ConnectionIcon extends StatelessWidget {
+  final ConnectionType connectionType;
+  final ColorScheme colorScheme;
+
+  const _ConnectionIcon({
+    required this.connectionType,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isTcp = connectionType == ConnectionType.tcp;
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Icon(
+          isTcp ? Icons.wifi_rounded : Icons.usb_rounded,
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+          size: 16,
+        ),
+      ),
+    );
+  }
+}
+
+/// [Rule #18] Component hóa Thông tin thiết bị
+class _DeviceIdentity extends StatelessWidget {
+  final String displayName;
+  final String serial;
+  final List<dynamic> deviceGroups;
+  final ThemeData theme;
+  final ColorScheme colorScheme;
+
+  const _DeviceIdentity({
+    required this.displayName,
+    required this.serial,
+    required this.deviceGroups,
+    required this.theme,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                displayName,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  letterSpacing: -0.2,
+                  color: colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (deviceGroups.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              _GroupIndicatorList(groups: deviceGroups, colorScheme: colorScheme),
+            ],
+          ],
+        ),
+        Text(
+          serial,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w500,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            letterSpacing: 0.3,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+/// [Rule #18] Component hóa Chấm màu Group
+class _GroupIndicatorList extends StatelessWidget {
+  final List<dynamic> groups;
+  final ColorScheme colorScheme;
+
+  const _GroupIndicatorList({
+    required this.groups,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: groups.map((g) {
+        return Padding(
+          padding: const EdgeInsets.only(right: 3),
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+            color: Color(g.colorValue as int),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: colorScheme.surface.withValues(alpha: 0.8),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(g.colorValue as int).withValues(alpha: 0.2),
+                  blurRadius: 2,
+                  spreadRadius: 0.5,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
