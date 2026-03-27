@@ -87,6 +87,16 @@ import '../../features/recruitment/domain/usecases/parse_job_text_usecase.dart'
     as _i405;
 import '../../features/recruitment/domain/usecases/search_jobs_with_ai_usecase.dart'
     as _i545;
+import '../../features/script/data/datasources/local_script_data_source.dart'
+    as _i992;
+import '../../features/script/data/repositories/script_repository_impl.dart'
+    as _i556;
+import '../../features/script/domain/repositories/script_repository.dart'
+    as _i55;
+import '../../features/script/domain/usecases/execute_command_use_case.dart'
+    as _i275;
+import '../../features/script/domain/usecases/run_script_use_case.dart' as _i69;
+import '../../features/script/presentation/stores/script_store.dart' as _i921;
 import '../../features/settings/data/repositories/settings_repository_impl.dart'
     as _i955;
 import '../../features/settings/di/settings_module.dart' as _i273;
@@ -129,7 +139,6 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
-    gh.factory<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
@@ -139,6 +148,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
+    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
     gh.lazySingleton<_i607.ScrcpySocketClient>(
@@ -174,6 +184,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
       () => _i963.FavoriteImageRemoteDataSourceImpl(),
     );
+    gh.lazySingleton<_i992.LocalScriptDataSource>(
+      () => _i992.LocalScriptDataSourceImpl(),
+      instanceName: 'local_script',
+    );
     gh.lazySingleton<_i583.IImapRemoteDataSource>(
       () => _i583.ImapRemoteDataSourceImpl(),
     );
@@ -195,6 +209,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i229.ITikTokPostService>(
       () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
+    );
+    gh.lazySingleton<_i55.ScriptRepository>(
+      () => _i556.ScriptRepositoryImpl(
+        gh<_i165.IAdbRemoteDataSource>(),
+        gh<_i992.LocalScriptDataSource>(instanceName: 'local_script'),
+      ),
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
@@ -222,6 +242,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i1056.SettingsEmailStore>(
       () => _i1056.SettingsEmailStore(gh<_i482.IEmailRepository>()),
+    );
+    gh.factory<_i275.ExecuteCommandUseCase>(
+      () => _i275.ExecuteCommandUseCase(gh<_i55.ScriptRepository>()),
     );
     gh.factory<_i498.EmailStore>(
       () => _i498.EmailStore(
@@ -252,8 +275,19 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i545.SearchJobsWithAiUseCase>(),
       ),
     );
+    gh.factory<_i69.RunScriptUseCase>(
+      () => _i69.RunScriptUseCase(gh<_i55.ScriptRepository>()),
+    );
     gh.singleton<_i730.SettingsConfigProvider>(
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
+    );
+    gh.lazySingleton<_i921.ScriptStore>(
+      () => _i921.ScriptStore(
+        gh<_i55.ScriptRepository>(),
+        gh<_i69.RunScriptUseCase>(),
+        gh<_i275.ExecuteCommandUseCase>(),
+        gh<_i563.DeviceManagerStore>(),
+      ),
     );
     gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
       () => _i521.DeviceGroupRemoteDataSourceImpl(
