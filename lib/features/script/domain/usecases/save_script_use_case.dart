@@ -4,13 +4,13 @@ import '../../../../core/error/failures.dart';
 import '../entities/script_entity.dart';
 import '../repositories/script_repository.dart';
 
-@injectable
-class RunScriptUseCase {
+@lazySingleton
+class SaveScriptUseCase {
   final ScriptRepository _repository;
 
-  RunScriptUseCase(this._repository);
+  SaveScriptUseCase(this._repository);
 
-  Stream<Either<Failure, String>> call(String serial, ScriptEntity script) {
-    return _repository.executeScriptStream(serial, script);
+  Future<Either<Failure, void>> call(ScriptEntity script) {
+    return _repository.saveScript(script);
   }
 }

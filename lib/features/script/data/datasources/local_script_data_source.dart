@@ -1,16 +1,49 @@
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:injectable/injectable.dart';
+import '../models/script_model.dart';
 import '../../domain/entities/script_entity.dart';
 
 abstract class LocalScriptDataSource {
-  Future<List<ScriptEntity>> getPredefinedScripts();
+  Future<List<ScriptEntity>> getAllScripts();
+  Future<void> saveScript(ScriptEntity script);
+  Future<void> deleteScript(String id);
+  Future<void> initDefaultScripts();
 }
 
 @Named('local_script')
 @LazySingleton(as: LocalScriptDataSource)
 class LocalScriptDataSourceImpl implements LocalScriptDataSource {
+  static const String _boxName = 'scripts_box';
+
+  Future<Box<ScriptModel>> get _box async => await Hive.openBox<ScriptModel>(_boxName);
+
   @override
-  Future<List<ScriptEntity>> getPredefinedScripts() async {
-    return [
+  Future<List<ScriptEntity>> getAllScripts() async {
+    final box = await _box;
+    if (box.isEmpty) {
+      await initDefaultScripts();
+    }
+    return box.values.map((model) => model.toEntity()).toList();
+  }
+
+  @override
+  Future<void> saveScript(ScriptEntity script) async {
+    final box = await _box;
+    await box.put(script.id, ScriptModel.fromEntity(script));
+  }
+
+  @override
+  Future<void> deleteScript(String id) async {
+    final box = await _box;
+    await box.delete(id);
+  }
+
+  @override
+  Future<void> initDefaultScripts() async {
+    final box = await _box;
+    if (box.isNotEmpty) return;
+
+    final defaultScripts = [
       ScriptEntity(
         id: '1',
         name: 'Dọn dẹp Cache TikTok',
@@ -19,6 +52,7 @@ class LocalScriptDataSourceImpl implements LocalScriptDataSource {
           'pm clear com.zhiliaoapp.musically',
           'pm clear com.ss.android.ugc.trill',
         ],
+        tags: ['Cleanup', 'TikTok'],
       ),
       ScriptEntity(
         id: '2',
@@ -28,6 +62,7 @@ class LocalScriptDataSourceImpl implements LocalScriptDataSource {
           'getprop ro.build.version.release',
           'df -h /data',
         ],
+        tags: ['System', 'Info'],
       ),
       ScriptEntity(
         id: '3',
@@ -36,6 +71,7 @@ class LocalScriptDataSourceImpl implements LocalScriptDataSource {
         commands: [
           'screencap -p /sdcard/screenshot.png',
         ],
+        tags: ['Media'],
       ),
       ScriptEntity(
         id: '4',
@@ -44,7 +80,12 @@ class LocalScriptDataSourceImpl implements LocalScriptDataSource {
         commands: [
           'am start -a android.settings.WIFI_SETTINGS',
         ],
+        tags: ['Settings'],
       ),
     ];
+
+    for (final script in defaultScripts) {
+      await box.put(script.id, ScriptModel.fromEntity(script));
+    }
   }
 }

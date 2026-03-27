@@ -3,8 +3,14 @@ import '../../../../core/error/failures.dart';
 import '../entities/script_entity.dart';
 
 abstract class ScriptRepository {
-  /// Lấy danh sách script mẫu có sẵn
-  Future<Either<Failure, List<ScriptEntity>>> getPredefinedScripts();
+  /// Lấy toàn bộ danh sách script (bao gồm script mẫu và script tự tạo)
+  Future<Either<Failure, List<ScriptEntity>>> getAllScripts();
+
+  /// Lưu hoặc cập nhật một script
+  Future<Either<Failure, void>> saveScript(ScriptEntity script);
+
+  /// Xóa một script theo ID
+  Future<Either<Failure, void>> deleteScript(String id);
 
   /// Thực thi một lệnh ADB shell trên thiết bị
   /// [serial] - Serial number của thiết bị
@@ -12,6 +18,9 @@ abstract class ScriptRepository {
   /// Returns: Output của lệnh
   Future<Either<Failure, String>> executeSingleCommand(String serial, String command);
 
+  /// Thực thi một lệnh ADB shell và trả về luồng dữ liệu realtime
+  Stream<Either<Failure, String>> executeSingleCommandStream(String serial, String command);
+
   /// Thực thi một script (danh sách lệnh) trên thiết bị
-  Future<Either<Failure, String>> executeScript(String serial, ScriptEntity script);
+  Stream<Either<Failure, String>> executeScriptStream(String serial, ScriptEntity script);
 }

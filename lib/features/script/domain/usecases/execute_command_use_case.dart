@@ -12,4 +12,8 @@ class ExecuteCommandUseCase {
   Future<Either<Failure, String>> call(String serial, String command) async {
     return await repository.executeSingleCommand(serial, command);
   }
+
+  Stream<Either<Failure, String>> executeStream(String serial, String command) {
+    return repository.executeSingleCommandStream(serial, command);
+  }
 }

@@ -25,22 +25,30 @@ mixin _$ScriptStore on _ScriptStore, Store {
         () => super.devices,
         name: '_ScriptStore.devices',
       )).value;
+  Computed<bool>? _$hasActiveExecutionComputed;
 
-  late final _$predefinedScriptsAtom = Atom(
-    name: '_ScriptStore.predefinedScripts',
+  @override
+  bool get hasActiveExecution =>
+      (_$hasActiveExecutionComputed ??= Computed<bool>(
+        () => super.hasActiveExecution,
+        name: '_ScriptStore.hasActiveExecution',
+      )).value;
+
+  late final _$scriptsAtom = Atom(
+    name: '_ScriptStore.scripts',
     context: context,
   );
 
   @override
-  ObservableList<ScriptEntity> get predefinedScripts {
-    _$predefinedScriptsAtom.reportRead();
-    return super.predefinedScripts;
+  ObservableList<ScriptEntity> get scripts {
+    _$scriptsAtom.reportRead();
+    return super.scripts;
   }
 
   @override
-  set predefinedScripts(ObservableList<ScriptEntity> value) {
-    _$predefinedScriptsAtom.reportWrite(value, super.predefinedScripts, () {
-      super.predefinedScripts = value;
+  set scripts(ObservableList<ScriptEntity> value) {
+    _$scriptsAtom.reportWrite(value, super.scripts, () {
+      super.scripts = value;
     });
   }
 
@@ -50,13 +58,13 @@ mixin _$ScriptStore on _ScriptStore, Store {
   );
 
   @override
-  ObservableList<String> get terminalOutput {
+  ObservableList<LogEntry> get terminalOutput {
     _$terminalOutputAtom.reportRead();
     return super.terminalOutput;
   }
 
   @override
-  set terminalOutput(ObservableList<String> value) {
+  set terminalOutput(ObservableList<LogEntry> value) {
     _$terminalOutputAtom.reportWrite(value, super.terminalOutput, () {
       super.terminalOutput = value;
     });
@@ -98,6 +106,98 @@ mixin _$ScriptStore on _ScriptStore, Store {
     });
   }
 
+  late final _$commandHistoryAtom = Atom(
+    name: '_ScriptStore.commandHistory',
+    context: context,
+  );
+
+  @override
+  ObservableList<String> get commandHistory {
+    _$commandHistoryAtom.reportRead();
+    return super.commandHistory;
+  }
+
+  @override
+  set commandHistory(ObservableList<String> value) {
+    _$commandHistoryAtom.reportWrite(value, super.commandHistory, () {
+      super.commandHistory = value;
+    });
+  }
+
+  late final _$historyIndexAtom = Atom(
+    name: '_ScriptStore.historyIndex',
+    context: context,
+  );
+
+  @override
+  int get historyIndex {
+    _$historyIndexAtom.reportRead();
+    return super.historyIndex;
+  }
+
+  @override
+  set historyIndex(int value) {
+    _$historyIndexAtom.reportWrite(value, super.historyIndex, () {
+      super.historyIndex = value;
+    });
+  }
+
+  late final _$editingScriptAtom = Atom(
+    name: '_ScriptStore.editingScript',
+    context: context,
+  );
+
+  @override
+  ScriptEntity? get editingScript {
+    _$editingScriptAtom.reportRead();
+    return super.editingScript;
+  }
+
+  @override
+  set editingScript(ScriptEntity? value) {
+    _$editingScriptAtom.reportWrite(value, super.editingScript, () {
+      super.editingScript = value;
+    });
+  }
+
+  late final _$isTiledViewAtom = Atom(
+    name: '_ScriptStore.isTiledView',
+    context: context,
+  );
+
+  @override
+  bool get isTiledView {
+    _$isTiledViewAtom.reportRead();
+    return super.isTiledView;
+  }
+
+  @override
+  set isTiledView(bool value) {
+    _$isTiledViewAtom.reportWrite(value, super.isTiledView, () {
+      super.isTiledView = value;
+    });
+  }
+
+  late final _$saveCurrentScriptAsyncAction = AsyncAction(
+    '_ScriptStore.saveCurrentScript',
+    context: context,
+  );
+
+  @override
+  Future<void> saveCurrentScript() {
+    return _$saveCurrentScriptAsyncAction.run(() => super.saveCurrentScript());
+  }
+
+  late final _$deleteScriptAsyncAction = AsyncAction(
+    '_ScriptStore.deleteScript',
+    context: context,
+  );
+
+  @override
+  Future<void> deleteScript(String id) {
+    return _$deleteScriptAsyncAction.run(() => super.deleteScript(id));
+  }
+
   late final _$loadScriptsAsyncAction = AsyncAction(
     '_ScriptStore.loadScripts',
     context: context,
@@ -117,6 +217,23 @@ mixin _$ScriptStore on _ScriptStore, Store {
   Future<void> executeCurrentCommand() {
     return _$executeCurrentCommandAsyncAction.run(
       () => super.executeCurrentCommand(),
+    );
+  }
+
+  late final _$executeCommandOnDeviceAsyncAction = AsyncAction(
+    '_ScriptStore.executeCommandOnDevice',
+    context: context,
+  );
+
+  @override
+  Future<void> executeCommandOnDevice(
+    String serial,
+    String command, {
+    bool logCommand = true,
+  }) {
+    return _$executeCommandOnDeviceAsyncAction.run(
+      () =>
+          super.executeCommandOnDevice(serial, command, logCommand: logCommand),
     );
   }
 
@@ -148,6 +265,30 @@ mixin _$ScriptStore on _ScriptStore, Store {
   }
 
   @override
+  void selectAllDevices(bool select) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.selectAllDevices',
+    );
+    try {
+      return super.selectAllDevices(select);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void selectDevicesByRange(int start, int end) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.selectDevicesByRange',
+    );
+    try {
+      return super.selectDevicesByRange(start, end);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void clearSelection() {
     final _$actionInfo = _$_ScriptStoreActionController.startAction(
       name: '_ScriptStore.clearSelection',
@@ -172,6 +313,86 @@ mixin _$ScriptStore on _ScriptStore, Store {
   }
 
   @override
+  void toggleTiledView() {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.toggleTiledView',
+    );
+    try {
+      return super.toggleTiledView();
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setEditingScript(ScriptEntity? script) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.setEditingScript',
+    );
+    try {
+      return super.setEditingScript(script);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateEditingScript({
+    String? name,
+    String? description,
+    List<String>? commands,
+  }) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.updateEditingScript',
+    );
+    try {
+      return super.updateEditingScript(
+        name: name,
+        description: description,
+        commands: commands,
+      );
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void stopCommand(String serial) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.stopCommand',
+    );
+    try {
+      return super.stopCommand(serial);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void stopAll() {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.stopAll',
+    );
+    try {
+      return super.stopAll();
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void navigateHistory(bool up) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.navigateHistory',
+    );
+    try {
+      return super.navigateHistory(up);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void clearTerminal() {
     final _$actionInfo = _$_ScriptStoreActionController.startAction(
       name: '_ScriptStore.clearTerminal',
@@ -186,12 +407,17 @@ mixin _$ScriptStore on _ScriptStore, Store {
   @override
   String toString() {
     return '''
-predefinedScripts: ${predefinedScripts},
+scripts: ${scripts},
 terminalOutput: ${terminalOutput},
 isExecuting: ${isExecuting},
 commandInput: ${commandInput},
+commandHistory: ${commandHistory},
+historyIndex: ${historyIndex},
+editingScript: ${editingScript},
+isTiledView: ${isTiledView},
 selectedSerials: ${selectedSerials},
-devices: ${devices}
+devices: ${devices},
+hasActiveExecution: ${hasActiveExecution}
     ''';
   }
 }

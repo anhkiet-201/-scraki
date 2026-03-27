@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'features/script/data/models/script_model.dart';
 import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -17,6 +18,7 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Hive.initFlutter();
+  Hive.registerAdapter(ScriptModelAdapter());
   MediaKit.ensureInitialized();
   configureDependencies();
 

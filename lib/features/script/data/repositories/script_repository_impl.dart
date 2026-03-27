@@ -15,10 +15,30 @@ class ScriptRepositoryImpl implements ScriptRepository {
   ScriptRepositoryImpl(this._adbDataSource, @Named('local_script') this._localDataSource);
 
   @override
-  Future<Either<Failure, List<ScriptEntity>>> getPredefinedScripts() async {
+  Future<Either<Failure, List<ScriptEntity>>> getAllScripts() async {
     try {
-      final scripts = await _localDataSource.getPredefinedScripts();
+      final scripts = await _localDataSource.getAllScripts();
       return Right(scripts);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveScript(ScriptEntity script) async {
+    try {
+      await _localDataSource.saveScript(script);
+      return const Right(null);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteScript(String id) async {
+    try {
+      await _localDataSource.deleteScript(id);
+      return const Right(null);
     } catch (e) {
       return Left(CacheFailure(e.toString()));
     }
@@ -37,20 +57,28 @@ class ScriptRepositoryImpl implements ScriptRepository {
   }
 
   @override
-  Future<Either<Failure, String>> executeScript(String serial, ScriptEntity script) async {
+  Stream<Either<Failure, String>> executeSingleCommandStream(String serial, String command) async* {
     try {
-      final StringBuffer buffer = StringBuffer();
-      for (final cmd in script.commands) {
-        buffer.writeln('--- Chạy lệnh: $cmd ---');
-        final output = await _adbDataSource.runShellCommand(serial, cmd);
-        buffer.writeln(output);
-        buffer.writeln();
-      }
-      return Right(buffer.toString());
-    } on ServerException catch (e) {
-      return Left(AdbFailure(e.message));
+      yield* _adbDataSource.runShellCommandStream(serial, command).map((line) => Right(line));
     } catch (e) {
-      return Left(AdbFailure(e.toString()));
+      yield Left(AdbFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<Either<Failure, String>> executeScriptStream(String serial, ScriptEntity script) async* {
+    try {
+      for (final cmd in script.commands) {
+        yield Right('--- Chạy lệnh: $cmd ---');
+        yield* _adbDataSource.runShellCommandStream(serial, cmd).map((line) => Right(line));
+        yield const Right(''); // Dòng trống phân cách
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        yield Left(AdbFailure(e.message));
+      } else {
+        yield Left(AdbFailure(e.toString()));
+      }
     }
   }
 }

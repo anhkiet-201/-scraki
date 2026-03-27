@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:injectable/injectable.dart';
@@ -87,6 +88,9 @@ abstract class IAdbRemoteDataSource {
   /// [command] - Lệnh shell (ví dụ: "ls /sdcard")
   /// Returns: stdout của lệnh
   Future<String> runShellCommand(String serial, String command);
+
+  /// Chạy một lệnh shell và trả về luồng dữ liệu realtime
+  Stream<String> runShellCommandStream(String serial, String command);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -531,13 +535,77 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       final out = (result.stdout as String).trim();
       final err = (result.stderr as String).trim();
 
-      if (result.exitCode != 0) {
-        throw ServerException('Lệnh thất bại ($command): $err');
+      if (result.exitCode != 0 || out.trim().toLowerCase() == 'failed' || out.trim().toLowerCase().startsWith('error:')) {
+        final fullError = [
+          if (out.isNotEmpty) out,
+          if (err.isNotEmpty) err,
+        ].join('\n').trim();
+        
+        throw ServerException('Lệnh thất bại ($command): ${fullError.isEmpty ? "Unknown Error" : fullError}');
       }
       return out;
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException('Lỗi thực thi lệnh ($command): $e');
     }
+  }
+
+  @override
+  Stream<String> runShellCommandStream(String serial, String command) {
+    final controller = StreamController<String>();
+    Process? process;
+
+    // Khi người dùng ngừng lắng nghe stream (subscription.cancel()), kill tiến trình adb
+    controller.onCancel = () {
+      if (process != null) {
+        logger.i('[ADB] Killing process for $serial: $command');
+        process?.kill();
+        process = null;
+      }
+    };
+
+    Process.start('adb', ['-s', serial, 'shell', command]).then((p) {
+      process = p;
+      
+      p.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+            (line) => controller.add(line),
+            onDone: () => _closeController(controller),
+            onError: (Object e) => _addErrorAndClose(controller, 'Lỗi stdout', e),
+          );
+          
+      p.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+            (line) => controller.add(line),
+            onError: (Object e) => _addError(controller, 'Lỗi stderr', e),
+          );
+
+      p.exitCode.then((_) => _closeController(controller));
+    }).catchError((Object e) {
+      _addErrorAndClose(controller, 'Lỗi khởi động process', e);
+    });
+
+    return controller.stream;
+  }
+
+  void _closeController(StreamController<String> controller) {
+    if (!controller.isClosed) {
+      controller.close();
+    }
+  }
+
+  void _addError(StreamController<String> controller, String context, dynamic error) {
+    if (!controller.isClosed) {
+      controller.add('$context: $error');
+    }
+  }
+
+  void _addErrorAndClose(StreamController<String> controller, String context, dynamic error) {
+    _addError(controller, context, error);
+    _closeController(controller);
   }
 }
