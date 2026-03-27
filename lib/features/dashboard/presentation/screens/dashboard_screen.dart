@@ -13,6 +13,7 @@ import 'package:scraki/features/device/presentation/stores/device_group_store.da
 import 'package:scraki/features/device/presentation/widgets/device_grid/device_grid.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/floating_phone_view.dart';
 import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
+import 'package:scraki/features/script/presentation/screens/script_screen.dart';
 import 'package:scraki/features/settings/presentation/screens/settings_screen.dart';
 import 'package:scraki/features/video_poster/presentation/pages/video_poster_playground_page.dart';
 
@@ -107,7 +108,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const KeepAlivePage(child: PosterCreatorScreen()),
                         KeepAlivePage(child: VideoPosterPlaygroundPage()),
-                        _buildComingSoon(context, 'Scripts'),
+                        const KeepAlivePage(child: ScriptScreen()),
                         SettingsScreen(),
                       ],
                     ),
@@ -194,36 +195,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildComingSoon(BuildContext context, String featureName) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.construction,
-            size: 64,
-            color: theme.colorScheme.primary.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            featureName,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming Soon...',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

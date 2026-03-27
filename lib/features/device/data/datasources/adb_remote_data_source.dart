@@ -81,6 +81,12 @@ abstract class IAdbRemoteDataSource {
     void Function(double progress)? onProgress,
     void Function(String status)? onStatus,
   });
+
+  /// Chạy một lệnh shell tùy ý trên thiết bị
+  /// [serial] - Serial number của thiết bị
+  /// [command] - Lệnh shell (ví dụ: "ls /sdcard")
+  /// Returns: stdout của lệnh
+  Future<String> runShellCommand(String serial, String command);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -515,6 +521,23 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException('Lỗi cài đặt: $e');
+    }
+  }
+
+  @override
+  Future<String> runShellCommand(String serial, String command) async {
+    try {
+      final result = await Process.run('adb', ['-s', serial, 'shell', command]);
+      final out = (result.stdout as String).trim();
+      final err = (result.stderr as String).trim();
+
+      if (result.exitCode != 0) {
+        throw ServerException('Lệnh thất bại ($command): $err');
+      }
+      return out;
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException('Lỗi thực thi lệnh ($command): $e');
     }
   }
 }
