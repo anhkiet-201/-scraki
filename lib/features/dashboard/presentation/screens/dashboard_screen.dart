@@ -88,32 +88,28 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             _buildCustomSidebar(theme, _dashboardStore),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withValues(alpha: isLight ? 0.9 : 0.4),
-                        borderRadius: BorderRadius.circular(24),
-                        border: null,
-                      ),
-                      child: PageView(
-                        controller: _pageController,
-                        scrollDirection: Axis.vertical,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          KeepAlivePage(
-                            child: _buildDevicesContent(context, _dashboardStore),
-                          ),
-                          const KeepAlivePage(child: PosterCreatorScreen()),
-                          KeepAlivePage(child: VideoPosterPlaygroundPage()),
-                          KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
-                          KeepAlivePage(child: SettingsScreen()),
-                        ],
-                      ),
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: isLight ? 0.9 : 0.4),
+                      borderRadius: BorderRadius.circular(24),
+                      border: null,
+                    ),
+                    child: PageView(
+                      controller: _pageController,
+                      scrollDirection: Axis.vertical,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        KeepAlivePage(
+                          child: _buildDevicesContent(context, _dashboardStore),
+                        ),
+                        const KeepAlivePage(child: PosterCreatorScreen()),
+                        KeepAlivePage(child: VideoPosterPlaygroundPage()),
+                        KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
+                        KeepAlivePage(child: SettingsScreen()),
+                      ],
                     ),
                   ),
                 ),
@@ -446,52 +442,119 @@ class _DashboardScreenState extends State<DashboardScreen>
         final isLoading = deviceManagerStore.isLoading;
         final count = deviceManagerStore.connectedBoxCount;
         final colorScheme = theme.colorScheme;
+        final isLight = theme.brightness == Brightness.light;
 
-        return Container(
-          height: 42,
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 44,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(21),
+            borderRadius: BorderRadius.circular(22),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isLoading
+                  ? [
+                      colorScheme.surfaceContainerHighest,
+                      colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                    ]
+                  : [
+                      colorScheme.primary,
+                      colorScheme.tertiary,
+                    ],
+            ),
             boxShadow: [
-              BoxShadow(
-                color: colorScheme.tertiary.withValues(alpha: 0.35),
-                blurRadius: 16,
-                spreadRadius: -2,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: colorScheme.tertiary.withValues(alpha: 0.2),
-                blurRadius: 4,
-                spreadRadius: 1,
-              ),
+              if (!isLoading) ...[
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: isLight ? 0.25 : 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                  spreadRadius: -4,
+                ),
+                BoxShadow(
+                  color: colorScheme.tertiary.withValues(alpha: isLight ? 0.2 : 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                  spreadRadius: -2,
+                ),
+              ],
             ],
           ),
-          child: FilledButton.icon(
-            icon: isLoading
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colorScheme.onTertiary,
-                    ),
-                  )
-                : const Icon(Icons.cast_connected_rounded, size: 18),
-            label: Text(
-              isLoading ? 'Connecting...' : 'Connect Boxes ($count/96)',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                fontSize: 13,
-              ),
-            ),
-            onPressed: isLoading ? null : () => deviceManagerStore.connectToBox(),
-            style: FilledButton.styleFrom(
-              backgroundColor: colorScheme.tertiary,
-              foregroundColor: colorScheme.onTertiary,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(21),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isLoading ? null : () => deviceManagerStore.connectToBox(),
+              borderRadius: BorderRadius.circular(22),
+              splashColor: Colors.white.withValues(alpha: 0.1),
+              highlightColor: Colors.white.withValues(alpha: 0.05),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(scale: animation, child: child),
+                    );
+                  },
+                  child: isLoading
+                      ? Row(
+                          key: const ValueKey('loading'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Connecting...',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          key: const ValueKey('idle'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cast_connected_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 10),
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Connect Boxes ',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '($count/96)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ),
