@@ -13,15 +13,18 @@ class SettingsPhoneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 480),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: null,
+          boxShadow: isLight 
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))] 
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,33 +33,37 @@ class SettingsPhoneCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.phone_rounded,
                     size: 18,
-                    color: theme.colorScheme.onSecondaryContainer,
+                    color: Color(0xFF6366F1),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Phone Number',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        'PHONE NUMBER',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: isLight ? const Color(0xFF1E293B) : Colors.white,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'For recruitment posters',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        'Số điện thoại hiển thị trên poster',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isLight ? const Color(0xFF64748B) : Colors.white38,
                         ),
                       ),
                     ],
@@ -64,63 +71,68 @@ class SettingsPhoneCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             TextField(
               controller: controller,
               onChanged: onChanged,
               keyboardType: TextInputType.phone,
-              style: theme.textTheme.bodyMedium,
+              style: TextStyle(
+                fontSize: 13,
+                color: isLight ? const Color(0xFF0F172A) : Colors.white,
+              ),
               decoration: InputDecoration(
-                hintText: 'e.g. 0987654321',
-                hintStyle: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                hintText: 'VD: 0987654321',
+                hintStyle: TextStyle(
+                  fontSize: 12,
+                  color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
                 ),
-                prefixIcon: Icon(
+                prefixIcon: const Icon(
                   Icons.phone_outlined,
-                  color: theme.colorScheme.primary,
-                  size: 18,
+                  color: Color(0xFF6366F1),
+                  size: 16,
                 ),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.5),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
+                fillColor: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.02),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 isDense: true,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: theme.colorScheme.outline),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                    width: 1,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: theme.colorScheme.outlineVariant,
+                    color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                    width: 1,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                    width: 1.5,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.info_outline,
                   size: 14,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: Color(0xFF64748B),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '10-15 digits required',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    'Yêu cầu từ 10-15 chữ số',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isLight ? const Color(0xFF64748B) : Colors.white38,
                     ),
                   ),
                 ),

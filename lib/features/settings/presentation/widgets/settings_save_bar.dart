@@ -13,16 +13,23 @@ class SettingsSaveBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: isLight ? Colors.white : Colors.black.withValues(alpha: 0.2),
+        border: Border(
+          top: BorderSide(
+            color: isLight
+                ? const Color(0xFF6366F1).withValues(alpha: 0.1)
+                : Colors.white10,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, -4),
-            blurRadius: 16,
+            blurRadius: 20,
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -32,16 +39,17 @@ class SettingsSaveBar extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.info_outline,
-                  size: 16,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  size: 14,
+                  color: Color(0xFF64748B),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Text(
-                  'Changes will be saved locally',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  'Dữ liệu sẽ được lưu trữ cục bộ và đồng bộ hóa',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isLight ? const Color(0xFF64748B) : Colors.white38,
                   ),
                 ),
               ],
@@ -49,20 +57,21 @@ class SettingsSaveBar extends StatelessWidget {
           ),
 
           // Save Button
-          SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: isLoading ? null : onSave,
-              icon: const Icon(Icons.save),
-              label: const Text('Save Changes'),
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-              ),
+          ElevatedButton.icon(
+            onPressed: isLoading ? null : onSave,
+            icon: isLoading 
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.check_circle_outline, size: 18),
+            label: const Text(
+              'LƯU CẤU HÌNH',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5, fontSize: 11),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],

@@ -8,38 +8,48 @@ class SettingsErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.error_outline,
-            color: theme.colorScheme.onErrorContainer,
-            size: 24,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFEF4444),
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Error',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                    fontWeight: FontWeight.bold,
+                  'LỖI HỆ THỐNG',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: isLight ? const Color(0xFF991B1B) : Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   errorMessage,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isLight ? const Color(0xFFB91C1C) : Colors.white70,
                   ),
                 ),
               ],

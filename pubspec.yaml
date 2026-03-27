@@ -84,6 +84,8 @@ dependencies:
   dart_dash_otp: ^1.3.4
 
   http: any
+  two_dimensional_scrollables: ^0.4.1
+  linked_scroll_controller: ^0.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

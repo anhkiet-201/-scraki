@@ -15,15 +15,18 @@ class SettingsApiKeyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 480),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: null,
+          boxShadow: isLight 
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))] 
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,33 +35,37 @@ class SettingsApiKeyCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.vpn_key_rounded,
                     size: 18,
-                    color: theme.colorScheme.onPrimaryContainer,
+                    color: Color(0xFF6366F1),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'AI API Key',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        'AI API KEY',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: isLight ? const Color(0xFF1E293B) : Colors.white,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'For poster generation',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        'Cấu hình khoá AI để tạo nội dung',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isLight ? const Color(0xFF64748B) : Colors.white38,
                         ),
                       ),
                     ],
@@ -66,68 +73,79 @@ class SettingsApiKeyCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             TextField(
               controller: controller,
               onChanged: onChanged,
               obscureText: true,
-              style: theme.textTheme.bodyMedium,
+              style: TextStyle(
+                fontSize: 13,
+                color: isLight ? const Color(0xFF0F172A) : Colors.white,
+              ),
               decoration: InputDecoration(
-                hintText: 'Enter API key...',
-                hintStyle: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                hintText: 'Nhập API key...',
+                hintStyle: TextStyle(
+                  fontSize: 12,
+                  color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
                 ),
-                prefixIcon: Icon(
+                prefixIcon: const Icon(
                   Icons.key,
-                  color: theme.colorScheme.primary,
-                  size: 18,
+                  color: Color(0xFF6366F1),
+                  size: 16,
                 ),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.5),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
+                fillColor: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.02),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 isDense: true,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: theme.colorScheme.outline),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                    width: 1,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: theme.colorScheme.outlineVariant,
+                    color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+                    width: 1,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                    width: 1.5,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             InkWell(
               onTap: onGetApiKey,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.open_in_new,
-                    size: 13,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Get API key',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      decoration: TextDecoration.underline,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.open_in_new,
+                      size: 12,
+                      color: Color(0xFF6366F1),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lấy mã API tại đây',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF6366F1),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

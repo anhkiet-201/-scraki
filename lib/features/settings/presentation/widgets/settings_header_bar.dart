@@ -6,36 +6,46 @@ class SettingsHeaderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      padding: const EdgeInsets.fromLTRB(32, 20, 32, 20),
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
+        color: isLight ? Colors.white : Colors.black.withValues(alpha: 0.2),
+        border: null,
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.settings_rounded,
-            size: 28,
-            color: theme.colorScheme.primary,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.settings_rounded,
+              size: 24,
+              color: Color(0xFF6366F1),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Settings',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                'SETTINGS',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: isLight ? const Color(0xFF1E293B) : Colors.white,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
-                'Configure application preferences',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                'Configure your application preferences',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isLight ? const Color(0xFF64748B) : Colors.white38,
                 ),
               ),
             ],

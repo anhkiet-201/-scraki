@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/settings/presentation/stores/settings_email_store.dart';
+import 'package:scraki/features/settings/presentation/widgets/email_data_text_controller.dart';
+import 'package:scraki/features/settings/presentation/widgets/settings_ghost_editor.dart';
 
 class SettingsEmailCredentialCard extends StatefulWidget {
   const SettingsEmailCredentialCard({super.key});
@@ -14,12 +16,13 @@ class SettingsEmailCredentialCard extends StatefulWidget {
 class _SettingsEmailCredentialCardState
     extends State<SettingsEmailCredentialCard> {
   late final SettingsEmailStore _store;
-  final _controller = TextEditingController();
+  late final EmailDataTextController _controller;
 
   @override
   void initState() {
     super.initState();
     _store = getIt<SettingsEmailStore>();
+    _controller = EmailDataTextController();
     _store.loadCredentials().then((_) {
       _controller.text = _store.rawCredentials;
     });
@@ -33,15 +36,18 @@ class _SettingsEmailCredentialCardState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: null,
+        boxShadow: isLight 
+            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))] 
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,33 +55,37 @@ class _SettingsEmailCredentialCardState
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.email_outlined,
+                child: const Icon(
+                  Icons.mark_email_read_outlined,
                   size: 20,
-                  color: theme.colorScheme.onTertiaryContainer,
+                  color: Color(0xFF6366F1),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 20),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Email Accounts Data',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      'EMAIL ACCOUNTS DATA',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: isLight ? const Color(0xFF1E293B) : Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       'Cấu hình danh sách tài khoản Email (mỗi dòng một tài khoản)',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isLight ? const Color(0xFF64748B) : Colors.white38,
                       ),
                     ),
                   ],
@@ -93,7 +103,7 @@ class _SettingsEmailCredentialCardState
                                 context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Firebase Credentials saved!'),
+                                  content: Text('Email Credentials saved!'),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -115,35 +125,27 @@ class _SettingsEmailCredentialCardState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.cloud_upload_outlined, size: 18),
-                    label: const Text('Lưu Firebase'),
+                    label: const Text(
+                      'LƯU FIREBASE',
+                      style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5, fontSize: 11),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      foregroundColor: theme.colorScheme.onPrimaryContainer,
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   );
                 },
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          TextField(
+          const SizedBox(height: 10),
+          SettingsGhostEditor(
             controller: _controller,
-            maxLines: 8,
-            decoration: InputDecoration(
-              hintText: 'user|pass|email|ref_token|cli_id\\n...',
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-              ),
-              contentPadding: const EdgeInsets.all(16),
-            ),
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            isLight: isLight,
+            height: 450, // Optimized height
           ),
         ],
       ),

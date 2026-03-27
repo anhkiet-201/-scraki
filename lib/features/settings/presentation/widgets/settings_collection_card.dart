@@ -15,16 +15,19 @@ class SettingsCollectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 480),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: null,
+          boxShadow: isLight 
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))] 
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,33 +37,37 @@ class SettingsCollectionCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.storage_rounded,
                     size: 18,
-                    color: theme.colorScheme.onTertiaryContainer,
+                    color: Color(0xFF6366F1),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Device Collection',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                        'DEVICE COLLECTION',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: isLight ? const Color(0xFF1E293B) : Colors.white,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Firestore collection source',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        'Nguồn dữ liệu Firestore nhóm thiết bị',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isLight ? const Color(0xFF64748B) : Colors.white38,
                         ),
                       ),
                     ],
@@ -68,40 +75,49 @@ class SettingsCollectionCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // SegmentedButton để chọn collection
-            SegmentedButton<String>(
-              segments: _kCollections
-                  .map(
-                    (name) => ButtonSegment<String>(
-                      value: name,
-                      label: Text(name, overflow: TextOverflow.ellipsis),
-                      icon: const Icon(Icons.folder_outlined, size: 16),
-                    ),
-                  )
-                  .toList(),
-              selected: {selectedCollection},
-              onSelectionChanged: (selection) => onChanged(selection.first),
-              style: SegmentedButton.styleFrom(
-                textStyle: theme.textTheme.bodySmall,
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
+                segments: _kCollections
+                    .map(
+                      (name) => ButtonSegment<String>(
+                        value: name,
+                        label: Text(name, overflow: TextOverflow.ellipsis),
+                        icon: const Icon(Icons.folder_outlined, size: 14),
+                      ),
+                    )
+                    .toList(),
+                selected: {selectedCollection},
+                onSelectionChanged: (selection) => onChanged(selection.first),
+                style: SegmentedButton.styleFrom(
+                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.02),
+                  selectedBackgroundColor: const Color(0xFF6366F1),
+                  selectedForegroundColor: Colors.white,
+                  side: BorderSide(color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10),
+                ),
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.info_outline,
                   size: 14,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: Color(0xFF64748B),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Chọn collection Firestore để đọc dữ liệu thiết bị',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isLight ? const Color(0xFF64748B) : Colors.white38,
                     ),
                   ),
                 ),
