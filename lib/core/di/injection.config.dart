@@ -129,6 +129,7 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
+    gh.factory<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
@@ -138,7 +139,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
-    gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
     gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
     gh.lazySingleton<_i607.ScrcpySocketClient>(

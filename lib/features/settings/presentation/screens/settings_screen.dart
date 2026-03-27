@@ -195,10 +195,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSidebarItem(1, Icons.mark_email_read_outlined, 'Email', isLight),
           const Spacer(),
           Padding(
-            padding: const EdgeInsets.only(bottom: 32),
-            child: Icon(
-              Icons.help_outline_rounded,
-              color: isLight ? const Color(0xFF64748B) : Colors.white38,
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.help_outline_rounded,
+                  color: isLight ? const Color(0xFF64748B) : Colors.white38,
+                ),
+                const SizedBox(height: 12),
+                Observer(
+                  builder: (context) {
+                    if (settingsStore.appVersion.isEmpty) return const SizedBox.shrink();
+                    return InkWell(
+                      onTap: () => showAboutDialog(
+                        context: context,
+                        applicationName: 'Scraki',
+                        applicationVersion: settingsStore.appVersion,
+                        applicationIcon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 32),
+                        ),
+                        applicationLegalese: '© 2026 Scraki Team',
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text(
+                          'v${settingsStore.appVersion}',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: isLight 
+                                ? const Color(0xFF64748B).withValues(alpha: 0.5) 
+                                : Colors.white24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ],

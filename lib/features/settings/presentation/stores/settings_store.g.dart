@@ -33,6 +33,24 @@ mixin _$SettingsStore on _SettingsStore, Store {
         name: '_SettingsStore.deviceGroupCollection',
       )).value;
 
+  late final _$appVersionAtom = Atom(
+    name: '_SettingsStore.appVersion',
+    context: context,
+  );
+
+  @override
+  String get appVersion {
+    _$appVersionAtom.reportRead();
+    return super.appVersion;
+  }
+
+  @override
+  set appVersion(String value) {
+    _$appVersionAtom.reportWrite(value, super.appVersion, () {
+      super.appVersion = value;
+    });
+  }
+
   late final _$settingsAtom = Atom(
     name: '_SettingsStore.settings',
     context: context,
@@ -107,6 +125,16 @@ mixin _$SettingsStore on _SettingsStore, Store {
     return _$saveSettingsAsyncAction.run(() => super.saveSettings());
   }
 
+  late final _$loadAppVersionAsyncAction = AsyncAction(
+    '_SettingsStore.loadAppVersion',
+    context: context,
+  );
+
+  @override
+  Future<void> loadAppVersion() {
+    return _$loadAppVersionAsyncAction.run(() => super.loadAppVersion());
+  }
+
   late final _$_SettingsStoreActionController = ActionController(
     name: '_SettingsStore',
     context: context,
@@ -151,6 +179,7 @@ mixin _$SettingsStore on _SettingsStore, Store {
   @override
   String toString() {
     return '''
+appVersion: ${appVersion},
 settings: ${settings},
 isLoading: ${isLoading},
 errorMessage: ${errorMessage},

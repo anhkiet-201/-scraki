@@ -107,8 +107,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const KeepAlivePage(child: PosterCreatorScreen()),
                         KeepAlivePage(child: VideoPosterPlaygroundPage()),
-                        KeepAlivePage(child: _buildComingSoon(context, 'Scripts')),
-                        KeepAlivePage(child: SettingsScreen()),
+                        _buildComingSoon(context, 'Scripts'),
+                        SettingsScreen(),
                       ],
                     ),
                   ),
@@ -303,23 +303,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 label: 'Settings',
                 store: store,
                 theme: theme,
-              ),
-              const SizedBox(height: 16),
-              // Compact User Footer
-              Tooltip(
-                message: 'Anh Kiet (v1.0.2-pro)',
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: isLight ? Colors.black.withValues(alpha: 0.05) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-                    child: Icon(Icons.person_rounded, size: 24, color: theme.colorScheme.primary),
-                  ),
-                ),
               ),
             ],
           ),

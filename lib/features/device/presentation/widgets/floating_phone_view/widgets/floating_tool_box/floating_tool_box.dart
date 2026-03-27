@@ -94,29 +94,14 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               onProfileTap: () => widget.store.openTikTokProfile(widget.serial),
               onAuthTap: () => widget.store.toggleAuthPanel(),
             ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.05, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                key: ValueKey(widget.store.showJobSelector || 
-                              widget.store.showEmailPanel || 
-                              widget.store.showAuthPanel || 
-                              widget.posterData != null || 
-                              widget.isGenerating),
-                alignment: Alignment.topLeft,
-                child: _buildPanel(),
-              ),
+            Container(
+              key: ValueKey(widget.store.showJobSelector || 
+                            widget.store.showEmailPanel || 
+                            widget.store.showAuthPanel || 
+                            widget.posterData != null || 
+                            widget.isGenerating),
+              alignment: Alignment.topLeft,
+              child: _buildPanel(),
             ),
           ],
         );

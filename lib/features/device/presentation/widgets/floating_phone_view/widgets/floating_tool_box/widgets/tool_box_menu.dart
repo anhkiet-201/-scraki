@@ -34,15 +34,8 @@ class ToolBoxMenu extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.power_settings_new_rounded,
-                  label: 'Power',
-                  onTap: onPowerTap,
-                  isError: true,
-                )
-              : _buildExpandedButton(
+     
+            _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.power_settings_new_rounded,
                   label: 'Power',
@@ -50,15 +43,7 @@ class ToolBoxMenu extends StatelessWidget {
                   isError: true,
                 ),
           const SizedBox(height: 12),
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.art_track_rounded,
-                  label: 'Poster',
-                  onTap: onPosterTap,
-                  isError: false,
-                )
-              : _buildExpandedButton(
+           _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.art_track_rounded,
                   label: 'Poster',
@@ -66,15 +51,7 @@ class ToolBoxMenu extends StatelessWidget {
                   isError: false,
                 ),
           const SizedBox(height: 12),
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.mark_email_read_outlined,
-                  label: 'Email',
-                  onTap: onEmailTap,
-                  isError: false,
-                )
-              : _buildExpandedButton(
+           _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.mark_email_read_outlined,
                   label: 'Email',
@@ -82,15 +59,7 @@ class ToolBoxMenu extends StatelessWidget {
                   isError: false,
                 ),
           const SizedBox(height: 12),
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.inbox_rounded,
-                  label: 'Inbox',
-                  onTap: onInboxTap,
-                  isError: false,
-                )
-              : _buildExpandedButton(
+          _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.inbox_rounded,
                   label: 'Inbox',
@@ -98,15 +67,7 @@ class ToolBoxMenu extends StatelessWidget {
                   isError: false,
                 ),
           const SizedBox(height: 12),
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.person_outline_rounded,
-                  label: 'Profile',
-                  onTap: onProfileTap,
-                  isError: false,
-                )
-              : _buildExpandedButton(
+          _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.person_outline_rounded,
                   label: 'Profile',
@@ -116,15 +77,7 @@ class ToolBoxMenu extends StatelessWidget {
 
                 //Auth
           const SizedBox(height: 12),
-          isCollapsed
-              ? _buildIconButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.security_rounded,
-                  label: 'Auth',
-                  onTap: onAuthTap,
-                  isError: false,
-                )
-              : _buildExpandedButton(
+           _buildExpandedButton(
                   colorScheme: colorScheme,
                   icon: Icons.security_rounded,
                   label: 'Auth',
@@ -136,35 +89,6 @@ class ToolBoxMenu extends StatelessWidget {
     );
   }
 
-  /// Icon button cho collapsed mode
-  Widget _buildIconButton({
-    required ColorScheme colorScheme,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isError = false,
-  }) {
-    final color = isError ? colorScheme.error : colorScheme.primary;
-    return Tooltip(
-      message: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Full button cho expanded mode
   Widget _buildExpandedButton({
@@ -183,6 +107,7 @@ class ToolBoxMenu extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
+            width: 65,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),

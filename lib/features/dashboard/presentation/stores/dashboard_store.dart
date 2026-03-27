@@ -4,7 +4,7 @@ import 'package:mobx/mobx.dart';
 
 part 'dashboard_store.g.dart';
 
-@lazySingleton
+@injectable
 // ignore: library_private_types_in_public_api
 class DashboardStore = _DashboardStore with _$DashboardStore;
 
@@ -13,8 +13,6 @@ class DashboardStore = _DashboardStore with _$DashboardStore;
 /// Chức năng chính:
 /// - Quản lý trạng thái tab được chọn (Navigation)
 abstract class _DashboardStore with Store {
-  _DashboardStore();
-
   // ═══════════════════════════════════════════════════════════════
   // NAVIGATION STATE
   // ═══════════════════════════════════════════════════════════════

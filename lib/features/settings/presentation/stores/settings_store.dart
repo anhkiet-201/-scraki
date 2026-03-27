@@ -5,17 +5,25 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/settings/domain/entities/settings_entity.dart';
 import 'package:scraki/features/settings/domain/repositories/i_settings_repository.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
+
 part 'settings_store.g.dart';
 
 @singleton
+// ignore: library_private_types_in_public_api
 class SettingsStore = _SettingsStore with _$SettingsStore;
 
 abstract class _SettingsStore with Store {
   final ISettingsRepository _repository;
 
-  _SettingsStore(this._repository);
+  _SettingsStore(this._repository) {
+    loadAppVersion();
+  }
 
   // ===== Observables =====
+  @observable
+  String appVersion = '';
+
   @observable
   SettingsEntity? settings;
 
@@ -120,6 +128,17 @@ abstract class _SettingsStore with Store {
     );
 
     isLoading = false;
+  }
+
+  @action
+  Future<void> loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform()
+          .timeout(const Duration(seconds: 2));
+      appVersion = packageInfo.version;
+    } catch (e) {
+      appVersion = '1.0.0';
+    }
   }
 
   /// Dispose method để cleanup khi cần

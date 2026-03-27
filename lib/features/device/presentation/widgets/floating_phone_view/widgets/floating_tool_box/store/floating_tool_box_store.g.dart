@@ -75,6 +75,38 @@ mixin _$FloatingToolBoxStore on _FloatingToolBoxStore, Store {
     );
   }
 
+  late final _$sendBackButtonAsyncAction = AsyncAction(
+    '_FloatingToolBoxStore.sendBackButton',
+    context: context,
+  );
+
+  @override
+  Future<void> sendBackButton(String serial) {
+    return _$sendBackButtonAsyncAction.run(() => super.sendBackButton(serial));
+  }
+
+  late final _$sendHomeButtonAsyncAction = AsyncAction(
+    '_FloatingToolBoxStore.sendHomeButton',
+    context: context,
+  );
+
+  @override
+  Future<void> sendHomeButton(String serial) {
+    return _$sendHomeButtonAsyncAction.run(() => super.sendHomeButton(serial));
+  }
+
+  late final _$sendRecentAppsButtonAsyncAction = AsyncAction(
+    '_FloatingToolBoxStore.sendRecentAppsButton',
+    context: context,
+  );
+
+  @override
+  Future<void> sendRecentAppsButton(String serial) {
+    return _$sendRecentAppsButtonAsyncAction.run(
+      () => super.sendRecentAppsButton(serial),
+    );
+  }
+
   late final _$openTikTokInboxAsyncAction = AsyncAction(
     '_FloatingToolBoxStore.openTikTokInbox',
     context: context,
