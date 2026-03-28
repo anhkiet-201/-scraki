@@ -357,6 +357,30 @@ mixin _$ScriptStore on _ScriptStore, Store {
   }
 
   @override
+  void init() {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.init',
+    );
+    try {
+      return super.init();
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void watchScripts() {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.watchScripts',
+    );
+    try {
+      return super.watchScripts();
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void stopCommand(String serial) {
     final _$actionInfo = _$_ScriptStoreActionController.startAction(
       name: '_ScriptStore.stopCommand',

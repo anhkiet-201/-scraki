@@ -89,6 +89,8 @@ import '../../features/recruitment/domain/usecases/search_jobs_with_ai_usecase.d
     as _i545;
 import '../../features/script/data/datasources/local_script_data_source.dart'
     as _i992;
+import '../../features/script/data/datasources/remote_script_data_source.dart'
+    as _i53;
 import '../../features/script/data/repositories/script_repository_impl.dart'
     as _i556;
 import '../../features/script/domain/repositories/script_repository.dart'
@@ -202,6 +204,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i296.CredentialRemoteDataSourceFirebaseImpl(),
     );
     gh.lazySingleton<_i667.DioClient>(() => _i667.DioClient(gh<_i361.Dio>()));
+    gh.lazySingleton<_i53.RemoteScriptDataSource>(
+      () => _i53.RemoteScriptDataSourceImpl(),
+    );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
       () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
     );
@@ -213,12 +218,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i229.ITikTokPostService>(
       () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
-    );
-    gh.lazySingleton<_i55.ScriptRepository>(
-      () => _i556.ScriptRepositoryImpl(
-        gh<_i165.IAdbRemoteDataSource>(),
-        gh<_i992.LocalScriptDataSource>(instanceName: 'local_script'),
-      ),
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
@@ -239,6 +238,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i481.RecruitmentRepository>(
       () => _i240.RecruitmentRepositoryImpl(
         gh<_i284.RecruitmentRemoteDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i55.ScriptRepository>(
+      () => _i556.ScriptRepositoryImpl(
+        gh<_i165.IAdbRemoteDataSource>(),
+        gh<_i992.LocalScriptDataSource>(instanceName: 'local_script'),
+        gh<_i53.RemoteScriptDataSource>(),
       ),
     );
     gh.factory<_i706.SavePosterUseCase>(
