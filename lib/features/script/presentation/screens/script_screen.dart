@@ -4,8 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' hide Action;
 import 'package:scraki/core/mixins/di_mixin.dart';
-import 'package:scraki/core/widgets/box_card.dart';
-import 'package:scraki/core/widgets/mesh_background.dart';
 import '../../domain/entities/log_entry.dart';
 import '../stores/script_store.dart';
 import '../../domain/entities/script_entity.dart';
@@ -99,8 +97,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MeshBackground(
-      child: Shortcuts(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC), // Slate 50 - Very light grey
+      body: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
           const SingleActivator(LogicalKeyboardKey.arrowUp): const _HistoryIntent(true),
           const SingleActivator(LogicalKeyboardKey.arrowDown): const _HistoryIntent(false),
@@ -111,47 +110,49 @@ class _ScriptScreenState extends State<ScriptScreen> {
               onInvoke: (intent) => _navigateHistory(intent.up),
             ),
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(theme),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Sidebar: Devices & Scripts
-                      SizedBox(
-                        width: 300,
-                        child: Column(
-                          children: [
-                            Expanded(flex: 2, child: _buildDeviceSidebar(theme)),
-                            const SizedBox(height: 16),
-                            Expanded(flex: 3, child: _buildScriptSidebar(theme)),
-                          ],
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(theme),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Sidebar: Devices & Scripts
+                        SizedBox(
+                          width: 300,
+                          child: Column(
+                            children: [
+                              Expanded(flex: 2, child: _buildDeviceSidebar(theme)),
+                              const SizedBox(height: 16),
+                              Expanded(flex: 3, child: _buildScriptSidebar(theme)),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      // Main: High-Performance Terminal / IDE Editor
-                      Expanded(
-                        child: Observer(
-                          builder: (_) {
-                            if (_store.editingScript != null) {
-                              return ScriptEditorPanel(store: _store);
-                            }
-                            
-                            return _store.isTiledView 
-                                ? _buildTiledTerminalView(theme)
-                                : _buildTerminalView(theme);
-                          },
+                        const SizedBox(width: 20),
+                        // Main: High-Performance Terminal / IDE Editor
+                        Expanded(
+                          child: Observer(
+                            builder: (_) {
+                              if (_store.editingScript != null) {
+                                return ScriptEditorPanel(store: _store);
+                              }
+                              
+                              return _store.isTiledView 
+                                  ? _buildTiledTerminalView(theme)
+                                  : _buildTerminalView(theme);
+                            },
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -160,44 +161,65 @@ class _ScriptScreenState extends State<ScriptScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              Icons.terminal_rounded, 
+              color: theme.colorScheme.primary, 
+              size: 26
+            ),
           ),
-          child: Icon(Icons.terminal_rounded, color: theme.colorScheme.primary, size: 28),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'TRUNG TÂM ĐIỀU KHIỂN ADB',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Script Automation',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                  color: const Color(0xFF1E293B), // Slate 800
+                ),
               ),
-            ),
-            Text(
-              'Chạy lệnh shell song song trên nhiều thiết bị Android',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 2),
+              Text(
+                'Điều khiển thiết bị song song chuyên nghiệp',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF64748B), // Slate 500
+                ),
               ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        _buildStatusBar(theme),
-      ],
+            ],
+          ),
+          const Spacer(),
+          _buildStatusBar(theme),
+        ],
+      ),
     );
   }
 
   Widget _buildStatusBar(ThemeData theme) {
-    return BoxCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Observer(
         builder: (_) => Row(
           mainAxisSize: MainAxisSize.min,
@@ -206,24 +228,25 @@ class _ScriptScreenState extends State<ScriptScreen> {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: _store.isExecuting ? Colors.orange : Colors.green,
+                color: _store.isExecuting ? Colors.amber : const Color(0xFF10B981),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: (_store.isExecuting ? Colors.orange : Colors.green).withValues(alpha: 0.5),
-                    blurRadius: 4,
+                    color: (_store.isExecuting ? Colors.amber : const Color(0xFF10B981)).withValues(alpha: 0.3),
+                    blurRadius: 6,
                     spreadRadius: 1,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Text(
-              _store.isExecuting ? 'ĐANG CHẠY...' : 'SẴN SÀNG',
+              _store.isExecuting ? 'ĐANG CHẠY' : 'SẴN SÀNG',
               style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.bold,
                 fontSize: 11,
-                letterSpacing: 1.0,
+                letterSpacing: 0.5,
+                color: const Color(0xFF475569), // Slate 600
               ),
             ),
           ],
@@ -233,8 +256,20 @@ class _ScriptScreenState extends State<ScriptScreen> {
   }
 
   Widget _buildDeviceSidebar(ThemeData theme) {
-    return BoxCard(
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -242,29 +277,48 @@ class _ScriptScreenState extends State<ScriptScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'THIẾT BỊ',
+                'DEVICES',
                 style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFF64748B), // Slate 500
                 ),
               ),
               Observer(
-                builder: (_) => Text(
-                  '${_store.selectedSerials.length}/${_store.devices.length}',
-                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                builder: (_) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${_store.selectedSerials.length}/${_store.devices.length}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           _buildSelectionControls(theme),
           const SizedBox(height: 12),
           Expanded(
             child: Observer(
               builder: (_) {
                 if (_store.devices.isEmpty) {
-                  return const Center(child: Text('Không có thiết bị', style: TextStyle(fontSize: 12)));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.devices_other_rounded, color: Colors.grey.shade300, size: 40),
+                        const SizedBox(height: 8),
+                        Text('Không có thiết bị', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                      ],
+                    ),
+                  );
                 }
                 return ListView.separated(
                   itemCount: _store.devices.length,
@@ -279,29 +333,32 @@ class _ScriptScreenState extends State<ScriptScreen> {
                         return InkWell(
                           onTap: () => _store.toggleDeviceSelection(device.serial),
                           borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: isSelected 
-                                  ? color.withValues(alpha: 0.25) 
-                                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.05) 
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isSelected ? color.withValues(alpha: 0.8) : Colors.transparent,
-                                width: 2.0,
+                                color: isSelected 
+                                    ? theme.colorScheme.primary.withValues(alpha: 0.5) 
+                                    : const Color(0xFFF1F5F9), // Slate 100
+                                width: 1.5,
                               ),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  width: 6,
+                                  width: 4,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: BorderRadius.circular(3),
+                                    color: isSelected ? theme.colorScheme.primary : color.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,8 +366,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
                                       Text(
                                         device.modelName,
                                         style: theme.textTheme.bodySmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                           fontSize: 12,
+                                          color: isSelected ? theme.colorScheme.primary : const Color(0xFF1E293B),
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -319,14 +377,14 @@ class _ScriptScreenState extends State<ScriptScreen> {
                                         device.serial,
                                         style: theme.textTheme.labelSmall?.copyWith(
                                           fontSize: 10,
-                                          color: theme.colorScheme.onSurfaceVariant,
+                                          color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.7) : const Color(0xFF64748B),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 if (isSelected) 
-                                  Icon(Icons.check_circle_rounded, size: 14, color: color),
+                                  Icon(Icons.check_circle_rounded, size: 16, color: theme.colorScheme.primary),
                               ],
                             ),
                           ),
@@ -344,8 +402,20 @@ class _ScriptScreenState extends State<ScriptScreen> {
   }
 
   Widget _buildScriptSidebar(ThemeData theme) {
-    return BoxCard(
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -353,11 +423,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'KỊCH BẢN',
+                'SCRIPTS',
                 style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFF64748B), // Slate 500
                 ),
               ),
               IconButton(
@@ -366,10 +436,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   description: '',
                   commands: [],
                 ),
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                color: theme.colorScheme.primary,
                 tooltip: 'Tạo script mới',
               ),
             ],
@@ -379,11 +448,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
             child: Observer(
               builder: (_) {
                 if (_store.scripts.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       'Chưa có script nào.\nNhấn + để tạo.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                     ),
                   );
                 }
@@ -392,46 +461,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   separatorBuilder: (context, index) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final script = _store.scripts[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.bolt_rounded, size: 14, color: theme.colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  script.name,
-                                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              _buildScriptActions(theme, script),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          InkWell(
-                            onTap: () => _store.runScript(script),
-                            child: Text(
-                              script.description,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontSize: 10,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _buildScriptTile(theme, script);
                   },
                 );
               },
@@ -443,8 +473,20 @@ class _ScriptScreenState extends State<ScriptScreen> {
   }
 
   Widget _buildTiledTerminalView(ThemeData theme) {
-    return BoxCard(
-      padding: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           _buildTerminalHeader(theme),
@@ -452,17 +494,16 @@ class _ScriptScreenState extends State<ScriptScreen> {
           // Sticky Global Command Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC), // Slate 50
+              border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
             ),
             child: Row(
               children: [
                 Text(
                   r'$',
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w900,
+                  style: GoogleFonts.firaCode(
+                    fontWeight: FontWeight.bold,
                     color: theme.colorScheme.primary,
                     fontSize: 14,
                   ),
@@ -489,10 +530,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                         hintText: 'Nhập lệnh ADB cho TẤT CẢ thiết bị...',
-                        hintStyle: TextStyle(
-                          fontFamily: 'monospace',
+                        hintStyle: GoogleFonts.firaCode(
                           fontSize: 13,
-                          color: Colors.grey,
+                          color: const Color(0xFF94A3B8), // Slate 400
                           fontStyle: FontStyle.italic,
                         ),
                         suffixIcon: _store.hasActiveExecution
@@ -503,21 +543,28 @@ class _ScriptScreenState extends State<ScriptScreen> {
                               )
                             : null,
                       ),
-                      style: TextStyle(
-                        fontFamily: 'monospace',
+                      style: GoogleFonts.firaCode(
                         fontSize: 13,
-                        color: theme.colorScheme.onSurface,
+                        color: const Color(0xFF1E293B), // Slate 800
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '(Tất cả)',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'ALL',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 9,
+                    ),
                   ),
                 ),
               ],
@@ -530,46 +577,126 @@ class _ScriptScreenState extends State<ScriptScreen> {
 
   Widget _buildTerminalHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC), // Slate 50
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: Row(
         children: [
-          const Icon(Icons.code_rounded, size: 18, color: Colors.grey),
+          const Icon(Icons.terminal_rounded, size: 18, color: Color(0xFF64748B)), // Slate 500
           const SizedBox(width: 12),
-          const Text(
-            'BẢNG ĐIỀU KHIỂN',
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
+          Text(
+            'CONSOLE',
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.bold,
               letterSpacing: 1.0,
-              color: Colors.grey,
+              color: const Color(0xFF64748B), // Slate 500
             ),
           ),
           const Spacer(),
           Tooltip(
-            message: 'Chế độ lưới',
+            message: _store.isTiledView ? 'Chế độ gộp' : 'Chế độ lưới',
             child: IconButton(
               onPressed: _store.toggleTiledView,
               icon: Icon(
-                _store.isTiledView ? Icons.grid_view_rounded : Icons.view_headline_rounded,
+                _store.isTiledView ? Icons.view_headline_rounded : Icons.grid_view_rounded,
                 size: 18,
-                color: _store.isTiledView ? theme.colorScheme.primary : Colors.grey,
+                color: _store.isTiledView ? theme.colorScheme.primary : const Color(0xFF64748B),
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ),
+          const SizedBox(width: 16),
           IconButton(
             onPressed: _store.clearTerminal,
             icon: const Icon(Icons.delete_sweep_rounded, size: 20),
             tooltip: 'Xóa kết quả',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            color: Colors.grey,
+            color: const Color(0xFF64748B),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScriptTile(ThemeData theme, ScriptEntity script) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF1F5F9)), // Slate 100
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _store.setEditingScript(script),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.terminal_rounded,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        script.name,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B), // Slate 800
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (script.description.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          script.description,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 10,
+                            color: const Color(0xFF64748B), // Slate 500
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Play Button
+                IconButton(
+                  onPressed: () => _store.runScript(script),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  color: const Color(0xFF10B981), // Emerald
+                  tooltip: 'Chạy script',
+                ),
+                const SizedBox(width: 8),
+                _buildScriptActions(theme, script),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -619,8 +746,20 @@ class _ScriptScreenState extends State<ScriptScreen> {
   }
 
   Widget _buildTerminalView(ThemeData theme) {
-    return BoxCard(
-      padding: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           _buildTerminalHeader(theme),
@@ -659,7 +798,6 @@ class _ScriptScreenState extends State<ScriptScreen> {
     final deviceColor = _getDeviceColor(log.serial);
     
     // Check if we should show the device label
-    // Show if: 1. No previous log, 2. Different machine, 3. Different log type (e.g. command vs output)
     final bool showLabel = prevLog == null || 
                            prevLog.serial != log.serial || 
                            prevLog.type != log.type;
@@ -668,11 +806,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
       case LogType.command:
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,7 +821,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     r'$ ',
                     style: GoogleFonts.firaCode(
                       color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
                   ),
@@ -691,8 +829,8 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     child: Text(
                       log.message,
                       style: GoogleFonts.firaCode(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF1E293B), // Slate 800
+                        fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
@@ -701,13 +839,13 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         log.deviceCount == 1 
                             ? '[${log.serial ?? "???"}] ${log.deviceModel ?? "Device"}' 
-                            : '${log.deviceCount} thiết bị',
+                            : '${log.deviceCount} DEVICCES',
                         style: TextStyle(
                           color: theme.colorScheme.primary,
                           fontSize: 10,
@@ -717,14 +855,14 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
                     log.formattedTime,
                     style: GoogleFonts.firaCode(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      color: const Color(0xFF94A3B8), // Slate 400
                       fontSize: 9,
                     ),
                   ),
@@ -739,12 +877,12 @@ class _ScriptScreenState extends State<ScriptScreen> {
           children: [
             if (showLabel) ...[
               Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 4),
+                padding: const EdgeInsets.only(top: 12, bottom: 6),
                 child: Text(
                   '[${log.serial ?? "SYS"}] ${log.deviceModel ?? "System Error"}',
                   style: GoogleFonts.firaCode(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.w900,
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
                 ),
@@ -754,23 +892,31 @@ class _ScriptScreenState extends State<ScriptScreen> {
               margin: const EdgeInsets.symmetric(vertical: 2),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
+                color: Colors.red.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
               ),
               child: Text(
                 log.message,
-                style: GoogleFonts.firaCode(color: Colors.redAccent, fontSize: 12, height: 1.4),
+                style: GoogleFonts.firaCode(
+                  color: Colors.red.shade700, 
+                  fontSize: 12, 
+                  height: 1.5
+                ),
               ),
             ),
           ],
         );
       case LogType.info:
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(
-            log.message,
-            style: GoogleFonts.firaCode(color: Colors.grey, fontStyle: FontStyle.italic, fontSize: 12),
+            '// ${log.message}',
+            style: GoogleFonts.firaCode(
+              color: const Color(0xFF94A3B8), // Slate 400 
+              fontStyle: FontStyle.italic, 
+              fontSize: 12
+            ),
           ),
         );
       case LogType.output:
@@ -782,25 +928,25 @@ class _ScriptScreenState extends State<ScriptScreen> {
           children: [
             if (showLabel) ...[
               Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 4),
+                padding: const EdgeInsets.only(top: 12, bottom: 6),
                 child: Text(
                   '[$serial] $deviceName',
                   style: GoogleFonts.firaCode(
                     color: deviceColor,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
                 ),
               ),
             ],
             Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 1), // Minor indent for output
+              padding: const EdgeInsets.only(left: 4, bottom: 2),
               child: Text(
                 log.message,
                 style: GoogleFonts.firaCode(
                   fontSize: 12,
-                  height: 1.5,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  height: 1.6,
+                  color: const Color(0xFF334155), // Slate 700
                 ),
               ),
             ),
@@ -811,16 +957,15 @@ class _ScriptScreenState extends State<ScriptScreen> {
 
   Widget _buildPromptLine(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 40), // Extra space at bottom
+      padding: const EdgeInsets.only(top: 12, bottom: 60),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Text(
             r'$',
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w900,
+            style: GoogleFonts.firaCode(
+              fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,
               fontSize: 14,
             ),
@@ -848,10 +993,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                   hintText: 'Nhập lệnh ADB shell...',
-                  hintStyle: const TextStyle(
-                    fontFamily: 'monospace',
+                  hintStyle: GoogleFonts.firaCode(
                     fontSize: 13,
-                    color: Colors.grey,
+                    color: const Color(0xFF94A3B8), // Slate 400
                     fontStyle: FontStyle.italic,
                   ),
                   suffixIcon: _store.hasActiveExecution
@@ -862,10 +1006,10 @@ class _ScriptScreenState extends State<ScriptScreen> {
                         )
                       : null,
                 ),
-              style: GoogleFonts.firaCode(
-                fontSize: 13,
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
+                style: GoogleFonts.firaCode(
+                  fontSize: 13,
+                  color: const Color(0xFF1E293B), // Slate 800
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -884,16 +1028,21 @@ class _ScriptScreenState extends State<ScriptScreen> {
               _store.selectAllDevices(!isAllSelected);
             },
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: const Color(0xFF475569), // Slate 600
+              backgroundColor: Colors.white,
             ),
             child: Observer(
               builder: (_) {
                 final isAllSelected = _store.devices.isNotEmpty && _store.selectedSerials.length == _store.devices.length;
                 return Text(
-                  isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  isAllSelected ? 'BỎ CHỌN' : 'CHỌN TẤT CẢ',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 );
               },
             ),
@@ -904,13 +1053,18 @@ class _ScriptScreenState extends State<ScriptScreen> {
           child: OutlinedButton(
             onPressed: _showRangeSelectDialog,
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: const Color(0xFF475569), // Slate 600
+              backgroundColor: Colors.white,
             ),
-            child: const Text(
-              'Chọn theo lô',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+            child: Text(
+              'CHỌN LÔ',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ),
@@ -925,24 +1079,34 @@ class _ScriptScreenState extends State<ScriptScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Chọn thiết bị theo lô', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Chọn thiết bị theo lô', 
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Nhập số đuôi IP/Serial (Ví dụ: 20 đến 40)',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+              'Nhập số thứ tự hoặc số đuôi IP (Ví dụ: 1 đến 50)',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: startController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Từ',
-                      border: OutlineInputBorder(),
+                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      labelText: 'TỪ',
+                      labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       isDense: true,
                     ),
                   ),
@@ -952,9 +1116,13 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   child: TextField(
                     controller: endController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Đến',
-                      border: OutlineInputBorder(),
+                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      labelText: 'ĐẾN',
+                      labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       isDense: true,
                     ),
                   ),
@@ -963,18 +1131,28 @@ class _ScriptScreenState extends State<ScriptScreen> {
             ),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('HỦY', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
           ElevatedButton(
             onPressed: () {
-              final start = int.tryParse(startController.text) ?? 0;
-              final end = int.tryParse(endController.text) ?? 0;
-              if (start > 0 && end >= start) {
+              final start = int.tryParse(startController.text);
+              final end = int.tryParse(endController.text);
+              if (start != null && end != null) {
                 _store.selectDevicesByRange(start, end);
                 Navigator.pop(context);
               }
             },
-            child: const Text('Chọn'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+            ),
+            child: const Text('CHỌN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ],
       ),

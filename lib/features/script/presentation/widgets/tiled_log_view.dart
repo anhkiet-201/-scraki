@@ -102,30 +102,38 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.05),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        border: Border.all(color: const Color(0xFFE2E8F0)), // Slate 200
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           // Sub-header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.8),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC), // Slate 50
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
             ),
             child: Row(
               children: [
-                const Icon(Icons.terminal_rounded, size: 14, color: Colors.white70),
+                const Icon(Icons.terminal_rounded, size: 14, color: Color(0xFF64748B)), // Slate 500
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '[${widget.serial}] ${widget.model}',
+                    widget.model.toUpperCase(),
                     style: GoogleFonts.firaCode(
                       fontWeight: FontWeight.bold,
                       fontSize: 10,
-                      color: Colors.white,
+                      color: const Color(0xFF1E293B), // Slate 800
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -136,21 +144,28 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                     final isActive = widget.store.hasActiveSubscription(widget.serial);
                     if (!isActive) {
                       return Text(
-                        '${widget.logs.length} dòng',
-                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 9, color: Colors.white54),
+                        '${widget.logs.length} lines',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 8, 
+                          color: const Color(0xFF94A3B8), // Slate 400
+                          fontWeight: FontWeight.bold,
+                        ),
                       );
                     }
                     return Row(
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 10,
                           height: 10,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, 
+                            color: theme.colorScheme.primary.withValues(alpha: 0.5)
+                          ),
                         ),
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => widget.store.stopCommand(widget.serial),
-                          child: const Icon(Icons.stop_rounded, size: 16, color: Colors.redAccent),
+                          child: const Icon(Icons.stop_circle_rounded, size: 16, color: Colors.pinkAccent),
                         ),
                       ],
                     );
@@ -163,14 +178,14 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
           Expanded(
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
+              color: Colors.white,
               child: SelectionArea(
                 child: ListView.builder(
                   controller: _scrollController,
                   itemCount: widget.logs.length,
                   itemBuilder: (context, i) {
                     final log = widget.logs[i];
-                    final theme = Theme.of(context);
                     
                     switch (log.type) {
                       case LogType.command:
@@ -182,17 +197,17 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                               Text(
                                 r'$ ',
                                 style: GoogleFonts.firaCode(
-                                  fontSize: 8.5,
+                                  fontSize: 9,
                                   color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Expanded(
                                 child: Text(
                                   log.message,
                                   style: GoogleFonts.firaCode(
-                                    fontSize: 8.5,
-                                    color: theme.colorScheme.primary,
+                                    fontSize: 9,
+                                    color: const Color(0xFF1E293B), // Slate 800
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -206,9 +221,21 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                           child: Text(
                             log.message,
                             style: GoogleFonts.firaCode(
-                              fontSize: 8.5,
-                              color: Colors.redAccent,
-                              height: 1.3,
+                              fontSize: 9,
+                              color: Colors.red.shade700,
+                              height: 1.4,
+                            ),
+                          ),
+                        );
+                      case LogType.info:
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '// ${log.message}',
+                            style: GoogleFonts.firaCode(
+                              fontSize: 9,
+                              color: const Color(0xFF94A3B8), // Slate 400
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         );
@@ -218,9 +245,9 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                           child: Text(
                             log.message,
                             style: GoogleFonts.firaCode(
-                              fontSize: 8.5,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                              height: 1.3,
+                              fontSize: 9,
+                              color: const Color(0xFF334155), // Slate 700
+                              height: 1.5,
                             ),
                           ),
                         );
@@ -232,25 +259,36 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
           ),
           // Mini Prompt
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-              color: Colors.white.withValues(alpha: 0.05),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF1F5F9))), // Slate 100
+              color: Color(0xFFF8FAFC), // Slate 50
             ),
             child: Row(
               children: [
-                const Text('\$', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
-                const SizedBox(width: 6),
+                Text(
+                  r'$', 
+                  style: GoogleFonts.firaCode(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.bold, 
+                    color: theme.colorScheme.primary
+                  )
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _inputController,
                     focusNode: _focusNode,
-                    style: GoogleFonts.firaCode(fontSize: 9),
-                    decoration: const InputDecoration(
+                    style: GoogleFonts.firaCode(
+                      fontSize: 9, 
+                      color: const Color(0xFF1E293B), // Slate 800
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       hintText: 'Nhập lệnh...',
-                      hintStyle: TextStyle(fontSize: 9, color: Colors.grey),
+                      hintStyle: GoogleFonts.firaCode(fontSize: 9, color: const Color(0xFF94A3B8)),
                       contentPadding: EdgeInsets.zero,
                     ),
                     onSubmitted: (value) {
