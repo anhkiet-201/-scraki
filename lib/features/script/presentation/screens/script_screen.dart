@@ -461,8 +461,12 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   itemCount: _store.scripts.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    final script = _store.scripts[index];
-                    return _buildScriptTile(theme, script);
+                    return Observer(
+                      builder: (context) {
+                        final script = _store.scripts[index];
+                        return _buildScriptTile(theme, script);
+                      }
+                    );
                   },
                 );
               },
