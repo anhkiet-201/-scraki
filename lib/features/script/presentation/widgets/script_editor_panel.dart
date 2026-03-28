@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:scraki/core/widgets/box_card.dart';
 import '../stores/script_store.dart';
 
 class ScriptEditorPanel extends StatefulWidget {
@@ -44,54 +43,92 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return BoxCard(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)), // Slate 200
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Row(
               children: [
-                Icon(Icons.edit_note_rounded, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Text(
-                  'Trình soạn thảo Script',
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF), // Indigo 50
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.edit_note_rounded,
+                    color: Color(0xFF4F46E5), // Indigo 600
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Trình soạn thảo Script',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0F172A), // Slate 900
+                        ),
+                      ),
+                      Text(
+                        'Chỉnh sửa và lưu script lên Cloud',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: const Color(0xFF64748B), // Slate 500
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 IconButton(
                   onPressed: () => widget.store.setEditingScript(null),
-                  icon: const Icon(Icons.close_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9), // Slate 100
+                    foregroundColor: const Color(0xFF64748B), // Slate 500
+                  ),
+                  icon: const Icon(Icons.close_rounded, size: 20),
                   tooltip: 'Đóng editor',
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
           // Content
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel(theme, 'Tên Script'),
+                  _buildLabel('Tên Script'),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _nameController,
-                    hint: 'Ví dụ: Dọn dẹp cache máy chủ',
+                    hint: 'Ví dụ: Dọn dẹp cache hệ thống',
                     onChanged: (_) => _onChanged(),
                   ),
                   const SizedBox(height: 20),
                   
-                  _buildLabel(theme, 'Mô tả'),
+                  _buildLabel('Mô tả ngắn'),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _descController,
@@ -104,11 +141,21 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildLabel(theme, 'Các lệnh ADB Shell (Mỗi dòng 1 lệnh)'),
-                      Text(
-                        'Hỗ trợ: {{input}} cho biến động',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                      _buildLabel('Danh sách lệnh ADB Shell'),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC), // Slate 50
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Text(
+                          'Mỗi dòng 1 lệnh',
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],
@@ -118,44 +165,78 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                   // Code Area
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.05),
+                      color: const Color(0xFFF8FAFC), // Slate 50
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Column(
                       children: [
                         // Tool bar cho editor
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
                           child: Row(
                             children: [
-                              _editorTool(theme, Icons.play_arrow_rounded, 'Chạy thử', () {}),
+                              _editorTool(Icons.play_arrow_rounded, 'Chạy thử', () {}),
                               const SizedBox(width: 8),
-                              _editorTool(theme, Icons.save_rounded, 'Lưu Script', () => widget.store.saveCurrentScript()),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: () => widget.store.saveCurrentScript(),
+                                icon: const Icon(Icons.save_rounded, size: 16),
+                                label: const Text('Lưu vào Cloud'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                  textStyle: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
                         TextField(
                           controller: _commandsController,
                           maxLines: null,
-                          minLines: 10,
+                          minLines: 15,
                           onChanged: (_) => _onChanged(),
                           style: GoogleFonts.firaCode(
                             fontSize: 13,
-                            color: const Color(0xFF1E293B),
+                            color: const Color(0xFF334155), // Slate 700
+                            height: 1.5,
                           ),
-                          decoration: const InputDecoration(
-                            hintText: '# Nhập các lệnh adb shell tại đây...\npm clear com.example.app\nam start ...',
-                            contentPadding: EdgeInsets.all(16),
+                          decoration: InputDecoration(
+                            hintText: '# Nhập lệnh adb shell...\npm list packages\nam start -n ...',
+                            hintStyle: GoogleFonts.firaCode(
+                              fontSize: 13,
+                              color: const Color(0xFF94A3B8), // Slate 400
+                            ),
+                            contentPadding: const EdgeInsets.all(16),
                             border: InputBorder.none,
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Dùng {{input}} để yêu cầu nhập dữ liệu khi chạy',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -166,12 +247,14 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
     );
   }
 
-  Widget _buildLabel(ThemeData theme, String text) {
+  Widget _buildLabel(String text) {
     return Text(
-      text,
-      style: theme.textTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurfaceVariant,
+      text.toUpperCase(),
+      style: GoogleFonts.outfit(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+        color: const Color(0xFF64748B), // Slate 500
       ),
     );
   }
@@ -186,37 +269,54 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
       controller: controller,
       maxLines: maxLines,
       onChanged: onChanged,
+      style: GoogleFonts.outfit(
+        fontSize: 14,
+        color: const Color(0xFF0F172A),
+      ),
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: GoogleFonts.outfit(
+          fontSize: 14,
+          color: const Color(0xFF94A3B8),
+        ),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.5),
-        border: OutlineInputBorder(
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
         ),
       ),
     );
   }
 
-  Widget _editorTool(ThemeData theme, IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+  Widget _editorTool(IconData icon, String label, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF64748B)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
