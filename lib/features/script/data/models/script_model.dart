@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 import '../../domain/entities/script_entity.dart';
 
@@ -55,6 +56,35 @@ class ScriptModel extends HiveObject {
       updatedAt: updatedAt,
       tags: tags,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'commands': commands,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'tags': tags,
+    };
+  }
+
+  factory ScriptModel.fromJson(Map<String, dynamic> json) {
+    return ScriptModel(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String? ?? '',
+      commands: (json['commands'] as List).cast<String>(),
+      createdAt: (json['createdAt'] as Timestamp).toDate(),
+      updatedAt: (json['updatedAt'] as Timestamp).toDate(),
+      tags: (json['tags'] as List?)?.cast<String>() ?? const [],
+    );
+  }
+
+  factory ScriptModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ScriptModel.fromJson({'id': doc.id, ...data});
   }
 }
 

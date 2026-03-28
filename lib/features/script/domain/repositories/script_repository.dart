@@ -3,7 +3,10 @@ import '../../../../core/error/failures.dart';
 import '../entities/script_entity.dart';
 
 abstract class ScriptRepository {
-  /// Lấy toàn bộ danh sách script (bao gồm script mẫu và script tự tạo)
+  /// Lắng nghe realtime danh sách script (Cloud Firestore)
+  Stream<Either<Failure, List<ScriptEntity>>> watchAllScripts();
+
+  /// Lấy toàn bộ danh sách script (Một lần)
   Future<Either<Failure, List<ScriptEntity>>> getAllScripts();
 
   /// Lưu hoặc cập nhật một script

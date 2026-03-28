@@ -129,7 +129,7 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    widget.model.toUpperCase(),
+                    '[${widget.serial.split(':').first}] ${widget.model}'.toUpperCase(),
                     style: GoogleFonts.firaCode(
                       fontWeight: FontWeight.bold,
                       fontSize: 10,

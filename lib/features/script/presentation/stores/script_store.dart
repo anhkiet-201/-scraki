@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
+import 'package:fpdart/fpdart.dart';
 import '../../../../core/stores/device_manager_store.dart';
 import '../../../../core/error/failures.dart';
 import '../../../device/domain/entities/device_entity.dart';
@@ -158,6 +159,31 @@ abstract class _ScriptStore with Store {
 
   // Quản lý các subscription đang chạy để có thể dừng lệnh
   final Map<String, StreamSubscription<dynamic>> _activeSubscriptions = {};
+  StreamSubscription<Either<Failure, List<ScriptEntity>>>? _scriptsSubscription;
+
+  @action
+  void init() {
+    watchScripts();
+  }
+
+  @action
+  void watchScripts() {
+    _scriptsSubscription?.cancel();
+    _scriptsSubscription = _repository.watchAllScripts().listen((result) {
+      result.fold(
+        (failure) => _log('Lỗi tải script realtime: ${failure.message}', type: LogType.error),
+        (loadedScripts) {
+          scripts.clear();
+          scripts.addAll(loadedScripts);
+        },
+      );
+    });
+  }
+
+  void dispose() {
+    _scriptsSubscription?.cancel();
+    stopAll();
+  }
 
   bool hasActiveSubscription(String serial) => _activeSubscriptions.containsKey(serial);
 
@@ -225,7 +251,10 @@ abstract class _ScriptStore with Store {
     final result = await _repository.getAllScripts();
     result.fold(
       (Failure failure) => _log('Lỗi tải script: ${failure.message}', type: LogType.error),
-      (List<ScriptEntity> loadedScripts) => scripts.replaceRange(0, scripts.length, loadedScripts),
+      (List<ScriptEntity> loadedScripts) {
+        scripts.clear();
+        scripts.addAll(loadedScripts);
+      },
     );
   }
 
@@ -249,7 +278,9 @@ abstract class _ScriptStore with Store {
     }
 
     isExecuting = true;
-    _log(cmd, type: LogType.command, deviceCount: selectedSerials.length);
+    final deviceCount = selectedSerials.length;
+    // Nếu chạy trên nhiều thiết bị, log một dòng thông báo chung trước
+    _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount);
 
     await Future.wait(selectedSerials.map((serial) => executeCommandOnDevice(serial, cmd, logCommand: false)));
   }
@@ -321,9 +352,12 @@ abstract class _ScriptStore with Store {
   }
 
   void _log(String message, {String? serial, String? model, required LogType type, int? deviceCount}) {
+    // Nếu là lệnh global (không có serial), hiển thị là [ALL] thay vì [???]
+    final displaySerial = serial ?? (deviceCount != null && deviceCount > 1 ? 'ALL' : null);
+    
     terminalOutput.add(LogEntry(
       message: message,
-      serial: serial,
+      serial: displaySerial,
       deviceModel: model,
       type: type,
       deviceCount: deviceCount,

@@ -33,6 +33,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
   void initState() {
     super.initState();
     _store = inject<ScriptStore>();
+    _store.init();
     _store.loadScripts();
     
     _commandController.addListener(() {
