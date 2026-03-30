@@ -139,6 +139,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
   }
 
+  late final _$slidesAtom = Atom(
+    name: '_VideoPosterStore.slides',
+    context: context,
+  );
+
+  @override
+  ObservableList<SlideModel> get slides {
+    _$slidesAtom.reportRead();
+    return super.slides;
+  }
+
+  @override
+  set slides(ObservableList<SlideModel> value) {
+    _$slidesAtom.reportWrite(value, super.slides, () {
+      super.slides = value;
+    });
+  }
+
+  late final _$currentSlideIndexAtom = Atom(
+    name: '_VideoPosterStore.currentSlideIndex',
+    context: context,
+  );
+
+  @override
+  int get currentSlideIndex {
+    _$currentSlideIndexAtom.reportRead();
+    return super.currentSlideIndex;
+  }
+
+  @override
+  set currentSlideIndex(int value) {
+    _$currentSlideIndexAtom.reportWrite(value, super.currentSlideIndex, () {
+      super.currentSlideIndex = value;
+    });
+  }
+
   late final _$recentTextColorsAtom = Atom(
     name: '_VideoPosterStore.recentTextColors',
     context: context,
@@ -393,6 +429,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$isExportingImagesAtom = Atom(
+    name: '_VideoPosterStore.isExportingImages',
+    context: context,
+  );
+
+  @override
+  bool get isExportingImages {
+    _$isExportingImagesAtom.reportRead();
+    return super.isExportingImages;
+  }
+
+  @override
+  set isExportingImages(bool value) {
+    _$isExportingImagesAtom.reportWrite(value, super.isExportingImages, () {
+      super.isExportingImages = value;
+    });
+  }
+
+  late final _$isImagePosterModeAtom = Atom(
+    name: '_VideoPosterStore.isImagePosterMode',
+    context: context,
+  );
+
+  @override
+  bool get isImagePosterMode {
+    _$isImagePosterModeAtom.reportRead();
+    return super.isImagePosterMode;
+  }
+
+  @override
+  set isImagePosterMode(bool value) {
+    _$isImagePosterModeAtom.reportWrite(value, super.isImagePosterMode, () {
+      super.isImagePosterMode = value;
+    });
+  }
+
   late final _$playbackSpeedAtom = Atom(
     name: '_VideoPosterStore.playbackSpeed',
     context: context,
@@ -541,15 +613,27 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     return _$createBatchVideosAsyncAction.run(() => super.createBatchVideos());
   }
 
+  late final _$exportImagePostersAsyncAction = AsyncAction(
+    '_VideoPosterStore.exportImagePosters',
+    context: context,
+  );
+
+  @override
+  Future<void> exportImagePosters() {
+    return _$exportImagePostersAsyncAction.run(
+      () => super.exportImagePosters(),
+    );
+  }
+
   late final _$capturePreviewAsPngAsyncAction = AsyncAction(
     '_VideoPosterStore.capturePreviewAsPng',
     context: context,
   );
 
   @override
-  Future<Uint8List> capturePreviewAsPng() {
+  Future<Uint8List> capturePreviewAsPng({bool hideImages = true}) {
     return _$capturePreviewAsPngAsyncAction.run(
-      () => super.capturePreviewAsPng(),
+      () => super.capturePreviewAsPng(hideImages: hideImages),
     );
   }
 
@@ -565,6 +649,66 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super._watchFavorites();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void addSlide() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.addSlide',
+    );
+    try {
+      return super.addSlide();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void selectSlide(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.selectSlide',
+    );
+    try {
+      return super.selectSlide(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void removeSlide(int index) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.removeSlide',
+    );
+    try {
+      return super.removeSlide(index);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateSlideName(int index, String name) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.updateSlideName',
+    );
+    try {
+      return super.updateSlideName(index, name);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void reorderSlides(int oldIndex, int newIndex) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.reorderSlides',
+    );
+    try {
+      return super.reorderSlides(oldIndex, newIndex);
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -946,6 +1090,30 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void toggleImagePosterMode() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleImagePosterMode',
+    );
+    try {
+      return super.toggleImagePosterMode();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void randomizePreviewFrame() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.randomizePreviewFrame',
+    );
+    try {
+      return super.randomizePreviewFrame();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void togglePreviewMode() {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.togglePreviewMode',
@@ -1063,6 +1231,8 @@ currentVideoIndex: ${currentVideoIndex},
 customTexts: ${customTexts},
 customImages: ${customImages},
 selectedCustomImageId: ${selectedCustomImageId},
+slides: ${slides},
+currentSlideIndex: ${currentSlideIndex},
 recentTextColors: ${recentTextColors},
 recentBgColors: ${recentBgColors},
 recentStrokeColors: ${recentStrokeColors},
@@ -1076,6 +1246,8 @@ batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},
 batchLogs: ${batchLogs},
 batchOutputDir: ${batchOutputDir},
+isExportingImages: ${isExportingImages},
+isImagePosterMode: ${isImagePosterMode},
 playbackSpeed: ${playbackSpeed},
 duration: ${duration},
 position: ${position},

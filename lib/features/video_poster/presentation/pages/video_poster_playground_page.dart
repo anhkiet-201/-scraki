@@ -1,4 +1,7 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui' show lerpDouble;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -13,6 +16,7 @@ import 'package:scraki/features/video_poster/presentation/widgets/panels/media_l
 import 'package:scraki/features/video_poster/presentation/widgets/panels/text_properties_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/batch_video_panel.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/image_library_panel.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/image_poster_panel.dart';
 
 /// Nav tab index constants
 const int _kNavMedia = 0;
@@ -29,17 +33,18 @@ class VideoPosterPlaygroundPage extends StatefulWidget {
 
 class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
   late final VideoPosterStore store;
+  late final ScrollController _slideScrollController;
 
   @override
   void initState() {
     super.initState();
     store = GetIt.I<VideoPosterStore>();
+    _slideScrollController = ScrollController();
   }
 
   @override
   void dispose() {
-    // CRITICAL: Dispose the player to prevent "Callback invoked after it has been deleted"
-    // crashes on hot restart or navigation.
+    _slideScrollController.dispose();
     store.disposePlayer();
     super.dispose();
   }
@@ -80,13 +85,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                     builder: (context) {
                       return Stack(
                         children: [
-                          // Base layout
                           Row(
                             children: [
-                              // Left nav bar
                               _buildUnifiedNavBar(),
-
-                              // Left panel (media library or text properties)
                               SizedBox(
                                 width: 300,
                                 child: Observer(
@@ -105,67 +106,76 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                   },
                                 ),
                               ),
-
-                              // Main workspace
                               Expanded(
                                 child: Observer(
-                                  builder: (context) => Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: Container(
-                                          color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF1F5F9) : Colors.black,
+                                  builder: (context) => Container(
+                                    color: const Color(0xFFF1F5F9),
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                          top: 0,
+                                          left: 0,
+                                          right: 0,
+                                          bottom: store.isImagePosterMode ? 160 : 0,
                                           child: Center(
                                             child: _buildInteractivePreview(),
                                           ),
                                         ),
-                                      ),
-
-                                      // Floating player controls
-                                      Positioned(
-                                        bottom: 40,
-                                        left: 0,
-                                        right: 0,
-                                        child: Center(
-                                          child: FloatingGlassControls(
-                                            isPlaying: store.isPlaying,
-                                            position: store.position,
-                                            duration: store.duration,
-                                            onPlayPause: () {
-                                              if (store.isPlaying) {
-                                                store.player.pause();
-                                              } else {
-                                                store.player.play();
-                                              }
-                                            },
-                                            onSeek: (p) => store.seekProject(p),
+                                        if (store.isImagePosterMode)
+                                          Positioned(
+                                            bottom: 40,
+                                            left: 20,
+                                            right: 20,
+                                            height: 100,
+                                            child: _buildSlideStrip(),
                                           ),
-                                        ),
-                                      ),
-                                    ],
+                                        if (!store.isImagePosterMode)
+                                          Positioned(
+                                            bottom: 40,
+                                            left: 0,
+                                            right: 0,
+                                            child: Center(
+                                              child: FloatingGlassControls(
+                                                isPlaying: store.isPlaying,
+                                                position: store.position,
+                                                duration: store.duration,
+                                                onPlayPause: () {
+                                                  if (store.isPlaying) {
+                                                    store.player.pause();
+                                                  } else {
+                                                    store.player.play();
+                                                  }
+                                                },
+                                                onSeek: (p) => store.seekProject(p),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-
-                              // Right panel (Batch Video Creation - base)
                               SizedBox(
                                 width: 280,
-                                // Need to provide a key to isolate states from the overlay version
-                                child: BatchVideoPanel(
-                                  key: const ValueKey('panel_base'),
-                                  store: store,
+                                child: Observer(
+                                  builder: (_) {
+                                    if (store.isImagePosterMode) {
+                                      return ImagePosterPanel(store: store);
+                                    }
+                                    return BatchVideoPanel(
+                                      key: const ValueKey('panel_base'),
+                                      store: store,
+                                    );
+                                  },
                                 ),
                               ),
                             ],
                           ),
-
-                          // Full-screen overlay for Batch Creating Mode
                           AnimatedPositioned(
                             duration: const Duration(milliseconds: 300),
                             curve: Curves.easeInOutCubic,
                             top: 0,
                             bottom: 0,
-                            // Stretch to full width of the Stack when active
-                            // When inactive, move entirely to the right
                             left: store.isBatchCreating
                                 ? 0
                                 : MediaQuery.of(context).size.width,
@@ -174,9 +184,16 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                 : -MediaQuery.of(context).size.width,
                             child: Material(
                               elevation: 16,
-                              child: BatchVideoPanel(
-                                key: const ValueKey('panel_overlay'),
-                                store: store,
+                              child: Observer(
+                                builder: (_) {
+                                  if (store.isImagePosterMode) {
+                                    return ImagePosterPanel(store: store);
+                                  }
+                                  return BatchVideoPanel(
+                                    key: const ValueKey('panel_overlay'),
+                                    store: store,
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -192,8 +209,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       ),
     );
   }
-
-  // ─── Toolbar ───────────────────────────────────────────────────────────────
 
   Widget _buildModernToolbar() {
     return Container(
@@ -230,8 +245,13 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
             builder: (_) {
               return Row(
                 children: [
-                   _buildModeToggle(),
-                   const SizedBox(width: 12),
+                  _buildOutputToggle(),
+                  const SizedBox(width: 12),
+                   if (!store.isImagePosterMode) ...[
+                     const SizedBox(width: 12),
+                     _buildModeToggle(),
+                   ],
+                  const SizedBox(width: 12),
                   _buildActionButton('DỰ ÁN MỚI', Icons.add_rounded, () {
                     store.resetProject();
                   }),
@@ -242,6 +262,42 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           const SizedBox(width: 12),
         ],
       ),
+    );
+  }
+
+  Widget _buildOutputToggle() {
+    return Observer(
+      builder: (_) {
+        final isImageMode = store.isImagePosterMode;
+        return Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildModeOption(
+                label: 'VIDEO',
+                icon: Icons.movie_outlined,
+                isActive: !isImageMode,
+                onTap: () {
+                  if (isImageMode) store.toggleImagePosterMode();
+                },
+              ),
+              _buildModeOption(
+                label: 'POSTER',
+                icon: Icons.image_outlined,
+                isActive: isImageMode,
+                onTap: () {
+                  if (!isImageMode) store.toggleImagePosterMode();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -353,14 +409,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     );
   }
 
-  // ─── Nav Bar ──────────────────────────────────────────────────────────────
-
   Widget _buildUnifiedNavBar() {
     return Container(
       width: 64,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: null,
       ),
       child: Column(
         children: [
@@ -419,37 +472,30 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
     );
   }
 
-  // ─── Interactive Preview ──────────────────────────────────────────────────
-
   Widget _buildInteractivePreview() {
     return _ImageDropZone(
       store: store,
       child: Container(
-        color: const Color(0xFFF1F5F9), // Slate 100 for workspace area
+        color: const Color(0xFFF1F5F9),
         padding: const EdgeInsets.all(20),
         child: Center(
           child: AspectRatio(
-            aspectRatio: 9 / 16,
+            aspectRatio: store.isImagePosterMode ? 4 / 5 : 9 / 16,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return Stack(
                   fit: StackFit.expand,
                   clipBehavior: Clip.none,
                   children: [
-                    // Video Preview
                     Observer(
-                      warnWhenNoObservables: false,
                       builder: (context) {
-                        final isLight = Theme.of(context).brightness == Brightness.light;
                         if (store.sourceVideoPaths.isEmpty) {
                           return Container(
-                            color: isLight ? Colors.white : Colors.black,
-                            child: Center(
+                            color: Colors.white,
+                            child: const Center(
                               child: Text(
                                 'No Video Selected',
-                                style: TextStyle(
-                                  color: isLight ? const Color(0xFF94A3B8) : Colors.white24,
-                                ),
+                                style: TextStyle(color: Color(0xFF94A3B8)),
                               ),
                             ),
                           );
@@ -461,26 +507,23 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                         );
                       },
                     ),
-
-                    // Virtual canvas for free text overlays (720x1280)
                     Positioned.fill(
                       child: FittedBox(
                         fit: BoxFit.contain,
                         clipBehavior: Clip.none,
                         child: SizedBox(
                           width: 720,
-                          height: 1280,
+                          height: store.isImagePosterMode ? 900 : 1280,
                           child: RepaintBoundary(
                             key: store.previewKey,
                             child: Observer(
                               builder: (context) {
-                                const virtualConstraints = BoxConstraints(
+                                final virtualConstraints = BoxConstraints(
                                   maxWidth: 720,
-                                  maxHeight: 1280,
+                                  maxHeight: store.isImagePosterMode ? 900 : 1280,
                                 );
 
                                 return GestureDetector(
-                                  // Deselect when tapping blank area
                                   onTap: () {
                                     store.selectCustomText(null);
                                     store.selectCustomImage(null);
@@ -489,7 +532,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                   child: Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      // Transparent background — shows video below
                                       Positioned.fill(
                                         child: DragTarget<Map<String, dynamic>>(
                                           onAcceptWithDetails: (details) {
@@ -502,9 +544,6 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                   .globalToLocal(
                                                     details.offset,
                                                   );
-
-                                              // DragDraggable in ImageLibraryPanel had 100x100 size for feedback
-                                              // Adjust center offset by half size
                                               final adjustedX =
                                                   (localOffset.dx + 50) /
                                                   renderBox.size.width;
@@ -512,159 +551,101 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                   (localOffset.dy + 50) /
                                                   renderBox.size.height;
 
-                                              final x = adjustedX.clamp(
-                                                0.0,
-                                                1.0,
-                                              );
-                                              final y = adjustedY.clamp(
-                                                0.0,
-                                                1.0,
-                                              );
-
-                                              final data = details.data;
                                               store.addCustomImage(
-                                                data['url'] as String,
-                                                x,
-                                                y,
-                                                isGif: data['isGif'] as bool,
+                                                details.data['url'] as String,
+                                                adjustedX.clamp(0.0, 1.0),
+                                                adjustedY.clamp(0.0, 1.0),
+                                                isGif: details.data['isGif'] as bool,
                                               );
                                             }
                                           },
-                                          builder:
-                                              (
-                                                context,
-                                                candidateData,
-                                                rejectedData,
-                                              ) {
-                                                return Container(
-                                                  color:
-                                                      candidateData.isNotEmpty
-                                                      ? Colors.white.withValues(alpha: 0.1)
-                                                      : Colors.transparent,
-                                                );
-                                              },
+                                          builder: (context, candidateData, rejectedData) => Container(
+                                            color: candidateData.isNotEmpty
+                                                ? Colors.white.withValues(alpha: 0.1)
+                                                : Colors.transparent,
+                                          ),
                                         ),
                                       ),
-
-                                      // Custom Image Overlays
                                       if (!store.isHidingImagesForCapture)
                                         ...store.customImages.where((image) {
                                           if (!store.isPreviewMode) return true;
                                           final pos = store.position.inMilliseconds / 1000.0;
-                                          if (pos < image.startTime) return false;
-                                          if (image.endTime != null && pos > image.endTime!) {
-                                            return false;
-                                          }
-                                          return true;
-                                        }).map(
-                                          (image) => ImageOverlayItem(
-                                            key: ValueKey(image.id),
-                                            id: image.id,
-                                            imageUrl: image.imageUrl,
-                                            isGif: image.isGif,
-                                            x: image.x,
-                                            y: image.y,
-                                            width: image.width,
-                                            height: image.height,
-                                            rotation: image.rotation,
-                                            constraints: virtualConstraints,
-                                            isSelected:
-                                                store.selectedCustomImageId ==
-                                                image.id,
-                                            onPositionUpdate: (id, x, y) =>
-                                                store.updateCustomImagePosition(
-                                                    id, x, y),
-                                            onSelect: store.selectCustomImage,
-                                            onResize: (id, w, h) =>
-                                                store.updateCustomImageSize(
-                                                    id, w, h),
-                                            borderColor: image.borderColor,
-                                            borderWidth: image.borderWidth,
-                                            borderRadius: image.borderRadius,
-                                          ),
-                                        ),
-
-                                      // Free-form custom text overlays
+                                          return pos >= image.startTime && (image.endTime == null || pos <= image.endTime!);
+                                        }).map((image) => ImageOverlayItem(
+                                          key: ValueKey(image.id),
+                                          id: image.id,
+                                          imageUrl: image.imageUrl,
+                                          isGif: image.isGif,
+                                          x: image.x,
+                                          y: image.y,
+                                          width: image.width,
+                                          height: image.height,
+                                          rotation: image.rotation,
+                                          constraints: virtualConstraints,
+                                          isSelected: store.selectedCustomImageId == image.id,
+                                          onPositionUpdate: store.updateCustomImagePosition,
+                                          onSelect: store.selectCustomImage,
+                                          onResize: store.updateCustomImageSize,
+                                          borderColor: image.borderColor,
+                                          borderWidth: image.borderWidth,
+                                          borderRadius: image.borderRadius,
+                                        )),
                                       ...store.customTexts.where((text) {
-                                          if (!store.isPreviewMode) return true;
-                                          final pos = store.position.inMilliseconds / 1000.0;
-                                          if (pos < text.startTime) return false;
-                                          if (text.endTime != null && pos > text.endTime!) {
-                                            return false;
-                                          }
-                                          return true;
-                                        }).map(
-                                        (text) {
-                                          final isAnimated = text.isAnimated;
-                                          return Observer(
-                                            key: ValueKey('text_wrapper_${text.id}'),
-                                            builder: (context) {
-                                              final shouldHide = store.isHidingAnimatedTextsForCapture && isAnimated;
-                                              
-                                              return VideoOverlayItem(
-                                                key: ValueKey(text.id),
-                                                label: text.label,
-                                                x: text.x,
-                                                y: text.y,
-                                                type: text.id,
-                                                constraints: virtualConstraints,
-                                                color: text.color,
-                                                fontSize: text.fontSize,
-                                                textHeight: text.textHeight,
-                                                fontWeight: text.fontWeight,
-                                                fontStyle: text.fontStyle,
-                                                textAlign: text.textAlign,
-                                                backgroundColor: text.backgroundColor,
-                                                backgroundOpacity: text.backgroundOpacity,
-                                                backgroundRadius: text.backgroundRadius,
-                                                backgroundBorderColor: text.backgroundBorderColor,
-                                                backgroundBorderWidth: text.backgroundBorderWidth,
-                                                fontFamily: text.fontFamily,
-                                                rotation: text.rotation,
-                                                strokeColor: text.strokeColor,
-                                                strokeWidth: text.strokeWidth,
-                                                letterSpacing: text.letterSpacing,
-                                                isSelected: store.selectedCustomTextId == text.id,
-                                                opacity: shouldHide ? 0.0 : 1.0,
-                                                captureKey: isAnimated ? store.getTextCaptureKey(text.id) : null,
-                                                onPositionUpdate: (_, x, y) =>
-                                                    store.updateCustomTextPosition(
-                                                      text.id,
-                                                      x,
-                                                      y,
-                                                      ),
-                                                onSelect: (_) =>
-                                                    store.selectCustomText(text.id),
-                                                onResize: (_, size) =>
-                                                    store.updateCustomTextFontSize(
-                                                      text.id,
-                                                      size,
-                                                      ),
-                                                onTextChange: (_, val) =>
-                                                    store.updateCustomTextLabel(
-                                                      text.id,
-                                                      val,
-                                                      ),
-                                                // Animation props
-                                                animationInType: text.animationInType,
-                                                animationInDuration: text.animationInDuration,
-                                                animationOutType: text.animationOutType,
-                                                animationOutDuration: text.animationOutDuration,
-                                                isPreviewMode: store.isPreviewMode,
-                                                currentTime: store.position.inMilliseconds / 1000.0,
-                                                startTime: text.startTime,
-                                                endTime: text.endTime ?? (store.duration.inMilliseconds.toDouble()) / 1000.0,
-                                                triggerPreviewCounter: store.animationPreviewCounters[text.id] ?? 0,
-                                                triggerOutPreviewCounter: store.animationOutPreviewCounters[text.id] ?? 0,
-                                              );
-                                            },
+                                        if (!store.isPreviewMode) return true;
+                                        final pos = store.position.inMilliseconds / 1000.0;
+                                        return pos >= text.startTime && (text.endTime == null || pos <= text.endTime!);
+                                      }).map((text) => Observer(
+                                        key: ValueKey('text_wrapper_${text.id}'),
+                                        builder: (context) {
+                                          final shouldHide = store.isHidingAnimatedTextsForCapture && text.isAnimated;
+                                          return VideoOverlayItem(
+                                            key: ValueKey(text.id),
+                                            label: text.label,
+                                            x: text.x,
+                                            y: text.y,
+                                            type: text.id,
+                                            constraints: virtualConstraints,
+                                            color: text.color,
+                                            fontSize: text.fontSize,
+                                            textHeight: text.textHeight,
+                                            fontWeight: text.fontWeight,
+                                            fontStyle: text.fontStyle,
+                                            textAlign: text.textAlign,
+                                            backgroundColor: text.backgroundColor,
+                                            backgroundOpacity: text.backgroundOpacity,
+                                            backgroundRadius: text.backgroundRadius,
+                                            backgroundBorderColor: text.backgroundBorderColor,
+                                            backgroundBorderWidth: text.backgroundBorderWidth,
+                                            fontFamily: text.fontFamily,
+                                            rotation: text.rotation,
+                                            strokeColor: text.strokeColor,
+                                            strokeWidth: text.strokeWidth,
+                                            letterSpacing: text.letterSpacing,
+                                            isSelected: store.selectedCustomTextId == text.id,
+                                            opacity: shouldHide ? 0.0 : 1.0,
+                                            captureKey: text.isAnimated ? store.getTextCaptureKey(text.id) : null,
+                                            onPositionUpdate: (_, x, y) => store.updateCustomTextPosition(text.id, x, y),
+                                            onSelect: (_) => store.selectCustomText(text.id),
+                                            onResize: (_, size) => store.updateCustomTextFontSize(text.id, size),
+                                            onTextChange: (_, val) => store.updateCustomTextLabel(text.id, val),
+                                            animationInType: text.animationInType,
+                                            animationInDuration: text.animationInDuration,
+                                            animationOutType: text.animationOutType,
+                                            animationOutDuration: text.animationOutDuration,
+                                            isPreviewMode: store.isPreviewMode,
+                                            currentTime: store.position.inMilliseconds / 1000.0,
+                                            startTime: text.startTime,
+                                            endTime: text.endTime ?? (store.duration.inMilliseconds.toDouble()) / 1000.0,
+                                            triggerPreviewCounter: store.animationPreviewCounters[text.id] ?? 0,
+                                            triggerOutPreviewCounter: store.animationOutPreviewCounters[text.id] ?? 0,
                                           );
-                                        }),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                        },
+                                      )),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -678,9 +659,200 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       ),
     );
   }
+
+  Widget _buildSlideStrip() {
+    return Observer(
+      builder: (context) {
+        if (!store.isImagePosterMode || store.slides.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          height: 100,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Listener(
+                    onPointerSignal: (pointerSignal) {
+                      if (pointerSignal is PointerScrollEvent &&
+                          _slideScrollController.hasClients) {
+                        final newOffset = _slideScrollController.offset +
+                            pointerSignal.scrollDelta.dy;
+                        if (newOffset >= 0 &&
+                            newOffset <=
+                                _slideScrollController
+                                    .position.maxScrollExtent) {
+                          _slideScrollController.jumpTo(newOffset);
+                        }
+                      }
+                    },
+                  child: ReorderableListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    scrollController: _slideScrollController,
+                    buildDefaultDragHandles: false,
+                    itemCount: store.slides.length,
+                    onReorder: store.reorderSlides,
+                    proxyDecorator: (child, index, animation) {
+                      return AnimatedBuilder(
+                        animation: animation,
+                        builder: (context, child) {
+                          final double animValue =
+                              Curves.easeInOut.transform(animation.value);
+                          final double scale = lerpDouble(1, 1.05, animValue)!;
+                          return Transform.scale(
+                            scale: scale,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: child,
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final slide = store.slides[index];
+                      final isActive = store.currentSlideIndex == index;
+
+                      return ReorderableDragStartListener(
+                        key: ValueKey(slide.id),
+                        index: index,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          child: GestureDetector(
+                            onTap: () => store.selectSlide(index),
+                            child: Container(
+                              width: 100,
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? const Color(0xFF6366F1).withValues(alpha: 0.1)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isActive
+                                      ? const Color(0xFF6366F1)
+                                      : Colors.black.withValues(alpha: 0.05),
+                                  width: isActive ? 2 : 1,
+                                ),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.copy_all_rounded,
+                                          size: 20,
+                                          color: isActive
+                                              ? const Color(0xFF6366F1)
+                                              : Colors.grey,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          slide.name,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isActive
+                                                ? const Color(0xFF6366F1)
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (store.slides.length > 1)
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: InkWell(
+                                        onTap: () => store.removeSlide(index),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.redAccent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 10,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Shuffle Content Button
+              Tooltip(
+                message: 'Ngẫu nhiên nội dung',
+                child: GestureDetector(
+                  onTap: store.randomizePreviewFrame,
+                  child: Container(
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.shuffle_rounded,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: store.addSlide,
+                child: Container(
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
-// ─── Drop Zone: nhận ảnh từ file + URL ───────────────────────────────────────
+// ─── Drop Zone ─────────────────────────────────────────────────────────────
 
 class _ImageDropZone extends StatefulWidget {
   final VideoPosterStore store;
@@ -693,12 +865,11 @@ class _ImageDropZone extends StatefulWidget {
 
 class _ImageDropZoneState extends State<_ImageDropZone> {
   bool _isDragging = false;
-  final _zoneFocus = FocusNode(); // focus vùng drop để nhận keyboard
+  final _zoneFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    // Tự request focus để nhận Ctrl+V
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _zoneFocus.requestFocus(),
     );
@@ -710,280 +881,136 @@ class _ImageDropZoneState extends State<_ImageDropZone> {
     super.dispose();
   }
 
-  static const _imgExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
-  static const _videoExts = [
-    '.mp4',
-    '.mov',
-    '.avi',
-    '.mkv',
-    '.webm',
-    '.m4v',
-    '.flv',
-    '.wmv',
-    '.3gp',
-    '.ts',
-  ];
-
-  bool _isImgFile(String p) => _imgExts.any(p.toLowerCase().endsWith);
-  bool _isVideoFile(String p) => _videoExts.any(p.toLowerCase().endsWith);
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _zoneFocus,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.keyV &&
+            HardwareKeyboard.instance.isControlPressed) {
+          _pasteFromClipboard();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: DropRegion(
+        formats: const [
+          Formats.fileUri,
+          Formats.htmlText,
+          Formats.uri,
+          Formats.plainText,
+        ],
+        onDropOver: (event) {
+          if (!widget.store.isOnVideoEditorTab) return DropOperation.none;
+          final hasWebImage = event.session.items.any(
+            (item) =>
+                item.dataReader?.canProvide(Formats.htmlText) == true ||
+                item.dataReader?.canProvide(Formats.uri) == true,
+          );
+          if (hasWebImage && !_isDragging) {
+            setState(() => _isDragging = true);
+          } else if (!hasWebImage && _isDragging) {
+            setState(() => _isDragging = false);
+          }
+          return DropOperation.copy;
+        },
+        onDropLeave: (event) {
+          setState(() => _isDragging = false);
+        },
+        onPerformDrop: _onPerformDrop,
+        child: Stack(
+          children: [
+            widget.child,
+            if (_isDragging)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: const Color(0xFF6366F1),
+                        width: 2,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            color: Color(0xFF6366F1),
+                            size: 48,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Thả ảnh vào đây',
+                            style: TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _pasteFromClipboard() async {
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text?.trim() ?? '';
-      debugPrint('[PASTE] clipboard: $text');
       if (text.isEmpty) return;
-      final url = _resolve(text);
-      if (url.startsWith('http')) {
-        debugPrint('[PASTE] -> adding: $url');
+      if (text.startsWith('http')) {
         widget.store.addCustomImage(
-          url,
+          text,
           0.5,
           0.5,
-          isGif:
-              url.toLowerCase().contains('.gif') ||
-              url.toLowerCase().contains('giphy'),
+          isGif: text.toLowerCase().endsWith('.gif'),
         );
-      } else {
-        debugPrint('[PASTE] -> not a URL, ignoring');
       }
     } catch (e) {
       debugPrint('[PASTE] error: $e');
     }
   }
 
-  // Fallback kiểm tra Magic bytes cho local file (nếu cần)
-
-  String _resolve(String url) {
-    try {
-      final u = Uri.parse(url);
-      final imgurl = u.queryParameters['imgurl'];
-      if (imgurl != null && imgurl.isNotEmpty) {
-        return Uri.decodeComponent(imgurl);
-      }
-    } catch (_) {}
-    return url;
-  }
-
-  Future<void> _handleDropItem(DropItem item) async {
-    final formats = item.dataReader?.getFormats(Formats.standardFormats);
-    debugPrint('[DROP] Processing item with formats: $formats');
-    final reader = item.dataReader;
-    if (reader == null) return;
-
-    // 1. Nếu kéo file vật lý từ desktop
-    if (reader.canProvide(Formats.fileUri)) {
-      reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
-        if (uri != null) {
-          final p = uri.toFilePath();
-          debugPrint('[DROP] local file: $p');
-          // Bỏ qua video — để MediaLibraryPanel xử lý
-          if (_isVideoFile(p)) {
-            debugPrint('[DROP] skipping video file in image zone: $p');
-            return;
-          }
-          if (_isImgFile(p)) {
-            widget.store.addCustomImage(
-              p,
-              0.5,
-              0.5,
-              isGif: p.toLowerCase().endsWith('.gif'),
-            );
-          }
-          // Bỏ qua .url / .webloc và các định dạng khác
-        }
-      }, onError: (e) => debugPrint('[DROP] err: $e'));
-      return;
-    }
-
-    // 2. Kéo ảnh từ browser (Chrome/Edge) gửi HTML (có thẻ img)
-    if (reader.canProvide(Formats.htmlText)) {
-      reader.getValue<String>(Formats.htmlText, (String? html) {
-        if (html != null) {
-          String decodedHtml = html;
-          // Phát hiện lỗi UTF-8 bytes bị ép kiểu nhầm thành UTF-16LE String (thường tạo ra các ký tự CJK)
-          if (html.isNotEmpty && html.codeUnitAt(0) > 255) {
-            try {
-              final encoded = Uint8List(html.length * 2);
-              for (int i = 0; i < html.length; i++) {
-                final codeUnit = html.codeUnitAt(i);
-                encoded[i * 2] = codeUnit & 0xFF; // Xử lý Little Endian Byte 1
-                encoded[i * 2 + 1] =
-                    codeUnit >> 8; // Xử lý Little Endian Byte 2
-              }
-              // Data decode lại bằng utf-8 từ arr bytes
-              decodedHtml = utf8.decode(
-                encoded.where((b) => b != 0).toList(),
-                allowMalformed: true,
-              );
-            } catch (e) {
-              debugPrint('[DROP] utf8 decode error: $e');
-            }
-          }
-          debugPrint('[DROP] decoded html: $decodedHtml');
-
-          // Thử tìm thẻ src="" hoặc http thẳng trong chuỗi đã decode (hoặc string gốc nếu lỗi)
-          final imgRegex = RegExp(
-            r'(?:src="|(?:https?:\/\/))([^"]+?(?:png|jpg|jpeg|gif|webp))',
-            caseSensitive: false,
-          );
-          final match =
-              imgRegex.firstMatch(decodedHtml) ?? imgRegex.firstMatch(html);
-
-          var imgUrl = match?.group(1);
-          if (imgUrl != null) {
-            if (!imgUrl.startsWith('http')) {
-              imgUrl = match?.group(0)?.startsWith('http') == true
-                  ? match?.group(0)
-                  : imgUrl;
-            }
-            if (imgUrl != null && imgUrl.startsWith('http')) {
-              imgUrl = _resolve(imgUrl.replaceAll('&amp;', '&'));
-              debugPrint('[DROP] extracted img: $imgUrl');
-              widget.store.addCustomImage(
-                imgUrl,
-                0.5,
-                0.5,
-                isGif: imgUrl.toLowerCase().contains('.gif'),
-              );
-            }
-          }
-        }
-      });
-      return;
-    }
-
-    // 3. Fallback kéo ảnh gửi plain URI / text
-    if (reader.canProvide(Formats.uri)) {
-      reader.getValue<NamedUri>(Formats.uri, (NamedUri? uri) {
-        debugPrint('[DROP] from uri: ${uri?.uri.toString()}');
-        if (uri != null && uri.uri.scheme.startsWith('http')) {
-          final url = _resolve(uri.uri.toString());
-          widget.store.addCustomImage(
-            url,
-            0.5,
-            0.5,
-            isGif: url.toLowerCase().contains('.gif'),
-          );
-        }
-      }, onError: (e) => debugPrint('[DROP] err: $e'));
-      return;
-    }
-
-    if (reader.canProvide(Formats.plainText)) {
-      reader.getValue<String>(Formats.plainText, (String? text) {
-        debugPrint('[DROP] from text: $text');
-        if (text != null && text.startsWith('http')) {
-          final url = _resolve(text.trim());
-          widget.store.addCustomImage(
-            url,
-            0.5,
-            0.5,
-            isGif: url.toLowerCase().contains('.gif'),
-          );
-        }
-      });
-      return;
-    }
-  }
-
   Future<void> _onPerformDrop(PerformDropEvent event) async {
-    // Guard: widget vẫn alive trong PageView (KeepAlivePage) khi tab bị ẩn.
-    // Nếu không ở Video Editor tab, bỏ qua hoàn toàn để tránh decode sai file.
-    if (!widget.store.isOnVideoEditorTab) return;
-
     setState(() => _isDragging = false);
-    debugPrint('[DROP] perform drop, items: ${event.session.items.length}');
     for (final item in event.session.items) {
-      await _handleDropItem(item);
-    }
-  }
+      final reader = item.dataReader;
+      if (reader == null) continue;
 
-
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _zoneFocus.requestFocus(),
-      child: KeyboardListener(
-        focusNode: _zoneFocus,
-        onKeyEvent: (event) {
-          if (event is KeyDownEvent &&
-              event.logicalKey == LogicalKeyboardKey.keyV &&
-              HardwareKeyboard.instance.isControlPressed) {
-            _pasteFromClipboard();
-          }
-        },
-        child: DropRegion(
-          formats: const [
-            Formats.fileUri, // file ảnh local (.png, .jpg, .gif …)
-            Formats.htmlText, // kéo ảnh từ browser (có thẻ <img>)
-            Formats.uri, // URL ảnh dạng URI
-            Formats.plainText, // URL ảnh dạng text thuần
-          ],
-          onDropOver: (event) {
-            // Guard: chặn khi không ở tab Video Editor
-            if (!widget.store.isOnVideoEditorTab) return DropOperation.none;
-
-            // Chỉ kích hoạt overlay khi kéo ảnh từ browser
-            final hasWebImage = event.session.items.any(
-              (item) =>
-                  item.dataReader?.canProvide(Formats.htmlText) == true ||
-                  item.dataReader?.canProvide(Formats.uri) == true,
-            );
-            if (hasWebImage && !_isDragging) {
-              setState(() => _isDragging = true);
-            } else if (!hasWebImage && _isDragging) {
-              setState(() => _isDragging = false);
+      if (reader.canProvide(Formats.fileUri)) {
+        reader.getValue(Formats.fileUri, (uri) {
+          if (uri != null) {
+            final path = Uri.decodeComponent(uri.toFilePath());
+            if (path.toLowerCase().endsWith('.png') ||
+                path.toLowerCase().endsWith('.jpg') ||
+                path.toLowerCase().endsWith('.jpeg') ||
+                path.toLowerCase().endsWith('.gif') ||
+                path.toLowerCase().endsWith('.webp')) {
+              widget.store.addCustomImage(path, 0.5, 0.5, isGif: path.toLowerCase().endsWith('.gif'));
             }
-            return DropOperation.copy;
-          },
-          onDropLeave: (event) {
-            setState(() => _isDragging = false);
-          },
-          onPerformDrop: _onPerformDrop,
-          child: Stack(
-            children: [
-              widget.child,
-              if (_isDragging)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                        border: Border.all(
-                          color: const Color(0xFF6366F1),
-                          width: 2,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.image_outlined,
-                              color: Color(0xFF6366F1),
-                              size: 48,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Thả ảnh vào đây',
-                              style: TextStyle(
-                                color: Color(0xFF6366F1),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+          }
+        });
+      } else if (reader.canProvide(Formats.htmlText)) {
+        reader.getValue(Formats.htmlText, (html) {
+          if (html != null) {
+            final match = RegExp(r'src="([^"]+)"').firstMatch(html);
+            if (match != null) {
+              final url = match.group(1)!;
+              widget.store.addCustomImage(url, 0.5, 0.5, isGif: url.toLowerCase().contains('.gif'));
+            }
+          }
+        });
+      }
+    }
   }
 }

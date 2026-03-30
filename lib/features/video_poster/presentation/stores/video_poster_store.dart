@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -19,6 +20,9 @@ import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/favorite_image.dart';
 import 'package:scraki/features/video_poster/domain/repositories/favorite_image_repository.dart';
+import 'package:scraki/features/video_poster/domain/entities/slide_model.dart';
+import 'package:scraki/features/video_poster/domain/entities/image_poster_config.dart';
+import 'package:scraki/features/video_poster/data/services/image_poster_service.dart';
 import 'package:uuid/uuid.dart';
 
 part 'video_poster_store.g.dart';
@@ -45,6 +49,10 @@ abstract class _VideoPosterStore with Store {
       initializePlayer();
       _loadRecentColors();
       _watchFavorites();
+      
+      // Initialize with one default slide
+      addSlide();
+      
       _isInitialized = true;
     }
   }
@@ -130,6 +138,97 @@ abstract class _VideoPosterStore with Store {
 
   @observable
   String? selectedCustomImageId;
+
+  // ─── Slides Management ───────────────────────────────────────────────────
+
+  @observable
+  ObservableList<SlideModel> slides = ObservableList<SlideModel>();
+
+  @observable
+  int currentSlideIndex = 0;
+
+  @action
+  void addSlide() {
+    final id = const Uuid().v4();
+    final name = 'Slide ${slides.length + 1}';
+    slides.add(SlideModel(id: id, name: name));
+    
+    // If it's the first slide, select it
+    if (slides.length == 1) {
+      currentSlideIndex = 0;
+    }
+  }
+
+  @action
+  void selectSlide(int index) {
+    if (index < 0 || index >= slides.length) return;
+    
+    // 1. Save current overlays to previous slide
+    final prevSlide = slides[currentSlideIndex];
+    slides[currentSlideIndex] = prevSlide.copyWith(
+      texts: customTexts.toList(),
+      images: customImages.toList(),
+    );
+    
+    // 2. Switch index
+    currentSlideIndex = index;
+    
+    // 3. Load overlays from new slide
+    final newSlide = slides[currentSlideIndex];
+    customTexts.clear();
+    customTexts.addAll(newSlide.texts);
+    customImages.clear();
+    customImages.addAll(newSlide.images);
+    
+    // Reset selection
+    selectedCustomTextId = null;
+    selectedCustomImageId = null;
+  }
+
+  @action
+  void removeSlide(int index) {
+    if (slides.length <= 1) return; // Must have at least one slide
+    
+    slides.removeAt(index);
+    if (currentSlideIndex >= slides.length) {
+      currentSlideIndex = slides.length - 1;
+    }
+    
+    // Reload state for current index
+    final current = slides[currentSlideIndex];
+    customTexts.clear();
+    customTexts.addAll(current.texts);
+    customImages.clear();
+    customImages.addAll(current.images);
+  }
+
+  @action
+  void updateSlideName(int index, String name) {
+    if (index < 0 || index >= slides.length) return;
+    slides[index] = slides[index].copyWith(name: name);
+  }
+
+  @action
+  void reorderSlides(int oldIndex, int newIndex) {
+    if (slides.isEmpty) return;
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    // Ensure valid currentSlideIndex before access
+    final safeCurrentIndex = currentSlideIndex.clamp(0, slides.length - 1);
+    final selectedSlideId = slides[safeCurrentIndex].id;
+
+    final item = slides.removeAt(oldIndex);
+    slides.insert(newIndex, item);
+
+    // Update currentSlideIndex so it still points to the same slide content
+    final foundIndex = slides.indexWhere((s) => s.id == selectedSlideId);
+    if (foundIndex != -1) {
+      currentSlideIndex = foundIndex;
+    }
+  }
 
   @action
   void addCustomImage(
@@ -748,11 +847,126 @@ abstract class _VideoPosterStore with Store {
   @action
   void cancelBatchVideos() {
     _batchService?.cancel();
+    _imagePosterService?.cancel();
     _batchSub?.cancel();
     _batchSub = null;
     _batchService = null;
+    _imagePosterService = null;
     isBatchCreating = false;
     batchLogs.add('🛑 Đã dừng.');
+  }
+
+  // ─── Image Poster Export ─────────────────────────────────────────────────────
+
+  @observable
+  bool isExportingImages = false;
+
+  ImagePosterService? _imagePosterService;
+
+  @action
+  Future<void> exportImagePosters() async {
+    if (sourceVideoPaths.isEmpty || isExportingImages) return;
+
+    // Save current slide state before exporting
+    selectSlide(currentSlideIndex);
+
+    isExportingImages = true;
+    isBatchCreating = true; // Use common flags for UI
+    batchLogs.clear();
+    batchOutputDir = null;
+    _imagePosterService = ImagePosterService();
+
+    try {
+      batchLogs.add('📸 Đang chuẩn bị dữ liệu slides...');
+      
+      final overlayBytesMap = <String, Uint8List>{};
+      
+      // Save current selection to restore later
+      final originalSlideIndex = currentSlideIndex;
+      final originalTexts = customTexts.toList();
+      final originalImages = customImages.toList();
+
+      // Temporarily hide UI elements for clean capture if needed
+      // (Similar logic to createBatchVideos)
+      isPreviewMode = false;
+      player.pause();
+
+      for (int i = 0; i < slides.length; i++) {
+        final slide = slides[i];
+        batchLogs.add('🖼️ Đang chụp Slide: ${slide.name}...');
+        
+        // Load slide overlays into UI for capture
+        runInAction(() {
+          customTexts.clear();
+          customTexts.addAll(slide.texts);
+          customImages.clear();
+          customImages.addAll(slide.images);
+          selectedCustomTextId = null;
+          selectedCustomImageId = null;
+        });
+
+        // Wait for UI update
+        await Future.delayed(const Duration(milliseconds: 250));
+        
+        final bytes = await capturePreviewAsPng(hideImages: false);
+        overlayBytesMap[slide.id] = bytes;
+      }
+
+      // Restore original state
+      runInAction(() {
+        currentSlideIndex = originalSlideIndex;
+        customTexts.clear();
+        customTexts.addAll(originalTexts);
+        customImages.clear();
+        customImages.addAll(originalImages);
+      });
+
+      final config = ImagePosterConfig(
+        outputCount: batchOutputCount,
+        slides: slides.toList(),
+        outputFormat: 'png',
+        width: 1080,
+        height: 1350,
+      );
+
+      final stream = _imagePosterService!.generateImagePosters(
+        sourceVideoPaths: sourceVideoPaths.toList(),
+        config: config,
+        slideOverlayBytes: overlayBytesMap,
+        onOutputDir: (dir) => runInAction(() => batchOutputDir = dir),
+      );
+
+      await for (final log in stream) {
+        runInAction(() => _handleLogUpdate(log));
+      }
+
+    } catch (e) {
+      runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+    } finally {
+      runInAction(() {
+        isExportingImages = false;
+        isBatchCreating = false;
+      });
+    }
+  }
+
+  @observable
+  bool isImagePosterMode = false;
+
+  @action
+  void toggleImagePosterMode() {
+    isImagePosterMode = !isImagePosterMode;
+    if (isImagePosterMode) {
+      player.pause();
+    }
+  }
+
+  @action
+  void randomizePreviewFrame() {
+    if (player.state.duration == Duration.zero) return;
+    final random = Random();
+    final ms = random.nextInt(player.state.duration.inMilliseconds);
+    seekProject(Duration(milliseconds: ms));
   }
 
   // ─── Effects State ─────────────────────────────────────────────────────────────
@@ -952,7 +1166,7 @@ abstract class _VideoPosterStore with Store {
   }
 
   @action
-  Future<Uint8List> capturePreviewAsPng() async {
+  Future<Uint8List> capturePreviewAsPng({bool hideImages = true}) async {
     try {
       if (previewKey.currentContext == null) {
         throw 'Please add at least one text or video element before exporting.';
@@ -962,7 +1176,7 @@ abstract class _VideoPosterStore with Store {
       final previousImageSelection = selectedCustomImageId;
       selectCustomText(null);
       selectCustomImage(null);
-      isHidingImagesForCapture = true;
+      isHidingImagesForCapture = hideImages;
 
       await GoogleFonts.pendingFonts();
       await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -972,7 +1186,8 @@ abstract class _VideoPosterStore with Store {
         throw 'Preview render object not found.';
       }
 
-      const pixelRatio = 1.5;
+      final logicalWidth = renderObject.size.width;
+      final pixelRatio = 1080.0 / logicalWidth;
       final image = await renderObject.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
