@@ -1170,8 +1170,11 @@ abstract class _VideoPosterStore with Store {
 
   void _playCurrentVideo() {
     if (sourceVideoPaths.isEmpty) return;
-    player.open(Media(sourceVideoPaths[currentVideoIndex]));
-    player.play();
+    // Không tự động phát video nếu đang ở chế độ Image Poster
+    player.open(
+      Media(sourceVideoPaths[currentVideoIndex]),
+      play: !isImagePosterMode,
+    );
   }
 
   @action

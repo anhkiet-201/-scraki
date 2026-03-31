@@ -64,6 +64,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.space, control: true): () {
+            if (store.isImagePosterMode) return;
             if (store.player.state.position >= store.player.state.duration &&
                 store.player.state.duration > Duration.zero) {
               store.seekProject(Duration.zero);
