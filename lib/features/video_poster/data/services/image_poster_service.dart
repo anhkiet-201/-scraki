@@ -121,13 +121,37 @@ class ImagePosterService {
         
         yield '📂 Đang tạo Bộ $i...';
 
+        // Track used times per video for this set to ensure diversity
+        final usedTimesPerVideo = <String, List<int>>{};
+
         for (int j = 0; j < slides.length; j++) {
           if (_cancelled) break;
           
           final slide = slides[j];
           final videoPath = videoDurations.keys.elementAt(random.nextInt(videoDurations.length));
           final duration = videoDurations[videoPath]!;
-          final randomTime = random.nextInt(max(1, duration - 1));
+          
+          // Try to find a random time that is at least 3 seconds apart from others
+          int randomTime = random.nextInt(max(1, duration - 1));
+          final usedTimes = usedTimesPerVideo[videoPath] ?? [];
+          
+          if (usedTimes.isNotEmpty && duration > 5) {
+            for (int retry = 0; retry < 10; retry++) {
+              final newTime = random.nextInt(max(1, duration - 1));
+              bool tooClose = false;
+              for (final t in usedTimes) {
+                if ((newTime - t).abs() < 3) {
+                  tooClose = true;
+                  break;
+                }
+              }
+              if (!tooClose) {
+                randomTime = newTime;
+                break;
+              }
+            }
+          }
+          usedTimesPerVideo.putIfAbsent(videoPath, () => []).add(randomTime);
           
           final outputFileName = 'Slide_${j + 1}.png';
           final outputPath = p.join(setDir, outputFileName);
