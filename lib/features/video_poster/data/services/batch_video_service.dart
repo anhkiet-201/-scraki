@@ -211,6 +211,7 @@ class BatchVideoService {
 
       final validVideos = <String>[];
       final videoDurations = <String, int>{};
+      final videoHasAudio = <String, bool>{};
 
       for (int i = 0; i < sourceVideoPaths.length; i++) {
         if (_cancelled) return;
@@ -219,6 +220,7 @@ class BatchVideoService {
         if (duration >= config.minVideoDuration) {
           validVideos.add(path);
           videoDurations[path] = duration;
+          videoHasAudio[path] = probeResults[i].hasAudio;
           // Warm up the color cache with the probe result (no extra ffprobe needed)
           _colorInfoCache[path] = probeResults[i].colorInfo;
         } else {
@@ -278,6 +280,7 @@ class BatchVideoService {
             startTime: startTime,
             duration: segDur,
             hflip: random.nextBool(), // 50% chance of mirror
+            hasAudio: videoHasAudio[sourcePath] ?? false,
           );
 
           selected.add(request);
@@ -319,6 +322,7 @@ class BatchVideoService {
               duration: req.duration,
               output: outputPath,
               hflip: req.hflip,
+              hasAudio: req.hasAudio,
               processName: req.id,
               onLogMsg: onLog,
             ).then((_) {
@@ -459,7 +463,7 @@ class BatchVideoService {
 
   /// Opt-1: Probe duration + color info in a single ffprobe call.
   /// Kết hợp 2 lần gọi ffprobe thành 1 để giảm I/O overhead.
-  Future<({int duration, ({String transfer, String primaries, String pixFmt}) colorInfo})>
+  Future<({int duration, bool hasAudio, ({String transfer, String primaries, String pixFmt}) colorInfo})>
   _probeSourceVideo(String path) async {
     // Check cache for color info
     if (_colorInfoCache.containsKey(path)) {
@@ -472,15 +476,15 @@ class BatchVideoService {
     try {
       final result = await Process.run(_ffprobeBin, [
         '-v', 'error',
-        '-select_streams', 'v:0',
         '-show_entries',
-        'format=duration:stream=color_transfer,color_primaries,pix_fmt',
+        'format=duration:stream=codec_type,color_transfer,color_primaries,pix_fmt',
         '-of', 'default=noprint_wrappers=1:nokey=0',
         path,
       ]);
       final out = result.stdout as String;
 
       double durationSec = 0;
+      bool hasAudio = false;
       String transfer = '';
       String primaries = '';
       String pixFmt = '';
@@ -488,6 +492,8 @@ class BatchVideoService {
       for (final line in out.split('\n')) {
         if (line.startsWith('duration=')) {
           durationSec = double.tryParse(line.split('=').last.trim()) ?? 0;
+        } else if (line.startsWith('codec_type=audio')) {
+          hasAudio = true;
         } else if (line.startsWith('color_transfer=')) {
           transfer = line.split('=').last.trim();
         } else if (line.startsWith('color_primaries=')) {
@@ -499,6 +505,7 @@ class BatchVideoService {
 
       final info = (
         duration: durationSec.round(),
+        hasAudio: hasAudio,
         colorInfo: (transfer: transfer, primaries: primaries, pixFmt: pixFmt),
       );
       
@@ -509,6 +516,7 @@ class BatchVideoService {
     } catch (_) {
       return (
         duration: 0,
+        hasAudio: false,
         colorInfo: (transfer: '', primaries: '', pixFmt: ''),
       );
     }
@@ -523,6 +531,7 @@ class BatchVideoService {
     required int duration,
     required String output,
     required bool hflip,
+    required bool hasAudio,
     String? processName,
     void Function(double)? onProgress,
     void Function(String)? onLogMsg,
@@ -544,6 +553,7 @@ class BatchVideoService {
       duration: duration,
       output: output,
       hflip: hflip,
+      hasAudio: hasAudio,
       isHdr: isHdr,
       colorInfo: colorInfo,
       processName: processName,
@@ -552,7 +562,7 @@ class BatchVideoService {
     );
   }
 
-  /// Encode segment với filter chain (hflip nếu cần / HDR tonemapping).
+  /// Encode segment với filter chain (hflip nếu cần / HDR tonemapping / Audio 5%).
   /// Luôn tạo I-frame mới ở đầu mỗi segment để đảm bảo concat mượt.
   Future<String?> _runSegmentEncode({
     required String input,
@@ -560,6 +570,7 @@ class BatchVideoService {
     required int duration,
     required String output,
     required bool hflip,
+    required bool hasAudio,
     required bool isHdr,
     required ({String transfer, String primaries, String pixFmt}) colorInfo,
     String? processName,
@@ -585,11 +596,14 @@ class BatchVideoService {
               'format=yuv420p'
         : '$baseFilter,format=yuv420p';
 
+    final afFilter = hasAudio ? 'volume=0.05' : 'anullsrc';
+
     final gpuEncoder = await _getGpuEncoder();
 
     // Attempt with preferred filter (HDR-aware if applicable)
     final result = await _runWithFilter(
       vfFilter,
+      afFilter,
       gpuEncoder,
       input: input,
       startSeconds: startSeconds,
@@ -610,6 +624,7 @@ class BatchVideoService {
         final fallbackFilter = isHdr ? '$baseFilter,format=yuv420p' : '$baseFilter,format=yuv420p';
         return _runWithFilter(
           fallbackFilter,
+          afFilter,
           fallbackEncoder,
           input: input,
           startSeconds: startSeconds,
@@ -631,6 +646,7 @@ class BatchVideoService {
       final fallbackFilter = '$baseFilter,format=yuv420p';
       return _runWithFilter(
         fallbackFilter,
+        afFilter,
         gpuEncoder,
         input: input,
         startSeconds: startSeconds,
@@ -647,6 +663,7 @@ class BatchVideoService {
 
   Future<String?> _runWithFilter(
     String vf,
+    String af,
     String encoder, {
     required String input,
     required int startSeconds,
@@ -657,47 +674,72 @@ class BatchVideoService {
     void Function(String)? onLogMsg,
   }) async {
     try {
-      final process = await Process.start(_ffmpegBin, [
+      final List<String> args = [
         '-hide_banner',
         '-y',
         '-hwaccel',
-        'auto', // Enable HW Decoding
+        'auto',
         '-ss', startSeconds.toString(),
         '-i', input,
+      ];
+
+      if (af == 'anullsrc') {
+        args.addAll(['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo']);
+      }
+
+      args.addAll([
         '-t', duration.toString(),
         '-vf', vf,
-        '-an', // Always remove audio for anti-reup
-        // Force normalized SDR output — critical for concat compatibility
+      ]);
+
+      if (af == 'anullsrc') {
+        args.addAll([
+          '-map', '0:v:0',
+          '-map', '1:a:0',
+          '-c:a', 'aac',
+          '-shortest',
+        ]);
+      } else {
+        args.addAll([
+          '-af', af,
+          '-c:a', 'aac',
+        ]);
+      }
+
+      args.addAll([
         '-pix_fmt', 'yuv420p',
         '-colorspace', 'bt709',
         '-color_trc', 'bt709',
         '-color_primaries', 'bt709',
         '-c:v', encoder,
-        if (encoder == 'libx264') ...[
-          '-preset',
-          'ultrafast',
-          '-b:v',
-          '10M',
-          '-maxrate',
-          '12M',
-          '-bufsize',
-          '20M',
-        ] else if (encoder == 'h264_videotoolbox') ...[
-          '-b:v',
-          '10M',
-          '-realtime',
-          '1',
-        ] else ...[
-          '-b:v',
-          '10M',
-          '-maxrate',
-          '12M',
-          '-bufsize',
-          '20M',
-        ],
+      ]);
+
+      if (encoder == 'libx264') {
+        args.addAll([
+          '-preset', 'ultrafast',
+          '-b:v', '10M',
+          '-maxrate', '12M',
+          '-bufsize', '20M',
+        ]);
+      } else if (encoder == 'h264_videotoolbox') {
+        args.addAll([
+          '-b:v', '10M',
+          '-realtime', '1',
+        ]);
+      } else {
+        args.addAll([
+          '-b:v', '10M',
+          '-maxrate', '12M',
+          '-bufsize', '20M',
+        ]);
+      }
+
+      args.addAll([
         '-movflags', '+faststart',
         output,
       ]);
+
+      final process = await Process.start(_ffmpegBin, args);
       _activeProcesses.add(process);
 
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
@@ -1109,7 +1151,10 @@ class BatchVideoService {
         fStr,
         '-map',
         lastVideoLabel,
-        '-an', // Remove all audio streams
+        '-map',
+        '0:a', // Map audio from concat
+        '-c:a',
+        'aac',
         '-r',
         '30',
         '-vsync',
@@ -1117,11 +1162,11 @@ class BatchVideoService {
         '-c:v',
         gpuEncoder,
         '-b:v',
-        '10M',
+        '${10 + random.nextInt(6)}M', // Random 10M - 15M
         '-maxrate',
-        '12M',
+        '16M',
         '-bufsize',
-        '20M',
+        '25M',
         '-pix_fmt',
         'yuv420p',
         '-colorspace',
@@ -1132,7 +1177,7 @@ class BatchVideoService {
         'bt709',
         if (gpuEncoder == 'libx264') ...[
           '-x264-params',
-          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1',
+          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1:g=${30 + random.nextInt(31)}', // Random GOP 30-60
           '-preset',
           spoofProfile.preset,
         ],
@@ -1235,18 +1280,21 @@ class _SegmentRequest {
   final int startTime;
   final int duration;
   final bool hflip;
+  final bool hasAudio;
 
   _SegmentRequest({
     required this.sourcePath,
     required this.startTime,
     required this.duration,
     required this.hflip,
+    required this.hasAudio,
   });
 
   String get id {
     final name = sourcePath.split(RegExp(r'[/\\]')).last;
     final hflipVal = hflip ? 1 : 0;
-    return 's${startTime}_d${duration}_f${hflipVal}_$name';
+    final audioVal = hasAudio ? 1 : 0;
+    return 's${startTime}_d${duration}_f${hflipVal}_a${audioVal}_$name';
   }
 
   @override
@@ -1257,14 +1305,16 @@ class _SegmentRequest {
           sourcePath == other.sourcePath &&
           startTime == other.startTime &&
           duration == other.duration &&
-          hflip == other.hflip;
+          hflip == other.hflip &&
+          hasAudio == other.hasAudio;
 
   @override
   int get hashCode =>
       sourcePath.hashCode ^
       startTime.hashCode ^
       duration.hashCode ^
-      hflip.hashCode;
+      hflip.hashCode ^
+      hasAudio.hashCode;
 }
 
 // ============================================================================
@@ -1403,19 +1453,9 @@ class _VideoSpoofProfile {
     '-metadata',
     'location=$gpsIso6709',
     '-metadata',
-    'Hw=1',
-    '-metadata',
-    'te_is_reencode=1',
-    '-metadata',
-    'encoder=bytevehwavc',
-    '-metadata:s:v:0',
-    'encoder=bytevehwavc',
-    '-metadata:s:a:0',
-    'encoder=bytevehwavc',
-    '-metadata',
-    'aigc_info={"aigc_label_type":0,"source_info":""}',
-    '-metadata',
     'LvMetaInfo=$_lvMetaInfo',
+    '-metadata',
+    'comment=sc_v_$jitterId', // Use jitterId here
     '-fflags',
     '+bitexact',
     '-flags:v',
