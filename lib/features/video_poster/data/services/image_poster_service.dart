@@ -20,6 +20,24 @@ class ImagePosterService {
   static String get _ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
   static String get _ffprobeBin => Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
+  Future<bool> _checkFfmpeg() async {
+    try {
+      final result = await Process.run(_ffmpegBin, ['-version']);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _checkFfprobe() async {
+    try {
+      final result = await Process.run(_ffprobeBin, ['-version']);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
   final List<Process> _activeProcesses = [];
   bool _cancelled = false;
 
@@ -39,6 +57,17 @@ class ImagePosterService {
   }) async* {
     _cancelled = false;
     _activeProcesses.clear();
+
+    // Validate ffmpeg availability - Based on BatchVideoService
+    if (!await _checkFfmpeg()) {
+      yield '❌ FFmpeg chưa được cài đặt! Vui lòng cài FFmpeg trước.';
+      yield '   Windows: https://ffmpeg.org/download.html';
+      return;
+    }
+    if (!await _checkFfprobe()) {
+      yield '❌ FFprobe chưa được cài đặt! Vui lòng kiểm tra lại bộ FFmpeg.';
+      return;
+    }
 
     if (sourceVideoPaths.isEmpty) {
       yield '❌ Không có video nguồn!';
@@ -158,14 +187,19 @@ class ImagePosterService {
   Future<int> _getVideoDuration(String path) async {
     try {
       final result = await Process.run(_ffprobeBin, [
-        '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
         path,
       ]);
       final output = result.stdout as String;
+      // Robust parsing matching BatchVideoService
       return double.tryParse(output.trim())?.round() ?? 0;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error probing duration for $path: $e');
       return 0;
     }
   }
@@ -180,21 +214,49 @@ class ImagePosterService {
   }) async {
     try {
       final process = await Process.start(_ffmpegBin, [
+        '-hide_banner',
         '-y',
-        '-ss', time.toString(),
-        '-i', videoPath,
-        '-i', overlayPath,
+        '-hwaccel',
+        'auto', // Enable HW Decoding matching BatchVideoService
+        '-ss',
+        time.toString(),
+        '-i',
+        videoPath,
+        '-i',
+        overlayPath,
         '-filter_complex',
         '[0:v]scale=$width:$height:force_original_aspect_ratio=increase,crop=$width:$height[bg];[bg][1:v]overlay=0:0',
-        '-vframes', '1',
+        '-vframes',
+        '1',
+        '-pix_fmt',
+        'yuv420p', // Ensure output compatibility
         outputPath,
       ]);
       _activeProcesses.add(process);
+
+      // Capture stderr for better debugging matching BatchVideoService
+      final stderrList = <String>[];
+      process.stderr.listen((data) {
+        final out = String.fromCharCodes(data);
+        final lines = out.split('\n');
+        for (final line in lines) {
+          if (line.trim().isNotEmpty) {
+            stderrList.add(line);
+            if (stderrList.length > 10) stderrList.removeAt(0);
+          }
+        }
+      });
+
       final exitCode = await process.exitCode;
       _activeProcesses.remove(process);
+
+      if (exitCode != 0) {
+        debugPrint('FFmpeg Error composing image:\n${stderrList.join('\n')}');
+      }
+
       return exitCode == 0;
     } catch (e) {
-      debugPrint('Error composing image: $e');
+      debugPrint('Error starting FFmpeg for image composition: $e');
       return false;
     }
   }
