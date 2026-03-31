@@ -53,3 +53,6 @@ BUILD_DMG_README.md
 **/GoogleService-Info.plist
 **/google-services.json
 firebase_app_id_file.json
+
+# Scripts & Build Artifacts
+scripts/

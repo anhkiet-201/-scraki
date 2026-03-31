@@ -124,4 +124,144 @@ class TikTokPostService implements ITikTokPostService {
       throw AkiRemoteException('Không thể mở màn hình đăng TikTok: $e');
     }
   }
+
+  @override
+  Future<void> openTikTokPostImages(String serial, String folderPath) async {
+    final variant = await detectInstalledVariant(serial);
+    if (variant == null) {
+      throw AkiRemoteException('TikTok not found on $serial');
+    }
+
+    final packageName = _packageNames[variant]!;
+    final folderName = p.basename(folderPath);
+    logger.i('[TikTokPostService] Posting folder $folderName to $packageName on $serial');
+
+    try {
+      // 0. Chuẩn bị Java Wrapper trên thiết bị
+      final String localWrapperPath = 'assets/server/tiktok_share.dex';
+      final String remoteWrapperPath = '/data/local/tmp/tiktok_share.dex';
+      
+      logger.i('[TikTokPostService] Đang đẩy Java Wrapper lên thiết bị...');
+      await Process.run('adb', [
+        '-s', 
+        serial, 
+        'push', 
+        localWrapperPath, 
+        remoteWrapperPath
+      ]);
+
+      // 0.1 Kill TikTok
+      await Process.run('adb', ['-s', serial, 'shell', 'am', 'force-stop', packageName]);
+      
+      // Đợi một chút để App giải phóng tài nguyên
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      // 1. Khôi phục về Download (Nơi ổn định nhất cho việc share file)
+      final remoteBaseDir = '/sdcard/Download/';
+      final pushResult = await Process.run('adb', [
+        '-s',
+        serial,
+        'push',
+        folderPath,
+        remoteBaseDir,
+      ]);
+
+      if (pushResult.exitCode != 0) {
+        throw Exception('adb push directory failed: ${pushResult.stderr}');
+      }
+
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'am',
+        'broadcast',
+        '--user',
+        '0',
+        '-a',
+        'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+        '-d',
+        'file://$remoteBaseDir$folderName',
+      ]);
+
+      // 2. Liệt kê ảnh locally để tạo URIs trỏ đúng vào thư mục con trên Android
+      final dir = Directory(folderPath);
+      final imageFiles = dir.listSync()
+          .whereType<File>()
+          .where((f) {
+            final ext = p.extension(f.path).toLowerCase();
+            return const {'.png', '.jpg', '.jpeg', '.webp'}.contains(ext);
+          })
+          .map((f) => p.basename(f.path))
+          .toList();
+      
+      // Sắp xếp để đúng thứ tự slide
+      imageFiles.sort((a, b) => a.compareTo(b));
+
+      if (imageFiles.isEmpty) {
+        throw Exception('Thư mục không chứa ảnh hợp lệ.');
+      }
+
+      // 2.7 Truy vấn Content URI theo lô (Batch Query) bằng bucket_display_name
+      logger.i('[TikTokPostService] Đang truy vấn IDs cho toàn bộ thư mục $folderName...');
+      final queryResult = await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'content',
+        'query',
+        '--user',
+        '0',
+        '--uri',
+        'content://media/external/images/media',
+        '--projection',
+        '_id:_display_name',
+        '--where',
+        "bucket_display_name='$folderName'",
+      ]);
+
+      final Map<String, String> nameToIdMap = {};
+      if (queryResult.exitCode == 0 && queryResult.stdout.toString().isNotEmpty) {
+        final lines = queryResult.stdout.toString().split('\n');
+        for (final line in lines) {
+          final idMatch = RegExp(r'_id=(\d+)').firstMatch(line);
+          final nameMatch = RegExp(r'_display_name=([^,\s]+)').firstMatch(line);
+          if (idMatch != null && nameMatch != null) {
+            nameToIdMap[nameMatch.group(1)!] = idMatch.group(1)!;
+          }
+        }
+      }
+
+      final List<String> contentUris = [];
+      for (final fileName in imageFiles) {
+        if (nameToIdMap.containsKey(fileName)) {
+          contentUris.add('content://media/external/images/media/${nameToIdMap[fileName]}');
+        } else {
+          // Fallback nếu không thấy ID
+          final remotePath = '$remoteBaseDir$folderName/$fileName';
+          contentUris.add('file://$remotePath');
+        }
+      }
+
+      logger.i('[TikTokPostService] Đã ánh xạ được ${contentUris.where((u) => u.startsWith('content')).length}/${imageFiles.length} URIs.');
+
+      final String finalUriString = contentUris.join(',');
+      final String wrapperCmd = 'CLASSPATH=/data/local/tmp/tiktok_share.dex app_process /system/bin TikTokShareWrapper $packageName "$finalUriString"';
+      
+      logger.i('[TikTokPostService] Đang thực thi Java Intent Wrapper...');
+      
+      final result = await Process.run('adb', [
+        '-s', serial, 'shell', wrapperCmd,
+      ]);
+
+      if (result.exitCode != 0 || result.stderr.toString().contains('Error')) {
+        throw Exception('Java Wrapper thất bại: ${result.stderr}');
+      }
+
+      logger.i('[TikTokPostService] Đăng bộ ảnh thành công thông qua Java Wrapper.');
+    } catch (e) {
+      logger.e('[TikTokPostService] Lỗi khi xử lý bộ ảnh', error: e);
+      throw AkiRemoteException('Lỗi hệ thống khi đăng bộ ảnh: $e');
+    }
+  }
 }
