@@ -82,12 +82,12 @@ class ImagePosterService {
         overlayFilePaths[entry.key] = filePath;
       }
 
-      yield '🚀 Bắt đầu tạo ${totalSets} bộ ảnh...';
+      yield '🚀 Bắt đầu tạo $totalSets bộ ảnh rải rác...';
 
       for (int i = 1; i <= totalSets; i++) {
         if (_cancelled) break;
         
-        final setDir = p.join(outputDir, 'Set_$i');
+        final setDir = p.join(outputDir, 'Set_${i}_${DateTime.now().microsecondsSinceEpoch}');
         await Directory(setDir).create(recursive: true);
         
         yield '📂 Đang tạo Bộ $i...';
@@ -119,9 +119,9 @@ class ImagePosterService {
           );
 
           if (success) {
-            yield '  ✅ [Bộ $i] Đã xong ${outputFileName}';
+            yield '  ✅ [Bộ $i] Đã xong $outputFileName';
           } else {
-            yield '  ❌ [Bộ $i] Lỗi khi tạo ${outputFileName}';
+            yield '  ❌ [Bộ $i] Lỗi khi tạo $outputFileName';
           }
         }
       }
