@@ -150,8 +150,8 @@ abstract class _VideoPosterStore with Store {
   @action
   void addSlide() {
     final id = const Uuid().v4();
-    final name = 'Slide ${slides.length + 1}';
-    slides.add(SlideModel(id: id, name: name));
+    slides.add(SlideModel(id: id, name: ''));
+    _updateSlideNames();
     
     // If it's the first slide, select it
     if (slides.length == 1) {
@@ -190,6 +190,7 @@ abstract class _VideoPosterStore with Store {
     if (slides.length <= 1) return; // Must have at least one slide
     
     slides.removeAt(index);
+    _updateSlideNames();
     if (currentSlideIndex >= slides.length) {
       currentSlideIndex = slides.length - 1;
     }
@@ -222,11 +223,18 @@ abstract class _VideoPosterStore with Store {
 
     final item = slides.removeAt(oldIndex);
     slides.insert(newIndex, item);
+    _updateSlideNames();
 
     // Update currentSlideIndex so it still points to the same slide content
     final foundIndex = slides.indexWhere((s) => s.id == selectedSlideId);
     if (foundIndex != -1) {
       currentSlideIndex = foundIndex;
+    }
+  }
+
+  void _updateSlideNames() {
+    for (int i = 0; i < slides.length; i++) {
+      slides[i] = slides[i].copyWith(name: 'Slide ${i + 1}');
     }
   }
 
@@ -906,6 +914,7 @@ abstract class _VideoPosterStore with Store {
         });
 
         // Wait for UI update
+        // ignore: inference_failure_on_instance_creation
         await Future.delayed(const Duration(milliseconds: 250));
         
         final bytes = await capturePreviewAsPng(hideImages: false);
