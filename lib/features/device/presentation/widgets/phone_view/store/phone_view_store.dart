@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:mobx/mobx.dart';
@@ -18,6 +19,7 @@ import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
+import 'package:path/path.dart' as p;
 
 part 'phone_view_store.g.dart';
 
@@ -428,8 +430,20 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     if (!isOnDevicesTab && !isVideo && !isApk) return;
 
     try {
-      final fileName = paths.first.split(RegExp(r'[/\\]')).last;
-      if (isVideo) {
+      final fileName = p.basename(paths.first);
+      
+      // Check if it's a "Set_" directory drop (Image Poster Set)
+      final isSetDir = paths.length == 1 && Directory(paths.first).existsSync() && fileName.startsWith('Set_');
+
+      if (isSetDir) {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Đang đẩy bộ ảnh $fileName...');
+        
+        // Giao toàn bộ việc push thư mục và mở intent cho Service xử lý
+        await _tikTokService.openTikTokPostImages(serial, paths.first);
+        
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
+        await Future<void>.delayed(const Duration(seconds: 2));
+      } else if (isVideo) {
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Đang đẩy $fileName...');
         await _tikTokService.openTikTokCreate(serial, paths.first);
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);

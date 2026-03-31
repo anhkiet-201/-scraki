@@ -107,7 +107,7 @@ abstract class _SessionManagerStore with Store {
   }
 }
 
-enum DeviceTaskType { push, install, videoGen }
+enum DeviceTaskType { push, install, videoGen, imagePost }
 
 enum DeviceTaskPhase { running, success, failed }
 
@@ -140,7 +140,9 @@ class DeviceTaskState {
       case DeviceTaskType.install:
         return 'Cài đặt APK';
       case DeviceTaskType.videoGen:
-        return 'TikTok';
+        return 'TikTok Video';
+      case DeviceTaskType.imagePost:
+        return 'TikTok Bộ ảnh';
     }
   }
 }

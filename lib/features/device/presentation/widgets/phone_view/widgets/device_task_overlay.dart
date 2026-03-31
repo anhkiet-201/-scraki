@@ -199,6 +199,7 @@ class _LeadingIcon extends StatelessWidget {
       DeviceTaskType.push => Icons.upload_rounded,
       DeviceTaskType.install => Icons.install_mobile_rounded,
       DeviceTaskType.videoGen => Icons.ondemand_video_rounded,
+      DeviceTaskType.imagePost => Icons.photo_library_rounded,
     };
 
     return _StatusIcon(

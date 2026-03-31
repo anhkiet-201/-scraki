@@ -176,7 +176,6 @@ class _ImagePosterPanelState extends State<ImagePosterPanel> {
   }
 
   Widget _buildFooter(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
     return Observer(
       builder: (context) {
         final isCreating = widget.store.isBatchCreating;

@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:scraki/features/video_poster/domain/entities/image_poster_config.dart';
-import 'package:scraki/features/video_poster/domain/entities/slide_model.dart';
 
 class SlideOverlayData {
   final Uint8List bytes;
