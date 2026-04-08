@@ -16,6 +16,74 @@ class SlideOverlayData {
   });
 }
 
+class _StealthProfile {
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double hue;
+  final double noise;
+  final int cropOffsetX;
+  final int cropOffsetY;
+  final int extraScale;
+  final String creationTime;
+  final String make;
+  final String model;
+
+  _StealthProfile({
+    required this.brightness,
+    required this.contrast,
+    required this.saturation,
+    required this.hue,
+    required this.noise,
+    required this.cropOffsetX,
+    required this.cropOffsetY,
+    required this.extraScale,
+    required this.creationTime,
+    required this.make,
+    required this.model,
+  });
+
+  factory _StealthProfile.random(Random rng) {
+    // Randomize date within last 7 days
+    final now = DateTime.now();
+    final randomDays = rng.nextInt(7);
+    final randomHours = rng.nextInt(24);
+    final randomMinutes = rng.nextInt(60);
+    final fakeDate = now.subtract(Duration(
+      days: randomDays,
+      hours: randomHours,
+      minutes: randomMinutes,
+    ));
+
+    // EXIF format: YYYY:MM:DD HH:MM:SS
+    final dateStr = fakeDate.toIso8601String().split('.').first.replaceFirst('T', ' ').replaceAll('-', ':');
+
+    final devices = [
+      {'make': 'Samsung', 'models': ['SM-S901B', 'SM-G991B', 'SM-A536B']},
+      {'make': 'Apple', 'models': ['iPhone 13', 'iPhone 14', 'iPhone 15']},
+      {'make': 'Google', 'models': ['Pixel 6', 'Pixel 7', 'Pixel 8']},
+      {'make': 'Xiaomi', 'models': ['2201117TY', '2210132G']},
+    ];
+
+    final device = devices[rng.nextInt(devices.length)];
+    final modelList = device['models'] as List<String>;
+
+    return _StealthProfile(
+      brightness: (rng.nextDouble() * 0.04) - 0.02, // ±0.02
+      contrast: 1.0 + (rng.nextDouble() * 0.04) - 0.02, // 0.98-1.02
+      saturation: 1.0 + (rng.nextDouble() * 0.06) - 0.03, // 0.97-1.03
+      hue: (rng.nextDouble() * 2.0) - 1.0, // ±1.0 degree
+      noise: 0.3 + (rng.nextDouble() * 0.5), // 0.3-0.8
+      cropOffsetX: rng.nextInt(3), // 0-2
+      cropOffsetY: rng.nextInt(3), // 0-2
+      extraScale: 2 + rng.nextInt(3), // 2-4
+      creationTime: dateStr,
+      make: device['make'] as String,
+      model: modelList[rng.nextInt(modelList.length)],
+    );
+  }
+}
+
 class ImagePosterService {
   static String get _ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
   static String get _ffprobeBin => Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
@@ -121,9 +189,6 @@ class ImagePosterService {
         
         yield '📂 Đang tạo Bộ $i...';
 
-        // Track used times per video for this set to ensure diversity
-        final usedTimesPerVideo = <String, List<int>>{};
-
         for (int j = 0; j < slides.length; j++) {
           if (_cancelled) break;
           
@@ -131,29 +196,23 @@ class ImagePosterService {
           final videoPath = videoDurations.keys.elementAt(random.nextInt(videoDurations.length));
           final duration = videoDurations[videoPath]!;
           
-          // Try to find a random time that is at least 3 seconds apart from others
-          int randomTime = random.nextInt(max(1, duration - 1));
-          final usedTimes = usedTimesPerVideo[videoPath] ?? [];
+          // Improved frame selection with stratified sampling
+          int randomTime = _pickFrameTime(
+            duration: duration,
+            setIndex: i,
+            totalSets: totalSets,
+            slideIndex: j,
+            totalSlides: slides.length,
+            rng: random,
+          );
           
-          if (usedTimes.isNotEmpty && duration > 5) {
-            for (int retry = 0; retry < 10; retry++) {
-              final newTime = random.nextInt(max(1, duration - 1));
-              bool tooClose = false;
-              for (final t in usedTimes) {
-                if ((newTime - t).abs() < 3) {
-                  tooClose = true;
-                  break;
-                }
-              }
-              if (!tooClose) {
-                randomTime = newTime;
-                break;
-              }
-            }
-          }
-          usedTimesPerVideo.putIfAbsent(videoPath, () => []).add(randomTime);
+          // Generate stealth profile for this specific image
+          final stealth = _StealthProfile.random(random);
           
-          final outputFileName = 'Slide_${j + 1}.png';
+          // Randomized filename pattern
+          final randomSuffix = random.nextInt(9000) + 1000;
+          final extension = config.outputFormat.toLowerCase().replaceAll('.', '');
+          final outputFileName = 'IMG_${randomSuffix}_${j + 1}.$extension';
           final outputPath = p.join(setDir, outputFileName);
           final overlayPath = overlayFilePaths[slide.id];
 
@@ -169,6 +228,8 @@ class ImagePosterService {
             outputPath: outputPath,
             width: config.width,
             height: config.height,
+            stealth: stealth,
+            format: config.outputFormat,
           );
 
           if (success) {
@@ -228,6 +289,31 @@ class ImagePosterService {
     }
   }
 
+  int _pickFrameTime({
+    required int duration,
+    required int setIndex,
+    required int totalSets,
+    required int slideIndex,
+    required int totalSlides,
+    required Random rng,
+  }) {
+    if (duration <= 1) return 0;
+
+    // Chia timeline thành các vùng lớn dựa trên số lượng slide
+    final double slideRegionSize = duration / totalSlides;
+    final double startOfSlideRegion = slideIndex * slideRegionSize;
+
+    // Trong mỗi slide region, chia nhỏ tiếp dựa trên số lượng Set để tránh trùng lặp
+    final double setSubRegionSize = slideRegionSize / totalSets;
+    final double startOfSetSubRegion = startOfSlideRegion + (setIndex - 1) * setSubRegionSize;
+
+    // Pick một điểm ngẫu nhiên trong sub-region của Set này
+    final int jitterRange = max(1, setSubRegionSize.floor());
+    int pickedTime = startOfSetSubRegion.floor() + rng.nextInt(jitterRange);
+
+    return pickedTime.clamp(0, duration - 1);
+  }
+
   Future<bool> _composeImage({
     required String videoPath,
     required int time,
@@ -235,30 +321,64 @@ class ImagePosterService {
     required String outputPath,
     required int width,
     required int height,
+    required _StealthProfile stealth,
+    required String format,
   }) async {
     try {
-      final process = await Process.start(_ffmpegBin, [
+      final isJpg = format.toLowerCase().endsWith('jpg') || format.toLowerCase().endsWith('jpeg');
+
+      // Build complex filter for visual jitter and micro-crop jitter
+      final double zoomVal = 1.0 + (stealth.extraScale / width);
+      final int scaledW = (width * zoomVal).round();
+      final int scaledH = (height * zoomVal).round();
+
+      final filter = [
+        '[0:v]scale=$scaledW:$scaledH:force_original_aspect_ratio=increase,',
+        'crop=$width:$height:${stealth.cropOffsetX}:${stealth.cropOffsetY},',
+        'eq=brightness=${stealth.brightness.toStringAsFixed(4)}:contrast=${stealth.contrast.toStringAsFixed(4)}:saturation=${stealth.saturation.toStringAsFixed(4)},',
+        'hue=h=${stealth.hue.toStringAsFixed(2)},',
+        'noise=alls=${stealth.noise.toStringAsFixed(2)}:allf=t[bg];',
+        '[bg][1:v]overlay=0:0'
+      ].join('');
+
+      final List<String> args = [
         '-hide_banner',
         '-y',
-        '-hwaccel',
-        'auto', // Enable HW Decoding matching BatchVideoService
-        '-ss',
-        time.toString(),
-        '-i',
-        videoPath,
-        '-i',
-        overlayPath,
-        '-filter_complex',
-        '[0:v]scale=$width:$height:force_original_aspect_ratio=increase,crop=$width:$height[bg];[bg][1:v]overlay=0:0',
-        '-vframes',
-        '1',
-        '-pix_fmt',
-        'yuv420p', // Ensure output compatibility
+        '-hwaccel', 'auto',
+        '-ss', time.toString(),
+        '-i', videoPath,
+        '-i', overlayPath,
+        '-filter_complex', filter,
+        '-vframes', '1',
+      ];
+
+      if (isJpg) {
+        args.addAll([
+          '-q:v', '2',
+          '-pix_fmt', 'yuvj420p',
+          '-map_metadata', '-1', // Clear global metadata
+          '-metadata:s:v:0', 'make=${stealth.make}',
+          '-metadata:s:v:0', 'model=${stealth.model}',
+          '-metadata:s:v:0', 'creation_time=${stealth.creationTime}',
+        ]);
+      } else {
+        args.addAll([
+          '-pix_fmt', 'rgba',
+          '-metadata', 'Software=',
+          '-metadata', 'Creation Time=${stealth.creationTime}',
+          '-metadata', 'Title=IMG_${stealth.creationTime.replaceAll(':', '').replaceAll(' ', '_')}',
+        ]);
+      }
+
+      args.addAll([
+        '-fflags', '+bitexact',
+        '-flags:v', '+bitexact',
         outputPath,
       ]);
+
+      final process = await Process.start(_ffmpegBin, args);
       _activeProcesses.add(process);
 
-      // Capture stderr for better debugging matching BatchVideoService
       final stderrList = <String>[];
       process.stderr.listen((data) {
         final out = String.fromCharCodes(data);
@@ -266,7 +386,7 @@ class ImagePosterService {
         for (final line in lines) {
           if (line.trim().isNotEmpty) {
             stderrList.add(line);
-            if (stderrList.length > 10) stderrList.removeAt(0);
+            if (stderrList.length > 20) stderrList.removeAt(0);
           }
         }
       });

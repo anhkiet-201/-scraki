@@ -12,7 +12,7 @@ class ImagePosterConfig {
   const ImagePosterConfig({
     required this.outputCount,
     required this.slides,
-    this.outputFormat = 'png',
+    this.outputFormat = 'jpg',
     this.width = 1080,
     this.height = 1350,
     this.outputDir,

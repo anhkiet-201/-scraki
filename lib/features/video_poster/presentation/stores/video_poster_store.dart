@@ -933,7 +933,7 @@ abstract class _VideoPosterStore with Store {
       final config = ImagePosterConfig(
         outputCount: batchOutputCount,
         slides: slides.toList(),
-        outputFormat: 'png',
+        outputFormat: 'jpg',
         width: 1080,
         height: 1350,
       );

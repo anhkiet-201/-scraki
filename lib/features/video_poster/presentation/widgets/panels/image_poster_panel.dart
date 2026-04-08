@@ -109,7 +109,7 @@ class _ImagePosterPanelState extends State<ImagePosterPanel> {
               ),
               const SizedBox(height: 16),
                Text(
-                'QUY CÁCH: 1080x1350 (PNG)',
+                'QUY CÁCH: 1080x1350 (JPEG)',
                 style: TextStyle(
                   fontSize: 10, 
                   fontWeight: FontWeight.w500,
