@@ -669,6 +669,40 @@ abstract class _VideoPosterStore with Store {
   @observable
   String? batchOutputDir;
 
+  // ─── Custom Audio ──────────────────────────────────────────────────
+
+  /// Đường dẫn file nhạc nền tùy chỉnh được chọn bởi người dùng.
+  /// null = không dùng nhạc tùy chỉnh.
+  @observable
+  String? customAudioPath;
+
+  /// Âm lượng nhạc tùy chỉnh (0.0 – 1.0). Mặc định 80%.
+  @observable
+  double customAudioVolume = 0.8;
+
+  @action
+  void setCustomAudioPath(String? path) {
+    customAudioPath = path;
+    _syncMusicTrack();
+  }
+
+  @action
+  void setCustomAudioVolume(double volume) {
+    customAudioVolume = volume.clamp(0.0, 1.0);
+    if (isPreviewMode && !isMuted) {
+      musicPlayer.setVolume(customAudioVolume * 100);
+    }
+  }
+
+  /// Đồng bộ file nhạc nền vào musicPlayer nếu đang trong project.
+  void _syncMusicTrack() {
+    if (customAudioPath != null) {
+      musicPlayer.open(Media(customAudioPath!), play: isPlaying);
+    } else {
+      musicPlayer.stop();
+    }
+  }
+
   BatchVideoService? _batchService;
   StreamSubscription<String>? _batchSub;
 
@@ -789,6 +823,8 @@ abstract class _VideoPosterStore with Store {
       outputCount: batchOutputCount,
       textOverlays: timedOverlays,
       imageOverlays: customImages.toList(),
+      customAudioPath: customAudioPath,
+      customAudioVolume: customAudioVolume,
     );
 
     final stream = _batchService!.createBatchVideos(
@@ -987,6 +1023,7 @@ abstract class _VideoPosterStore with Store {
 
   late final Player player;
   late final VideoController videoController;
+  late final Player musicPlayer;
 
   @observable
   Duration duration = const Duration(seconds: 40);
@@ -998,14 +1035,56 @@ abstract class _VideoPosterStore with Store {
   Duration realDuration = Duration.zero;
 
   @observable
+  Duration musicDuration = Duration.zero;
+
+  @observable
   bool isPlaying = false;
 
   @observable
   bool isPreviewMode = false;
 
+  /// True khi player đang bị tắt tiếng (mute).
+  /// Edit mode luôn mute; Preview mode check theo giá trị này.
+  @observable
+  bool isMuted = true;
+
+  @action
+  void toggleMute() {
+    isMuted = !isMuted;
+    _updateAllVolumes();
+  }
+
   @action
   void togglePreviewMode() {
     isPreviewMode = !isPreviewMode;
+    if (isPreviewMode) {
+      // Vào Preview: bật âm thanh, tự động play
+      isMuted = false;
+      if (sourceVideoPaths.isNotEmpty) player.play();
+    } else {
+      // Ra khỏi Preview: mute lại
+      isMuted = true;
+    }
+    _updateAllVolumes();
+  }
+
+  /// Cập nhật âm lượng cho cả 2 player dựa trên chế độ hiện tại.
+  void _updateAllVolumes() {
+    if (isMuted) {
+      player.setVolume(0);
+      musicPlayer.setVolume(0);
+    } else {
+      if (isPreviewMode) {
+        // Preview: Video 5%, Nhạc x%
+        player.setVolume(5);
+        musicPlayer.setVolume(customAudioVolume * 100);
+      } else {
+        // Edit mode: Mute tất cả (hoặc tùy bác muốn Video 100% khi edit?)
+        // Theo yêu cầu, edit mode vẫn nên để im lặng để tập trung.
+        player.setVolume(0);
+        musicPlayer.setVolume(0);
+      }
+    }
   }
 
   // Stream subscriptions (private)
@@ -1013,6 +1092,10 @@ abstract class _VideoPosterStore with Store {
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<double>? _rateSub;
   Timer? _playbackTimer;
+
+  // Đồng hồ hệ thống để đo thời gian thực tế trôi qua — chính xác hơn cộng 100ms thủ công
+  final Stopwatch _stopwatch = Stopwatch();
+  Duration _positionAtLastSeek = Duration.zero;
 
   // ─── Navigation State ─────────────────────────────────────────────────────
 
@@ -1069,6 +1152,12 @@ abstract class _VideoPosterStore with Store {
   @action
   void initializePlayer() {
     player = Player();
+    musicPlayer = Player();
+
+    // Mặc định mute khi chạy để không gây phiền khi edit.
+    player.setVolume(0);
+    musicPlayer.setVolume(0);
+
     videoController = VideoController(
       player,
       configuration: const VideoControllerConfiguration(
@@ -1077,17 +1166,28 @@ abstract class _VideoPosterStore with Store {
     );
 
     player.setPlaylistMode(PlaylistMode.loop);
+    // musicPlayer KHÔNG loop — nhạc dừng tự nhiên khi hết file
+    musicPlayer.setPlaylistMode(PlaylistMode.none);
 
     _durationSub = player.stream.duration.listen((Duration d) {
       runInAction(() => realDuration = d);
+    });
+
+    musicPlayer.stream.duration.listen((Duration d) {
+      runInAction(() => musicDuration = d);
     });
 
     _playingSub = player.stream.playing.listen((bool p) {
       runInAction(() {
         isPlaying = p;
         if (p) {
+          // Resume: play nhạc nền trước, sau đó start timer (timer sẽ start stopwatch)
+          musicPlayer.play();
           _startPlaybackTimer();
         } else {
+          // Pause: dừng đồng hồ trước, rồi dừng timer và nhạc
+          _stopwatch.stop();
+          musicPlayer.pause();
           _stopPlaybackTimer();
         }
       });
@@ -1099,15 +1199,26 @@ abstract class _VideoPosterStore with Store {
   }
 
   void _startPlaybackTimer() {
-    _stopPlaybackTimer();
-    _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    // Hủy timer cũ (KHÔNG stop stopwatch)
+    _playbackTimer?.cancel();
+    _playbackTimer = null;
+
+    // Bật stopwatch từ vị trí hiện tại
+    _stopwatch.start();
+
+    _playbackTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       runInAction(() {
-        final newPos = position + const Duration(milliseconds: 100);
-        if (newPos >= const Duration(seconds: 40)) {
+        // Tính position chính xác dựa trên thời gian thực tế đã trôi qua
+        final newPos = _positionAtLastSeek + _stopwatch.elapsed;
+
+        if (newPos >= duration) {
+          // Hết Project: quay về đầu
+          _positionAtLastSeek = Duration.zero;
+          _stopwatch.reset();
+          _stopwatch.start();
           position = Duration.zero;
-          if (realDuration > Duration.zero) {
-            player.seek(Duration.zero);
-          }
+          player.seek(Duration.zero);
+          musicPlayer.seek(Duration.zero);
         } else {
           position = newPos;
         }
@@ -1116,17 +1227,30 @@ abstract class _VideoPosterStore with Store {
   }
 
   void _stopPlaybackTimer() {
+    // Chỉ hủy Timer, KHÔNG stop Stopwatch ở đây
+    // Stopwatch chỉ được dừng khi Pause (trong _playingSub)
     _playbackTimer?.cancel();
     _playbackTimer = null;
   }
 
   @action
   void seekProject(Duration p) {
+    // 1. Cập nhật vị trí Project
     position = p;
+    _positionAtLastSeek = p;
+
+    // 2. Reset Stopwatch để tính lại chính xác từ điểm mới
+    _stopwatch.reset();
+    if (isPlaying) _stopwatch.start();
+
+    // 3. Seek video (lặp lại theo realDuration)
     if (realDuration > Duration.zero) {
-      final targetMs = p.inMilliseconds % realDuration.inMilliseconds;
-      player.seek(Duration(milliseconds: targetMs));
+      final videoMs = p.inMilliseconds % realDuration.inMilliseconds;
+      player.seek(Duration(milliseconds: videoMs));
     }
+
+    // 4. Seek nhạc nền tuyến tính — quá thời lượng thì tự im lặng
+    musicPlayer.seek(p);
   }
 
   /// Dispose player, controller, subscriptions, and any running batch job.
@@ -1139,6 +1263,7 @@ abstract class _VideoPosterStore with Store {
     _playingSub?.cancel();
     _rateSub?.cancel();
     player.dispose();
+    musicPlayer.dispose();
   }
 
   /// Start a new project by clearing all inputs and outputs
@@ -1147,8 +1272,10 @@ abstract class _VideoPosterStore with Store {
     sourceVideoPaths.clear();
     customTexts.clear();
     customImages.clear();
+    customAudioPath = null;
     currentVideoIndex = 0;
     player.stop();
+    musicPlayer.stop();
     position = Duration.zero;
 
     // Clear batch output data
@@ -1175,6 +1302,13 @@ abstract class _VideoPosterStore with Store {
       Media(sourceVideoPaths[currentVideoIndex]),
       play: !isImagePosterMode,
     );
+
+    if (customAudioPath != null) {
+      musicPlayer.open(
+        Media(customAudioPath!),
+        play: !isImagePosterMode,
+      );
+    }
   }
 
   @action

@@ -57,6 +57,14 @@ class BatchVideoConfig {
   final List<TimedOverlay> textOverlays;
   final List<CustomImageOverlay> imageOverlays;
 
+  /// Đường dẫn file audio tùy chỉnh để mix vào video.
+  /// null = chỉ dùng audio gốc (giảm về 5%).
+  final String? customAudioPath;
+
+  /// Âm lượng của nhạc tùy chỉnh (0.0 – 1.0).
+  /// Mặc định 0.8 (~80%). Audio gốc sẽ được giữ ở 5%.
+  final double customAudioVolume;
+
   const BatchVideoConfig({
     this.minSegmentDuration = 4,
     this.maxSegmentDuration = 6,
@@ -67,6 +75,8 @@ class BatchVideoConfig {
     this.outputDir,
     this.textOverlays = const [],
     this.imageOverlays = const [],
+    this.customAudioPath,
+    this.customAudioVolume = 0.8,
   });
 }
 
@@ -846,6 +856,11 @@ class BatchVideoService {
       // Opt-2: dùng cached encoder thay vì await lại
       final gpuEncoder = await _getGpuEncoder();
 
+      // Determine if custom audio is being used
+      final hasCustomAudio = config.customAudioPath != null &&
+          config.customAudioPath!.isNotEmpty &&
+          File(config.customAudioPath!).existsSync();
+
       final List<String> ffmpegArgs = [
         '-hide_banner',
         '-y',
@@ -858,6 +873,17 @@ class BatchVideoService {
         '-i',
         concatFile.path,
       ];
+
+      // Input 1 (optional): custom audio — loop indefinitely, ffmpeg sẽ trim theo video
+      if (hasCustomAudio) {
+        ffmpegArgs.addAll([
+          '-stream_loop', '-1',
+          '-i', config.customAudioPath!,
+        ]);
+      }
+
+      // Khi có custom audio, nó chiếm input index 1 → text/image inputs bắt đầu từ index 2
+      final int audioInputOffset = hasCustomAudio ? 1 : 0;
 
       // 1. Text Overlays (Timed)
       for (var i = 0; i < config.textOverlays.length; i++) {
@@ -912,7 +938,8 @@ class BatchVideoService {
       String lastVideoLabel = '[bg]';
 
       // 3a. Overlay Custom Images
-      int imageInputStartIndex = 1 + config.textOverlays.length;
+      // Input index: 0=concat video, [1=custom audio nếu có], sau đó text, sau đó images
+      int imageInputStartIndex = 1 + audioInputOffset + config.textOverlays.length;
       for (int i = 0; i < config.imageOverlays.length; i++) {
         var imgConfig = config.imageOverlays[i];
         int currentInputIdx = imageInputStartIndex + i;
@@ -984,7 +1011,8 @@ class BatchVideoService {
       // 3b. Overlay Text
       for (int i = 0; i < config.textOverlays.length; i++) {
         final overlay = config.textOverlays[i];
-        int textInputIdx = 1 + i;
+        // Text input index: 1 (+ audioInputOffset nếu có custom audio) + i
+        int textInputIdx = 1 + audioInputOffset + i;
 
         if (!overlay.isAnimated) {
           final int textJX = random.nextInt(9) - 4;
@@ -1144,6 +1172,25 @@ class BatchVideoService {
 
       // Final processing
       String fStr = filterComplex.toString();
+
+      // Build audio mix filter:
+      // - Nếu có custom audio: mix audio gốc (5%) + nhạc custom (volume tùy chỉnh)
+      // - Nếu không: chỉ dùng audio gốc từ concat (giảm 5%)
+      String audioMapArg;
+      if (hasCustomAudio) {
+        final customVol = config.customAudioVolume.clamp(0.0, 1.0).toStringAsFixed(3);
+        // [0:a] = original audio track (từ concat), giảm về 5%
+        // [1:a] = custom music, loop đến khi hết video, volume tùy chỉnh
+        // amix duration=first: cắt theo input đầu tiên (tức độ dài video)
+        fStr += '[0:a]volume=0.05[orig_a];'
+            '[1:a]volume=$customVol[music_a];'
+            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=2[mixed_a]';
+        audioMapArg = '[mixed_a]';
+      } else {
+        fStr += '[0:a]volume=0.05[orig_a]';
+        audioMapArg = '[orig_a]';
+      }
+
       if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
 
       ffmpegArgs.addAll([
@@ -1152,7 +1199,7 @@ class BatchVideoService {
         '-map',
         lastVideoLabel,
         '-map',
-        '0:a', // Map audio from concat
+        audioMapArg,
         '-c:a',
         'aac',
         '-r',

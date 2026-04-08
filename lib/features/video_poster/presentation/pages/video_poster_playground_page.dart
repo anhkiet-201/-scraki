@@ -137,6 +137,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                             child: Center(
                                               child: FloatingGlassControls(
                                                 isPlaying: store.isPlaying,
+                                                isMuted: store.isMuted,
                                                 position: store.position,
                                                 duration: store.duration,
                                                 onPlayPause: () {
@@ -146,7 +147,9 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                                     store.player.play();
                                                   }
                                                 },
-                                                onSeek: (p) => store.seekProject(p),
+                                                onToggleMute: store.toggleMute,
+                                                onSeek: (p) =>
+                                                    store.seekProject(p),
                                               ),
                                             ),
                                           ),

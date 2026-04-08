@@ -429,6 +429,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$customAudioPathAtom = Atom(
+    name: '_VideoPosterStore.customAudioPath',
+    context: context,
+  );
+
+  @override
+  String? get customAudioPath {
+    _$customAudioPathAtom.reportRead();
+    return super.customAudioPath;
+  }
+
+  @override
+  set customAudioPath(String? value) {
+    _$customAudioPathAtom.reportWrite(value, super.customAudioPath, () {
+      super.customAudioPath = value;
+    });
+  }
+
+  late final _$customAudioVolumeAtom = Atom(
+    name: '_VideoPosterStore.customAudioVolume',
+    context: context,
+  );
+
+  @override
+  double get customAudioVolume {
+    _$customAudioVolumeAtom.reportRead();
+    return super.customAudioVolume;
+  }
+
+  @override
+  set customAudioVolume(double value) {
+    _$customAudioVolumeAtom.reportWrite(value, super.customAudioVolume, () {
+      super.customAudioVolume = value;
+    });
+  }
+
   late final _$isExportingImagesAtom = Atom(
     name: '_VideoPosterStore.isExportingImages',
     context: context,
@@ -537,6 +573,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$musicDurationAtom = Atom(
+    name: '_VideoPosterStore.musicDuration',
+    context: context,
+  );
+
+  @override
+  Duration get musicDuration {
+    _$musicDurationAtom.reportRead();
+    return super.musicDuration;
+  }
+
+  @override
+  set musicDuration(Duration value) {
+    _$musicDurationAtom.reportWrite(value, super.musicDuration, () {
+      super.musicDuration = value;
+    });
+  }
+
   late final _$isPlayingAtom = Atom(
     name: '_VideoPosterStore.isPlaying',
     context: context,
@@ -570,6 +624,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   set isPreviewMode(bool value) {
     _$isPreviewModeAtom.reportWrite(value, super.isPreviewMode, () {
       super.isPreviewMode = value;
+    });
+  }
+
+  late final _$isMutedAtom = Atom(
+    name: '_VideoPosterStore.isMuted',
+    context: context,
+  );
+
+  @override
+  bool get isMuted {
+    _$isMutedAtom.reportRead();
+    return super.isMuted;
+  }
+
+  @override
+  set isMuted(bool value) {
+    _$isMutedAtom.reportWrite(value, super.isMuted, () {
+      super.isMuted = value;
     });
   }
 
@@ -1066,6 +1138,30 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setCustomAudioPath(String? path) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setCustomAudioPath',
+    );
+    try {
+      return super.setCustomAudioPath(path);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setCustomAudioVolume(double volume) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setCustomAudioVolume',
+    );
+    try {
+      return super.setCustomAudioVolume(volume);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setBatchOutputCount(int count) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setBatchOutputCount',
@@ -1108,6 +1204,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     );
     try {
       return super.randomizePreviewFrame();
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void toggleMute() {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.toggleMute',
+    );
+    try {
+      return super.toggleMute();
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
     }
@@ -1246,14 +1354,18 @@ batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},
 batchLogs: ${batchLogs},
 batchOutputDir: ${batchOutputDir},
+customAudioPath: ${customAudioPath},
+customAudioVolume: ${customAudioVolume},
 isExportingImages: ${isExportingImages},
 isImagePosterMode: ${isImagePosterMode},
 playbackSpeed: ${playbackSpeed},
 duration: ${duration},
 position: ${position},
 realDuration: ${realDuration},
+musicDuration: ${musicDuration},
 isPlaying: ${isPlaying},
 isPreviewMode: ${isPreviewMode},
+isMuted: ${isMuted},
 activeNavIndex: ${activeNavIndex}
     ''';
   }
