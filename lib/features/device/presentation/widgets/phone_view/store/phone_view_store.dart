@@ -350,8 +350,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     int action = -1;
     int repeat = 0;
 
-    if (event is KeyDownEvent) action = 0;
-    else if (event is KeyRepeatEvent) { action = 0; repeat = 1; }
+    if (event is KeyDownEvent) {
+      action = 0;
+    } else if (event is KeyRepeatEvent) { action = 0; repeat = 1; }
     else if (event is KeyUpEvent) action = 1;
 
     if (action == -1) return;

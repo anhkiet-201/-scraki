@@ -73,10 +73,10 @@ class _TaskCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -134,7 +134,7 @@ class _HeaderRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 11,
                 ),
               ),
@@ -166,7 +166,7 @@ class _CancelButton extends StatelessWidget {
           padding: const EdgeInsets.all(6),
           child: Icon(
             Icons.close_rounded,
-            color: Colors.white.withOpacity(0.4),
+            color: Colors.white.withValues(alpha: 0.4),
             size: 16,
           ),
         ),
@@ -204,7 +204,7 @@ class _LeadingIcon extends StatelessWidget {
 
     return _StatusIcon(
       icon: icon,
-      color: Colors.white.withOpacity(0.8),
+      color: Colors.white.withValues(alpha: 0.8),
     );
   }
 }
@@ -219,7 +219,7 @@ class _ProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         // Luôn là indeterminate (chạy qua lại) theo yêu cầu đơn giản hóa
         value: null,
-        backgroundColor: Colors.white.withOpacity(0.08),
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
         valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
         minHeight: 2,
       ),
@@ -239,7 +239,7 @@ class _StatusIcon extends StatelessWidget {
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: color, size: 16),

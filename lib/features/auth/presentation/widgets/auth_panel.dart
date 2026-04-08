@@ -313,7 +313,7 @@ class _AuthPanelState extends State<AuthPanel> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          token.secret.substring(0, code.length.clamp(0, token.secret.length)) + '...',
+                          '${token.secret.substring(0, code.length.clamp(0, token.secret.length))}...',
                           style: TextStyle(
                             color: onSurface.withValues(alpha: 0.3),
                             fontSize: 10,

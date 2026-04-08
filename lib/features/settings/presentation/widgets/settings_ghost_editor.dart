@@ -42,7 +42,9 @@ class _SettingsGhostEditorState extends State<SettingsGhostEditor> {
       setState(() {
         _parseLines();
         // Clear caches to force rebuild with new data
-        _rowControllers.values.forEach((c) => c.dispose());
+        for (var c in _rowControllers.values) {
+          c.dispose();
+        }
         _rowControllers.clear();
       });
     }
@@ -109,8 +111,12 @@ class _SettingsGhostEditorState extends State<SettingsGhostEditor> {
   @override
   void dispose() {
     widget.controller.removeListener(_onMainControllerChanged);
-    _rowControllers.values.forEach((c) => c.dispose());
-    _focusNodes.values.forEach((n) => n.dispose());
+    for (var c in _rowControllers.values) {
+      c.dispose();
+    }
+    for (var n in _focusNodes.values) {
+      n.dispose();
+    }
     super.dispose();
   }
 
