@@ -628,7 +628,10 @@ class BatchVideoService {
               'format=yuv420p'
         : '$baseFilter,format=yuv420p';
 
-    final afFilter = hasAudio ? 'volume=0.05' : 'anullsrc';
+    // Giữ nguyên audio gốc ở segment (không giảm volume ở đây).
+    // Volume thực sự (50% hoặc 5%) chỉ được áp dụng một lần duy nhất
+    // tại bước _createOutputVideo qua toOriginalAudioFilterChain.
+    final afFilter = hasAudio ? 'aresample=44100' : 'anullsrc';
 
     final gpuEncoder = await _getGpuEncoder();
 
@@ -1222,7 +1225,7 @@ class BatchVideoService {
       String fStr = filterComplex.toString();
 
       // Build audio mix filter:
-      // - Nếu có custom audio: mix audio gốc (5%) + nhạc custom (volume tùy chỉnh)
+      // - Nếu có custom audio: mix audio gốc (50%) + nhạc custom (volume tùy chỉnh)
       // - Nếu không: chỉ dùng audio gốc từ concat (giảm 5%)
       String audioMapArg;
       if (hasCustomAudio) {
@@ -1230,17 +1233,18 @@ class BatchVideoService {
         // Áp dụng audio spoof profile độc lập cho từng video:
         // pitch shift + EQ curve + time offset phá vỡ audio fingerprint
         // của cùng 1 file nhạc nền khi upload nhiều video.
+        // Audio gốc giữ ở 50% để người xem vẫn nghe được âm thanh gốc bên dưới.
         final customChain = audioProfile.toCustomAudioFilterChain(volume: customVol, pts: pts);
-        final origChain = audioProfile.toOriginalAudioFilterChain(pts: pts);
+        final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.5, pts: pts);
         fStr += '[0:a]$origChain[orig_a];'
             '[1:a]$customChain[music_a];'
             '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=0,'
             'aresample=async=1:first_pts=0[mixed_a]';
         audioMapArg = '[mixed_a]';
       } else {
-        // Không có nhạc nền: vẫn áp dụng pitch shift lên audio gốc 5%
+        // Không có nhạc nền: giảm audio gốc về 5% và áp dụng pitch shift
         // để mỗi video có audio fingerprint khác nhau.
-        final origChain = audioProfile.toOriginalAudioFilterChain(pts: pts);
+        final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.05, pts: pts);
         fStr += '[0:a]$origChain,aresample=async=1:first_pts=0[orig_a]';
         audioMapArg = '[orig_a]';
       }
@@ -1654,10 +1658,14 @@ class _AudioSpoofProfile {
         'aresample=44100,aformat=channel_layouts=stereo';
   }
 
-  /// Filter chain cho original audio (audio gốc từ video, 5%).
-  String toOriginalAudioFilterChain({required double pts}) {
+  /// Filter chain cho original audio (audio gốc từ video).
+  /// [volume]: mức âm lượng mong muốn (0.0–1.0).
+  ///   - 0.5 (50%) khi có custom audio (người xem vẫn nghe được tiếng gốc).
+  ///   - 0.05 (5%) khi không có custom audio (tiếng gốc rất nhỏ, tránh bị nhận diện).
+  String toOriginalAudioFilterChain({required double volume, required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
+    final volStr = volume.clamp(0.0, 1.0).toStringAsFixed(3);
 
     return 'aresample=44100,'
         'atrim=start=0,'
@@ -1667,7 +1675,7 @@ class _AudioSpoofProfile {
         'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
         'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
         'adelay=$delayMs|$delayMs,'
-        'volume=0.05,'
+        'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
         'aresample=44100,aformat=channel_layouts=stereo';
   }
