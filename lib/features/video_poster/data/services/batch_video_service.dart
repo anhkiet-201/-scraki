@@ -712,6 +712,7 @@ class BatchVideoService {
         '-hwaccel',
         'auto',
         '-ss', startSeconds.toString(),
+        '-fflags', '+genpts+igndts',
         '-i', input,
       ];
 
@@ -768,6 +769,8 @@ class BatchVideoService {
 
       args.addAll([
         '-movflags', '+faststart',
+        '-avoid_negative_ts', 'make_zero',
+        '-map_metadata', '-1',
         output,
       ]);
 
@@ -1227,17 +1230,18 @@ class BatchVideoService {
         // Áp dụng audio spoof profile độc lập cho từng video:
         // pitch shift + EQ curve + time offset phá vỡ audio fingerprint
         // của cùng 1 file nhạc nền khi upload nhiều video.
-        final customChain = audioProfile.toCustomAudioFilterChain(customVol);
-        final origChain = audioProfile.toOriginalAudioFilterChain();
+        final customChain = audioProfile.toCustomAudioFilterChain(volume: customVol, pts: pts);
+        final origChain = audioProfile.toOriginalAudioFilterChain(pts: pts);
         fStr += '[0:a]$origChain[orig_a];'
             '[1:a]$customChain[music_a];'
-            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=0[mixed_a]';
+            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=0,'
+            'aresample=async=1:first_pts=0[mixed_a]';
         audioMapArg = '[mixed_a]';
       } else {
         // Không có nhạc nền: vẫn áp dụng pitch shift lên audio gốc 5%
         // để mỗi video có audio fingerprint khác nhau.
-        final origChain = audioProfile.toOriginalAudioFilterChain();
-        fStr += '[0:a]$origChain[orig_a]';
+        final origChain = audioProfile.toOriginalAudioFilterChain(pts: pts);
+        fStr += '[0:a]$origChain,aresample=async=1:first_pts=0[orig_a]';
         audioMapArg = '[orig_a]';
       }
 
@@ -1289,6 +1293,7 @@ class BatchVideoService {
         ...spoofProfile.toFfmpegMetadataArgs(),
         '-avoid_negative_ts',
         'make_zero', // Dập tắt mọi giá trị âm còn sót lại về 0 trước khi ghi file
+        '-shortest', // Đảm bảo video và audio kết thúc cùng lúc
         finalOutput,
       ]);
 
@@ -1619,40 +1624,51 @@ class _AudioSpoofProfile {
   }
 
   /// Filter chain cho custom audio (nhạc nền).
-  /// Bao gồm: pitch shift → EQ → volume.
-  String toCustomAudioFilterChain(double volume) {
+  /// Bao gồm: pitch shift → EQ → volume → sync với tốc độ video.
+  String toCustomAudioFilterChain({required double volume, required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
-    final tempoStr = (1.0 / pitchFactor).toStringAsFixed(6);
+    // Tính toán tempo tổng hợp:
+    // tempo = (1 / pitchFactor) * (1 / pts)
+    // - (1 / pitchFactor): để giữ nguyên tốc độ sau khi asetrate thay đổi pitch.
+    // - (1 / pts): để đồng bộ tốc độ audio với thay đổi setpts của video.
+    final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
+
     final volStr = volume.toStringAsFixed(3);
     // [Iron Fist]
-    // 1. atrim=start=0: Vứt bỏ triệt để mọi mẫu âm thanh có timestamp âm.
-    // 2. aresample=async=1:first_pts=0: Ép mẫu âm thanh đầu tiên về đúng mốc 0.
-    // 3. asetpts=N/SR/TB: Vẽ lại dòng thời gian dựa trên số mẫu để đảm bảo độ tuyến tính.
-    return 'atrim=start=0,'
+    // 1. aresample=44100: Ép về 44.1k chuẩn.
+    // 2. atrim=start=0: Vứt bỏ triệt để mọi mẫu âm thanh có timestamp âm.
+    // 3. asetrate=44100*pitch: Thay đổi tốc độ lấy mẫu để đổi Pitch.
+    // 4. atempo: Điều chỉnh lại tốc độ phát (tempo) để đồng bộ video jitter.
+    // 5. asetpts=PTS-STARTPTS: Đảm bảo timeline bắt đầu sạch từ 0 cho luồng này.
+    // 6. aresample=44100:cl=stereo: Chuẩn hóa Stereo và sample rate trước khi vào amix.
+    return 'aresample=44100,'
+        'atrim=start=0,'
         'asetrate=44100*$pitchStr,'
-        'aresample=44100:async=1:first_pts=0,'
-        'atempo=$tempoStr,'
+        'atempo=$totalTempo,'
         'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
         'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
         'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
         'adelay=$delayMs|$delayMs,'
         'volume=$volStr,'
-        'asetpts=N/SR/TB';
+        'asetpts=PTS-STARTPTS,'
+        'aresample=44100,aformat=channel_layouts=stereo';
   }
 
   /// Filter chain cho original audio (audio gốc từ video, 5%).
-  String toOriginalAudioFilterChain() {
+  String toOriginalAudioFilterChain({required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
-    final tempoStr = (1.0 / pitchFactor).toStringAsFixed(6);
-    return 'atrim=start=0,'
+    final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
+
+    return 'aresample=44100,'
+        'atrim=start=0,'
         'asetrate=44100*$pitchStr,'
-        'aresample=44100:async=1:first_pts=0,'
-        'atempo=$tempoStr,'
+        'atempo=$totalTempo,'
         'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
         'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
         'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
         'adelay=$delayMs|$delayMs,'
         'volume=0.05,'
-        'asetpts=N/SR/TB';
+        'asetpts=PTS-STARTPTS,'
+        'aresample=44100,aformat=channel_layouts=stereo';
   }
 }
