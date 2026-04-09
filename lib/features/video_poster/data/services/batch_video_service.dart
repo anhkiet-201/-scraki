@@ -478,38 +478,60 @@ class BatchVideoService {
     // Check cache for color info
     if (_colorInfoCache.containsKey(path)) {
       // We still need duration, but we can reuse the color info if we have to.
-      // However, most calls to this need both. Since ffprobe is called anyway
-      // for duration, we might as well get fresh color info unless we find a way
-      // to cache duration too (which we do for valid videos in createBatchVideos).
     }
 
     try {
       final result = await Process.run(_ffprobeBin, [
-        '-v', 'error',
         '-show_entries',
-        'format=duration:stream=codec_type,color_transfer,color_primaries,pix_fmt',
+        'format=duration:stream=codec_type,color_transfer,color_primaries,pix_fmt,duration',
         '-of', 'default=noprint_wrappers=1:nokey=0',
         path,
       ]);
       final out = result.stdout as String;
+      final err = result.stderr as String; // Fallback source
 
       double durationSec = 0;
       bool hasAudio = false;
-      String transfer = '';
-      String primaries = '';
-      String pixFmt = '';
+      String transfer = 'unknown';
+      String primaries = 'unknown';
+      String pixFmt = 'unknown';
 
+      // Parse output từng dòng
       for (final line in out.split('\n')) {
-        if (line.startsWith('duration=')) {
-          durationSec = double.tryParse(line.split('=').last.trim()) ?? 0;
-        } else if (line.startsWith('codec_type=audio')) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+
+        if (trimmed.startsWith('duration=')) {
+          // Lấy duration cao nhất (từ format hoặc từ stream bất kỳ)
+          final val = double.tryParse(trimmed.split('=').last.trim());
+          if (val != null && val > durationSec) {
+            durationSec = val;
+          }
+        } else if (trimmed.startsWith('codec_type=audio')) {
           hasAudio = true;
-        } else if (line.startsWith('color_transfer=')) {
-          transfer = line.split('=').last.trim();
-        } else if (line.startsWith('color_primaries=')) {
-          primaries = line.split('=').last.trim();
-        } else if (line.startsWith('pix_fmt=')) {
-          pixFmt = line.split('=').last.trim();
+        } else if (trimmed.startsWith('color_transfer=')) {
+          final val = trimmed.split('=').last.trim();
+          if (val != 'unknown') transfer = val;
+        } else if (trimmed.startsWith('color_primaries=')) {
+          final val = trimmed.split('=').last.trim();
+          if (val != 'unknown') primaries = val;
+        } else if (trimmed.startsWith('pix_fmt=')) {
+          final val = trimmed.split('=').last.trim();
+          if (val != 'unknown' && pixFmt == 'unknown') {
+            pixFmt = val; // ưu tiên lấy pix_fmt hợp lệ đầu tiên
+          }
+        }
+      }
+
+      // FALLBACK: Quét dữ liệu ffprobe báo cáo qua stderr (banner) nếu metadata file khuyết duration
+      if (durationSec == 0) {
+        final durationRegex = RegExp(r'Duration:\s*(\d+):(\d+):(\d+\.\d+)');
+        final match = durationRegex.firstMatch(err);
+        if (match != null) {
+          final h = int.parse(match.group(1)!);
+          final m = int.parse(match.group(2)!);
+          final s = double.tryParse(match.group(3)!) ?? 0;
+          durationSec = (h * 3600) + (m * 60) + s;
         }
       }
 
@@ -844,8 +866,26 @@ class BatchVideoService {
     final noise = 0.5 + random.nextDouble() * 1.5;
 
     final spoofProfile = _VideoSpoofProfile.random(random);
+    final gopSize = 30 + random.nextInt(31);
+
+    final hasCustomAudio = config.customAudioPath != null &&
+        config.customAudioPath!.isNotEmpty &&
+        File(config.customAudioPath!).existsSync();
+    final audioProfile = _AudioSpoofProfile.random(random);
     final noiseStr = noise.toStringAsFixed(2);
     final ptsStr = pts.toStringAsFixed(6);
+
+    // Hue/Saturation jitter ±3°, ±3%
+    final double hueShift = (random.nextDouble() * 6.0) - 3.0;
+    final double satFactor = 0.97 + random.nextDouble() * 0.06;
+    // Vignette angle ngẫu nhiên nhưng cực nhỏ (PI/100 -> PI/50) để không làm đen 4 góc
+    final double vignetteAngle = pi / 100 + random.nextDouble() * (pi / 100);
+    
+    // Đổi Curves thành Gamma phân kênh (±2%) để chống perceptual hash.
+    // Dùng Gamma thay vì Curves để tránh phải chuyển hệ màu sang 'gbrp' (Gây lỗi crash encoder trên Mac và rác log cảnh báo)
+    final double gammaR = 0.98 + random.nextDouble() * 0.04;
+    final double gammaG = 0.98 + random.nextDouble() * 0.04;
+    final double gammaB = 0.98 + random.nextDouble() * 0.04;
 
     final finalOutput =
         '${Directory(outputDir).absolute.path}${Platform.pathSeparator}final_${outputIndex.toString().padLeft(3, '0')}.mp4';
@@ -856,16 +896,15 @@ class BatchVideoService {
       // Opt-2: dùng cached encoder thay vì await lại
       final gpuEncoder = await _getGpuEncoder();
 
-      // Determine if custom audio is being used
-      final hasCustomAudio = config.customAudioPath != null &&
-          config.customAudioPath!.isNotEmpty &&
-          File(config.customAudioPath!).existsSync();
+      // hasCustomAudio được xác định trước try block để probe audio duration.
 
       final List<String> ffmpegArgs = [
         '-hide_banner',
         '-y',
         '-hwaccel',
-        'auto', // HW Decode
+        'auto',
+        '-fflags',
+        '+genpts',
         '-f',
         'concat',
         '-safe',
@@ -874,10 +913,9 @@ class BatchVideoService {
         concatFile.path,
       ];
 
-      // Input 1 (optional): custom audio — loop indefinitely, ffmpeg sẽ trim theo video
+      // Input 1 (optional): custom audio — ffmpeg sẽ trim theo video
       if (hasCustomAudio) {
         ffmpegArgs.addAll([
-          '-stream_loop', '-1',
           '-i', config.customAudioPath!,
         ]);
       }
@@ -918,21 +956,28 @@ class BatchVideoService {
       // 3. Build filter complex
       StringBuffer filterComplex = StringBuffer();
 
-      // Opt-4: Bỏ zoompan (d=1 không tạo chuyển động thực, chỉ tốn GPU).
-      // Thay bằng crop tĩnh với offset ngẫu nhiên nhỏ để tạo hiệu ứng "framing" khác nhau.
-      final double zoomVal = 1.01 + (random.nextDouble() * 0.02);
-      final int xOff = (random.nextDouble() * 1080 * (zoomVal - 1.0)).round();
-      final int yOff = (random.nextDouble() * 1920 * (zoomVal - 1.0)).round();
+      // Opt-4: Crop tĩnh với offset ngẫu nhiên nhỏ trực tiếp trên tỷ lệ 1080x1920
+      // Luôn render ra đúng 1080x1920 để Tiktok không tạo viền đen
+      final double zoomVal = 1.01 + (random.nextDouble() * 0.015);
+      final int scaledW = (1080 * zoomVal).round();
+      final int scaledH = (1920 * zoomVal).round();
+      final int xOff = (random.nextDouble() * (scaledW - 1080)).round();
+      final int yOff = (random.nextDouble() * (scaledH - 1920)).round();
 
       filterComplex.write(
-        '[0:v]scale=${(1080 * zoomVal).round()}:${(1920 * zoomVal).round()}:force_original_aspect_ratio=increase:flags=lanczos,',
+        '[0:v]scale=$scaledW:$scaledH:force_original_aspect_ratio=increase:flags=lanczos,',
       );
       filterComplex.write('crop=1080:1920:$xOff:$yOff,');
       filterComplex.write(
-        'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)},',
+        'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}'
+        ':gamma_r=${gammaR.toStringAsFixed(3)}:gamma_g=${gammaG.toStringAsFixed(3)}:gamma_b=${gammaB.toStringAsFixed(3)},',
       );
+      // Hue/saturation jitter để phá vỡ color histogram fingerprint
+      filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},');
       filterComplex.write('noise=alls=$noiseStr:allf=t,');
-      filterComplex.write('setpts=$ptsStr*PTS[bg];');
+      // Vignette nhẹ tránh trùng mã điểm ảnh góc viền
+      filterComplex.write('vignette=${vignetteAngle.toStringAsFixed(4)},');
+      filterComplex.write('trim=start=0,setpts=$ptsStr*N/30/TB[bg];');
 
       int overlayIdx = 1;
       String lastVideoLabel = '[bg]';
@@ -1178,16 +1223,21 @@ class BatchVideoService {
       // - Nếu không: chỉ dùng audio gốc từ concat (giảm 5%)
       String audioMapArg;
       if (hasCustomAudio) {
-        final customVol = config.customAudioVolume.clamp(0.0, 1.0).toStringAsFixed(3);
-        // [0:a] = original audio track (từ concat), giảm về 5%
-        // [1:a] = custom music, loop đến khi hết video, volume tùy chỉnh
-        // amix duration=first: cắt theo input đầu tiên (tức độ dài video)
-        fStr += '[0:a]volume=0.05[orig_a];'
-            '[1:a]volume=$customVol[music_a];'
-            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=2[mixed_a]';
+        final customVol = config.customAudioVolume.clamp(0.0, 1.0);
+        // Áp dụng audio spoof profile độc lập cho từng video:
+        // pitch shift + EQ curve + time offset phá vỡ audio fingerprint
+        // của cùng 1 file nhạc nền khi upload nhiều video.
+        final customChain = audioProfile.toCustomAudioFilterChain(customVol);
+        final origChain = audioProfile.toOriginalAudioFilterChain();
+        fStr += '[0:a]$origChain[orig_a];'
+            '[1:a]$customChain[music_a];'
+            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=0[mixed_a]';
         audioMapArg = '[mixed_a]';
       } else {
-        fStr += '[0:a]volume=0.05[orig_a]';
+        // Không có nhạc nền: vẫn áp dụng pitch shift lên audio gốc 5%
+        // để mỗi video có audio fingerprint khác nhau.
+        final origChain = audioProfile.toOriginalAudioFilterChain();
+        fStr += '[0:a]$origChain[orig_a]';
         audioMapArg = '[orig_a]';
       }
 
@@ -1202,9 +1252,10 @@ class BatchVideoService {
         audioMapArg,
         '-c:a',
         'aac',
+        '-b:a', '${audioProfile.audioBitrate}k', // Audio bitrate jitter: 96/112/128/160 kbps
         '-r',
         '30',
-        '-vsync',
+        '-fps_mode',
         'cfr',
         '-c:v',
         gpuEncoder,
@@ -1222,17 +1273,22 @@ class BatchVideoService {
         'bt709',
         '-color_primaries',
         'bt709',
+        // GOP jitter áp dụng cho tất cả encoders (không chỉ libx264)
         if (gpuEncoder == 'libx264') ...[
           '-x264-params',
-          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1:g=${30 + random.nextInt(31)}', // Random GOP 30-60
+          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1:g=$gopSize',
           '-preset',
           spoofProfile.preset,
+        ] else ...[
+          '-g', gopSize.toString(),
         ],
         '-map_metadata',
         '-1',
         '-movflags',
         '+faststart+use_metadata_tags',
         ...spoofProfile.toFfmpegMetadataArgs(),
+        '-avoid_negative_ts',
+        'make_zero', // Dập tắt mọi giá trị âm còn sót lại về 0 trước khi ghi file
         finalOutput,
       ]);
 
@@ -1510,4 +1566,93 @@ class _VideoSpoofProfile {
     '-flags:a',
     '+bitexact',
   ];
+}
+
+// ============================================================================
+// _AudioSpoofProfile — per-video randomized audio transform params
+// ============================================================================
+
+/// Encapsulates tất cả tham số biến đổi audio để phá vỡ audio fingerprint
+/// (pitch shift, EQ curve, time offset, bitrate jitter).
+///
+/// TikTok dùng spectral fingerprinting (tương tự ACRCloud) để nhận diện
+/// cùng 1 bài nhạc ngay cả khi volume thay đổi. Class này đảm bảo mỗi
+/// video xuất ra có audio signature khác nhau.
+class _AudioSpoofProfile {
+  /// Hệ số pitch (0.98 – 1.02): dịch pitch ±1 semitone.
+  /// Kết hợp asetrate + atempo để giữ nguyên tốc độ phát.
+  final double pitchFactor;
+
+  /// EQ gain dải bass ~80Hz (±1.5 dB).
+  final double bassGain;
+
+  /// EQ gain dải mid ~1000Hz (±1.5 dB).
+  final double midGain;
+
+  /// EQ gain dải treble ~8000Hz (±1.5 dB).
+  final double trebleGain;
+
+  /// Audio bitrate kbps: 96 | 112 | 128 | 160.
+  final int audioBitrate;
+
+  /// Micro-delay 1–5ms: tạo sample-level difference trong waveform.
+  final int delayMs;
+
+  const _AudioSpoofProfile({
+    required this.pitchFactor,
+    required this.bassGain,
+    required this.midGain,
+    required this.trebleGain,
+    required this.audioBitrate,
+    required this.delayMs,
+  });
+
+  factory _AudioSpoofProfile.random(Random random) {
+    return _AudioSpoofProfile(
+      pitchFactor: 0.98 + random.nextDouble() * 0.04,
+      bassGain: (random.nextDouble() * 3.0) - 1.5,
+      midGain: (random.nextDouble() * 3.0) - 1.5,
+      trebleGain: (random.nextDouble() * 3.0) - 1.5,
+      audioBitrate: [96, 112, 128, 160][random.nextInt(4)],
+      delayMs: 1 + random.nextInt(5),
+    );
+  }
+
+  /// Filter chain cho custom audio (nhạc nền).
+  /// Bao gồm: pitch shift → EQ → volume.
+  String toCustomAudioFilterChain(double volume) {
+    final pitchStr = pitchFactor.toStringAsFixed(6);
+    final tempoStr = (1.0 / pitchFactor).toStringAsFixed(6);
+    final volStr = volume.toStringAsFixed(3);
+    // [Iron Fist]
+    // 1. atrim=start=0: Vứt bỏ triệt để mọi mẫu âm thanh có timestamp âm.
+    // 2. aresample=async=1:first_pts=0: Ép mẫu âm thanh đầu tiên về đúng mốc 0.
+    // 3. asetpts=N/SR/TB: Vẽ lại dòng thời gian dựa trên số mẫu để đảm bảo độ tuyến tính.
+    return 'atrim=start=0,'
+        'asetrate=44100*$pitchStr,'
+        'aresample=44100:async=1:first_pts=0,'
+        'atempo=$tempoStr,'
+        'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
+        'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
+        'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
+        'adelay=$delayMs|$delayMs,'
+        'volume=$volStr,'
+        'asetpts=N/SR/TB';
+  }
+
+  /// Filter chain cho original audio (audio gốc từ video, 5%).
+  String toOriginalAudioFilterChain() {
+    final pitchStr = pitchFactor.toStringAsFixed(6);
+    final tempoStr = (1.0 / pitchFactor).toStringAsFixed(6);
+    return 'atrim=start=0,'
+        'asetrate=44100*$pitchStr,'
+        'aresample=44100:async=1:first_pts=0,'
+        'atempo=$tempoStr,'
+        'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
+        'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
+        'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
+        'adelay=$delayMs|$delayMs,'
+        'volume=0.05,'
+        'asetpts=N/SR/TB';
+  }
 }
