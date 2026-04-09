@@ -37,16 +37,23 @@ class AmbientAudioService {
               'page_size': 50,
               'page': page,
             },
+            options: Options(
+              validateStatus: (status) => true, // Không ném exception với lỗi 404 để cho phép vòng lặp fallback
+            ),
           );
         }
 
         var response = await fetchPage(randomPage);
-        var results = response.data['results'] as List;
+        var results = (response.data != null && response.data is Map && response.data['results'] != null) 
+            ? response.data['results'] as List 
+            : <dynamic>[];
 
-        // Nếu trang ngẫu nhiên không có dữ liệu (tag ít kết quả), fallback về trang 1
+        // Nếu trang ngẫu nhiên không có dữ liệu (tag ít kết quả hoặc 404), fallback về trang 1
         if (results.isEmpty && randomPage > 1) {
           response = await fetchPage(1);
-          results = response.data['results'] as List;
+          results = (response.data != null && response.data is Map && response.data['results'] != null) 
+              ? response.data['results'] as List 
+              : <dynamic>[];
         }
 
         if (response.statusCode == 200 && results.isNotEmpty) {

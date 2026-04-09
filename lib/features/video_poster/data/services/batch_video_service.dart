@@ -76,8 +76,8 @@ class BatchVideoConfig {
     this.minSegmentDuration = 4,
     this.maxSegmentDuration = 6,
     this.minVideoDuration = 3,
-    this.minFinalDuration = 30,
-    this.maxFinalDuration = 40,
+    this.minFinalDuration = 35,
+    this.maxFinalDuration = 45,
     this.outputCount = 10,
     this.outputDir,
     this.textOverlays = const [],
@@ -86,9 +86,9 @@ class BatchVideoConfig {
     this.customAudioVolume = 0.8,
     this.generateAmbientAudio = true,
     this.ambientTags = const [
-      'birds', 'stream', 'forest', 'rain', 'wind', 'nature',
-      'ocean', 'waves', 'crickets', 'thunder', 'river', 'waterfall',
-      'frogs', 'breeze', 'jungle', 'leaves'
+      'forest birds', 'river stream', 'rain drops', 'wind through trees', 
+      'ocean waves', 'crickets chirping', 'distant thunder', 'waterfall ambient',
+      'night forest', 'breeze leaves', 'jungle ambience', 'field recording nature'
     ],
   });
 }
@@ -1285,7 +1285,7 @@ class BatchVideoService {
       int mixInputs = 1;
 
       if (hasCustomAudio) {
-         final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.5, pts: pts);
+         final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.25, pts: pts);
          fStr += '[0:a]$origChain[orig_a];';
       } else {
          final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.05, pts: pts);
@@ -1731,7 +1731,7 @@ class _AudioSpoofProfile {
 
   /// Filter chain cho original audio (audio gốc từ video).
   /// [volume]: mức âm lượng mong muốn (0.0–1.0).
-  ///   - 0.5 (50%) khi có custom audio (người xem vẫn nghe được tiếng gốc).
+  ///   - 0.25 (25%) khi có custom audio (người xem vẫn nghe được tiếng gốc dịu nhẹ).
   ///   - 0.05 (5%) khi không có custom audio (tiếng gốc rất nhỏ, tránh bị nhận diện).
   String toOriginalAudioFilterChain({required double volume, required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
