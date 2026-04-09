@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
+import 'package:scraki/features/video_poster/data/services/ambient_audio_service.dart';
 
 // ============================================================================
 // BatchVideoService — Cross-platform Dart reimplementation of make-vid.sh
@@ -65,6 +66,12 @@ class BatchVideoConfig {
   /// Mặc định 0.8 (~80%). Audio gốc sẽ được giữ ở 5%.
   final double customAudioVolume;
 
+  /// Enable ambient audio (tiếng ồn trắng như chim, suối, mưa)
+  final bool generateAmbientAudio;
+
+  /// Các từ khoá để tìm kiếm âm thanh nền trên Freesound
+  final List<String> ambientTags;
+
   const BatchVideoConfig({
     this.minSegmentDuration = 4,
     this.maxSegmentDuration = 6,
@@ -77,6 +84,12 @@ class BatchVideoConfig {
     this.imageOverlays = const [],
     this.customAudioPath,
     this.customAudioVolume = 0.8,
+    this.generateAmbientAudio = true,
+    this.ambientTags = const [
+      'birds', 'stream', 'forest', 'rain', 'wind', 'nature',
+      'ocean', 'waves', 'crickets', 'thunder', 'river', 'waterfall',
+      'frogs', 'breeze', 'jungle', 'leaves'
+    ],
   });
 }
 
@@ -151,6 +164,8 @@ class BatchVideoService {
     _activeProcesses.clear();
     _cachedGpuEncoder = null;
     _colorInfoCache.clear();
+
+    final tempAmbientAudioPaths = <String>[];
 
     // Validate ffmpeg availability
     if (!await _checkFfmpeg()) {
@@ -243,6 +258,23 @@ class BatchVideoService {
         return;
       }
       yield '✅ ${validVideos.length} video hợp lệ';
+
+      // Step 1.5: Fetch Ambient Audio
+      if (config.generateAmbientAudio) {
+        yield '';
+        yield '[0/3] Đang tải âm thanh nền (Ambient Audio)...';
+        try {
+          final ambientSvc = AmbientAudioService();
+          final paths = await ambientSvc.fetchRandomAmbientAudios(
+            config.outputCount, 
+            config.ambientTags, 
+            onLog: (msg) => onLog?.call(msg)
+          );
+          tempAmbientAudioPaths.addAll(paths);
+        } catch (e) {
+          yield '  ⚠️ Lỗi tải ambient audio: $e. Sẽ tiếp tục không có ambient.';
+        }
+      }
 
       // ── Step 2: Planning (Lazy Cutting) ──────────────────────────────────
       yield '';
@@ -370,12 +402,19 @@ class BatchVideoService {
       void runCreationTask(int i) {
         final plan = videoPlans[i]!;
         final segmentsToMerge = plan.map((r) => segmentFileMap[r]!).toList();
+        
+        // Pick tương ứng nếu mảng đủ file, hoặc null
+        final ambientPath = (tempAmbientAudioPaths.isNotEmpty && i - 1 < tempAmbientAudioPaths.length) 
+            ? tempAmbientAudioPaths[i - 1] 
+            : null;
+
         late Future<void> taskFuture;
         taskFuture = _createOutputVideo(
           outputIndex: i,
           segments: segmentsToMerge,
           outputDir: outputDir,
           config: config,
+          ambientAudioPath: ambientPath,
           onProgress: (percent) {
             if (_cancelled) return;
             final p = (percent * 100).toStringAsFixed(0);
@@ -433,6 +472,14 @@ class BatchVideoService {
       try {
         if (await tempDir.exists()) await tempDir.delete(recursive: true);
       } catch (_) {}
+      
+      // Cleanup ambient audio temp files
+      for (final path in tempAmbientAudioPaths) {
+         try {
+            final file = File(path);
+            if (await file.exists()) await file.delete();
+         } catch (_) {}
+      }
     }
   }
 
@@ -840,6 +887,7 @@ class BatchVideoService {
     required List<String> segments,
     required String outputDir,
     required BatchVideoConfig config,
+    String? ambientAudioPath,
     void Function(double)? onProgress,
   }) async {
     final logs = <String>[];
@@ -926,8 +974,16 @@ class BatchVideoService {
         ]);
       }
 
-      // Khi có custom audio, nó chiếm input index 1 → text/image inputs bắt đầu từ index 2
-      final int audioInputOffset = hasCustomAudio ? 1 : 0;
+      final hasAmbientAudio = ambientAudioPath != null && File(ambientAudioPath).existsSync();
+      if (hasAmbientAudio) {
+        ffmpegArgs.addAll([
+          '-stream_loop', '-1',
+          '-i', ambientAudioPath,
+        ]);
+      }
+
+      // custom audio chiếm 1 tham số, ambient chiếm 1 tham số bổ sung.
+      final int externalAudioCount = (hasCustomAudio ? 1 : 0) + (hasAmbientAudio ? 1 : 0);
 
       // 1. Text Overlays (Timed)
       for (var i = 0; i < config.textOverlays.length; i++) {
@@ -989,8 +1045,8 @@ class BatchVideoService {
       String lastVideoLabel = '[bg]';
 
       // 3a. Overlay Custom Images
-      // Input index: 0=concat video, [1=custom audio nếu có], sau đó text, sau đó images
-      int imageInputStartIndex = 1 + audioInputOffset + config.textOverlays.length;
+      // Input index: 0=concat video, [tiếp theo là các file external audio], sau đó text, sau đó images
+      int imageInputStartIndex = 1 + externalAudioCount + config.textOverlays.length;
       for (int i = 0; i < config.imageOverlays.length; i++) {
         var imgConfig = config.imageOverlays[i];
         int currentInputIdx = imageInputStartIndex + i;
@@ -1062,8 +1118,8 @@ class BatchVideoService {
       // 3b. Overlay Text
       for (int i = 0; i < config.textOverlays.length; i++) {
         final overlay = config.textOverlays[i];
-        // Text input index: 1 (+ audioInputOffset nếu có custom audio) + i
-        int textInputIdx = 1 + audioInputOffset + i;
+        // Text input index: 1 (+ externalAudioCount nếu có) + i
+        int textInputIdx = 1 + externalAudioCount + i;
 
         if (!overlay.isAnimated) {
           final int textJX = random.nextInt(9) - 4;
@@ -1225,28 +1281,43 @@ class BatchVideoService {
       String fStr = filterComplex.toString();
 
       // Build audio mix filter:
-      // - Nếu có custom audio: mix audio gốc (50%) + nhạc custom (volume tùy chỉnh)
-      // - Nếu không: chỉ dùng audio gốc từ concat (giảm 5%)
       String audioMapArg;
+      int mixInputs = 1;
+
       if (hasCustomAudio) {
-        final customVol = config.customAudioVolume.clamp(0.0, 1.0);
-        // Áp dụng audio spoof profile độc lập cho từng video:
-        // pitch shift + EQ curve + time offset phá vỡ audio fingerprint
-        // của cùng 1 file nhạc nền khi upload nhiều video.
-        // Audio gốc giữ ở 50% để người xem vẫn nghe được âm thanh gốc bên dưới.
-        final customChain = audioProfile.toCustomAudioFilterChain(volume: customVol, pts: pts);
-        final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.5, pts: pts);
-        fStr += '[0:a]$origChain[orig_a];'
-            '[1:a]$customChain[music_a];'
-            '[orig_a][music_a]amix=inputs=2:duration=first:dropout_transition=0,'
-            'aresample=async=1:first_pts=0[mixed_a]';
-        audioMapArg = '[mixed_a]';
+         final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.5, pts: pts);
+         fStr += '[0:a]$origChain[orig_a];';
       } else {
-        // Không có nhạc nền: giảm audio gốc về 5% và áp dụng pitch shift
-        // để mỗi video có audio fingerprint khác nhau.
-        final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.05, pts: pts);
-        fStr += '[0:a]$origChain,aresample=async=1:first_pts=0[orig_a]';
-        audioMapArg = '[orig_a]';
+         final origChain = audioProfile.toOriginalAudioFilterChain(volume: 0.05, pts: pts);
+         fStr += '[0:a]$origChain[orig_a];';
+      }
+      String mixLabels = '[orig_a]';
+
+      if (hasCustomAudio) {
+        mixInputs++;
+        final customVol = config.customAudioVolume.clamp(0.0, 1.0);
+        final customChain = audioProfile.toCustomAudioFilterChain(volume: customVol, pts: pts);
+        fStr += '[1:a]$customChain[music_a];';
+        mixLabels += '[music_a]';
+      }
+
+      if (hasAmbientAudio) {
+        mixInputs++;
+        // Ambient vol: 25% nếu có custom nhạc, 5% nếu không có
+        final ambientVol = hasCustomAudio ? 0.25 : 0.05;
+        final ambientInputIdx = hasCustomAudio ? 2 : 1;
+        // Normalizer
+        fStr += '[$ambientInputIdx:a]volume=${ambientVol.toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];';
+        mixLabels += '[ambient_a]';
+      }
+
+      if (mixInputs > 1) {
+         fStr += '${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,'
+                 'aresample=async=1:first_pts=0[mixed_a]';
+         audioMapArg = '[mixed_a]';
+      } else {
+         fStr += '[orig_a]aresample=async=1:first_pts=0[final_orig_a]';
+         audioMapArg = '[final_orig_a]';
       }
 
       if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
