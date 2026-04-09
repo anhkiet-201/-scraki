@@ -69,6 +69,9 @@ class BatchVideoConfig {
   /// Enable ambient audio (tiếng ồn trắng như chim, suối, mưa)
   final bool generateAmbientAudio;
 
+  /// Bật filter sinh trộn màu ngẫu nhiên (chống re-up)
+  final bool generateColorFilter;
+
   /// Các từ khoá để tìm kiếm âm thanh nền trên Freesound
   final List<String> ambientTags;
 
@@ -85,6 +88,7 @@ class BatchVideoConfig {
     this.customAudioPath,
     this.customAudioVolume = 0.8,
     this.generateAmbientAudio = true,
+    this.generateColorFilter = true,
     this.ambientTags = const [
       'forest birds', 'river stream', 'rain drops', 'wind through trees', 
       'ocean waves', 'crickets chirping', 'distant thunder', 'waterfall ambient',
@@ -1030,10 +1034,21 @@ class BatchVideoService {
         '[0:v]scale=$scaledW:$scaledH:force_original_aspect_ratio=increase:flags=lanczos,',
       );
       filterComplex.write('crop=1080:1920:$xOff:$yOff,');
-      filterComplex.write(
-        'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}'
-        ':gamma_r=${gammaR.toStringAsFixed(3)}:gamma_g=${gammaG.toStringAsFixed(3)}:gamma_b=${gammaB.toStringAsFixed(3)},',
-      );
+      
+      if (config.generateColorFilter) {
+        final colorProfile = _ColorFilterProfile.random(random);
+        filterComplex.write('colorchannelmixer=${colorProfile.ffmpegString},');
+        final double gammaBase = 0.98 + random.nextDouble() * 0.04;
+        filterComplex.write(
+          'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}:gamma=${gammaBase.toStringAsFixed(3)},',
+        );
+      } else {
+        filterComplex.write(
+          'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}'
+          ':gamma_r=${gammaR.toStringAsFixed(3)}:gamma_g=${gammaG.toStringAsFixed(3)}:gamma_b=${gammaB.toStringAsFixed(3)},',
+        );
+      }
+
       // Hue/saturation jitter để phá vỡ color histogram fingerprint
       filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},');
       filterComplex.write('noise=alls=$noiseStr:allf=t,');
@@ -1749,5 +1764,85 @@ class _AudioSpoofProfile {
         'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
         'aresample=44100,aformat=channel_layouts=stereo';
+  }
+}
+
+// ============================================================================
+// _ColorFilterProfile — per-video randomized color signature
+// ============================================================================
+
+class _ColorFilterProfile {
+  final String ffmpegString;
+
+  const _ColorFilterProfile._(this.ffmpegString);
+
+  factory _ColorFilterProfile.random(Random random) {
+    final type = random.nextInt(11);
+    
+    // Hệ số cường độ cực nhẹ (tương đương 10-15% opacity của filter) 
+    // Độ lệch chuẩn chỉ từ ±0.01 đến ±0.04 so với Ma trận gốc (Identity Matrix)
+    switch (type) {
+      case 0: // Warm Tint (Red boost, Blue cut)
+        final rBoost = 1.01 + random.nextDouble() * 0.02; // max +3%
+        final bCut = 0.97 + random.nextDouble() * 0.02;   // max -3%
+        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:bb=${bCut.toStringAsFixed(3)}');
+        
+      case 1: // Cool Tint (Blue boost, Red cut)
+        final bBoost = 1.01 + random.nextDouble() * 0.02;
+        final rCut = 0.97 + random.nextDouble() * 0.02;
+        return _ColorFilterProfile._('rr=${rCut.toStringAsFixed(3)}:bb=${bBoost.toStringAsFixed(3)}');
+        
+      case 2: // Vintage/Sepia (Slight R+G mix, B cut)
+        final mix = 0.01 + random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rr=${(1.0 + mix).toStringAsFixed(3)}:rg=${mix.toStringAsFixed(3)}:gg=${(1.0 + mix).toStringAsFixed(3)}:bb=${(0.98 - mix).toStringAsFixed(3)}');
+        
+      case 3: // Cinematic Green (Shadow green mix)
+        final gBoost = 1.01 + random.nextDouble() * 0.02;
+        final mix = 0.01 + random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rb=${mix.toStringAsFixed(3)}:gg=${gBoost.toStringAsFixed(3)}:br=${mix.toStringAsFixed(3)}');
+        
+      case 4: // Cyberpunk/Pink (Red & Blue boost, Green cut)
+        final rBoost = 1.01 + random.nextDouble() * 0.02;
+        final bBoost = 1.01 + random.nextDouble() * 0.02;
+        final gCut = 0.97 + random.nextDouble() * 0.02;
+        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:gg=${gCut.toStringAsFixed(3)}:bb=${bBoost.toStringAsFixed(3)}');
+
+      case 5: // Twilight/Purple
+        final mix = 0.01 + random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rr=${(1.0 + mix).toStringAsFixed(3)}:rb=${mix.toStringAsFixed(3)}:gg=0.99:gb=${mix.toStringAsFixed(3)}:bb=${(1.01 + mix).toStringAsFixed(3)}');
+
+      case 6: // Autumn/Orange
+        final rBoost = 1.02 + random.nextDouble() * 0.02;
+        final mix = 0.01 + random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:gr=${mix.toStringAsFixed(3)}:bb=0.97');
+
+      case 7: // Matrix Green (Pure green boost)
+        final gBoost = 1.02 + random.nextDouble() * 0.02;
+        final cut = 0.97 + random.nextDouble() * 0.02;
+        return _ColorFilterProfile._('rr=${cut.toStringAsFixed(3)}:gg=${gBoost.toStringAsFixed(3)}:bb=${cut.toStringAsFixed(3)}');
+
+      case 8: // Gold/Amber
+        final boost = 1.01 + random.nextDouble() * 0.02;
+        final mix = 0.01 + random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rr=${boost.toStringAsFixed(3)}:rg=${mix.toStringAsFixed(3)}:gg=${boost.toStringAsFixed(3)}:bb=0.97');
+
+      case 9: // Muted/Bleach Bypass (Slight desat cross-mix)
+        final m = 0.01 + random.nextDouble() * 0.01;
+        final b = 0.98 - random.nextDouble() * 0.01;
+        return _ColorFilterProfile._('rr=${b.toStringAsFixed(3)}:rg=${m.toStringAsFixed(3)}:rb=${m.toStringAsFixed(3)}:gr=${m.toStringAsFixed(3)}:gg=${b.toStringAsFixed(3)}:gb=${m.toStringAsFixed(3)}:br=${m.toStringAsFixed(3)}:bg=${m.toStringAsFixed(3)}:bb=${b.toStringAsFixed(3)}');
+
+      default: // Random Micro-Jitter (Case 10)
+        return _ColorFilterProfile._(
+          'rr=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}:'
+          'rg=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'rb=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'gr=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'gg=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}:'
+          'gb=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'br=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'bg=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
+          'bb=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}'
+        );
+    }
   }
 }
