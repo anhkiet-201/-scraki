@@ -533,10 +533,10 @@ class BatchVideoService {
 
   // ─── Constants ────────────────────────────────────────────────────────────
 
-  /// Opt-5: Tăng concurrency lên 2x processors vì ffmpeg là I/O + GPU bound,
-  /// không phải thuần CPU bound như Dart isolates.
+  /// Opt-5: Cân bằng số tác vụ đồng thời dựa trên số nhân CPU thực tế.
+  /// Giới hạn tối thiểu 2 và tối đa 6 để tránh quá tải I/O và nghẽn CPU.
   static int get _maxConcurrentTasks =>
-      (Platform.numberOfProcessors * 2).clamp(4, 10);
+      Platform.numberOfProcessors.clamp(2, 6);
 
   /// Phân rã video thành các đoạn cắt không trùng lặp (Non-overlapping)
   /// Có bổ sung Random Offset để đảm bảo tính độc nhất khung hình khi băm lại.
@@ -1095,9 +1095,9 @@ class BatchVideoService {
       // Luôn render ra đúng 1080x1920 để Tiktok không tạo viền đen
       final double zoomVal = 1.02 + (random.nextDouble() * 0.02); // 1.02x - 1.04x để dư biên an toàn
       
-      // Sử dụng công thức FFmpeg để đảm bảo scale và crop luôn tràn viền tuyệt đối
+      // Sử dụng flags=bicubic thay vì lanczos để tăng tốc độ xử lý pixel (nhanh hơn 2-3 lần)
       filterComplex.write(
-        '[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=lanczos,',
+        '[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,',
       );
       // Crop với offset ngẫu nhiên nhẹ dựa trên kích thước thật sau khi scale
       final double randX = random.nextDouble();
@@ -1120,7 +1120,7 @@ class BatchVideoService {
 
       // Hue/saturation jitter để phá vỡ color histogram fingerprint
       filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},');
-      filterComplex.write('noise=alls=$noiseStr:allf=t,');
+      // Noise sẽ được gộp và áp dụng ở bước cuối cùng để tiết kiệm CPU
       // Vignette nhẹ tránh trùng mã điểm ảnh góc viền
     // Sử dụng flags=lanczos cho chất lượng scale cao nhưng cấu trúc pixel khác biệt
       filterComplex.write('vignette=${vignetteAngle.toStringAsFixed(4)},');
@@ -1220,7 +1220,6 @@ class BatchVideoService {
           filterComplex.write(
             '[$textInputIdx:v]scale=iw*$textScale:-1,format=rgba,'
             'rotate=$textRotate*PI/180:c=black@0,'
-            'noise=alls=2:allf=t,'
             'colorchannelmixer=aa=$textOpacity$antiOcrLabel;'
           );
 
@@ -1356,12 +1355,13 @@ class BatchVideoService {
             finalYExpr = 'if(lt(t\\,$endIn)\\,$yExprIn\\,if(gt(t\\,$startOut)\\,$yExprOut\\,$targetY))';
           }
           
+          String xExpr = finalXExpr;
           String yExpr = finalYExpr;
           String antiOcrAnimLabel = '[anim_aocr$i]';
           
-          // Anti-OCR tinh giản cho text anim (chỉ Noise nhẹ)
+          // Anti-OCR tinh giản cho text anim
           filterComplex.write(
-            '$filterBlock,noise=alls=2:allf=t$antiOcrAnimLabel;'
+            '$filterBlock$antiOcrAnimLabel;'
           );
 
           String enableFilter = "enable='between(t,$start,$end)'";
@@ -1381,8 +1381,11 @@ class BatchVideoService {
         }
       }
 
-      // Final processing
+      // Final processing: Gộp bộ lọc Noise vào bước cuối cùng để tối ưu hiệu năng
+      String consolidatedNoise = 'noise=alls=2:allf=t';
       String fStr = filterComplex.toString();
+      fStr += '$lastVideoLabel$consolidatedNoise[final_v];';
+      lastVideoLabel = '[final_v]';
 
       // Build audio mix filter:
       String audioMapArg;
