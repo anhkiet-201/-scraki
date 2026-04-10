@@ -1093,16 +1093,16 @@ class BatchVideoService {
 
       // Opt-4: Crop tĩnh với offset ngẫu nhiên nhỏ trực tiếp trên tỷ lệ 1080x1920
       // Luôn render ra đúng 1080x1920 để Tiktok không tạo viền đen
-      final double zoomVal = 1.01 + (random.nextDouble() * 0.015);
-      final int scaledW = (1080 * zoomVal).round();
-      final int scaledH = (1920 * zoomVal).round();
-      final int xOff = (random.nextDouble() * (scaledW - 1080)).round();
-      final int yOff = (random.nextDouble() * (scaledH - 1920)).round();
-
+      final double zoomVal = 1.02 + (random.nextDouble() * 0.02); // 1.02x - 1.04x để dư biên an toàn
+      
+      // Sử dụng công thức FFmpeg để đảm bảo scale và crop luôn tràn viền tuyệt đối
       filterComplex.write(
-        '[0:v]scale=$scaledW:$scaledH:force_original_aspect_ratio=increase:flags=lanczos,',
+        '[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=lanczos,',
       );
-      filterComplex.write('crop=1080:1920:$xOff:$yOff,');
+      // Crop với offset ngẫu nhiên nhẹ dựa trên kích thước thật sau khi scale
+      final double randX = random.nextDouble();
+      final double randY = random.nextDouble();
+      filterComplex.write('crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,');
       
       if (config.generateColorFilter) {
         final colorProfile = _ColorFilterProfile.random(random);
@@ -1211,21 +1211,16 @@ class BatchVideoService {
           final int textJX = random.nextInt(51) - 25; // ±25px
           final int textJY = random.nextInt(51) - 25; // ±25px
           final double textOpacity = 0.90 + (random.nextDouble() * 0.10); // 0.9 - 1.0
-          final double textRotate = (random.nextDouble() * 4.0) - 2.0;    // ±2 độ xoay nhẹ
-          final double textScale = 0.95 + (random.nextDouble() * 0.10);   // ±5% scale
-          final double textShear = (random.nextDouble() * 0.10) - 0.05;   // ±0.05 shear
+          final double textRotate = (random.nextDouble() * 3.0) - 1.5;    // ±1.5 độ xoay nhẹ
+          final double textScale = 0.97 + (random.nextDouble() * 0.06);   // ±3% scale
 
           String antiOcrLabel = '[static_aocr$i]';
-          // 1. Áp dụng Morpho (erosion/dilation ngẫu nhiên) + Shear + Color Jitter + Noise
-          final morphoMode = random.nextBool() ? 'erosion' : 'dilation';
-          final morphoThresh = random.nextInt(2) + 1;
-          
+          // Tinh giản bộ lọc Anti-OCR để giữ độ sắc nét "Premium"
+          // Chỉ dùng Rotate, Scale và Noise cực nhẹ để phá vỡ hash mà không làm răng cưa viền
           filterComplex.write(
             '[$textInputIdx:v]scale=iw*$textScale:-1,format=rgba,'
-            '$morphoMode=threshold0=$morphoThresh,'
-            'shear=shx=$textShear,'
             'rotate=$textRotate*PI/180:c=black@0,'
-            'noise=alls=5:allf=t,'
+            'noise=alls=2:allf=t,'
             'colorchannelmixer=aa=$textOpacity$antiOcrLabel;'
           );
 
@@ -1236,11 +1231,10 @@ class BatchVideoService {
             enableFilter += "99999)'";
           }
 
-          // 2. Thêm Rung lắc vi mô (Temporal Jitter) trong overlay
-          // Di chuyển liên tục ±2px theo hàm sin/cos
+          // Rung lắc vi mô ở mức tinh tế (±1px)
           final nextVideoLabel = '[ov$overlayIdx]';
-          final driftX = '2*sin(2*PI*n/15)'; 
-          final driftY = '2*cos(2*PI*n/15)';
+          final driftX = '1.0*sin(2*PI*n/15)'; 
+          final driftY = '1.0*cos(2*PI*n/15)';
           
           filterComplex.write(
             '$lastVideoLabel$antiOcrLabel'
@@ -1362,24 +1356,20 @@ class BatchVideoService {
             finalYExpr = 'if(lt(t\\,$endIn)\\,$yExprIn\\,if(gt(t\\,$startOut)\\,$yExprOut\\,$targetY))';
           }
           
-          String xExpr = finalXExpr;
           String yExpr = finalYExpr;
-          
-          // Áp dụng biến dạng hình thái và nhiễu động cho text anim
-          final morphoMode = random.nextBool() ? 'erosion' : 'dilation';
-          final morphoThresh = random.nextInt(2) + 1;
           String antiOcrAnimLabel = '[anim_aocr$i]';
           
+          // Anti-OCR tinh giản cho text anim (chỉ Noise nhẹ)
           filterComplex.write(
-            '$filterBlock,$morphoMode=threshold0=$morphoThresh,noise=alls=3:allf=t$antiOcrAnimLabel;'
+            '$filterBlock,noise=alls=2:allf=t$antiOcrAnimLabel;'
           );
 
           String enableFilter = "enable='between(t,$start,$end)'";
           String nextVideoLabel = '[ov$overlayIdx]';
           
-          // Thêm Rung lắc vi mô vào tọa độ animation
-          final driftX = '1.5*sin(2*PI*n/20)';
-          final driftY = '1.5*cos(2*PI*n/20)';
+          // Rung lắc vi mô tinh tế cho text anim (±1px)
+          final driftX = '1.0*sin(2*PI*n/20)';
+          final driftY = '1.0*cos(2*PI*n/20)';
 
           filterComplex.write(
             '$lastVideoLabel$antiOcrAnimLabel'
