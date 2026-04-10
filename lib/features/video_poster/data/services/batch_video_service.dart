@@ -1208,13 +1208,25 @@ class BatchVideoService {
         int textInputIdx = 1 + externalAudioCount + i;
 
         if (!overlay.isAnimated) {
-          final int textJX = random.nextInt(9) - 4;
-          final int textJY = random.nextInt(9) - 4;
-          final double textOpacity = 0.96 + (random.nextDouble() * 0.04);
+          final int textJX = random.nextInt(51) - 25; // ±25px
+          final int textJY = random.nextInt(51) - 25; // ±25px
+          final double textOpacity = 0.90 + (random.nextDouble() * 0.10); // 0.9 - 1.0
+          final double textRotate = (random.nextDouble() * 4.0) - 2.0;    // ±2 độ xoay nhẹ
+          final double textScale = 0.95 + (random.nextDouble() * 0.10);   // ±5% scale
+          final double textShear = (random.nextDouble() * 0.10) - 0.05;   // ±0.05 shear
 
-          String jitterLabel = '[text_jitter$i]';
+          String antiOcrLabel = '[static_aocr$i]';
+          // 1. Áp dụng Morpho (erosion/dilation ngẫu nhiên) + Shear + Color Jitter + Noise
+          final morphoMode = random.nextBool() ? 'erosion' : 'dilation';
+          final morphoThresh = random.nextInt(2) + 1;
+          
           filterComplex.write(
-            '[$textInputIdx:v]format=rgba,colorchannelmixer=aa=$textOpacity$jitterLabel;',
+            '[$textInputIdx:v]scale=iw*$textScale:-1,format=rgba,'
+            '$morphoMode=threshold0=$morphoThresh,'
+            'shear=shx=$textShear,'
+            'rotate=$textRotate*PI/180:c=black@0,'
+            'noise=alls=5:allf=t,'
+            'colorchannelmixer=aa=$textOpacity$antiOcrLabel;'
           );
 
           String enableFilter = "enable='between(t,${overlay.startTime},";
@@ -1224,10 +1236,15 @@ class BatchVideoService {
             enableFilter += "99999)'";
           }
 
-          String nextVideoLabel = '[ov$overlayIdx]';
+          // 2. Thêm Rung lắc vi mô (Temporal Jitter) trong overlay
+          // Di chuyển liên tục ±2px theo hàm sin/cos
+          final nextVideoLabel = '[ov$overlayIdx]';
+          final driftX = '2*sin(2*PI*n/15)'; 
+          final driftY = '2*cos(2*PI*n/15)';
+          
           filterComplex.write(
-            '$lastVideoLabel$jitterLabel'
-            'overlay=$textJX:$textJY:$enableFilter:shortest=1$nextVideoLabel;',
+            '$lastVideoLabel$antiOcrLabel'
+            'overlay=x=\'$textJX+$driftX\':y=\'$textJY+$driftY\':$enableFilter:shortest=1$nextVideoLabel;'
           );
 
           lastVideoLabel = nextVideoLabel;
@@ -1347,15 +1364,26 @@ class BatchVideoService {
           
           String xExpr = finalXExpr;
           String yExpr = finalYExpr;
-          String preOverlayLabel = '[text_anim$i]';
-          filterComplex.write('$filterBlock$preOverlayLabel;');
+          
+          // Áp dụng biến dạng hình thái và nhiễu động cho text anim
+          final morphoMode = random.nextBool() ? 'erosion' : 'dilation';
+          final morphoThresh = random.nextInt(2) + 1;
+          String antiOcrAnimLabel = '[anim_aocr$i]';
+          
+          filterComplex.write(
+            '$filterBlock,$morphoMode=threshold0=$morphoThresh,noise=alls=3:allf=t$antiOcrAnimLabel;'
+          );
 
           String enableFilter = "enable='between(t,$start,$end)'";
           String nextVideoLabel = '[ov$overlayIdx]';
           
+          // Thêm Rung lắc vi mô vào tọa độ animation
+          final driftX = '1.5*sin(2*PI*n/20)';
+          final driftY = '1.5*cos(2*PI*n/20)';
+
           filterComplex.write(
-            '$lastVideoLabel$preOverlayLabel'
-            'overlay=x=\'$xExpr\':y=\'$yExpr\':$enableFilter:shortest=1$nextVideoLabel;'
+            '$lastVideoLabel$antiOcrAnimLabel'
+            'overlay=x=\'$xExpr+$driftX\':y=\'$yExpr+$driftY\':$enableFilter:shortest=1$nextVideoLabel;'
           );
 
           lastVideoLabel = nextVideoLabel;
@@ -1718,10 +1746,6 @@ class _VideoSpoofProfile {
 
   /// Returns ffmpeg metadata args to be added to the command.
   List<String> toFfmpegMetadataArgs() => [
-    // Giả lập Brand hệ thống Android/iOS thật sự thay vì mp42 chung chung
-    '-brand', 'isom',
-    '-major_brand', 'isom',
-    '-compatible_brands', 'isomiso2mp41',
     '-metadata',
     'creation_time=$creationTime',
     '-metadata',
