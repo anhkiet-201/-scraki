@@ -280,41 +280,23 @@ class BatchVideoService {
         }
       }
 
-      // ── Step 2: Planning (Exhaustive Global Pool) ────────────────────────
+      // -- Step 2: Planning (Dynamic shifting pool) --
       yield '';
-      yield '[1/3] Lập kế hoạch cắt video (Thuật toán Non-overlapping)...';
+      yield '[1/3] Lập kế hoạch cắt video (Dynamic Shifting Pool)...';
       final random = Random();
 
-      // 1. Phân rã 100% video gốc thành các đoạn không trùng lặp (Non-overlapping)
-      final globalSegmentPool = <_SegmentRequest>[];
-      for (final src in validVideos) {
-        final srcDur = videoDurations[src]!;
-        int currentTime = 0;
-        
-        while (currentTime + config.minSegmentDuration <= srcDur && !_cancelled) {
-          int maxPossible = min(config.maxSegmentDuration, srcDur - currentTime);
-          if (maxPossible < config.minSegmentDuration) break; 
-          
-          final segDur = config.minSegmentDuration + random.nextInt(maxPossible - config.minSegmentDuration + 1);
-          
-          globalSegmentPool.add(_SegmentRequest(
-            sourcePath: src,
-            startTime: currentTime,
-            duration: segDur,
-            hflip: false, // Tắt HFLIP hoàn toàn để tránh máy học OCR của TikTok phát hiện nội dung bị lật ngược
-            hasAudio: videoHasAudio[src] ?? false,
-          ));
-          currentTime += segDur;
-        }
-      }
+      List<_SegmentRequest> globalSegmentPool = _generateSegmentPool(
+        validVideos: validVideos,
+        videoDurations: videoDurations,
+        videoHasAudio: videoHasAudio,
+        config: config,
+        random: random,
+      );
 
       if (globalSegmentPool.isEmpty) {
         yield '❌ Lỗi: Nhóm video gốc quá ngắn, không thể lấy được đoạn cắt nào!';
         return;
       }
-
-      // Xào bộ bài ban đầu
-      globalSegmentPool.shuffle(random);
       int poolIndex = 0;
 
       // Plan for each output video
@@ -335,7 +317,14 @@ class BatchVideoService {
         while (totalDuration < targetDuration && !_cancelled) {
           // Trộn lại bài nếu đã xài cạn kiệt Pool
           if (poolIndex >= globalSegmentPool.length) {
-            globalSegmentPool.shuffle(random);
+            // Thay vì chỉ shuffle, chúng ta băm lại toàn bộ Pool để thay đổi Timeline
+            globalSegmentPool = _generateSegmentPool(
+                validVideos: validVideos,
+                videoDurations: videoDurations,
+                videoHasAudio: videoHasAudio,
+                config: config,
+                random: random,
+            );
             poolIndex = 0;
           }
 
@@ -548,6 +537,46 @@ class BatchVideoService {
   /// không phải thuần CPU bound như Dart isolates.
   static int get _maxConcurrentTasks =>
       (Platform.numberOfProcessors * 2).clamp(4, 10);
+
+  /// Phân rã video thành các đoạn cắt không trùng lặp (Non-overlapping)
+  /// Có bổ sung Random Offset để đảm bảo tính độc nhất khung hình khi băm lại.
+  List<_SegmentRequest> _generateSegmentPool({
+    required List<String> validVideos,
+    required Map<String, int> videoDurations,
+    required Map<String, bool> videoHasAudio,
+    required BatchVideoConfig config,
+    required Random random,
+  }) {
+    final pool = <_SegmentRequest>[];
+    for (final src in validVideos) {
+      final srcDur = videoDurations[src]!;
+      
+      // Bổ sung Initial Offset từ 0-2 giây để điểm bắt đầu của chuỗi cắt luôn thay đổi
+      int currentTime = (srcDur > config.minSegmentDuration + 2) 
+          ? random.nextInt(3) 
+          : 0;
+
+      while (currentTime + config.minSegmentDuration <= srcDur) {
+        int maxPossible = min(config.maxSegmentDuration, srcDur - currentTime);
+        if (maxPossible < config.minSegmentDuration) break;
+
+        final segDur = config.minSegmentDuration +
+            random.nextInt(maxPossible - config.minSegmentDuration + 1);
+
+        pool.add(_SegmentRequest(
+          sourcePath: src,
+          startTime: currentTime,
+          duration: segDur,
+          // Sử dụng Smart Hflip: 30% xác suất lách ngang giúp phá vỡ pHash mạnh hơn
+          hflip: random.nextDouble() < 0.3,
+          hasAudio: videoHasAudio[src] ?? false,
+        ));
+        currentTime += segDur;
+      }
+    }
+    pool.shuffle(random);
+    return pool;
+  }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
@@ -956,12 +985,12 @@ class BatchVideoService {
     await concatFile.writeAsString(buffer.toString());
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
-    // Giảm biến dạng PTS (±2% thay vì ±4%) để giữ mượt chuyển động và voice
-    final pts = 0.98 + random.nextDouble() * 0.04;
-    final brightness = (random.nextDouble() * 0.04) - 0.02;     // Lệch rất nhẹ (±2%)
-    final contrast = 1.0 + (random.nextDouble() * 0.04) - 0.02; // Lệch rất nhẹ (±2%)
-    // Giảm noise xuống biên độ nhỏ để tránh nhãn "Low Quality Video"
-    final noise = 0.1 + random.nextDouble() * 0.3;
+    // Tăng biên độ PTS (±3.5%) để phá vỡ temporal fingerprinting
+    final pts = 0.965 + random.nextDouble() * 0.07;
+    final brightness = (random.nextDouble() * 0.04) - 0.02;
+    final contrast = 1.0 + (random.nextDouble() * 0.04) - 0.02;
+    // Tăng độ nhiễu Noise (0.4 - 1.2) để ghi đè pHash cũ của bản gốc
+    final noise = 0.4 + random.nextDouble() * 0.8;
 
     final spoofProfile = _VideoSpoofProfile.random(random);
     final gopSize = 30 + random.nextInt(31);
@@ -1093,6 +1122,7 @@ class BatchVideoService {
       filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},');
       filterComplex.write('noise=alls=$noiseStr:allf=t,');
       // Vignette nhẹ tránh trùng mã điểm ảnh góc viền
+    // Sử dụng flags=lanczos cho chất lượng scale cao nhưng cấu trúc pixel khác biệt
       filterComplex.write('vignette=${vignetteAngle.toStringAsFixed(4)},');
       filterComplex.write('trim=start=0,setpts=$ptsStr*N/30/TB[bg];');
 
@@ -1123,12 +1153,13 @@ class BatchVideoService {
         final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
         final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
-        final double overlayScale = 0.98 + (random.nextDouble() * 0.04);
-        final double overlayRotate = (random.nextDouble() * 2.0) - 1.0;
-        final double overlayBright = (random.nextDouble() * 0.06) - 0.03;
-        final double overlaySat = 1.0 + (random.nextDouble() * 0.1) - 0.05;
-        final int jX = random.nextInt(11) - 5;
-        final int jY = random.nextInt(11) - 5;
+        // Tăng mạnh biên độ ngẫu nhiên cho Image Overlay để tránh Batch Detection
+        final double overlayScale = 0.90 + (random.nextDouble() * 0.20); // ±10%
+        final double overlayRotate = (random.nextDouble() * 6.0) - 3.0;  // ±3 độ
+        final double overlayBright = (random.nextDouble() * 0.08) - 0.04; 
+        final double overlaySat = 0.95 + (random.nextDouble() * 0.1); 
+        final int jX = random.nextInt(61) - 30; // ±30px
+        final int jY = random.nextInt(61) - 30; // ±30px
 
         final int finalTargetW = (targetW * overlayScale).round();
         final int finalTargetH = (targetH * overlayScale).round();
@@ -1423,6 +1454,7 @@ class BatchVideoService {
         ...spoofProfile.toFfmpegMetadataArgs(),
         '-avoid_negative_ts',
         'make_zero', // Dập tắt mọi giá trị âm còn sót lại về 0 trước khi ghi file
+        '-movflags', '+faststart+use_metadata_tags', // Đẩy moov atom lên đầu giống mobile phone
         '-shortest', // Đảm bảo video và audio kết thúc cùng lúc
         finalOutput,
       ]);
@@ -1686,9 +1718,10 @@ class _VideoSpoofProfile {
 
   /// Returns ffmpeg metadata args to be added to the command.
   List<String> toFfmpegMetadataArgs() => [
-    // Định dạng file MP4 chuẩn (thay thế định dạng FFmpeg)
-    '-f', 'mp4',
-    '-brand', 'mp42',
+    // Giả lập Brand hệ thống Android/iOS thật sự thay vì mp42 chung chung
+    '-brand', 'isom',
+    '-major_brand', 'isom',
+    '-compatible_brands', 'isomiso2mp41',
     '-metadata',
     'creation_time=$creationTime',
     '-metadata',
@@ -1696,10 +1729,10 @@ class _VideoSpoofProfile {
     '-metadata',
     'LvMetaInfo=$_lvMetaInfo',
     '-metadata',
-    'comment=sc_v_$jitterId', // Use jitterId here
-    // Đặt rỗng thông tin metadata Encoder (Xóa nhãn 'Lavf' của FFmpeg)
+    'comment=sc_v_$jitterId',
+    // Giả lập Encoder của hệ thống Android thật (Gallery/Camera app)
     '-metadata',
-    'encoder=',
+    'encoder=com.android.gallery3d',
   ];
 }
 
@@ -1744,8 +1777,8 @@ class _AudioSpoofProfile {
 
   factory _AudioSpoofProfile.random(Random random) {
     return _AudioSpoofProfile(
-      // Giảm độ lệch pitch (±1% thay vì ±2%) để giọng voice/nhạc ít bị máy móc
-      pitchFactor: 0.99 + random.nextDouble() * 0.02,
+      // Tăng độ lệch pitch (±1.5%) để qua mặt nhận diện vân tay âm thanh gắt gao
+      pitchFactor: 0.985 + random.nextDouble() * 0.03,
       bassGain: (random.nextDouble() * 3.0) - 1.5,
       midGain: (random.nextDouble() * 3.0) - 1.5,
       trebleGain: (random.nextDouble() * 3.0) - 1.5,
