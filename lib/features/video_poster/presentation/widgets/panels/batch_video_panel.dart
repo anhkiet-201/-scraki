@@ -194,7 +194,42 @@ class _BatchVideoPanelState extends State<BatchVideoPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionLabel(context, 'ÂM THANH NỀN'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _sectionLabel(context, 'ÂM THANH NỀN'),
+                Row(
+                  children: [
+                    Text(
+                      'AMBIENT',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: widget.store.generateAmbientAudio
+                            ? const Color(0xFF6366F1)
+                            : (isLight ? const Color(0xFF94A3B8) : Colors.white38),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      height: 24,
+                      width: 40,
+                      child: Transform.scale(
+                        scale: 0.6,
+                        child: Switch(
+                          value: widget.store.generateAmbientAudio,
+                          activeColor: const Color(0xFF6366F1),
+                          onChanged: isCreating
+                              ? null
+                              : (val) => widget.store.setGenerateAmbientAudio(val),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
 
             // ── Drop zone + picker ─────────────────────────────────────────

@@ -680,6 +680,10 @@ abstract class _VideoPosterStore with Store {
   @observable
   double customAudioVolume = 0.8;
 
+  /// Bật/tắt tự động tạo âm thanh môi trường (chim, suối, mưa...)
+  @observable
+  bool generateAmbientAudio = true;
+
   @action
   void setCustomAudioPath(String? path) {
     customAudioPath = path;
@@ -692,6 +696,11 @@ abstract class _VideoPosterStore with Store {
     if (isPreviewMode && !isMuted) {
       musicPlayer.setVolume(customAudioVolume * 100);
     }
+  }
+
+  @action
+  void setGenerateAmbientAudio(bool value) {
+    generateAmbientAudio = value;
   }
 
   /// Đồng bộ file nhạc nền vào musicPlayer nếu đang trong project.
@@ -825,6 +834,7 @@ abstract class _VideoPosterStore with Store {
       imageOverlays: customImages.toList(),
       customAudioPath: customAudioPath,
       customAudioVolume: customAudioVolume,
+      generateAmbientAudio: generateAmbientAudio,
     );
 
     final stream = _batchService!.createBatchVideos(

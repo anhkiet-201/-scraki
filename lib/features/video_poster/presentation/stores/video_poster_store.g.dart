@@ -465,6 +465,28 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$generateAmbientAudioAtom = Atom(
+    name: '_VideoPosterStore.generateAmbientAudio',
+    context: context,
+  );
+
+  @override
+  bool get generateAmbientAudio {
+    _$generateAmbientAudioAtom.reportRead();
+    return super.generateAmbientAudio;
+  }
+
+  @override
+  set generateAmbientAudio(bool value) {
+    _$generateAmbientAudioAtom.reportWrite(
+      value,
+      super.generateAmbientAudio,
+      () {
+        super.generateAmbientAudio = value;
+      },
+    );
+  }
+
   late final _$isExportingImagesAtom = Atom(
     name: '_VideoPosterStore.isExportingImages',
     context: context,
@@ -1162,6 +1184,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setGenerateAmbientAudio(bool value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setGenerateAmbientAudio',
+    );
+    try {
+      return super.setGenerateAmbientAudio(value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setBatchOutputCount(int count) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setBatchOutputCount',
@@ -1356,6 +1390,7 @@ batchLogs: ${batchLogs},
 batchOutputDir: ${batchOutputDir},
 customAudioPath: ${customAudioPath},
 customAudioVolume: ${customAudioVolume},
+generateAmbientAudio: ${generateAmbientAudio},
 isExportingImages: ${isExportingImages},
 isImagePosterMode: ${isImagePosterMode},
 playbackSpeed: ${playbackSpeed},
