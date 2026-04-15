@@ -1382,7 +1382,7 @@ class BatchVideoService {
       }
 
       // Final processing: Gộp bộ lọc Noise vào bước cuối cùng để tối ưu hiệu năng
-      String consolidatedNoise = 'noise=alls=2:allf=t';
+      String consolidatedNoise = 'noise=alls=$noiseStr:allf=t';
       String fStr = filterComplex.toString();
       fStr += '$lastVideoLabel$consolidatedNoise[final_v];';
       lastVideoLabel = '[final_v]';
