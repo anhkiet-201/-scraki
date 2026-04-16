@@ -1015,7 +1015,7 @@ class BatchVideoService {
     final double gammaB = 0.98 + random.nextDouble() * 0.04;
 
     final finalOutput =
-        '${Directory(outputDir).absolute.path}${Platform.pathSeparator}final_${outputIndex.toString().padLeft(3, '0')}.mp4';
+        '${Directory(outputDir).absolute.path}${Platform.pathSeparator}tik_final_${outputIndex.toString().padLeft(3, '0')}.mp4';
 
     final textOverlayFiles = <File>[];
 

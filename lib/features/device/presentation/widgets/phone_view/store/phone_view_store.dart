@@ -445,9 +445,15 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
         await Future<void>.delayed(const Duration(seconds: 2));
       } else if (isVideo) {
-        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Đang đẩy $fileName...');
-        await _tikTokService.openTikTokCreate(serial, paths.first);
-        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
+        if (fileName.startsWith('tik_final_')) {
+          sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Đang đẩy $fileName...');
+          await _tikTokService.openTikTokCreate(serial, paths.first);
+          sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
+        } else {
+          sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đang đẩy $fileName...');
+          await _scrcpyService.pushFiles(serial, paths);
+          sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
+        }
         await Future<void>.delayed(const Duration(seconds: 2));
       } else if (isApk) {
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đang cài $fileName...');
