@@ -138,6 +138,34 @@ class PanelComponents {
     );
   }
 
+  /// Builds a column with a section label and a slider.
+  static Widget buildLabeledSlider({
+    required BuildContext context,
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required void Function(double) onChanged,
+    int? divisions,
+    Color accentColor = kPanelAccentColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildSectionLabel(label, context: context),
+        buildSlider(
+          context: context,
+          value: value,
+          min: min,
+          max: max,
+          onChanged: onChanged,
+          divisions: divisions,
+          accentColor: accentColor,
+        ),
+      ],
+    );
+  }
+
   /// Builds a horizontal wrap of colors with selection indicator.
   static Widget buildColorPalette({
     required BuildContext context,
