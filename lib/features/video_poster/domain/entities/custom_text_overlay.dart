@@ -67,6 +67,11 @@ class CustomTextOverlay {
   final TextAnimationType animationOutType;
   final double animationOutDuration;
 
+  // Brush style specific properties
+  final double brushIntensity;
+  final double brushThickness;
+  final double brushComplexity;
+
   bool get isAnimated =>
       animationInType != TextAnimationType.none ||
       animationOutType != TextAnimationType.none;
@@ -99,6 +104,9 @@ class CustomTextOverlay {
     this.animationInDuration = 0.1,
     this.animationOutType = TextAnimationType.none,
     this.animationOutDuration = 0.1,
+    this.brushIntensity = 2.0,
+    this.brushThickness = 1.0,
+    this.brushComplexity = 12.0,
   });
 
   CustomTextOverlay copyWith({
@@ -134,6 +142,9 @@ class CustomTextOverlay {
     double? animationInDuration,
     TextAnimationType? animationOutType,
     double? animationOutDuration,
+    double? brushIntensity,
+    double? brushThickness,
+    double? brushComplexity,
   }) {
     return CustomTextOverlay(
       id: id ?? this.id,
@@ -168,6 +179,9 @@ class CustomTextOverlay {
       animationInDuration: animationInDuration ?? this.animationInDuration,
       animationOutType: animationOutType ?? this.animationOutType,
       animationOutDuration: animationOutDuration ?? this.animationOutDuration,
+      brushIntensity: brushIntensity ?? (this.brushIntensity as double? ?? 2.0),
+      brushThickness: brushThickness ?? (this.brushThickness as double? ?? 1.0),
+      brushComplexity: brushComplexity ?? (this.brushComplexity as double? ?? 12.0),
     );
   }
 }

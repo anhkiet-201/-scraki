@@ -583,6 +583,9 @@ abstract class _VideoPosterStore with Store {
     Color? strokeColor,
     bool clearStrokeColor = false,
     double? strokeWidth,
+    double? brushIntensity,
+    double? brushThickness,
+    double? brushComplexity,
   }) {
     final index = customTexts.indexWhere((t) => t.id == id);
     if (index == -1) return;
@@ -607,6 +610,9 @@ abstract class _VideoPosterStore with Store {
       strokeColor: strokeColor,
       clearStrokeColor: clearStrokeColor,
       strokeWidth: strokeWidth,
+      brushIntensity: brushIntensity,
+      brushThickness: brushThickness,
+      brushComplexity: brushComplexity,
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây

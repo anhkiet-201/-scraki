@@ -1074,6 +1074,9 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     ui.Color? strokeColor,
     bool clearStrokeColor = false,
     double? strokeWidth,
+    double? brushIntensity,
+    double? brushThickness,
+    double? brushComplexity,
   }) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomTextStyle',
@@ -1101,6 +1104,9 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
         strokeColor: strokeColor,
         clearStrokeColor: clearStrokeColor,
         strokeWidth: strokeWidth,
+        brushIntensity: brushIntensity,
+        brushThickness: brushThickness,
+        brushComplexity: brushComplexity,
       );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);
