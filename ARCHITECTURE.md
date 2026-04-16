@@ -163,9 +163,18 @@ The Poster system implements a **Template Method Pattern** to support 20+ distin
 - **PosterTemplate**: Abstract base class handling data injection, scaling, and specific widget rendering.
 - **Data-Driven**: Content is decoupled from presentation via `PosterData`.
 - **Real-time Editing**: Uses `PosterCustomizationStore` and unique IDs (`req_0`, `ben_1`) to allow direct text manipulation on the canvas.
+- **Advanced Text Backgrounds**: Supports dynamic `Rectangle` and `Brush` background styles with granular control over opacity, radius, intensity, thickness, and complexity.
 - **Glassmorphism**: Extensive use of `BackdropFilter` and semi-transparent gradients for modern UI styles.
 
 Detailed design documentation: [PosterDesign.md](PosterDesign.md)
+
+### Video Overlay & Rendering
+
+The video overlay system (`VideoOverlayItem`) uses a modular rendering pipeline to maintain high performance and code clarity:
+
+- **Modular Rendering**: Logic for different background styles is encapsulated in specialized components (`BrushBackgroundPainter`, `TextWithLineBackgrounds`).
+- **Reactive State**: Properties are managed by `VideoPosterStore` and propagated through a clean widget tree.
+- **Hot-Reload Safety**: Implementation includes defensive coding to handle stale memory states during rapid development cycles.
 
 ## Dependency Injection
 
