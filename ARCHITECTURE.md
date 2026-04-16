@@ -172,8 +172,9 @@ Detailed design documentation: [PosterDesign.md](PosterDesign.md)
 
 The video overlay system (`VideoOverlayItem`) uses a modular rendering pipeline to maintain high performance and code clarity:
 
-- **Modular Rendering**: Logic for different background styles is encapsulated in specialized components (`BrushBackgroundPainter`, `TextWithLineBackgrounds`).
-- **Reactive State**: Properties are managed by `VideoPosterStore` and propagated through a clean widget tree.
+- **Modular Rendering**: Logic cho các kiểu nền khác nhau được đóng gói trong các component chuyên biệt (`BrushBackgroundPainter`, `TextWithLineBackgrounds`).
+- **Scalable Controls (Strategy Pattern)**: UI điều khiển hình nền được tách biệt khỏi panel chính bằng Strategy Pattern. Mỗi kiểu nền thực thi một Interface riêng, giúp thêm hàng trăm mẫu mới mà không làm phình code của Panel chính.
+- **Reactive State**: Các thuộc tính được quản lý bởi `VideoPosterStore`.
 - **Hot-Reload Safety**: Implementation includes defensive coding to handle stale memory states during rapid development cycles.
 
 ## Dependency Injection

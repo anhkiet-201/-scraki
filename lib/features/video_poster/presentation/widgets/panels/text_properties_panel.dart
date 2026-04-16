@@ -4,6 +4,7 @@ import 'package:scraki/features/video_poster/presentation/widgets/form/time_inpu
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/common/panel_components.dart';
+import 'package:scraki/features/video_poster/presentation/widgets/panels/background_controls/background_controls_registry.dart';
 
 /// Panel hiển thị khi tab TEXT được chọn.
 /// Cho phép thêm/chọn/xóa text và chỉnh style.
@@ -491,127 +492,11 @@ class TextPropertiesPanel extends StatelessWidget {
               ),
               if (text.backgroundColor != null) ...[
                 const SizedBox(height: 16),
-                ...switch (text.backgroundStyle) {
-                  TextBackgroundStyle.rectangle => [
-                      PanelComponents.buildPanelRow(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              PanelComponents.buildSectionLabel(
-                                'ĐỘ MỜ: ${(text.backgroundOpacity * 100).toInt()}%',
-                                context: context,
-                              ),
-                              PanelComponents.buildSlider(
-                                context: context,
-                                value: text.backgroundOpacity,
-                                min: 0.0,
-                                max: 1.0,
-                                onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                    backgroundOpacity: v),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              PanelComponents.buildSectionLabel(
-                                'BO GÓC: ${text.backgroundRadius.toInt()}px',
-                                context: context,
-                              ),
-                              PanelComponents.buildSlider(
-                                context: context,
-                                value: text.backgroundRadius,
-                                min: 0,
-                                max: 100,
-                                onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                    backgroundRadius: v),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  TextBackgroundStyle.brush => [
-                      PanelComponents.buildPanelRow(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              PanelComponents.buildSectionLabel(
-                                'ĐỘ MỜ: ${(text.backgroundOpacity * 100).toInt()}%',
-                                context: context,
-                              ),
-                              PanelComponents.buildSlider(
-                                context: context,
-                                value: text.backgroundOpacity,
-                                min: 0.0,
-                                max: 1.0,
-                                onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                    backgroundOpacity: v),
-                              ),
-                            ],
-                          ),
-                        Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PanelComponents.buildSectionLabel(
-                            'ĐỘ RUNG: ${text.brushIntensity.toStringAsFixed(1)}',
-                            context: context,
-                          ),
-                          PanelComponents.buildSlider(
-                            context: context,
-                            value: text.brushIntensity,
-                            min: 0.0,
-                            max: 10.0,
-                            onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                brushIntensity: v),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  PanelComponents.buildPanelRow(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PanelComponents.buildSectionLabel(
-                            'ĐỘ DÀY: ${((text.brushThickness as double?) ?? 1.0).toStringAsFixed(1)}',
-                            context: context,
-                          ),
-                          PanelComponents.buildSlider(
-                            context: context,
-                            value: (text.brushThickness as double?) ?? 1.0,
-                            min: 0.5,
-                            max: 3.0,
-                            onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                brushThickness: v),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PanelComponents.buildSectionLabel(
-                            'SỐ VỆT: ${((text.brushComplexity as double?) ?? 12.0).toInt()}',
-                            context: context,
-                          ),
-                          PanelComponents.buildSlider(
-                            context: context,
-                            value: (text.brushComplexity as double?) ?? 12.0,
-                            min: 1,
-                            max: 40,
-                            onChanged: (v) => store.updateCustomTextStyle(text.id,
-                                brushComplexity: v),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                    ],
-                },
+                ...BackgroundControlsRegistry.build(
+                  context: context,
+                  text: text,
+                  store: store,
+                ),
               ],
             ],
           ),
