@@ -10,6 +10,11 @@ enum TextAnimationType {
   slideRight,
 }
 
+enum TextBackgroundStyle {
+  rectangle,
+  brush,
+}
+
 /// Represents a free-form text overlay on the video canvas.
 /// All position values (x, y) are normalized [0.0, 1.0] relative to
 /// the 720x1280 virtual canvas.
@@ -30,6 +35,9 @@ class CustomTextOverlay {
 
   /// Background color of the text box. Null means fully transparent.
   final Color? backgroundColor;
+
+  /// Background style of the text box.
+  final TextBackgroundStyle backgroundStyle;
 
   /// Opacity of the background (0.0–1.0).
   final double backgroundOpacity;
@@ -75,6 +83,7 @@ class CustomTextOverlay {
     this.fontStyle = FontStyle.normal,
     this.textAlign = TextAlign.center,
     this.backgroundColor,
+    this.backgroundStyle = TextBackgroundStyle.rectangle,
     this.backgroundOpacity = 1.0,
     this.backgroundRadius = 8.0,
     this.fontFamily,
@@ -106,6 +115,7 @@ class CustomTextOverlay {
     TextAlign? textAlign,
     Color? backgroundColor,
     bool clearBackgroundColor = false,
+    TextBackgroundStyle? backgroundStyle,
     double? backgroundOpacity,
     double? backgroundRadius,
     String? fontFamily,
@@ -139,6 +149,7 @@ class CustomTextOverlay {
       backgroundColor: clearBackgroundColor
           ? null
           : (backgroundColor ?? this.backgroundColor),
+      backgroundStyle: backgroundStyle ?? this.backgroundStyle,
       backgroundOpacity: backgroundOpacity ?? this.backgroundOpacity,
       backgroundRadius: backgroundRadius ?? this.backgroundRadius,
       fontFamily: fontFamily ?? this.fontFamily,
@@ -160,3 +171,4 @@ class CustomTextOverlay {
     );
   }
 }
+

@@ -412,6 +412,28 @@ class TextPropertiesPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              PanelComponents.buildSectionLabel('KIỂU NỀN', context: context),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  PanelComponents.buildToggleButton(
+                    context: context,
+                    icon: Icons.rectangle_rounded,
+                    active: text.backgroundStyle == TextBackgroundStyle.rectangle,
+                    onTap: () => store.updateCustomTextStyle(text.id,
+                        backgroundStyle: TextBackgroundStyle.rectangle),
+                  ),
+                  const SizedBox(width: 12),
+                  PanelComponents.buildToggleButton(
+                    context: context,
+                    icon: Icons.brush_rounded,
+                    active: text.backgroundStyle == TextBackgroundStyle.brush,
+                    onTap: () => store.updateCustomTextStyle(text.id,
+                        backgroundStyle: TextBackgroundStyle.brush),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               PanelComponents.buildSectionLabel('MÀU NỀN', context: context),
               const SizedBox(height: 8),
               if (store.recentBgColors.isNotEmpty) ...[
@@ -488,23 +510,24 @@ class TextPropertiesPanel extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        PanelComponents.buildSectionLabel(
-                          'BO GÓC: ${text.backgroundRadius.toInt()}px',
-                          context: context,
-                        ),
-                        PanelComponents.buildSlider(
-                          context: context,
-                          value: text.backgroundRadius,
-                          min: 0,
-                          max: 100,
-                          onChanged: (v) => store.updateCustomTextStyle(text.id,
-                              backgroundRadius: v),
-                        ),
-                      ],
-                    ),
+                    if (text.backgroundStyle == TextBackgroundStyle.rectangle)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          PanelComponents.buildSectionLabel(
+                            'BO GÓC: ${text.backgroundRadius.toInt()}px',
+                            context: context,
+                          ),
+                          PanelComponents.buildSlider(
+                            context: context,
+                            value: text.backgroundRadius,
+                            min: 0,
+                            max: 100,
+                            onChanged: (v) => store.updateCustomTextStyle(text.id,
+                                backgroundRadius: v),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ],

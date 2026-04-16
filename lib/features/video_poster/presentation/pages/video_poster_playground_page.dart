@@ -617,6 +617,7 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
                                             backgroundColor: text.backgroundColor,
                                             backgroundOpacity: text.backgroundOpacity,
                                             backgroundRadius: text.backgroundRadius,
+                                            backgroundStyle: text.backgroundStyle,
                                             backgroundBorderColor: text.backgroundBorderColor,
                                             backgroundBorderWidth: text.backgroundBorderWidth,
                                             fontFamily: text.fontFamily,
