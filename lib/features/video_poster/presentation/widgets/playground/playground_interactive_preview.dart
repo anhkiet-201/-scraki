@@ -175,6 +175,8 @@ class PlaygroundInteractivePreview extends StatelessWidget {
                                             brushIntensity: text.brushIntensity,
                                             brushThickness: text.brushThickness,
                                             brushComplexity: text.brushComplexity,
+                                            backgroundPadding: text.backgroundPadding,
+                                            styleParams: text.styleParams,
                                           );
                                         },
                                       )),

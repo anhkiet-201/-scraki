@@ -586,6 +586,8 @@ abstract class _VideoPosterStore with Store {
     double? brushIntensity,
     double? brushThickness,
     double? brushComplexity,
+    double? backgroundPadding,
+    Map<String, dynamic>? styleParams,
   }) {
     final index = customTexts.indexWhere((t) => t.id == id);
     if (index == -1) return;
@@ -613,6 +615,8 @@ abstract class _VideoPosterStore with Store {
       brushIntensity: brushIntensity,
       brushThickness: brushThickness,
       brushComplexity: brushComplexity,
+      backgroundPadding: backgroundPadding,
+      styleParams: styleParams,
     );
 
     // Ghi lại màu vừa dùng vào danh sách gần đây

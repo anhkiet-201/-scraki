@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/form/time_input_field.dart';
@@ -415,24 +416,29 @@ class TextPropertiesPanel extends StatelessWidget {
               const SizedBox(height: 20),
               PanelComponents.buildSectionLabel('KIỂU NỀN', context: context),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  PanelComponents.buildToggleButton(
-                    context: context,
-                    icon: Icons.rectangle_rounded,
-                    active: text.backgroundStyle == TextBackgroundStyle.rectangle,
-                    onTap: () => store.updateCustomTextStyle(text.id,
-                        backgroundStyle: TextBackgroundStyle.rectangle),
+              SizedBox(
+                height: 48,
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.trackpad,
+                    },
                   ),
-                  const SizedBox(width: 12),
-                  PanelComponents.buildToggleButton(
-                    context: context,
-                    icon: Icons.brush_rounded,
-                    active: text.backgroundStyle == TextBackgroundStyle.brush,
-                    onTap: () => store.updateCustomTextStyle(text.id,
-                        backgroundStyle: TextBackgroundStyle.brush),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildStyleToggle(context, text, TextBackgroundStyle.rectangle, Icons.rectangle_rounded),
+                      _buildStyleToggle(context, text, TextBackgroundStyle.brush, Icons.brush_rounded),
+                      _buildStyleToggle(context, text, TextBackgroundStyle.glass, Icons.blur_on_rounded),
+                      _buildStyleToggle(context, text, TextBackgroundStyle.paper, Icons.sticky_note_2_rounded),
+                    ],
                   ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
               PanelComponents.buildSectionLabel('MÀU NỀN', context: context),
@@ -442,8 +448,7 @@ class TextPropertiesPanel extends StatelessWidget {
                   context: context,
                   colors: store.recentBgColors.toList(),
                   selectedColor: text.backgroundColor,
-                  onSelect: (c) =>
-                      store.updateCustomTextStyle(text.id, backgroundColor: c),
+                  onSelect: (c) => store.updateCustomTextStyle(text.id, backgroundColor: c),
                 ),
                 const SizedBox(height: 8),
                 PanelComponents.buildPaletteDivider(context: context),
@@ -490,7 +495,16 @@ class TextPropertiesPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              if (text.backgroundColor != null) ...[
+              if (text.backgroundColor != null || text.backgroundStyle != TextBackgroundStyle.rectangle) ...[
+                const SizedBox(height: 16),
+                PanelComponents.buildLabeledSlider(
+                  context: context,
+                  label: 'ĐỘ RỘNG NỀN: ${text.backgroundPadding.toInt()}px',
+                  value: text.backgroundPadding,
+                  min: 0,
+                  max: 100,
+                  onChanged: (v) => store.updateCustomTextStyle(text.id, backgroundPadding: v),
+                ),
                 const SizedBox(height: 16),
                 ...BackgroundControlsRegistry.build(
                   context: context,
@@ -839,6 +853,18 @@ class TextPropertiesPanel extends StatelessWidget {
       onChanged: onChanged,
       hint: hint,
       maxValue: maxValue,
+    );
+  }
+
+  Widget _buildStyleToggle(BuildContext context, CustomTextOverlay text, TextBackgroundStyle style, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: PanelComponents.buildToggleButton(
+        context: context,
+        icon: icon,
+        active: text.backgroundStyle == style,
+        onTap: () => store.updateCustomTextStyle(text.id, backgroundStyle: style),
+      ),
     );
   }
 }

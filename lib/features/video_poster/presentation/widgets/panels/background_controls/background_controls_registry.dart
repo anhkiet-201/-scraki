@@ -4,6 +4,8 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 import 'text_background_controls.dart';
 import 'rectangle_background_controls.dart';
 import 'brush_background_controls.dart';
+import 'glass_background_controls.dart';
+import 'paper_controls.dart';
 
 /// Registry quản lý việc khởi tạo các bộ điều khiển hình nền.
 /// Khi thêm Style mới, chỉ cần thêm Mapping vào đây.
@@ -11,6 +13,8 @@ class BackgroundControlsRegistry {
   static final Map<TextBackgroundStyle, TextBackgroundControls> _strategies = {
     TextBackgroundStyle.rectangle: RectangleBackgroundControls(),
     TextBackgroundStyle.brush: BrushBackgroundControls(),
+    TextBackgroundStyle.glass: GlassBackgroundControls(),
+    TextBackgroundStyle.paper: PaperBackgroundControls(),
   };
 
   /// Trả về danh sách widgets điều khiển tương ứng với style.

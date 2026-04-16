@@ -52,10 +52,13 @@ class VideoOverlayItem extends StatefulWidget {
   final int triggerPreviewCounter;
   final int triggerOutPreviewCounter;
 
-  // Brush style specific properties
   final double brushIntensity;
   final double brushThickness;
   final double brushComplexity;
+  final double backgroundPadding;
+
+  /// Dynamic parameters for various background styles.
+  final Map<String, dynamic> styleParams;
 
   const VideoOverlayItem({
     super.key,
@@ -102,6 +105,8 @@ class VideoOverlayItem extends StatefulWidget {
     this.brushIntensity = 2.0,
     this.brushThickness = 1.0,
     this.brushComplexity = 12.0,
+    this.backgroundPadding = 20.0,
+    this.styleParams = const {},
   });
 
   @override
@@ -381,15 +386,16 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
   }
 
   Widget _buildTextView() {
-    if (widget.backgroundColor != null) {
+    if (widget.backgroundColor != null || widget.backgroundStyle != TextBackgroundStyle.rectangle) {
       return TextWithLineBackgrounds(
         text: _store.label,
         style: _getTextStyle(),
         textAlign: widget.textAlign,
-        backgroundColor: widget.backgroundColor!,
+        backgroundColor: widget.backgroundColor ?? Colors.white,
         backgroundOpacity: widget.backgroundOpacity,
         backgroundRadius: widget.backgroundRadius,
         backgroundStyle: widget.backgroundStyle,
+        backgroundPadding: widget.backgroundPadding,
         backgroundBorderColor: widget.backgroundBorderColor,
         backgroundBorderWidth: widget.backgroundBorderWidth,
         strokeColor: widget.strokeColor,
@@ -397,6 +403,7 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
         brushIntensity: widget.brushIntensity,
         brushThickness: widget.brushThickness,
         brushComplexity: widget.brushComplexity,
+        styleParams: widget.styleParams,
       );
     }
 

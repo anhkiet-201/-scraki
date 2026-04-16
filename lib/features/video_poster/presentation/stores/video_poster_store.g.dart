@@ -1077,6 +1077,8 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     double? brushIntensity,
     double? brushThickness,
     double? brushComplexity,
+    double? backgroundPadding,
+    Map<String, dynamic>? styleParams,
   }) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.updateCustomTextStyle',
@@ -1107,6 +1109,8 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
         brushIntensity: brushIntensity,
         brushThickness: brushThickness,
         brushComplexity: brushComplexity,
+        backgroundPadding: backgroundPadding,
+        styleParams: styleParams,
       );
     } finally {
       _$_VideoPosterStoreActionController.endAction(_$actionInfo);

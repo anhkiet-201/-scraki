@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart' show TextBackgroundStyle;
-import 'brush_background_painter.dart';
+import 'background_painter_factory.dart';
+import 'dart:ui';
 
 class TextWithLineBackgrounds extends StatelessWidget {
   final String text;
@@ -17,6 +18,8 @@ class TextWithLineBackgrounds extends StatelessWidget {
   final double brushIntensity;
   final double brushThickness;
   final double brushComplexity;
+  final double backgroundPadding;
+  final Map<String, dynamic> styleParams;
 
   const TextWithLineBackgrounds({
     super.key,
@@ -34,6 +37,8 @@ class TextWithLineBackgrounds extends StatelessWidget {
     this.brushIntensity = 2.0,
     this.brushThickness = 1.0,
     this.brushComplexity = 12.0,
+    this.backgroundPadding = 20.0,
+    this.styleParams = const {},
   });
 
   @override
@@ -55,67 +60,96 @@ class TextWithLineBackgrounds extends StatelessWidget {
           crossAxisAlignment: crossAxis,
           children: [
             for (int i = 0; i < lineTexts.length; i++)
-              Container(
-                margin: EdgeInsets.only(top: i == 0 ? 0 : 4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 4,
-                ),
-                decoration: backgroundStyle == TextBackgroundStyle.rectangle 
-                    ? BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(backgroundRadius),
-                        border:
-                            backgroundBorderWidth > 0 && backgroundBorderColor != null
-                            ? Border.all(
-                                color: backgroundBorderColor!,
-                                width: backgroundBorderWidth,
-                              )
-                            : null,
-                      )
-                    : null,
-                child: CustomPaint(
-                  painter: backgroundStyle == TextBackgroundStyle.brush 
-                      ? BrushBackgroundPainter(
-                          color: bgColor,
-                          intensity: brushIntensity,
-                          thickness: brushThickness,
-                          complexity: brushComplexity,
-                        )
-                      : null,
-                  child: Stack(
-                    children: [
-                      if (strokeColor != null && strokeWidth > 0)
-                        Text(
-                          lineTexts[i],
-                          style: style.copyWith(
-                            color: null,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeJoin = StrokeJoin.round
-                              ..strokeCap = StrokeCap.round
-                              ..strokeWidth = strokeWidth
-                              ..color = strokeColor!,
-                          ),
-                          maxLines: 1,
-                          softWrap: false,
-                          textAlign: textAlign,
-                        ),
-                      Text(
-                        lineTexts[i],
-                        style: style,
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: textAlign,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildLineItem(lineTexts[i], bgColor, i == 0),
           ],
         );
       },
     );
+  }
+
+  Widget _buildLineItem(String lineText, Color bgColor, bool isFirst) {
+    final isGlass = backgroundStyle == TextBackgroundStyle.glass;
+    final glassOpacity = (styleParams['glass_opacity'] as num?)?.toDouble() ?? 0.2;
+    final blurSigma = (styleParams['blur_sigma'] as num?)?.toDouble() ?? 10.0;
+    
+    final decoration = backgroundStyle == TextBackgroundStyle.rectangle 
+        ? BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(backgroundRadius),
+            border: backgroundBorderWidth > 0 && backgroundBorderColor != null
+                ? Border.all(color: backgroundBorderColor!, width: backgroundBorderWidth)
+                : null,
+          )
+        : isGlass
+            ? BoxDecoration(
+                color: backgroundColor.withValues(alpha: glassOpacity),
+                borderRadius: BorderRadius.circular(backgroundRadius),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+              )
+            : null;
+
+    final hPadding = backgroundPadding;
+    
+    final painter = BackgroundPainterFactory.create(
+      style: backgroundStyle,
+      color: backgroundColor,
+      opacity: backgroundOpacity,
+      params: styleParams,
+      radius: backgroundRadius,
+      brushIntensity: brushIntensity,
+      brushThickness: brushThickness,
+      brushComplexity: brushComplexity,
+    );
+
+    Widget content = Container(
+      margin: EdgeInsets.only(top: isFirst ? 0 : 4),
+      child: CustomPaint(
+        painter: painter,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 4),
+          decoration: decoration,
+          child: Stack(
+            children: [
+              if (strokeColor != null && strokeWidth > 0)
+                Text(
+                  lineText,
+                  style: style.copyWith(
+                    color: null,
+                    foreground: Paint()
+                      ..style = PaintingStyle.stroke
+                      ..strokeJoin = StrokeJoin.round
+                      ..strokeCap = StrokeCap.round
+                      ..strokeWidth = strokeWidth
+                      ..color = strokeColor!,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: textAlign,
+                ),
+              Text(
+                lineText,
+                style: style,
+                maxLines: 1,
+                softWrap: false,
+                textAlign: textAlign,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (isGlass) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(backgroundRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 
   /// Tách text thành danh sách text từng dòng dựa trên cách TextPainter wrap.

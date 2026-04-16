@@ -13,6 +13,8 @@ enum TextAnimationType {
 enum TextBackgroundStyle {
   rectangle,
   brush,
+  glass,
+  paper,
 }
 
 /// Represents a free-form text overlay on the video canvas.
@@ -67,10 +69,14 @@ class CustomTextOverlay {
   final TextAnimationType animationOutType;
   final double animationOutDuration;
 
-  // Brush style specific properties
+  // Brush style specific properties (Legacy - will be moved to styleParams in the future)
   final double brushIntensity;
   final double brushThickness;
   final double brushComplexity;
+
+  final double backgroundPadding;
+  /// Dynamic parameters for various background styles.
+  final Map<String, dynamic> styleParams;
 
   bool get isAnimated =>
       animationInType != TextAnimationType.none ||
@@ -107,6 +113,8 @@ class CustomTextOverlay {
     this.brushIntensity = 2.0,
     this.brushThickness = 1.0,
     this.brushComplexity = 12.0,
+    this.backgroundPadding = 20.0,
+    this.styleParams = const {},
   });
 
   CustomTextOverlay copyWith({
@@ -145,7 +153,14 @@ class CustomTextOverlay {
     double? brushIntensity,
     double? brushThickness,
     double? brushComplexity,
+    double? backgroundPadding,
+    Map<String, dynamic>? styleParams,
   }) {
+    // Deep merge for styleParams
+    final newStyleParams = styleParams != null
+        ? {...this.styleParams, ...styleParams}
+        : this.styleParams;
+
     return CustomTextOverlay(
       id: id ?? this.id,
       label: label ?? this.label,
@@ -181,7 +196,10 @@ class CustomTextOverlay {
       animationOutDuration: animationOutDuration ?? this.animationOutDuration,
       brushIntensity: brushIntensity ?? (this.brushIntensity as double? ?? 2.0),
       brushThickness: brushThickness ?? (this.brushThickness as double? ?? 1.0),
-      brushComplexity: brushComplexity ?? (this.brushComplexity as double? ?? 12.0),
+      brushComplexity:
+          brushComplexity ?? (this.brushComplexity as double? ?? 12.0),
+      backgroundPadding: backgroundPadding ?? this.backgroundPadding,
+      styleParams: newStyleParams,
     );
   }
 }
