@@ -985,21 +985,28 @@ class BatchVideoService {
     await concatFile.writeAsString(buffer.toString());
 
     // ── Random anti-reup parameters ─────────────────────────────────────────
-    // Tăng biên độ PTS (±3.5%) để phá vỡ temporal fingerprinting
-    final pts = 0.965 + random.nextDouble() * 0.07;
+    // Biên độ PTS nhẹ nhàng (±1%) để tránh giật lag hoặc tạo cờ nghi ngờ
+    final pts = 0.99 + random.nextDouble() * 0.02;
     final brightness = (random.nextDouble() * 0.04) - 0.02;
     final contrast = 1.0 + (random.nextDouble() * 0.04) - 0.02;
-    // Tăng độ nhiễu Noise (0.4 - 1.2) để ghi đè pHash cũ của bản gốc
-    final noise = 0.4 + random.nextDouble() * 0.8;
 
-    final spoofProfile = _VideoSpoofProfile.random(random);
-    final gopSize = 30 + random.nextInt(31);
+    final gopSize = 60 + random.nextInt(60); // GOP size tiêu chuẩn hơn (1-2s)
+
+    // Tạo thời gian quay video ngẫu nhiên trong 30 ngày qua để metadata trông tự nhiên
+    final recordedTime = DateTime.now().toUtc().subtract(
+      Duration(
+        days: random.nextInt(30),
+        hours: random.nextInt(24),
+        minutes: random.nextInt(60),
+      ),
+    );
+    final creationTime =
+        '${recordedTime.toUtc().toIso8601String().split('.').first}.000000Z';
 
     final hasCustomAudio = config.customAudioPath != null &&
         config.customAudioPath!.isNotEmpty &&
         File(config.customAudioPath!).existsSync();
     final audioProfile = _AudioSpoofProfile.random(random);
-    final noiseStr = noise.toStringAsFixed(2);
     final ptsStr = pts.toStringAsFixed(6);
 
     // Hue/Saturation jitter ±3°, ±3%
@@ -1381,11 +1388,8 @@ class BatchVideoService {
         }
       }
 
-      // Final processing: Gộp bộ lọc Noise vào bước cuối cùng để tối ưu hiệu năng
-      String consolidatedNoise = 'noise=alls=$noiseStr:allf=t';
+      // Final processing: Đã gỡ bộ lọc Noise để tránh bị TikTok nhận diện signature AI noise
       String fStr = filterComplex.toString();
-      fStr += '$lastVideoLabel$consolidatedNoise[final_v];';
-      lastVideoLabel = '[final_v]';
 
       // Build audio mix filter:
       String audioMapArg;
@@ -1441,8 +1445,6 @@ class BatchVideoService {
         '-b:a', '${audioProfile.audioBitrate}k', // Audio bitrate jitter: 96/112/128/160 kbps
         '-r',
         '30',
-        '-fps_mode',
-        'cfr',
         '-c:v',
         gpuEncoder,
         '-b:v',
@@ -1459,24 +1461,24 @@ class BatchVideoService {
         'bt709',
         '-color_primaries',
         'bt709',
-        // GOP jitter áp dụng cho tất cả encoders (không chỉ libx264)
+        // Để FFMPEG tự quyết định cấu trúc B-frame, Ref frames ngầm định cho chất lượng và độ tự nhiên cao nhất
         if (gpuEncoder == 'libx264') ...[
-          '-x264-params',
-          'profile=high:level=4.1:bframes=0:cabac=1:8x8dct=1:ref=1:g=$gopSize',
           '-preset',
-          spoofProfile.preset,
+          'superfast',
+          '-g',
+          gopSize.toString(),
         ] else ...[
           '-g', gopSize.toString(),
         ],
-        '-map_metadata',
-        '-1',
+        // Sử dụng cấu trúc tag chuẩn của FFMPEG, tạo bản export video tự nhiên
         '-movflags',
-        '+faststart+use_metadata_tags',
-        ...spoofProfile.toFfmpegMetadataArgs(),
+        '+faststart+use_metadata_tags', // Đẩy moov atom lên đầu giống mobile phone
+        '-metadata',
+        'creation_time=$creationTime',
         '-avoid_negative_ts',
         'make_zero', // Dập tắt mọi giá trị âm còn sót lại về 0 trước khi ghi file
-        '-movflags', '+faststart+use_metadata_tags', // Đẩy moov atom lên đầu giống mobile phone
         '-shortest', // Đảm bảo video và audio kết thúc cùng lúc
+
         finalOutput,
       ]);
 
@@ -1606,151 +1608,6 @@ class _SegmentRequest {
       duration.hashCode ^
       hflip.hashCode ^
       hasAudio.hashCode;
-}
-
-// ============================================================================
-// _VideoSpoofProfile — per-video randomized metadata to avoid batch detection
-// ============================================================================
-
-/// Encapsulates all per-video spoofing parameters.
-/// Call [_VideoSpoofProfile.random] to generate a fresh profile for each output.
-class _VideoSpoofProfile {
-  static const _devices = [
-    (model: 'Samsung Galaxy S23 Ultra', android: '13'),
-    (model: 'Samsung Galaxy S24 Ultra', android: '14'),
-    (model: 'Samsung Galaxy Z Fold5', android: '13'),
-    (model: 'Samsung Galaxy A54 5G', android: '13'),
-    (model: 'Samsung Galaxy Tab S9 Ultra', android: '13'),
-    (model: 'Google Pixel 8 Pro', android: '14'),
-    (model: 'Google Pixel 7 Pro', android: '13'),
-    (model: 'Google Pixel 6a', android: '13'),
-    (model: 'Google Pixel Fold', android: '13'),
-    (model: 'Xiaomi 13 Pro', android: '13'),
-    (model: 'Xiaomi 14 Ultra', android: '14'),
-    (model: 'Redmi Note 13 Pro+', android: '13'),
-    (model: 'Xiaomi Pad 6', android: '13'),
-    (model: 'Oppo Find X6 Pro', android: '13'),
-    (model: 'Oppo Reno10 Pro+', android: '13'),
-    (model: 'Oppo Find N3 Flip', android: '13'),
-    (model: 'Vivo X90 Pro+', android: '13'),
-    (model: 'Vivo V29 Pro', android: '13'),
-    (model: 'Vivo X Flip', android: '13'),
-    (model: 'Realme GT5', android: '13'),
-    (model: 'Realme 11 Pro+', android: '13'),
-    (model: 'Sony Xperia 1 V', android: '13'),
-    (model: 'Sony Xperia 5 V', android: '13'),
-    (model: 'OnePlus 11', android: '13'),
-    (model: 'OnePlus 12', android: '14'),
-    (model: 'OnePlus Open', android: '13'),
-    (model: 'Motorola Edge 40 Pro', android: '13'),
-    (model: 'Motorola Razr 40 Ultra', android: '13'),
-    (model: 'Asus ROG Phone 7 Ultimate', android: '13'),
-    (model: 'Asus Zenfone 10', android: '13'),
-    (model: 'Nothing Phone (2)', android: '13'),
-    (model: 'Nokia G42', android: '13'),
-  ];
-
-  static const _presets = ['ultrafast', 'superfast', 'veryfast'];
-
-  /// GPS bounding box: TP.HCM + Bình Dương
-  static const _latMin = 10.65;
-  static const _latMax = 11.30;
-  static const _lonMin = 106.55;
-  static const _lonMax = 107.00;
-
-  final String model;
-  final String androidVersion;
-  final String creationTime;
-  final String gpsIso6709;
-  final String preset;
-  final String jitterId; // file-size jitter
-  final String videoId; // UUID for CapCut
-
-  const _VideoSpoofProfile({
-    required this.model,
-    required this.androidVersion,
-    required this.creationTime,
-    required this.gpsIso6709,
-    required this.preset,
-    required this.jitterId,
-    required this.videoId,
-  });
-
-  factory _VideoSpoofProfile.random(Random random) {
-    final device = _devices[random.nextInt(_devices.length)];
-
-    // Random timestamp trong 30 ngày qua
-    final daysAgo = random.nextInt(30);
-    final hoursAgo = random.nextInt(24);
-    final minutesAgo = random.nextInt(60);
-    final recordedTime = DateTime.now().toUtc().subtract(
-      Duration(days: daysAgo, hours: hoursAgo, minutes: minutesAgo),
-    );
-    final recordedAt =
-        '${recordedTime.toUtc().toIso8601String().split('.').first}.000000Z';
-
-    // GPS ngẫu nhiên trong vùng TP.HCM + Bình Dương
-    final lat = _latMin + random.nextDouble() * (_latMax - _latMin);
-    final lon = _lonMin + random.nextDouble() * (_lonMax - _lonMin);
-    // ISO 6709 format: +10.8234+106.7183+0/
-    final latSign = lat >= 0 ? '+' : '-';
-    final lonSign = lon >= 0 ? '+' : '-';
-    final gps =
-        '$latSign${lat.abs().toStringAsFixed(4)}'
-        '$lonSign${lon.abs().toStringAsFixed(4)}'
-        '+0/';
-
-    // Random preset
-    final preset = _presets[random.nextInt(_presets.length)];
-
-    // 8-char hex jitter id
-    final jitterId = List.generate(
-      8,
-      (_) => random.nextInt(16).toRadixString(16),
-    ).join();
-
-    // Simple UUID v4 generator
-    String genUuid() {
-      final r = Random();
-      return List.generate(36, (i) {
-        if (i == 8 || i == 13 || i == 18 || i == 23) return '-';
-        if (i == 14) return '4';
-        final res = r.nextInt(16);
-        if (i == 19) return (res & 0x3 | 0x8).toRadixString(16);
-        return res.toRadixString(16);
-      }).join();
-    }
-
-    return _VideoSpoofProfile(
-      model: device.model,
-      androidVersion: device.android,
-      creationTime: recordedAt,
-      gpsIso6709: gps,
-      preset: preset,
-      jitterId: jitterId,
-      videoId: genUuid(),
-    );
-  }
-
-  String get _lvMetaInfo {
-    // Escaped JSON string matching CapCut Mobile structure
-    return '{"data":{"adsTemplateId":"","appVersion":"16.9.0","businessComponentId":"","businessTemplateId":"","capabilityName":"text_template,filter,transform,text_font","editType":"edit","enterFrom":"draft","exportType":"export","is_use_audio_separation":1,"launchMode":"launch","os":"android","product":"vicut","region":"VN","source_platform":"mobile_2","videoId":"$videoId"},"source_type":"vicut"}';
-  }
-
-  /// Returns ffmpeg metadata args to be added to the command.
-  List<String> toFfmpegMetadataArgs() => [
-    '-metadata',
-    'creation_time=$creationTime',
-    '-metadata',
-    'location=$gpsIso6709',
-    '-metadata',
-    'LvMetaInfo=$_lvMetaInfo',
-    '-metadata',
-    'comment=sc_v_$jitterId',
-    // Giả lập Encoder của hệ thống Android thật (Gallery/Camera app)
-    '-metadata',
-    'encoder=com.android.gallery3d',
-  ];
 }
 
 // ============================================================================
