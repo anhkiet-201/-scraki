@@ -126,12 +126,16 @@ import '../../features/video_poster/data/services/ambient_audio_service.dart'
     as _i390;
 import '../../features/video_poster/data/services/batch_video_service.dart'
     as _i893;
+import '../../features/video_poster/data/services/image_drop_service.dart'
+    as _i113;
 import '../../features/video_poster/domain/repositories/favorite_image_repository.dart'
     as _i147;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
     as _i427;
 import '../../features/video_poster/domain/services/anti_reup_service.dart'
     as _i154;
+import '../../features/video_poster/presentation/stores/image_drop_store.dart'
+    as _i348;
 import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
 import '../config/settings_config_provider.dart' as _i730;
@@ -153,6 +157,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i90.PosterCustomizationStore>(
       () => _i90.PosterCustomizationStore(),
     );
+    gh.factory<_i113.ImageDropService>(() => _i113.ImageDropService());
     gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
@@ -193,6 +198,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
       () => _i963.FavoriteImageRemoteDataSourceImpl(),
+    );
+    gh.factory<_i348.ImageDropStore>(
+      () => _i348.ImageDropStore(gh<_i113.ImageDropService>()),
     );
     gh.lazySingleton<_i992.LocalScriptDataSource>(
       () => _i992.LocalScriptDataSourceImpl(),
