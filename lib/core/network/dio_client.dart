@@ -155,7 +155,7 @@ class DioClient {
   }
 
   /// Performs a download request.
-  Future<Response> download(
+  Future<Response<dynamic>> download(
     String urlPath,
     dynamic savePath, {
     ProgressCallback? onReceiveProgress,

@@ -6,6 +6,7 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 import 'package:scraki/features/video_poster/data/services/giphy_service.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/video_poster/presentation/widgets/panels/common/panel_components.dart';
+import 'package:scraki/core/di/injection.dart';
 
 /// Image Library panel — drag-and-drop Image items to the video canvas
 class ImageLibraryPanel extends StatefulWidget {
@@ -18,7 +19,7 @@ class ImageLibraryPanel extends StatefulWidget {
 }
 
 class _ImageLibraryPanelState extends State<ImageLibraryPanel> {
-  final GiphyService _giphyService = GiphyService();
+  final GiphyService _giphyService = getIt<GiphyService>();
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _gifs = [];
   bool _isLoading = false;

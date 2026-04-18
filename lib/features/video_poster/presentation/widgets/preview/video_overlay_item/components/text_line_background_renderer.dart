@@ -54,46 +54,39 @@ class TextWithLineBackgrounds extends StatelessWidget {
           _ => CrossAxisAlignment.center,
         };
 
-        return Stack(
-          clipBehavior: Clip.none,
+        // Chuẩn hóa TextStyle để tránh sai lệch metrics trên các nền tảng (đặc biệt là Windows)
+        final normalizedStyle = style.copyWith(
+          // Chiều cao dòng tường minh giúp ổn định kích thước container giữa các OS
+          height: style.height ?? 1.1, 
+        );
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: crossAxis,
           children: [
-            // Layer 1: All backgrounds rendered first
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: crossAxis,
-              children: [
-                for (int i = 0; i < lineTexts.length; i++)
-                  _buildBackgroundLayer(lineTexts[i], bgColor, i == 0),
-              ],
-            ),
-            // Layer 2: All text rendered on top
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: crossAxis,
-              children: [
-                for (int i = 0; i < lineTexts.length; i++)
-                  _buildTextLayer(lineTexts[i], i == 0),
-              ],
-            ),
+            for (int i = 0; i < lineTexts.length; i++)
+              _buildSingleLine(
+                lineText: lineTexts[i], 
+                bgColor: bgColor, 
+                isFirst: i == 0,
+                style: normalizedStyle,
+              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildBackgroundLayer(String lineText, Color bgColor, bool isFirst) {
-    // Xử lý background decoration
-    
-    final decoration = backgroundStyle == TextBackgroundStyle.rectangle 
-        ? BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(backgroundRadius),
-            border: backgroundBorderWidth > 0 && backgroundBorderColor != null
-                ? Border.all(color: backgroundBorderColor!, width: backgroundBorderWidth)
-                : null,
-          )
-        : null;
-
+  /// Xây dựng một dòng duy nhất bao gồm cả Nền và Chữ trong cùng một Stack (Atomic Layout).
+  /// Việc này đảm bảo chữ luôn căn chỉnh chính xác theo nền của chính nó, 
+  /// loại bỏ lỗi tích lũy sai số metrics khi dùng 2 cột riêng biệt.
+  Widget _buildSingleLine({
+    required String lineText, 
+    required Color bgColor, 
+    required bool isFirst,
+    required TextStyle style,
+  }) {
+    // 1. Khởi tạo Painter cho nền
     final painter = BackgroundPainterFactory.create(
       style: backgroundStyle,
       color: backgroundColor,
@@ -105,53 +98,82 @@ class TextWithLineBackgrounds extends StatelessWidget {
       brushComplexity: brushComplexity,
     );
 
-    Widget backgroundContent = Container(
-      margin: EdgeInsets.only(top: isFirst ? 0 : 4),
-      child: CustomPaint(
-        painter: painter,
-        child: Container(
-          // Kích thước phải khớp chính xác với Container chứa Text
-          padding: EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4),
-          decoration: decoration,
-          child: Opacity(
-            opacity: 0,
-            child: Text(lineText, style: style, maxLines: 1),
-          ),
-        ),
-      ),
-    );
+    final decoration = backgroundStyle == TextBackgroundStyle.rectangle 
+        ? BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(backgroundRadius),
+            border: backgroundBorderWidth > 0 && backgroundBorderColor != null
+                ? Border.all(color: backgroundBorderColor!, width: backgroundBorderWidth)
+                : null,
+          )
+        : null;
 
-    return backgroundContent;
-  }
+    // Common padding and margin for both layers to ensure perfect overlap
+    final margin = EdgeInsets.only(top: isFirst ? 0 : 4);
+    final padding = EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4);
 
-  Widget _buildTextLayer(String lineText, bool isFirst) {
     return Container(
-      margin: EdgeInsets.only(top: isFirst ? 0 : 4),
-      padding: EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4),
+      margin: margin,
       child: Stack(
+        // Alignment center để đảm bảo dù có sai lệch metrics, chữ vẫn nằm giữa nền
+        alignment: Alignment.center,
         children: [
-          if (strokeColor != null && strokeWidth > 0)
-            Text(
-              lineText,
-              style: style.copyWith(
-                color: null,
-                foreground: Paint()
-                  ..style = PaintingStyle.stroke
-                  ..strokeJoin = StrokeJoin.round
-                  ..strokeCap = StrokeCap.round
-                  ..strokeWidth = strokeWidth
-                  ..color = strokeColor!,
+          // Layer 1: Background (CustomPaint)
+          CustomPaint(
+            painter: painter,
+            child: Container(
+              padding: padding,
+              decoration: decoration,
+              // Dùng text ẩn để đo kích thước nền khớp hoàn toàn với text thật
+              child: Opacity(
+                opacity: 0,
+                child: Text(
+                  lineText, 
+                  style: style, 
+                  maxLines: 1, 
+                  softWrap: false,
+                  textAlign: textAlign,
+                ),
               ),
-              maxLines: 1,
-              softWrap: false,
-              textAlign: textAlign,
             ),
-          Text(
-            lineText,
-            style: style,
-            maxLines: 1,
-            softWrap: false,
-            textAlign: textAlign,
+          ),
+
+          // Layer 2: Text (Stroke + Fill)
+          Container(
+            padding: padding,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (strokeColor != null && strokeWidth > 0)
+                  Text(
+                    lineText,
+                    style: style.copyWith(
+                      color: null,
+                      foreground: Paint()
+                        ..style = PaintingStyle.stroke
+                        ..strokeJoin = StrokeJoin.round
+                        ..strokeCap = StrokeCap.round
+                        ..strokeWidth = strokeWidth
+                        ..color = strokeColor!,
+                    ),
+                    maxLines: 1,
+                    softWrap: false,
+                    textAlign: textAlign,
+                  ),
+                Text(
+                  lineText,
+                  style: style,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: textAlign,
+                  // Chuẩn hóa cách Flutter xử lý chiều cao ký tự để đồng nhất giữa Windows/macOS
+                  textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: true,
+                    applyHeightToLastDescent: true,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

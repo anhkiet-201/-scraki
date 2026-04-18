@@ -126,6 +126,7 @@ import '../../features/video_poster/data/services/ambient_audio_service.dart'
     as _i390;
 import '../../features/video_poster/data/services/batch_video_service.dart'
     as _i893;
+import '../../features/video_poster/data/services/giphy_service.dart' as _i298;
 import '../../features/video_poster/data/services/image_drop_service.dart'
     as _i113;
 import '../../features/video_poster/domain/repositories/favorite_image_repository.dart'
@@ -277,6 +278,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i390.AmbientAudioService>(
       () => _i390.AmbientAudioService(gh<_i667.DioClient>()),
+    );
+    gh.lazySingleton<_i298.GiphyService>(
+      () => _i298.GiphyService(gh<_i667.DioClient>()),
     );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:injectable/injectable.dart';
 
-/// Repository lưu trữ màu gần đây (recent colors) cho text và background
-/// bằng Hive, dùng dạng List<int> (Color.value).
 @lazySingleton
 class RecentColorRepository {
   static const String _boxName = 'recent_colors';

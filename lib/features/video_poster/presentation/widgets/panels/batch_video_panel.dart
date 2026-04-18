@@ -219,7 +219,7 @@ class _BatchVideoPanelState extends State<BatchVideoPanel> {
                         scale: 0.6,
                         child: Switch(
                           value: widget.store.generateAmbientAudio,
-                          activeColor: const Color(0xFF6366F1),
+                          activeThumbColor: const Color(0xFF6366F1),
                           onChanged: isCreating
                               ? null
                               : (val) => widget.store.setGenerateAmbientAudio(val),

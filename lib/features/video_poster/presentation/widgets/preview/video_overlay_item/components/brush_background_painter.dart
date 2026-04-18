@@ -68,7 +68,7 @@ class BrushBackgroundPainter extends CustomPainter {
 
     // 3. Hiệu ứng lông cọ khô (Dry bristles) và vệt mực văng
     final bristlePaint = Paint()
-      ..color = color.withValues(alpha: color.opacity * 0.4)
+      ..color = color.withValues(alpha: color.a * 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -88,7 +88,7 @@ class BrushBackgroundPainter extends CustomPainter {
 
     // 4. Thêm các vết đốm mực nhỏ (Splats) để trông "thật" hơn
     final splatPaint = Paint()
-      ..color = color.withValues(alpha: color.opacity * 0.3)
+      ..color = color.withValues(alpha: color.a * 0.3)
       ..style = PaintingStyle.fill;
     
     for (int i = 0; i < 15; i++) {

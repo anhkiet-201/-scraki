@@ -312,7 +312,7 @@ class _IsolateVideoSession {
         // scrcpy connects Video first, then Control.
         // If it retries, it closes existing and connects again.
         if (_adbSocket == null) {
-          print(
+          logger.i(
             '[Isolate-Video] Accepted VIDEO socket for $sessionId (Count: $_connectionCount)',
           );
 
@@ -328,7 +328,7 @@ class _IsolateVideoSession {
           _adbSubscription = _adbSocket!.listen(_handleAdbData);
 
           _adbSocket!.done.then((_) {
-            print('[Isolate-Video] VIDEO socket closed for $sessionId');
+            logger.i('[Isolate-Video] VIDEO socket closed for $sessionId');
             _adbSocket = null;
             _adbSubscription?.cancel();
             eventPort?.send(
@@ -336,14 +336,14 @@ class _IsolateVideoSession {
             );
           });
         } else if (_controlSocket == null) {
-          print(
+          logger.i(
             '[Isolate-Video] Accepted CONTROL socket for $sessionId (Count: $_connectionCount)',
           );
           _controlSocket = socket;
           _controlSocket!.listen(
             _handleControlData,
             onDone: () {
-              print('[Isolate-Video] CONTROL socket closed for $sessionId');
+              logger.i('[Isolate-Video] CONTROL socket closed for $sessionId');
               _controlSocket = null;
               eventPort?.send(
                 VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
@@ -362,7 +362,7 @@ class _IsolateVideoSession {
         _anyPlayerConnected = true;
 
         if (isFirst) {
-          print(
+          logger.i(
             '[Isolate-Video] Player connected. Dumping initial buffer: ${_initialBuffer.length} chunks',
           );
 
@@ -377,7 +377,7 @@ class _IsolateVideoSession {
           }
           _initialBuffer.clear();
         } else {
-          print('[Isolate-Video] Late player connected. Sending Meta only.');
+          logger.i('[Isolate-Video] Late player connected. Sending Meta only.');
           if (_configHeader.isNotEmpty) {
             _playerSocket!.add(_configHeader);
           }
@@ -469,7 +469,7 @@ class _IsolateVideoSession {
           // Meta captured, if player is already here, we must forward it
           _playerSocket?.add(configPacket);
 
-          print(
+          logger.i(
             '[Isolate-Video] Captured Meta Packet: $size bytes (Total Meta: ${_configHeader.length} bytes)',
           );
         } else {
@@ -477,7 +477,7 @@ class _IsolateVideoSession {
         }
       } else {
         _isFirstFrameReceived = true;
-        print('[Isolate-Video] First data frame reached. PTS: $pts');
+        logger.i('[Isolate-Video] First data frame reached. PTS: $pts');
         break;
       }
     }
@@ -510,7 +510,7 @@ class _IsolateVideoSession {
         final textBytes = _controlBuffer.sublist(5, 5 + length);
         final text = utf8.decode(textBytes, allowMalformed: true);
 
-        print(
+        logger.i(
           '[Isolate-Video] Received clipboard update from session $sessionId: $text',
         );
         eventPort?.send(
@@ -531,12 +531,12 @@ class _IsolateVideoSession {
 
   void pause() {
     _isPaused = true;
-    print('[Isolate-Video] Session $sessionId paused decoding');
+    logger.i('[Isolate-Video] Session $sessionId paused decoding');
   }
 
   void resume() {
     _isPaused = false;
-    print('[Isolate-Video] Session $sessionId resumed decoding');
+    logger.i('[Isolate-Video] Session $sessionId resumed decoding');
     // Ensure meta is sent on resume just in case
     if (_configHeader.isNotEmpty && _playerSocket != null) {
       _playerSocket!.add(_configHeader);

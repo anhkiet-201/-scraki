@@ -1,9 +1,14 @@
-import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
 import 'package:scraki/core/config/app_config.dart';
+import 'package:scraki/core/network/dio_client.dart';
+import 'package:scraki/core/utils/logger.dart';
 
+@lazySingleton
 class GiphyService {
-  final Dio _dio = Dio();
+  final DioClient _dioClient;
   final String _baseUrl = 'https://api.giphy.com/v1/gifs';
+
+  GiphyService(this._dioClient);
 
   Future<List<Map<String, dynamic>>> searchGifs(
     String query, {
@@ -14,7 +19,7 @@ class GiphyService {
     if (apiKey.isEmpty) return [];
 
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
+      final response = await _dioClient.get<Map<String, dynamic>>(
         '$_baseUrl/search',
         queryParameters: {
           'api_key': apiKey,
@@ -38,7 +43,7 @@ class GiphyService {
         }).toList();
       }
     } catch (e) {
-      print('Error searching Giphy: $e');
+      logger.e('[GiphyService] Error searching Giphy: $e');
     }
     return [];
   }
@@ -51,7 +56,7 @@ class GiphyService {
     if (apiKey.isEmpty) return [];
 
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
+      final response = await _dioClient.get<Map<String, dynamic>>(
         '$_baseUrl/trending',
         queryParameters: {
           'api_key': apiKey,
@@ -73,7 +78,7 @@ class GiphyService {
         }).toList();
       }
     } catch (e) {
-      print('Error getting trending Giphy: $e');
+      logger.e('[GiphyService] Error getting trending Giphy: $e');
     }
     return [];
   }
