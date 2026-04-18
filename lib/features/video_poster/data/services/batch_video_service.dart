@@ -311,19 +311,20 @@ class BatchVideoService {
             );
 
         final selected = <_SegmentRequest>[];
-        int totalDuration = 0;
+        double totalDuration = 0.0;
         String lastVideoPath = '';
 
         while (totalDuration < targetDuration && !_cancelled) {
           // Trộn lại bài nếu đã xài cạn kiệt Pool
           if (poolIndex >= globalSegmentPool.length) {
-            // Thay vì chỉ shuffle, chúng ta băm lại toàn bộ Pool để thay đổi Timeline
+            // Thay vì chỉ shuffle, chúng ta băm lại toàn bộ Pool để thay đổi Timeline với Jitter mới
             globalSegmentPool = _generateSegmentPool(
-                validVideos: validVideos,
-                videoDurations: videoDurations,
-                videoHasAudio: videoHasAudio,
-                config: config,
-                random: random,
+              validVideos: validVideos,
+              videoDurations: videoDurations,
+              videoHasAudio: videoHasAudio,
+              config: config,
+              random: random,
+              isRetry: true, // Đánh dấu là lần tạo lại để tăng cường biến thiên (hflip)
             );
             poolIndex = 0;
           }
@@ -546,29 +547,33 @@ class BatchVideoService {
     required Map<String, bool> videoHasAudio,
     required BatchVideoConfig config,
     required Random random,
+    bool isRetry = false,
   }) {
     final pool = <_SegmentRequest>[];
-    for (final src in validVideos) {
-      final srcDur = videoDurations[src]!;
+    // Trộn danh sách video nguồn để nội dung được phân bổ đều hơn ngay từ đầu
+    final shuffledVideos = List<String>.from(validVideos)..shuffle(random);
+
+    for (final src in shuffledVideos) {
+      final srcDur = videoDurations[src]!.toDouble();
       
-      // Bổ sung Initial Offset từ 0-2 giây để điểm bắt đầu của chuỗi cắt luôn thay đổi
-      int currentTime = (srcDur > config.minSegmentDuration + 2) 
-          ? random.nextInt(3) 
-          : 0;
+      // Bổ sung Initial Offset từ 0-2 giây để điểm bắt đầu của chuỗi cắt luôn thay đổi (Sử dụng double)
+      double currentTime = (srcDur > config.minSegmentDuration + 2) 
+          ? random.nextDouble() * 2.0 
+          : 0.0;
 
       while (currentTime + config.minSegmentDuration <= srcDur) {
-        int maxPossible = min(config.maxSegmentDuration, srcDur - currentTime);
+        double maxPossible = min(config.maxSegmentDuration.toDouble(), srcDur - currentTime);
         if (maxPossible < config.minSegmentDuration) break;
 
-        final segDur = config.minSegmentDuration +
-            random.nextInt(maxPossible - config.minSegmentDuration + 1);
+        final deltaRange = maxPossible - config.minSegmentDuration;
+        final segDur = config.minSegmentDuration + (random.nextDouble() * deltaRange);
 
         pool.add(_SegmentRequest(
           sourcePath: src,
           startTime: currentTime,
           duration: segDur,
-          // Sử dụng Smart Hflip: 30% xác suất lách ngang giúp phá vỡ pHash mạnh hơn
-          hflip: random.nextDouble() < 0.3,
+          // Sử dụng Smart Hflip: 30% xác suất bình thường, tăng lên 70% nếu là bản retry để khác biệt
+          hflip: isRetry ? random.nextDouble() < 0.7 : random.nextDouble() < 0.3,
           hasAudio: videoHasAudio[src] ?? false,
         ));
         currentTime += segDur;
@@ -677,8 +682,8 @@ class BatchVideoService {
   /// dẫn đến artifact/lag tại điểm nối khi concat.
   Future<String?> _runSegmentCut({
     required String input,
-    required int startSeconds,
-    required int duration,
+    required double startSeconds,
+    required double duration,
     required String output,
     required bool hflip,
     required bool hasAudio,
@@ -716,8 +721,8 @@ class BatchVideoService {
   /// Luôn tạo I-frame mới ở đầu mỗi segment để đảm bảo concat mượt.
   Future<String?> _runSegmentEncode({
     required String input,
-    required int startSeconds,
-    required int duration,
+    required double startSeconds,
+    required double duration,
     required String output,
     required bool hflip,
     required bool hasAudio,
@@ -819,8 +824,8 @@ class BatchVideoService {
     String af,
     String encoder, {
     required String input,
-    required int startSeconds,
-    required int duration,
+    required double startSeconds,
+    required double duration,
     required String output,
     String? processName,
     void Function(double)? onProgress,
@@ -832,7 +837,7 @@ class BatchVideoService {
         '-y',
         '-hwaccel',
         'auto',
-        '-ss', startSeconds.toString(),
+        '-ss', startSeconds.toStringAsFixed(3),
         '-fflags', '+genpts+igndts',
         '-i', input,
       ];
@@ -842,7 +847,7 @@ class BatchVideoService {
       }
 
       args.addAll([
-        '-t', duration.toString(),
+        '-t', duration.toStringAsFixed(3),
         '-vf', vf,
       ]);
 
@@ -1113,7 +1118,13 @@ class BatchVideoService {
       
       if (config.generateColorFilter) {
         final colorProfile = _ColorFilterProfile.random(random);
+        final curvesProfile = _CurvesProfile.random(random);
+        final balanceProfile = _ColorBalanceProfile.random(random);
+        
         filterComplex.write('colorchannelmixer=${colorProfile.ffmpegString},');
+        filterComplex.write('curves=${curvesProfile.ffmpegString},');
+        filterComplex.write('colorbalance=${balanceProfile.ffmpegString},');
+        
         final double gammaBase = 0.98 + random.nextDouble() * 0.04;
         filterComplex.write(
           'eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}:gamma=${gammaBase.toStringAsFixed(3)},',
@@ -1127,9 +1138,7 @@ class BatchVideoService {
 
       // Hue/saturation jitter để phá vỡ color histogram fingerprint
       filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},');
-      // Noise sẽ được gộp và áp dụng ở bước cuối cùng để tiết kiệm CPU
       // Vignette nhẹ tránh trùng mã điểm ảnh góc viền
-    // Sử dụng flags=lanczos cho chất lượng scale cao nhưng cấu trúc pixel khác biệt
       filterComplex.write('vignette=${vignetteAngle.toStringAsFixed(4)},');
       filterComplex.write('trim=start=0,setpts=$ptsStr*N/30/TB[bg];');
 
@@ -1570,8 +1579,8 @@ class BatchVideoService {
 
 class _SegmentRequest {
   final String sourcePath;
-  final int startTime;
-  final int duration;
+  final double startTime;
+  final double duration;
   final bool hflip;
   final bool hasAudio;
 
@@ -1725,72 +1734,100 @@ class _ColorFilterProfile {
   const _ColorFilterProfile._(this.ffmpegString);
 
   factory _ColorFilterProfile.random(Random random) {
-    final type = random.nextInt(11);
+    final type = random.nextInt(14); 
     
-    // Hệ số cường độ cực nhẹ (tương đương 10-15% opacity của filter) 
-    // Độ lệch chuẩn chỉ từ ±0.01 đến ±0.04 so với Ma trận gốc (Identity Matrix)
     switch (type) {
-      case 0: // Warm Tint (Red boost, Blue cut)
-        final rBoost = 1.01 + random.nextDouble() * 0.02; // max +3%
-        final bCut = 0.97 + random.nextDouble() * 0.02;   // max -3%
-        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:bb=${bCut.toStringAsFixed(3)}');
+      case 0: // Warm Cinema (Làm dịu hơn để không ám vàng)
+        return _ColorFilterProfile._('rr=1.008:gg=1.003:bb=0.993:rg=0.002:bg=0.002');
+      case 1: // Cool Mystery
+        return _ColorFilterProfile._('rr=0.992:gg=1.002:bb=1.008:rb=0.002:gb=0.002');
+      case 2: // Teal & Orange (Subtle)
+        return _ColorFilterProfile._('rr=1.01:gg=1.0:bb=0.99:rg=0.005:bg=0.005');
+      case 3: // Vintage Film (Giảm ám vàng)
+        return _ColorFilterProfile._('rr=1.005:gg=1.0:bb=0.992:rg=0.005:gb=0.005');
+      case 4: // Rose Blush
+        return _ColorFilterProfile._('rr=1.015:gg=0.99:bb=1.005:rg=0.003:bg=0.003');
+      case 5: // Forest Green
+        return _ColorFilterProfile._('rr=0.99:gg=1.01:bb=0.995:rg=0.003:bg=0.003');
+      case 6: // Sunset Gold (Fix ám vàng nặng: bb từ 0.96 -> 0.99)
+        return _ColorFilterProfile._('rr=1.005:gg=1.005:bb=0.99:rg=0.005');
+      case 7: // Deep Night (Cold)
+        return _ColorFilterProfile._('rr=0.96:gg=0.99:bb=1.03:rb=0.01:gb=0.01');
+      case 8: // Cyberpunk (Neon)
+        return _ColorFilterProfile._('rr=1.02:gg=0.97:bb=1.03:br=0.01:bg=0.01');
+      case 9: // Muted Natural
+        return _ColorFilterProfile._('rr=0.99:gg=1.0:bb=0.99:rg=0.005:bg=0.005:gr=0.005:br=0.005');
+      case 10: // Bleach Bypass (Giảm mạnh cường độ)
+        return _ColorFilterProfile._('rr=1.03:gg=1.03:bb=1.03:rg=-0.01:rb=-0.01:gr=-0.01:gb=-0.01');
+      case 11: // Desaturated Cold
+        return _ColorFilterProfile._('rr=1.0:gg=1.0:bb=1.02:rg=-0.005:bg=-0.005');
+      case 12: // Pastel Dream
+        return _ColorFilterProfile._('rr=1.01:gg=1.01:bb=1.01:rg=0.01:bg=0.01:br=0.01');
+      default: // Ultra-Jitter (Cân bằng trắng - White Balance Neutral)
+        final r = random;
+        // Lấy một mức thay đổi chung cho cả 3 kênh để giữ độ trung tính
+        final neutral = 0.99 + r.nextDouble() * 0.02; // 0.99 -> 1.01
+        // Mỗi kênh chỉ lệch tối đa 0.3% so với mức chung này
+        double jitter() => (r.nextDouble() * 0.006) - 0.003;
         
-      case 1: // Cool Tint (Blue boost, Red cut)
-        final bBoost = 1.01 + random.nextDouble() * 0.02;
-        final rCut = 0.97 + random.nextDouble() * 0.02;
-        return _ColorFilterProfile._('rr=${rCut.toStringAsFixed(3)}:bb=${bBoost.toStringAsFixed(3)}');
-        
-      case 2: // Vintage/Sepia (Slight R+G mix, B cut)
-        final mix = 0.01 + random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rr=${(1.0 + mix).toStringAsFixed(3)}:rg=${mix.toStringAsFixed(3)}:gg=${(1.0 + mix).toStringAsFixed(3)}:bb=${(0.98 - mix).toStringAsFixed(3)}');
-        
-      case 3: // Cinematic Green (Shadow green mix)
-        final gBoost = 1.01 + random.nextDouble() * 0.02;
-        final mix = 0.01 + random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rb=${mix.toStringAsFixed(3)}:gg=${gBoost.toStringAsFixed(3)}:br=${mix.toStringAsFixed(3)}');
-        
-      case 4: // Cyberpunk/Pink (Red & Blue boost, Green cut)
-        final rBoost = 1.01 + random.nextDouble() * 0.02;
-        final bBoost = 1.01 + random.nextDouble() * 0.02;
-        final gCut = 0.97 + random.nextDouble() * 0.02;
-        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:gg=${gCut.toStringAsFixed(3)}:bb=${bBoost.toStringAsFixed(3)}');
-
-      case 5: // Twilight/Purple
-        final mix = 0.01 + random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rr=${(1.0 + mix).toStringAsFixed(3)}:rb=${mix.toStringAsFixed(3)}:gg=0.99:gb=${mix.toStringAsFixed(3)}:bb=${(1.01 + mix).toStringAsFixed(3)}');
-
-      case 6: // Autumn/Orange
-        final rBoost = 1.02 + random.nextDouble() * 0.02;
-        final mix = 0.01 + random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rr=${rBoost.toStringAsFixed(3)}:gr=${mix.toStringAsFixed(3)}:bb=0.97');
-
-      case 7: // Matrix Green (Pure green boost)
-        final gBoost = 1.02 + random.nextDouble() * 0.02;
-        final cut = 0.97 + random.nextDouble() * 0.02;
-        return _ColorFilterProfile._('rr=${cut.toStringAsFixed(3)}:gg=${gBoost.toStringAsFixed(3)}:bb=${cut.toStringAsFixed(3)}');
-
-      case 8: // Gold/Amber
-        final boost = 1.01 + random.nextDouble() * 0.02;
-        final mix = 0.01 + random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rr=${boost.toStringAsFixed(3)}:rg=${mix.toStringAsFixed(3)}:gg=${boost.toStringAsFixed(3)}:bb=0.97');
-
-      case 9: // Muted/Bleach Bypass (Slight desat cross-mix)
-        final m = 0.01 + random.nextDouble() * 0.01;
-        final b = 0.98 - random.nextDouble() * 0.01;
-        return _ColorFilterProfile._('rr=${b.toStringAsFixed(3)}:rg=${m.toStringAsFixed(3)}:rb=${m.toStringAsFixed(3)}:gr=${m.toStringAsFixed(3)}:gg=${b.toStringAsFixed(3)}:gb=${m.toStringAsFixed(3)}:br=${m.toStringAsFixed(3)}:bg=${m.toStringAsFixed(3)}:bb=${b.toStringAsFixed(3)}');
-
-      default: // Random Micro-Jitter (Case 10)
         return _ColorFilterProfile._(
-          'rr=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}:'
-          'rg=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'rb=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'gr=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'gg=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}:'
-          'gb=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'br=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'bg=${((random.nextDouble() * 0.02) - 0.01).toStringAsFixed(3)}:'
-          'bb=${(0.98 + random.nextDouble() * 0.04).toStringAsFixed(3)}'
+          'rr=${(neutral + jitter()).toStringAsFixed(3)}:'
+          'rg=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'rb=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'gr=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'gg=${(neutral + jitter()).toStringAsFixed(3)}:'
+          'gb=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'br=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'bg=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
+          'bb=${(neutral + jitter()).toStringAsFixed(3)}'
         );
     }
+  }
+}
+
+// ============================================================================
+// _CurvesProfile — non-linear color mapping (High Anti-pHash)
+// ============================================================================
+
+class _CurvesProfile {
+  final String ffmpegString;
+
+  const _CurvesProfile._(this.ffmpegString);
+
+  factory _CurvesProfile.random(Random random) {
+    final type = random.nextInt(4); // Loại bỏ các preset gắt
+    switch (type) {
+      case 0: // Vintage (FFmpeg default vintage is quite subtle)
+        return const _CurvesProfile._('preset=vintage');
+      case 1: // Custom Subtle Warmer
+        final mid = 0.495 + random.nextDouble() * 0.01; // Thu hẹp biên độ cực nhỏ để tránh ám vàng
+        return _CurvesProfile._('r=\'0/0 0.5/$mid 1/1\':b=\'0/0 0.5/${1.0-mid} 1/1\'');
+      case 2: // Custom Subtle Cooler
+        final mid = 0.49 + random.nextDouble() * 0.02;
+        return _CurvesProfile._('b=\'0/0 0.5/$mid 1/1\':r=\'0/0 0.5/${1.0-mid} 1/1\'');
+      default: // Ultra-Subtle S-Curve
+        final p = 0.005 + random.nextDouble() * 0.01; // Cực nhỏ
+        return _CurvesProfile._('all=\'0/0 0.25/${0.25-p} 0.75/${0.75+p} 1/1\'');
+    }
+  }
+}
+
+// ============================================================================
+// _ColorBalanceProfile — shadow/midtone/highlight balance
+// ============================================================================
+
+class _ColorBalanceProfile {
+  final String ffmpegString;
+
+  const _ColorBalanceProfile._(this.ffmpegString);
+
+  factory _ColorBalanceProfile.random(Random random) {
+    // Range -0.02 to 0.02 (Cực kỳ khó nhận ra bằng mắt)
+    double r() => (random.nextDouble() * 0.04) - 0.02;
+    return _ColorBalanceProfile._(
+      'rs=${r().toStringAsFixed(3)}:gs=${r().toStringAsFixed(3)}:bs=${r().toStringAsFixed(3)}:'
+      'rm=${r().toStringAsFixed(3)}:gm=${r().toStringAsFixed(3)}:bm=${r().toStringAsFixed(3)}:'
+      'rh=${r().toStringAsFixed(3)}:gh=${r().toStringAsFixed(3)}:bh=${r().toStringAsFixed(3)}'
+    );
   }
 }
