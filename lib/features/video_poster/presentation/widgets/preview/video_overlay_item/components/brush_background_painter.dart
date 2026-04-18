@@ -21,7 +21,7 @@ class BrushBackgroundPainter extends CustomPainter {
     
     // Nới rộng vùng vẽ để các nét cọ có không gian "bay bổng"
     const paddingX = 30.0;
-    const paddingY = 10.0;
+    const paddingY = 6.0;
     final rect = Rect.fromLTWH(
       -paddingX, 
       -paddingY, 

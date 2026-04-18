@@ -55,22 +55,36 @@ class TextWithLineBackgrounds extends StatelessWidget {
           _ => CrossAxisAlignment.center,
         };
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: crossAxis,
+        return Stack(
+          clipBehavior: Clip.none,
           children: [
-            for (int i = 0; i < lineTexts.length; i++)
-              _buildLineItem(lineTexts[i], bgColor, i == 0),
+            // Layer 1: All backgrounds rendered first
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: crossAxis,
+              children: [
+                for (int i = 0; i < lineTexts.length; i++)
+                  _buildBackgroundLayer(lineTexts[i], bgColor, i == 0),
+              ],
+            ),
+            // Layer 2: All text rendered on top
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: crossAxis,
+              children: [
+                for (int i = 0; i < lineTexts.length; i++)
+                  _buildTextLayer(lineTexts[i], i == 0),
+              ],
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _buildLineItem(String lineText, Color bgColor, bool isFirst) {
+  Widget _buildBackgroundLayer(String lineText, Color bgColor, bool isFirst) {
     final isGlass = backgroundStyle == TextBackgroundStyle.glass;
     final glassOpacity = (styleParams['glass_opacity'] as num?)?.toDouble() ?? 0.2;
-    final blurSigma = (styleParams['blur_sigma'] as num?)?.toDouble() ?? 10.0;
     
     final decoration = backgroundStyle == TextBackgroundStyle.rectangle 
         ? BoxDecoration(
@@ -88,8 +102,6 @@ class TextWithLineBackgrounds extends StatelessWidget {
               )
             : null;
 
-    final hPadding = backgroundPadding;
-    
     final painter = BackgroundPainterFactory.create(
       style: backgroundStyle,
       color: backgroundColor,
@@ -101,55 +113,68 @@ class TextWithLineBackgrounds extends StatelessWidget {
       brushComplexity: brushComplexity,
     );
 
-    Widget content = Container(
+    Widget backgroundContent = Container(
       margin: EdgeInsets.only(top: isFirst ? 0 : 4),
       child: CustomPaint(
         painter: painter,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 4),
+          // Kích thước phải khớp chính xác với Container chứa Text
+          padding: EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4),
           decoration: decoration,
-          child: Stack(
-            children: [
-              if (strokeColor != null && strokeWidth > 0)
-                Text(
-                  lineText,
-                  style: style.copyWith(
-                    color: null,
-                    foreground: Paint()
-                      ..style = PaintingStyle.stroke
-                      ..strokeJoin = StrokeJoin.round
-                      ..strokeCap = StrokeCap.round
-                      ..strokeWidth = strokeWidth
-                      ..color = strokeColor!,
-                  ),
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: textAlign,
-                ),
-              Text(
-                lineText,
-                style: style,
-                maxLines: 1,
-                softWrap: false,
-                textAlign: textAlign,
-              ),
-            ],
+          child: Opacity(
+            opacity: 0,
+            child: Text(lineText, style: style, maxLines: 1),
           ),
         ),
       ),
     );
 
     if (isGlass) {
+      final blurSigma = (styleParams['blur_sigma'] as num?)?.toDouble() ?? 10.0;
       return ClipRRect(
         borderRadius: BorderRadius.circular(backgroundRadius),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: content,
+          child: backgroundContent,
         ),
       );
     }
 
-    return content;
+    return backgroundContent;
+  }
+
+  Widget _buildTextLayer(String lineText, bool isFirst) {
+    return Container(
+      margin: EdgeInsets.only(top: isFirst ? 0 : 4),
+      padding: EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4),
+      child: Stack(
+        children: [
+          if (strokeColor != null && strokeWidth > 0)
+            Text(
+              lineText,
+              style: style.copyWith(
+                color: null,
+                foreground: Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeJoin = StrokeJoin.round
+                  ..strokeCap = StrokeCap.round
+                  ..strokeWidth = strokeWidth
+                  ..color = strokeColor!,
+              ),
+              maxLines: 1,
+              softWrap: false,
+              textAlign: textAlign,
+            ),
+          Text(
+            lineText,
+            style: style,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: textAlign,
+          ),
+        ],
+      ),
+    );
   }
 
   /// Tách text thành danh sách text từng dòng dựa trên cách TextPainter wrap.
@@ -172,7 +197,6 @@ class TextWithLineBackgrounds extends StatelessWidget {
         continue; // bỏ qua dòng cuối rỗng
       }
 
-      // Lấy vị trí character bằng cách probe giữa dòng
       final midY = line.baseline - line.ascent * 0.5;
       final startPos = painter
           .getPositionForOffset(Offset(line.left + 0.1, midY))
