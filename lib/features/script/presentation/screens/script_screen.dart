@@ -4,11 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' hide Action;
 import 'package:scraki/core/mixins/di_mixin.dart';
-import '../../domain/entities/log_entry.dart';
-import '../stores/script_store.dart';
-import '../../domain/entities/script_entity.dart';
-import '../widgets/script_editor_panel.dart';
-import '../widgets/tiled_log_view.dart';
+import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+import 'package:scraki/features/script/domain/entities/log_entry.dart';
+import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/features/script/domain/entities/script_entity.dart';
+import 'package:scraki/features/script/presentation/widgets/script_editor_panel.dart';
+import 'package:scraki/features/script/presentation/widgets/tiled_log_view.dart';
 
 class _HistoryIntent extends Intent {
   const _HistoryIntent(this.up);
@@ -1073,6 +1074,26 @@ class _ScriptScreenState extends State<ScriptScreen> {
             ),
           ),
         ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _showGroupSelectDialog,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: const Color(0xFF475569), // Slate 600
+              backgroundColor: Colors.white,
+            ),
+            child: Text(
+              'CHỌN NHÓM',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1158,6 +1179,68 @@ class _ScriptScreenState extends State<ScriptScreen> {
               elevation: 0,
             ),
             child: const Text('CHỌN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGroupSelectDialog() {
+    final groupStore = inject<DeviceGroupStore>();
+    
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Chọn thiết bị theo nhóm', 
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Observer(
+            builder: (_) {
+              if (groupStore.groups.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('Chưa có nhóm nào được định nghĩa.', textAlign: TextAlign.center),
+                );
+              }
+              
+              return ListView.separated(
+                shrinkWrap: true,
+                itemCount: groupStore.groups.length,
+                separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                itemBuilder: (context, index) {
+                  final group = groupStore.groups[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Color(group.colorValue),
+                    ),
+                    title: Text(
+                      group.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    ),
+                    subtitle: Text(
+                      '${group.deviceSerials.length} thiết bị',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    onTap: () {
+                      _store.selectDevicesByGroup(group.id);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ĐÓNG', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ],
       ),

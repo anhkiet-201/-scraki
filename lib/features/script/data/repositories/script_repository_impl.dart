@@ -1,13 +1,13 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import '../../../../core/error/exceptions.dart';
-import '../../../../core/error/failures.dart';
-import '../../../device/data/datasources/adb_remote_data_source.dart';
-import '../../domain/entities/script_entity.dart';
-import '../../domain/repositories/script_repository.dart';
-import '../datasources/local_script_data_source.dart';
-import '../datasources/remote_script_data_source.dart';
-import '../models/script_model.dart';
+import 'package:scraki/core/error/exceptions.dart';
+import 'package:scraki/core/error/failures.dart';
+import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
+import 'package:scraki/features/script/domain/entities/script_entity.dart';
+import 'package:scraki/features/script/domain/repositories/script_repository.dart';
+import 'package:scraki/features/script/data/datasources/local_script_data_source.dart';
+import 'package:scraki/features/script/data/datasources/remote_script_data_source.dart';
+import 'package:scraki/features/script/data/models/script_model.dart';
 
 @LazySingleton(as: ScriptRepository)
 class ScriptRepositoryImpl implements ScriptRepository {
@@ -83,20 +83,42 @@ class ScriptRepositoryImpl implements ScriptRepository {
 
   @override
   Stream<Either<Failure, String>> executeSingleCommandStream(String serial, String command) async* {
-    try {
-      yield* _adbDataSource.runShellCommandStream(serial, command).map((line) => Right(line));
-    } catch (e) {
-      yield Left(AdbFailure(e.toString()));
-    }
+    yield* _executeCommandInternal(serial, command);
   }
 
   @override
   Stream<Either<Failure, String>> executeScriptStream(String serial, ScriptEntity script) async* {
+    for (final cmd in script.commands) {
+      yield* _executeCommandInternal(serial, cmd);
+      yield const Right(''); // Dòng trống phân cách
+    }
+  }
+
+  Stream<Either<Failure, String>> _executeCommandInternal(String serial, String cmd) async* {
     try {
-      for (final cmd in script.commands) {
-        yield Right('--- Chạy lệnh: $cmd ---');
-        yield* _adbDataSource.runShellCommandStream(serial, cmd).map((line) => Right(line));
-        yield const Right(''); // Dòng trống phân cách
+      final trimmedCmd = cmd.trim();
+      if (trimmedCmd.isEmpty) return;
+
+      final adbRegex = RegExp(r'^adb([^a-zA-Z0-9]|$)', caseSensitive: false);
+
+      final adbMatch = adbRegex.firstMatch(trimmedCmd);
+      if (adbMatch != null) {
+        final rawCmd = trimmedCmd.substring(adbMatch.end).trim();
+        yield* _adbDataSource
+            .runRawAdbCommandStream(serial, rawCmd)
+            .map<Either<Failure, String>>((line) => Right(line))
+            .handleError((Object e) {
+          if (e is ServerException) return Left<Failure, String>(AdbFailure(e.message));
+          return Left<Failure, String>(AdbFailure(e.toString()));
+        });
+      } else {
+        yield* _adbDataSource
+            .runShellCommandStream(serial, trimmedCmd)
+            .map<Either<Failure, String>>((line) => Right(line))
+            .handleError((Object e) {
+          if (e is ServerException) return Left<Failure, String>(AdbFailure(e.message));
+          return Left<Failure, String>(AdbFailure(e.toString()));
+        });
       }
     } catch (e) {
       if (e is ServerException) {

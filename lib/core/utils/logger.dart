@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 ///
 /// Use [logger.d], [logger.i], [logger.w], [logger.e] for different log levels.
 final logger = Logger(
+  filter: ProductionFilter(),
   printer: PrettyPrinter(
     methodCount: 0,
     errorMethodCount: 8,

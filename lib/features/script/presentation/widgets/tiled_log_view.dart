@@ -39,8 +39,9 @@ class TiledLogView extends StatelessWidget {
             final serial = devices[index];
             return Observer(
               builder: (_) {
-                final deviceModel = store.devices.firstWhere((d) => d.serial == serial).modelName;
-                final logs = store.terminalOutput.where((l) => l.serial == serial).toList();
+                final device = store.getDeviceBySerial(serial);
+                final deviceModel = device?.modelName ?? 'Unknown';
+                final logs = store.deviceLogs[serial] ?? <LogEntry>[];
 
                 return _DeviceLogTile(
                   serial: serial,

@@ -2,16 +2,17 @@ import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:fpdart/fpdart.dart';
-import '../../../../core/stores/device_manager_store.dart';
-import '../../../../core/error/failures.dart';
-import '../../../device/domain/entities/device_entity.dart';
-import '../../domain/entities/script_entity.dart';
-import '../../domain/entities/log_entry.dart';
-import '../../domain/repositories/script_repository.dart';
-import '../../domain/usecases/run_script_use_case.dart';
-import '../../domain/usecases/execute_command_use_case.dart';
-import '../../domain/usecases/save_script_use_case.dart';
-import '../../domain/usecases/delete_script_use_case.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
+import 'package:scraki/core/error/failures.dart';
+import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/features/script/domain/entities/script_entity.dart';
+import 'package:scraki/features/script/domain/entities/log_entry.dart';
+import 'package:scraki/features/script/domain/repositories/script_repository.dart';
+import 'package:scraki/features/script/domain/usecases/run_script_use_case.dart';
+import 'package:scraki/features/script/domain/usecases/execute_command_use_case.dart';
+import 'package:scraki/features/script/domain/usecases/save_script_use_case.dart';
+import 'package:scraki/features/script/domain/usecases/delete_script_use_case.dart';
+import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 
 part 'script_store.g.dart';
 
@@ -26,6 +27,7 @@ abstract class _ScriptStore with Store {
   final SaveScriptUseCase _saveScriptUseCase;
   final DeleteScriptUseCase _deleteScriptUseCase;
   final DeviceManagerStore _deviceManagerStore;
+  final DeviceGroupStore _deviceGroupStore;
 
   _ScriptStore(
     this._repository,
@@ -34,6 +36,7 @@ abstract class _ScriptStore with Store {
     this._saveScriptUseCase,
     this._deleteScriptUseCase,
     this._deviceManagerStore,
+    this._deviceGroupStore,
   );
 
   @computed
@@ -83,6 +86,26 @@ abstract class _ScriptStore with Store {
   }
 
   @action
+  void selectDevicesByGroup(String groupId) {
+    final group = _deviceGroupStore.groups.firstWhere((g) => g.id == groupId);
+    _log('Chọn thiết bị theo nhóm: ${group.name}', type: LogType.info);
+    
+    // Lấy danh sách IP sạch từ nhóm (bỏ port nếu có)
+    final groupIps = group.deviceSerials.map((s) => s.split(':').first).toSet();
+    
+    // Duyệt qua danh sách thiết bị đang online để tìm các máy khớp IP
+    for (final device in devices) {
+      final deviceIp = device.serial.split(':').first;
+      
+      if (groupIps.contains(deviceIp) || group.deviceSerials.contains(device.serial)) {
+        if (!selectedSerials.contains(device.serial)) {
+          toggleDeviceSelection(device.serial);
+        }
+      }
+    }
+  }
+
+  @action
   void clearSelection() => _deviceManagerStore.clearSelection();
 
   @observable
@@ -92,10 +115,15 @@ abstract class _ScriptStore with Store {
   ObservableList<LogEntry> terminalOutput = ObservableList<LogEntry>();
 
   @observable
+  ObservableMap<String, ObservableList<LogEntry>> deviceLogs = ObservableMap<String, ObservableList<LogEntry>>();
+
+  @observable
   bool isExecuting = false;
 
   @observable
   String commandInput = '';
+
+  static const int _maxConcurrentDevices = 10;
 
   @observable
   ObservableList<String> commandHistory = ObservableList<String>();
@@ -270,35 +298,62 @@ abstract class _ScriptStore with Store {
     }
     commandInput = '';
     historyIndex = -1;
-    
-    final selectedSerials = _deviceManagerStore.selectedSerials.toList();
-    if (selectedSerials.isEmpty) {
+
+    final selectedSerialsList = selectedSerials.toList();
+    final deviceCount = selectedSerialsList.length;
+
+    await _executeBatch((serial) async {
+      // Trước khi chạy batch, log một dòng thông báo chung
+      if (serial == selectedSerialsList.first) {
+        _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount);
+      }
+      return executeCommandOnDevice(serial, cmd, logCommand: false);
+    });
+  }
+
+  Future<void> _executeBatch(Future<void> Function(String serial) task) async {
+    final serialList = selectedSerials.toList();
+    if (serialList.isEmpty) {
       _log('Chưa chọn thiết bị nào!', type: LogType.info);
       return;
     }
 
     isExecuting = true;
-    final deviceCount = selectedSerials.length;
-    // Nếu chạy trên nhiều thiết bị, log một dòng thông báo chung trước
-    _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount);
+    try {
+      for (var i = 0; i < serialList.length; i += _maxConcurrentDevices) {
+        final end = (i + _maxConcurrentDevices < serialList.length) ? i + _maxConcurrentDevices : serialList.length;
+        final chunk = serialList.sublist(i, end);
 
-    await Future.wait(selectedSerials.map((serial) => executeCommandOnDevice(serial, cmd, logCommand: false)));
+        // Chạy song song trong phạm vi một đợt và ĐỢI đợt này xong hoàn toàn
+        // Thêm khoảng nghỉ 50ms giữa các thiết bị để tránh gây sốc cho ADB Server
+        await Future.wait(chunk.asMap().entries.map((entry) async {
+          return task(entry.value);
+        }));
+      }
+    } finally {
+      isExecuting = false;
+    }
   }
 
   @action
   Future<void> executeCommandOnDevice(String serial, String command, {bool logCommand = true}) async {
     if (command.trim().isEmpty) return;
-    
-    final device = _deviceManagerStore.devices.firstWhere((d) => d.serial == serial);
+
+    final device = getDeviceBySerial(serial);
+
+    if (device == null) {
+      _log('Lỗi: Không tìm thấy thiết bị với serial $serial', type: LogType.error);
+      return;
+    }
+
     final deviceName = device.modelName;
-    
     if (logCommand) {
       _log(command, serial: serial, model: deviceName, type: LogType.command, deviceCount: 1);
     }
-    
-    // Hủy subscription cũ nếu có
+
     await _activeSubscriptions[serial]?.cancel();
 
+    final completer = Completer<void>();
     final subscription = _executeCommandUseCase.executeStream(serial, command).listen(
       (result) {
         result.fold(
@@ -308,31 +363,26 @@ abstract class _ScriptStore with Store {
       },
       onDone: () {
         _activeSubscriptions.remove(serial);
-        if (_activeSubscriptions.isEmpty) isExecuting = false;
+        if (!completer.isCompleted) completer.complete();
       },
       onError: (Object e) {
         _log('Lỗi hệ thống: $e', serial: serial, model: deviceName, type: LogType.error);
         _activeSubscriptions.remove(serial);
-        if (_activeSubscriptions.isEmpty) isExecuting = false;
+        if (!completer.isCompleted) completer.completeError(e);
       },
     );
 
     _activeSubscriptions[serial] = subscription;
+    return completer.future;
   }
 
   @action
   Future<void> runScript(ScriptEntity script) async {
-    final selectedSerials = _deviceManagerStore.selectedSerials.toList();
-    if (selectedSerials.isEmpty) {
-      _log('Chưa chọn thiết bị nào!', type: LogType.info);
-      return;
-    }
-
-    isExecuting = true;
     _log('Running script: ${script.name} on ${selectedSerials.length} devices', type: LogType.command);
 
-    await Future.wait(selectedSerials.map((serial) async {
-      final device = _deviceManagerStore.devices.firstWhere((d) => d.serial == serial);
+    await _executeBatch((serial) async {
+      final device = getDeviceBySerial(serial);
+      if (device == null) return;
       final deviceName = device.modelName;
 
       await _runScriptUseCase(serial, script).forEach((result) {
@@ -341,31 +391,54 @@ abstract class _ScriptStore with Store {
           (String line) => _log(line, serial: serial, model: deviceName, type: LogType.output),
         );
       });
-    }));
-
-    isExecuting = false;
+    });
   }
 
   @action
   void clearTerminal() {
     terminalOutput.clear();
+    deviceLogs.clear();
   }
 
   void _log(String message, {String? serial, String? model, required LogType type, int? deviceCount}) {
     // Nếu là lệnh global (không có serial), hiển thị là [ALL] thay vì [???]
     final displaySerial = serial ?? (deviceCount != null && deviceCount > 1 ? 'ALL' : null);
     
-    terminalOutput.add(LogEntry(
+    final entry = LogEntry(
       message: message,
       serial: displaySerial,
       deviceModel: model,
       type: type,
       deviceCount: deviceCount,
-    ));
-    
-    // Limit to 1000 lines
-    if (terminalOutput.length > 1000) {
+    );
+
+    // 1. Thêm vào danh sách tổng (cho Console chính)
+    terminalOutput.add(entry);
+    if (terminalOutput.length > 5000) { // Tăng lên 5000 dòng cho console tổng
       terminalOutput.removeAt(0);
+    }
+
+    // 2. Thêm vào danh sách riêng của thiết bị (cho Tiled View)
+    if (serial != null) {
+      if (!deviceLogs.containsKey(serial)) {
+        deviceLogs[serial] = ObservableList<LogEntry>();
+      }
+      final logs = deviceLogs[serial]!;
+      logs.add(entry);
+      if (logs.length > 500) { // Giới hạn 500 dòng/máy để tiết kiệm RAM
+        logs.removeAt(0);
+      }
+    }
+  }
+
+  /// Lấy thông tin thiết bị theo Serial một cách an toàn
+  DeviceEntity? getDeviceBySerial(String serial) {
+    try {
+      return devices.firstWhere(
+        (d) => d.serial == serial
+      );
+    } catch (_) {
+      return null;
     }
   }
 }

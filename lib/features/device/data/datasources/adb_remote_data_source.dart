@@ -91,6 +91,10 @@ abstract class IAdbRemoteDataSource {
 
   /// Chạy một lệnh shell và trả về luồng dữ liệu realtime
   Stream<String> runShellCommandStream(String serial, String command);
+
+  /// Chạy một lệnh ADB nguyên bản (không bọc trong shell) và trả về luồng dữ liệu realtime
+  /// [adbCommand] - Phần lệnh sau 'adb' (ví dụ: "install -r app.apk")
+  Stream<String> runRawAdbCommandStream(String serial, String adbCommand);
 }
 
 @LazySingleton(as: IAdbRemoteDataSource)
@@ -552,44 +556,123 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Stream<String> runShellCommandStream(String serial, String command) {
+    return _runProcessStream('adb', ['-s', serial, 'shell', command], serial, 'shell $command');
+  }
+
+  @override
+  Stream<String> runRawAdbCommandStream(String serial, String adbCommand) {
+    final args = _splitArguments(adbCommand);
+    return _runProcessStream('adb', ['-s', serial, ...args], serial, adbCommand);
+  }
+
+  Stream<String> _runProcessStream(String executable, List<String> args, String serial, String displayCmd) {
     final controller = StreamController<String>();
     Process? process;
+    Timer? timeoutTimer;
+    bool stdoutDone = false;
+    bool stderrDone = false;
+    int? exitCode;
 
-    // Khi người dùng ngừng lắng nghe stream (subscription.cancel()), kill tiến trình adb
+    void tryClose() {
+      if (stdoutDone && stderrDone && exitCode != null) {
+        timeoutTimer?.cancel();
+        _closeController(controller);
+        process = null;
+      }
+    }
+
+    // Timeout sau 15 giây nếu không có phản hồi hoặc không kết thúc
+    void startTimeout() {
+      timeoutTimer?.cancel();
+      timeoutTimer = Timer(const Duration(seconds: 15), () {
+        if (process != null && !controller.isClosed) {
+          logger.w('[ADB] Timeout ($serial): $displayCmd. Killing process...');
+          controller.addError('Lỗi: Thiết bị không phản hồi (Timeout 15s) [$displayCmd]');
+          process?.kill();
+          process = null;
+          _closeController(controller);
+        }
+      });
+    }
+
+    // Khi người dùng ngừng lắng nghe stream (subscription.cancel()), kill tiến trình
     controller.onCancel = () {
+      timeoutTimer?.cancel();
       if (process != null) {
-        logger.i('[ADB] Killing process for $serial: $command');
+        logger.i('[ADB] Cancelled ($serial): $displayCmd. Killing process...');
         process?.kill();
         process = null;
       }
     };
 
-    Process.start('adb', ['-s', serial, 'shell', command]).then((p) {
-      process = p;
-      
-      p.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-            (line) => controller.add(line),
-            onDone: () => _closeController(controller),
-            onError: (Object e) => _addErrorAndClose(controller, 'Lỗi stdout', e),
-          );
-          
-      p.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-            (line) => controller.add(line),
-            onError: (Object e) => _addError(controller, 'Lỗi stderr', e),
-          );
+    startTimeout();
 
-      p.exitCode.then((_) => _closeController(controller));
+    Process.start(executable, args).then((p) {
+      process = p;
+
+      p.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(
+        (line) {
+          if (!controller.isClosed) controller.add(line);
+        },
+        onDone: () {
+          stdoutDone = true;
+          tryClose();
+        },
+        onError: (Object e) {
+          _addError(controller, 'Lỗi stdout ($serial)', e);
+          stdoutDone = true;
+          tryClose();
+        },
+      );
+
+      p.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen(
+        (line) {
+          // stderr thường chứa thông tin lỗi quan trọng, đẩy qua addError để UI báo đỏ
+          if (!controller.isClosed) {
+            controller.addError(line);
+          }
+        },
+        onDone: () {
+          stderrDone = true;
+          tryClose();
+        },
+        onError: (Object e) {
+          _addError(controller, 'Lỗi stderr ($serial)', e);
+          stderrDone = true;
+          tryClose();
+        },
+      );
+
+      p.exitCode.then((code) {
+        exitCode = code;
+        if (code != 0 && code != 1) {
+          logger.w('[ADB] Process $displayCmd ($serial) exited with code $code');
+        }
+        tryClose();
+      });
     }).catchError((Object e) {
-      _addErrorAndClose(controller, 'Lỗi khởi động process', e);
+      timeoutTimer?.cancel();
+      _addErrorAndClose(controller, 'Lỗi khởi động process ($serial)', e);
     });
 
     return controller.stream;
+  }
+
+  /// Tách chuỗi lệnh thành danh sách các tham số, hỗ trợ dấu ngoặc kép
+  List<String> _splitArguments(String command) {
+    final List<String> result = [];
+    final RegExp regex = RegExp(r'("[^"]*"|\S+)');
+    final matches = regex.allMatches(command);
+    
+    for (final match in matches) {
+      String arg = match.group(0)!;
+      if (arg.startsWith('"') && arg.endsWith('"')) {
+        arg = arg.substring(1, arg.length - 1);
+      }
+      result.add(arg);
+    }
+    // Lọc bỏ các tham số rỗng để tránh gửi các tham số rác vào Process.start
+    return result.where((arg) => arg.isNotEmpty).toList();
   }
 
   void _closeController(StreamController<String> controller) {

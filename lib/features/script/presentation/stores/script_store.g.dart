@@ -70,6 +70,24 @@ mixin _$ScriptStore on _ScriptStore, Store {
     });
   }
 
+  late final _$deviceLogsAtom = Atom(
+    name: '_ScriptStore.deviceLogs',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, ObservableList<LogEntry>> get deviceLogs {
+    _$deviceLogsAtom.reportRead();
+    return super.deviceLogs;
+  }
+
+  @override
+  set deviceLogs(ObservableMap<String, ObservableList<LogEntry>> value) {
+    _$deviceLogsAtom.reportWrite(value, super.deviceLogs, () {
+      super.deviceLogs = value;
+    });
+  }
+
   late final _$isExecutingAtom = Atom(
     name: '_ScriptStore.isExecuting',
     context: context,
@@ -289,6 +307,18 @@ mixin _$ScriptStore on _ScriptStore, Store {
   }
 
   @override
+  void selectDevicesByGroup(String groupId) {
+    final _$actionInfo = _$_ScriptStoreActionController.startAction(
+      name: '_ScriptStore.selectDevicesByGroup',
+    );
+    try {
+      return super.selectDevicesByGroup(groupId);
+    } finally {
+      _$_ScriptStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void clearSelection() {
     final _$actionInfo = _$_ScriptStoreActionController.startAction(
       name: '_ScriptStore.clearSelection',
@@ -433,6 +463,7 @@ mixin _$ScriptStore on _ScriptStore, Store {
     return '''
 scripts: ${scripts},
 terminalOutput: ${terminalOutput},
+deviceLogs: ${deviceLogs},
 isExecuting: ${isExecuting},
 commandInput: ${commandInput},
 commandHistory: ${commandHistory},
