@@ -174,9 +174,6 @@ class _TimeInputFieldState extends State<TimeInputField> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        onLongPress: () {
-          // TODO: Tự động tăng/giảm khi nhấn giữ nếu cần
-        },
         borderRadius: BorderRadius.circular(8),
         child: Container(
           width: 32,

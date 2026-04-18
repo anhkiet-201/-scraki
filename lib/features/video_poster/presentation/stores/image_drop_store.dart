@@ -7,7 +7,7 @@ import 'package:scraki/features/video_poster/data/services/image_drop_service.da
 
 part 'image_drop_store.g.dart';
 
-@injectable
+@lazySingleton
 class ImageDropStore = _ImageDropStoreBase with _$ImageDropStore;
 
 abstract class _ImageDropStoreBase with Store {

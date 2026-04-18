@@ -65,7 +65,7 @@ mixin _$ImageDropStore on _ImageDropStoreBase, Store {
   @override
   void handlePerformDrop(
     PerformDropEvent event, {
-    required dynamic Function(String, bool) onImageFound,
+    required void Function(String, bool) onImageFound,
   }) {
     final _$actionInfo = _$_ImageDropStoreBaseActionController.startAction(
       name: '_ImageDropStoreBase.handlePerformDrop',

@@ -13,6 +13,7 @@ analyzer:
     missing_required_param: error
     missing_return: error
     invalid_annotation_target: ignore
+    library_private_types_in_public_api: ignore
 
 linter:
   rules:

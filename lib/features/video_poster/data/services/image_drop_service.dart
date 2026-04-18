@@ -14,88 +14,101 @@ class ImageDropService {
     final reader = item.dataReader;
     if (reader == null) return null;
 
-    // ─── GIAI ĐOẠN 0: File cục bộ ───
-    if (reader.canProvide(Formats.fileUri)) {
-      final uri = await _getValueAsync<Uri>(reader, Formats.fileUri);
-      if (uri != null && uri.isScheme('file')) {
-        final path = Uri.decodeComponent(uri.toFilePath());
-        if (_isDirectImageLink(path)) {
-          return path;
-        }
-      }
-    }
+    final fileUri = await _tryHandleFileUri(item);
+    if (fileUri != null) return fileUri;
 
-    // ─── GIAI ĐOẠN 1: URL First ───
-    String? foundUrl;
+    final urlResult = await _tryHandleUrlFormats(item);
+    if (urlResult != null && _isDirectImageLink(urlResult)) return urlResult;
+
+    final binaryResult = await _tryHandleBinaryFormats(item);
+    if (binaryResult != null) return binaryResult;
+
+    // Last Resort: Nếu chỉ tìm thấy URL không chắc chắn là ảnh thì vẫn thử nạp nốt
+    return urlResult;
+  }
+
+  /// GIAI ĐOẠN 0: Xử lý File cục bộ
+  Future<String?> _tryHandleFileUri(DropItem item) async {
+    final reader = item.dataReader;
+    if (reader == null || !reader.canProvide(Formats.fileUri)) return null;
+
+    final uri = await _getValueAsync<Uri>(item, Formats.fileUri);
+    if (uri != null && uri.isScheme('file')) {
+      final path = Uri.decodeComponent(uri.toFilePath());
+      if (_isDirectImageLink(path)) return path;
+    }
+    return null;
+  }
+
+  /// GIAI ĐOẠN 1: Xử lý các định dạng URL (HTML, URI, PlainText)
+  Future<String?> _tryHandleUrlFormats(DropItem item) async {
+    final reader = item.dataReader;
+    if (reader == null) return null;
     
-    // Thử lấy từ HTML
+    String? rawUrl;
+
+    // 1. Thử lấy từ HTML (Ưu tiên cao nhất)
     if (reader.canProvide(Formats.htmlText)) {
-      final html = await _getValueAsync<String>(reader, Formats.htmlText);
-      if (html != null) {
-        foundUrl = _extractUrlFromHtml(html);
-      }
-    }
-    
-    // Thử lấy từ URI
-    if (foundUrl == null && reader.canProvide(Formats.uri)) {
-      final namedUri = await _getValueAsync<NamedUri>(reader, Formats.uri);
-      if (namedUri != null) {
-        foundUrl = namedUri.uri.toString();
-      }
-    }
-    
-    // Thử lấy từ PlainText
-    if (foundUrl == null && reader.canProvide(Formats.plainText)) {
-      foundUrl = await _getValueAsync<String>(reader, Formats.plainText);
+      final html = await _getValueAsync<String>(item, Formats.htmlText);
+      if (html != null) rawUrl = _extractUrlFromHtml(html);
     }
 
-    if (foundUrl != null) {
-      final processedUrl = _processImageUrl(foundUrl.trim());
-      if (_isDirectImageLink(processedUrl)) {
-        return processedUrl;
-      }
-      debugPrint('[ImageDropService] Found URL but not direct image: $processedUrl');
+    // 2. Thử lấy từ URI
+    if (rawUrl == null && reader.canProvide(Formats.uri)) {
+      final namedUri = await _getValueAsync<NamedUri>(item, Formats.uri);
+      if (namedUri != null) rawUrl = namedUri.uri.toString();
     }
 
-    // ─── GIAI ĐOẠN 2: Binary Fallback ───
+    // 3. Thử lấy từ PlainText
+    if (rawUrl == null && reader.canProvide(Formats.plainText)) {
+      rawUrl = await _getValueAsync<String>(item, Formats.plainText);
+    }
+
+    return rawUrl != null ? _processImageUrl(rawUrl.trim()) : null;
+  }
+
+  /// GIAI ĐOẠN 2: Tối ưu hoá Fallback về Binary Data
+  /// Chỉ tải và lưu định dạng tốt nhất được tìm thấy.
+  Future<String?> _tryHandleBinaryFormats(DropItem item) async {
+    final reader = item.dataReader;
+    if (reader == null) return null;
+
     final binaryFormats = {
+      Formats.webp: '.webp',
       Formats.png: '.png',
       Formats.jpeg: '.jpg',
-      Formats.webp: '.webp',
       Formats.gif: '.gif',
     };
 
-    for (final entry in binaryFormats.entries) {
-      final format = entry.key;
-      final ext = entry.value;
+    var bestFormatEntry = binaryFormats.entries.where((e) => reader.canProvide(e.key)).firstOrNull;
 
-      if (reader.canProvide(format)) {
-        final data = await _getFileDataAsync(reader, format);
-        if (data != null && data.isNotEmpty) {
-          final tempDir = await getTemporaryDirectory();
-          final fileName = 'drop_${DateTime.now().millisecondsSinceEpoch}$ext';
-          final file = File(p.join(tempDir.path, fileName));
-          await file.writeAsBytes(data);
-          return file.path;
-        }
+    if (bestFormatEntry == null) return null;
+
+    // 2. Chỉ thực hiện IO cho định dạng tốt nhất
+    final data = await _getFileDataAsync(item, bestFormatEntry.key);
+    if (data != null && data.isNotEmpty) {
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'drop_${DateTime.now().millisecondsSinceEpoch}${bestFormatEntry.value}';
+        final file = File(p.join(tempDir.path, fileName));
+        await file.writeAsBytes(data);
+        return file.path;
+      } catch (e) {
+        debugPrint('[ImageDropService] IO Error saving binary data: $e');
       }
-    }
-
-    // ─── GIAI ĐOẠN 3: Last Resort ───
-    if (foundUrl != null) {
-      return _processImageUrl(foundUrl.trim());
     }
 
     return null;
   }
 
   String? _extractUrlFromHtml(String html) {
+    debugPrint('[ImageDropService] Analyzing Raw HTML...');
     final matchDouble = RegExp(r'src="([^"]+)"', caseSensitive: false).firstMatch(html);
     if (matchDouble != null) return matchDouble.group(1);
-    
+
     final matchSingle = RegExp(r"src='([^']+)'", caseSensitive: false).firstMatch(html);
     if (matchSingle != null) return matchSingle.group(1);
-    
+
     return null;
   }
 
@@ -105,6 +118,7 @@ class ImageDropService {
         final uri = Uri.tryParse(url);
         final imgUrl = uri?.queryParameters['imgurl'];
         if (imgUrl != null && imgUrl.isNotEmpty) {
+          debugPrint('[ImageDropService] Corrected Google Referral URL: $imgUrl');
           return imgUrl;
         }
       } catch (_) {}
@@ -115,43 +129,78 @@ class ImageDropService {
   bool _isDirectImageLink(String url) {
     final lower = url.toLowerCase();
     if (lower.startsWith('data:image/')) return true;
-    
+
     return lower.endsWith('.png') ||
-           lower.endsWith('.jpg') ||
-           lower.endsWith('.jpeg') ||
-           lower.endsWith('.gif') ||
-           lower.endsWith('.webp') ||
-           lower.contains('.png?') ||
-           lower.contains('.jpg?') ||
-           lower.contains('.jpeg?') ||
-           lower.contains('.webp?');
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp') ||
+        lower.contains('.png?') ||
+        lower.contains('.jpg?') ||
+        lower.contains('.jpeg?') ||
+        lower.contains('.webp?');
   }
 
-  Future<T?> _getValueAsync<T extends Object>(dynamic reader, dynamic format) {
+  Future<T?> _getValueAsync<T extends Object>(DropItem item, dynamic format) {
+    final reader = item.dataReader;
+    if (reader == null) return Future.value(null);
+    
     final completer = Completer<T?>();
-    reader.getValue(format, (Object? value) {
+    // Use dynamic reader to bypass strict type checking for library-internal format types
+    final dynamic dReader = reader;
+    dReader.getValue(format, (Object? value) {
       if (!completer.isCompleted) {
         completer.complete(value as T?);
       }
     });
-    return completer.future;
+
+    // Add 5 second timeout to prevent hanging UI if library callback is never called
+    return completer.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('[ImageDropService] getValue timed out after 5s for format $format');
+        if (!completer.isCompleted) completer.complete(null);
+        return null;
+      },
+    ).catchError((Object e) {
+      debugPrint('[ImageDropService] getValue error: $e');
+      return null;
+    });
   }
 
-  Future<Uint8List?> _getFileDataAsync(dynamic reader, dynamic format) {
+  Future<Uint8List?> _getFileDataAsync(DropItem item, dynamic format) {
+    final reader = item.dataReader;
+    if (reader == null) return Future.value(null);
+
     final completer = Completer<Uint8List?>();
-    reader.getFile(format, (Object? virtualFile) async {
-      if (virtualFile == null) {
-        if (!completer.isCompleted) completer.complete(null);
-        return;
-      }
+    // Use dynamic reader to bypass strict type checking for library-internal format types
+    final dynamic dReader = reader;
+    dReader.getFile(format, (Object? virtualFile) async {
       try {
-        final data = await (virtualFile as dynamic).readAll();
+        final dynamic file = virtualFile;
+        if (file == null) {
+          if (!completer.isCompleted) completer.complete(null);
+          return;
+        }
+        final data = await file.readAll();
         if (!completer.isCompleted) completer.complete(data as Uint8List?);
       } catch (e) {
         debugPrint('[ImageDropService] Error reading virtual file: $e');
         if (!completer.isCompleted) completer.complete(null);
       }
     });
-    return completer.future;
+
+    // Add 5 second timeout to prevent hanging UI if library callback is never called
+    return completer.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('[ImageDropService] getFile timed out after 5s for format $format');
+        if (!completer.isCompleted) completer.complete(null);
+        return null;
+      },
+    ).catchError((Object e) {
+      debugPrint('[ImageDropService] getFile error: $e');
+      return null;
+    });
   }
 }

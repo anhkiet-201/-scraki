@@ -199,7 +199,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i963.FavoriteImageRemoteDataSource>(
       () => _i963.FavoriteImageRemoteDataSourceImpl(),
     );
-    gh.factory<_i348.ImageDropStore>(
+    gh.lazySingleton<_i348.ImageDropStore>(
       () => _i348.ImageDropStore(gh<_i113.ImageDropService>()),
     );
     gh.lazySingleton<_i992.LocalScriptDataSource>(

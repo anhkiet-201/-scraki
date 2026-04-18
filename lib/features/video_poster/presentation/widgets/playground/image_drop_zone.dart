@@ -5,7 +5,7 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'package:scraki/features/video_poster/presentation/stores/image_drop_store.dart';
 
-class ImageDropZone extends StatefulWidget {
+class ImageDropZone extends StatelessWidget {
   final VideoPosterStore store;
   final Widget child;
 
@@ -16,20 +16,9 @@ class ImageDropZone extends StatefulWidget {
   });
 
   @override
-  State<ImageDropZone> createState() => _ImageDropZoneState();
-}
-
-class _ImageDropZoneState extends State<ImageDropZone> {
-  late final ImageDropStore _dropStore;
-
-  @override
-  void initState() {
-    super.initState();
-    _dropStore = getIt<ImageDropStore>();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final dropStore = getIt<ImageDropStore>();
+
     return Observer(
       builder: (context) {
         return DropRegion(
@@ -43,20 +32,20 @@ class _ImageDropZoneState extends State<ImageDropZone> {
             Formats.webp,
             Formats.gif,
           ],
-          onDropOver: (event) => _dropStore.handleDropOver(event, widget.store.isOnVideoEditorTab),
-          onDropLeave: (event) => _dropStore.setDragging(false),
+          onDropOver: (event) => dropStore.handleDropOver(event, store.isOnVideoEditorTab),
+          onDropLeave: (event) => dropStore.setDragging(false),
           onPerformDrop: (event) async {
-            _dropStore.handlePerformDrop(
+            dropStore.handlePerformDrop(
               event,
               onImageFound: (path, isGif) {
-                widget.store.addCustomImage(path, 0.5, 0.5, isGif: isGif);
+                store.addCustomImage(path, 0.5, 0.5, isGif: isGif);
               },
             );
           },
           child: Stack(
             children: [
-              widget.child,
-              if (_dropStore.isDragging)
+              child,
+              if (dropStore.isDragging)
                 Positioned.fill(
                   child: IgnorePointer(
                     child: Container(
@@ -91,7 +80,7 @@ class _ImageDropZoneState extends State<ImageDropZone> {
                     ),
                   ),
                 ),
-              if (_dropStore.isProcessing)
+              if (dropStore.isProcessing)
                 Positioned.fill(
                   child: Container(
                     color: Colors.black26,
