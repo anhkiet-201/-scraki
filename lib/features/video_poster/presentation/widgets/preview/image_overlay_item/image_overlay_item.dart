@@ -220,6 +220,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: -1,
                             multiplierY: -1,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Góc TR
@@ -233,6 +234,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: 1,
                             multiplierY: -1,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Góc BL
@@ -246,6 +248,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: -1,
                             multiplierY: 1,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Góc BR
@@ -259,6 +262,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: 1,
                             multiplierY: 1,
+                            rotation: widget.rotation,
                           ),
                         ),
 
@@ -273,6 +277,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: 0,
                             multiplierY: -1,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Cạnh Bottom
@@ -286,6 +291,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: 0,
                             multiplierY: 1,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Cạnh Left
@@ -299,6 +305,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: -1,
                             multiplierY: 0,
+                            rotation: widget.rotation,
                           ),
                         ),
                         // Cạnh Right
@@ -312,6 +319,7 @@ class _ImageOverlayItemState extends State<ImageOverlayItem> {
                             details: d,
                             multiplierX: 1,
                             multiplierY: 0,
+                            rotation: widget.rotation,
                           ),
                         ),
 

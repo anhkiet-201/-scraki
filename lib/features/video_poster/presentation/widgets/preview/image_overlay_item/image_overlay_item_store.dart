@@ -96,19 +96,20 @@ abstract class _ImageOverlayItemStore with Store {
     final cosA = math.cos(angle);
     final sinA = math.sin(angle);
 
-    final dx = details.delta.dx * cosA - details.delta.dy * sinA;
-    final dy = details.delta.dx * sinA + details.delta.dy * cosA;
+    // 1. Chuyển delta từ Global (màn hình) về Local (không gian ảnh đã xoay)
+    // dx_local = dx_g * cos + dy_g * sin
+    // dy_local = -dx_g * sin + dy_g * cos
+    final dxLocal = details.delta.dx * cosA + details.delta.dy * sinA;
+    final dyLocal = -details.delta.dx * sinA + details.delta.dy * cosA;
 
     double newWidth = width;
     double newHeight = height;
 
-    // Thay đổi width nếu kéo cạnh hoặc góc có trục X
     if (multiplierX != 0) {
-      newWidth = width + multiplierX * dx;
+      newWidth = width + multiplierX * dxLocal;
     }
-    // Thay đổi height nếu kéo cạnh hoặc góc có trục Y
     if (multiplierY != 0) {
-      newHeight = height + multiplierY * dy;
+      newHeight = height + multiplierY * dyLocal;
     }
 
     newWidth = newWidth.clamp(20.0, 1000.0);
@@ -119,18 +120,21 @@ abstract class _ImageOverlayItemStore with Store {
 
     if (dW.abs() < 0.01 && dH.abs() < 0.01) return;
 
+    // 2. Tính toán dịch chuyển tâm trong không gian Local
+    final sxLocal = (multiplierX * dW) / 2;
+    final syLocal = (multiplierY * dH) / 2;
+
+    // 3. Xoay dịch chuyển tâm ngược lại Global để cập nhật x, y đúng vị trí trên màn hình
+    // sx_g = sx_l * cos - sy_l * sin
+    // sy_g = sx_l * sin + sy_l * cos
+    final sxGlobal = sxLocal * cosA - syLocal * sinA;
+    final syGlobal = sxLocal * sinA + syLocal * cosA;
+
     updateSize(newWidth, newHeight);
     onResize(id, newWidth, newHeight);
 
-    // Dịch chuyển tâm sao cho anchor góc đối diện không di chuyển
-    final newX = (x + (multiplierX * dW / 2) / constraints.maxWidth).clamp(
-      0.0,
-      1.0,
-    );
-    final newY = (y + (multiplierY * dH / 2) / constraints.maxHeight).clamp(
-      0.0,
-      1.0,
-    );
+    final newX = (x + sxGlobal / constraints.maxWidth).clamp(0.0, 1.0);
+    final newY = (y + syGlobal / constraints.maxHeight).clamp(0.0, 1.0);
 
     updatePosition(newX, newY);
     onPositionUpdate(id, newX, newY);
@@ -138,15 +142,10 @@ abstract class _ImageOverlayItemStore with Store {
 
   @action
   void handleDrag(DragUpdateDetails details, double rotation) {
-    final angle = rotation * (math.pi / 180);
-    final cosA = math.cos(angle);
-    final sinA = math.sin(angle);
-
-    final globalDx = details.delta.dx * cosA - details.delta.dy * sinA;
-    final globalDy = details.delta.dx * sinA + details.delta.dy * cosA;
-
-    final newX = (x + globalDx / constraints.maxWidth).clamp(0.0, 1.0);
-    final newY = (y + globalDy / constraints.maxHeight).clamp(0.0, 1.0);
+    // Di chuyển toàn bộ vật thể: delta của chuột và (x, y) đều cùng không gian cha
+    // Không cần xoay delta ở đây.
+    final newX = (x + details.delta.dx / constraints.maxWidth).clamp(0.0, 1.0);
+    final newY = (y + details.delta.dy / constraints.maxHeight).clamp(0.0, 1.0);
 
     updatePosition(newX, newY);
     onPositionUpdate(id, newX, newY);
