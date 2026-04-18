@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
+import 'package:injectable/injectable.dart';
 import 'package:scraki/features/video_poster/data/services/ambient_audio_service.dart';
 
 // ============================================================================
@@ -97,7 +98,12 @@ class BatchVideoConfig {
   });
 }
 
+@lazySingleton
 class BatchVideoService {
+  final AmbientAudioService _ambientAudioService;
+
+  BatchVideoService(this._ambientAudioService);
+
   // ─── Cross-platform binaries ──────────────────────────────────────────────
 
   static String get _ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
@@ -268,8 +274,7 @@ class BatchVideoService {
         yield '';
         yield '[0/3] Đang tải âm thanh nền (Ambient Audio)...';
         try {
-          final ambientSvc = AmbientAudioService();
-          final paths = await ambientSvc.fetchRandomAmbientAudios(
+          final paths = await _ambientAudioService.fetchRandomAmbientAudios(
             config.outputCount, 
             config.ambientTags, 
             onLog: (msg) => onLog?.call(msg)
