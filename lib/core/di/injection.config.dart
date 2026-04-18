@@ -122,6 +122,10 @@ import '../../features/video_poster/data/repositories/ffmpeg_video_processing_re
     as _i1007;
 import '../../features/video_poster/data/repositories/recent_color_repository.dart'
     as _i763;
+import '../../features/video_poster/data/services/ambient_audio_service.dart'
+    as _i390;
+import '../../features/video_poster/data/services/batch_video_service.dart'
+    as _i893;
 import '../../features/video_poster/domain/repositories/favorite_image_repository.dart'
     as _i147;
 import '../../features/video_poster/domain/repositories/video_processing_repository.dart'
@@ -263,6 +267,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i260.IAkiRemoteService>(),
       ),
     );
+    gh.factory<_i390.AmbientAudioService>(
+      () => _i390.AmbientAudioService(gh<_i667.DioClient>()),
+    );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
     );
@@ -274,6 +281,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
       () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
+    );
+    gh.lazySingleton<_i893.BatchVideoService>(
+      () => _i893.BatchVideoService(gh<_i390.AmbientAudioService>()),
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),

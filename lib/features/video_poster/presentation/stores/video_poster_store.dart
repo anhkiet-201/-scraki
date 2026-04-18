@@ -736,7 +736,7 @@ abstract class _VideoPosterStore with Store {
   Future<void> createBatchVideos() async {
     if (sourceVideoPaths.isEmpty || isBatchCreating) return;
 
-    _batchService = BatchVideoService();
+    _batchService = inject<BatchVideoService>();
 
     // Fix: Tạm thời tắt isPreviewMode và dừng video để khi chụp PNG UI
     // không bị dính logic render text theo thời gian thực (giúp hiển thị tất cả text).
