@@ -434,7 +434,6 @@ class TextPropertiesPanel extends StatelessWidget {
                     children: [
                       _buildStyleToggle(context, text, TextBackgroundStyle.rectangle, Icons.rectangle_rounded),
                       _buildStyleToggle(context, text, TextBackgroundStyle.brush, Icons.brush_rounded),
-                      _buildStyleToggle(context, text, TextBackgroundStyle.glass, Icons.blur_on_rounded),
                       _buildStyleToggle(context, text, TextBackgroundStyle.paper, Icons.sticky_note_2_rounded),
                     ],
                   ),

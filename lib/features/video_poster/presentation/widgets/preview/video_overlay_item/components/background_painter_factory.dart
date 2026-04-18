@@ -21,9 +21,6 @@ class BackgroundPainterFactory {
       case TextBackgroundStyle.rectangle:
         return null;
         
-      case TextBackgroundStyle.glass:
-        return null;
-
       case TextBackgroundStyle.brush:
         return BrushBackgroundPainter(
           color: bgColor,

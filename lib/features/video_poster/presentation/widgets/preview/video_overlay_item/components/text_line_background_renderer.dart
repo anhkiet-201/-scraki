@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart' show TextBackgroundStyle;
 import 'background_painter_factory.dart';
-import 'dart:ui';
 
 class TextWithLineBackgrounds extends StatelessWidget {
   final String text;
@@ -83,8 +82,7 @@ class TextWithLineBackgrounds extends StatelessWidget {
   }
 
   Widget _buildBackgroundLayer(String lineText, Color bgColor, bool isFirst) {
-    final isGlass = backgroundStyle == TextBackgroundStyle.glass;
-    final glassOpacity = (styleParams['glass_opacity'] as num?)?.toDouble() ?? 0.2;
+    // Xử lý background decoration
     
     final decoration = backgroundStyle == TextBackgroundStyle.rectangle 
         ? BoxDecoration(
@@ -94,13 +92,7 @@ class TextWithLineBackgrounds extends StatelessWidget {
                 ? Border.all(color: backgroundBorderColor!, width: backgroundBorderWidth)
                 : null,
           )
-        : isGlass
-            ? BoxDecoration(
-                color: backgroundColor.withValues(alpha: glassOpacity),
-                borderRadius: BorderRadius.circular(backgroundRadius),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
-              )
-            : null;
+        : null;
 
     final painter = BackgroundPainterFactory.create(
       style: backgroundStyle,
@@ -128,17 +120,6 @@ class TextWithLineBackgrounds extends StatelessWidget {
         ),
       ),
     );
-
-    if (isGlass) {
-      final blurSigma = (styleParams['blur_sigma'] as num?)?.toDouble() ?? 10.0;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(backgroundRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: backgroundContent,
-        ),
-      );
-    }
 
     return backgroundContent;
   }

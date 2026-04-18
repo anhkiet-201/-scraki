@@ -13,7 +13,6 @@ enum TextAnimationType {
 enum TextBackgroundStyle {
   rectangle,
   brush,
-  glass,
   paper,
 }
 
