@@ -28,6 +28,10 @@ lib/
 │   │   ├── domain/           # Entities (Device, DeviceGroup), repository interfaces
 │   │   └── presentation/     # Stores (Mirroring, Group), screens, widgets
 │   ├── poster/               # Poster creation feature
+│   ├── script/               # ADB execution & scripting engine
+│   │   ├── data/             # Repositories, Script DataSources (Local & Remote)
+│   │   ├── domain/           # Entities (Script, LogEntry), UseCases
+│   │   └── presentation/     # ScriptStore, TiledLogView, Terminal widgets
 │   ├── dashboard/            # Dashboard feature
 │   └── recruitment/          # Recruitment feature
 │
@@ -61,6 +65,7 @@ Each feature has its own stores for local UI state:
 - `FloatingToolBoxStore`: Manages tool box UI state
 - `DashboardStore`: Manages dashboard screen and navigation state
 - `DeviceGroupStore`: Manages group list, selection, and device filtering logic
+- `ScriptStore`: Manages ADB script execution, parallel command batching, log monitoring, and placeholders ({I}, {SERIAL}).
 
 ### Store Access Pattern
 
@@ -176,6 +181,40 @@ The video overlay system (`VideoOverlayItem`) uses a modular rendering pipeline 
 - **Scalable Controls (Strategy Pattern)**: UI điều khiển hình nền được tách biệt khỏi panel chính bằng Strategy Pattern. Mỗi kiểu nền thực thi một Interface riêng, giúp thêm hàng trăm mẫu mới mà không làm phình code của Panel chính.
 - **Reactive State**: Các thuộc tính được quản lý bởi `VideoPosterStore`.
 - **Hot-Reload Safety**: Implementation includes defensive coding to handle stale memory states during rapid development cycles.
+
+- **Hot-Reload Safety**: Implementation includes defensive coding to handle stale memory states during rapid development cycles.
+
+## ADB Execution & Scripting Architecture
+
+### Parallel Command Flow
+
+```mermaid
+sequenceDiagram
+    participant UI as Terminal/ScriptView
+    participant Store as ScriptStore
+    participant UseCase as RunScriptUseCase
+    participant Repo as ScriptRepository
+    participant Adb as IAdbRemoteDataSource
+    participant Server as ADB Server
+
+    UI->>Store: executeCommand(input)
+    Store->>Store: _replacePlaceholders({I}, {SERIAL})
+    Store->>Store: createBatches(chunkSize=10)
+    
+    loop Each Batch
+        Store->>Repo: execute(serial, command)
+        Repo->>Adb: runShellCommandStream
+        Adb->>Server: spawn process
+        Server-->>UI: Real-time Output (Streams)
+        Note right of Adb: Pulse Delay (50ms)
+    end
+```
+
+### Scripting Features logic
+
+- **Placeholders**: Managed at the Store level. `{I}` is specifically mapped to the **3rd Octet** of the IP address to facilitate segment-based operations.
+- **Concurrency Control**: Implements a producer-consumer like batching mechanism to prevent ADB server crashes when handling 50+ simultaneous connections.
+- **Log Buffering**: Double-buffer strategy (Global Console + Tiled View) with memory limits (5000 lines global, 500 per device) to maintain UI performance.
 
 ## Dependency Injection
 

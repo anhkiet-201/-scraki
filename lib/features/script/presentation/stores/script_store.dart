@@ -303,11 +303,12 @@ abstract class _ScriptStore with Store {
     final deviceCount = selectedSerialsList.length;
 
     await _executeBatch((serial) async {
+      final processedCmd = _replacePlaceholders(cmd, serial);
       // Trước khi chạy batch, log một dòng thông báo chung
       if (serial == selectedSerialsList.first) {
         _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount);
       }
-      return executeCommandOnDevice(serial, cmd, logCommand: false);
+      return executeCommandOnDevice(serial, processedCmd, logCommand: false);
     });
   }
 
@@ -385,13 +386,39 @@ abstract class _ScriptStore with Store {
       if (device == null) return;
       final deviceName = device.modelName;
 
-      await _runScriptUseCase(serial, script).forEach((result) {
+      // Tạo bản sao script với các lệnh đã được replace placeholders
+      final processedCommands = script.commands.map((cmd) => _replacePlaceholders(cmd, serial)).toList();
+      final processedScript = script.copyWith(commands: processedCommands);
+
+      await _runScriptUseCase(serial, processedScript).forEach((result) {
         result.fold(
           (Failure failure) => _log(failure.message, serial: serial, model: deviceName, type: LogType.error),
           (String line) => _log(line, serial: serial, model: deviceName, type: LogType.output),
         );
       });
     });
+  }
+
+  String _replacePlaceholders(String command, String serial) {
+    String processed = command;
+
+    // 1. Thay thế {SERIAL} - Toàn bộ serial gốc (có thể kèm port)
+    processed = processed.replaceAll('{SERIAL}', serial);
+
+    // 2. Thay thế {I} - Mặc định là Octet thứ 3 của IP
+    final ipOnly = serial.split(':').first;
+    final segments = ipOnly.split('.');
+    String octet3 = '0';
+    if (segments.length == 4) {
+      octet3 = segments[2];
+    } else {
+      // Fallback: Lấy số cuối cùng trong chuỗi serial nếu không phải format IP
+      final match = RegExp(r'(\d+)[^\d]*$').firstMatch(serial);
+      octet3 = match?.group(1) ?? '0';
+    }
+    processed = processed.replaceAll('{I}', octet3);
+
+    return processed;
   }
 
   @action

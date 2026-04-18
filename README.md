@@ -18,6 +18,7 @@ Scraki is a powerful Flutter desktop application for mirroring and controlling A
 - **✨ Premium UI**: Sophisticated glassmorphism aesthetic with specialized `BoxCard` and `BoxCardMenu` components
 - **🎨 AI Recruitment Posters**: Built-in designer with 20+ templates (Modern, Glassmorphism, Retro...) and real-time text editing.
 - **🖌️ Advanced Text Backgrounds**: Real-time brush art and rectangle background customization with granular control over opacity, radius, and brush properties.
+- **📜 ADB Execution & Scripting Engine**: Parallel command execution across multiple devices with dynamic placeholders (`{I}`, `{SERIAL}`) and real-time monitoring.
 
 ## 🏛️ Architecture
 
@@ -49,6 +50,7 @@ lib/
 ├── features/           # Feature modules
 │   ├── device/         # Device mirroring & group management
 │   ├── poster/         # AI poster creation
+│   ├── script/         # ADB execution & scripting engine
 │   └── dashboard/      # Main dashboard with horizontal group selector
 └── main.dart
 ```
@@ -156,6 +158,22 @@ Scraki leverages a customized implementation of the `scrcpy` protocol:
   - **Audio**: Raw/AAC/Opus support depending on device capabilities.
   - **Control**: Direct binary protocol for injecting input events (touch, keys, mouse).
 - **Customizations**: Optimized server parameters for specific Scraki performance profiles.
+
+- **Customizations**: Optimized server parameters for specific Scraki performance profiles.
+
+### 📜 ADB Execution & Scripting Engine
+
+Scraki includes a high-performance engine for executing ADB commands and scripts across multiple devices simultaneously:
+
+- **Parallel Execution**: Smart batching (default: 10 devices/batch) with a 50ms pulse delay between device initialization to maintain ADB server stability.
+- **Dynamic Placeholders**:
+  - `{I}`: Replaced by the **3rd Octet** of the device's IP address (e.g., `192.168.x.10` -> `x`). Essential for network-segment-specific commands.
+  - `{SERIAL}`: Replaced by the full device serial or IP:Port.
+- **Script Management**: Full CRUD support for saving and executing complex multi-command sequences.
+- **Advanced Filtering**: Quickly select devices by group assignment or specific IP segment ranges (3rd octet).
+- **Real-time Monitoring**:
+  - **Global Console**: Centralized terminal for aggregated logs across all devices (up to 5000 lines).
+  - **Tiled Log View**: Grid-based UI for monitoring individual real-time terminal outputs for each device (optimized with a 500-line buffer per device).
 
 ## 🤝 Contributing
 
