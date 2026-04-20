@@ -98,6 +98,8 @@ class BatchVideoConfig {
   });
 }
 
+typedef GpuInfo = ({String encoder, String? hwaccel, String? scaleFilter});
+
 @lazySingleton
 class BatchVideoService {
   final AmbientAudioService _ambientAudioService;
@@ -111,23 +113,33 @@ class BatchVideoService {
   static String get _ffprobeBin =>
       Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
-  // ─── Opt-2: GPU encoder — resolved once per service instance ─────────────
+  GpuInfo? _cachedGpuInfo;
 
-  String? _cachedGpuEncoder;
-
-  Future<String> _getGpuEncoder() async {
-    return _cachedGpuEncoder ??= await _resolveGpuEncoder();
+  Future<GpuInfo> _getGpuInfo() async {
+    return _cachedGpuInfo ??= await _resolveGpuInfo();
   }
 
-  Future<String> _resolveGpuEncoder() async {
-    if (Platform.isMacOS) return 'h264_videotoolbox';
+  Future<GpuInfo> _resolveGpuInfo() async {
+    if (Platform.isMacOS) {
+      return (
+        encoder: 'h264_videotoolbox',
+        hwaccel: 'videotoolbox',
+        scaleFilter: 'scale_vt',
+      );
+    }
     if (Platform.isWindows) {
       final encoders = await _getAvailableEncoders();
-      if (encoders.contains('h264_nvenc')) return 'h264_nvenc';
-      if (encoders.contains('h264_amf')) return 'h264_amf';
-      if (encoders.contains('h264_qsv')) return 'h264_qsv';
+      if (encoders.contains('h264_nvenc')) {
+        return (encoder: 'h264_nvenc', hwaccel: 'cuda', scaleFilter: 'scale_cuda');
+      }
+      if (encoders.contains('h264_qsv')) {
+        return (encoder: 'h264_qsv', hwaccel: 'qsv', scaleFilter: 'vpp_qsv');
+      }
+      if (encoders.contains('h264_amf')) {
+        return (encoder: 'h264_amf', hwaccel: 'd3d11va', scaleFilter: null);
+      }
     }
-    return 'libx264';
+    return (encoder: 'libx264', hwaccel: null, scaleFilter: null);
   }
 
   List<String>? _availableEncoders;
@@ -172,7 +184,7 @@ class BatchVideoService {
   }) async* {
     _cancelled = false;
     _activeProcesses.clear();
-    _cachedGpuEncoder = null;
+    _cachedGpuInfo = null;
     _colorInfoCache.clear();
 
     final tempAmbientAudioPaths = <String>[];
@@ -737,10 +749,14 @@ class BatchVideoService {
     void Function(double)? onProgress,
     void Function(String)? onLogMsg,
   }) async {
-    String baseFilter =
-        'scale=1080:1920:force_original_aspect_ratio=increase,'
-        'crop=1080:1920,'
-        'fps=30';
+    final gpuInfo = await _getGpuInfo();
+    final hwScale = gpuInfo.scaleFilter ?? 'scale';
+    
+    // Đối với macOS (VideoToolbox), ta dùng scale phần mềm nhưng encoder phần cứng
+    // để tránh lỗi định dạng pixel khi kết hợp với filter fps và color balance.
+    String baseFilter = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
+        ? '$hwScale=1080:1920'
+        : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
 
     if (hflip) {
       baseFilter += ',hflip';
@@ -756,18 +772,12 @@ class BatchVideoService {
               'format=yuv420p'
         : '$baseFilter,format=yuv420p';
 
-    // Giữ nguyên audio gốc ở segment (không giảm volume ở đây).
-    // Volume thực sự (50% hoặc 5%) chỉ được áp dụng một lần duy nhất
-    // tại bước _createOutputVideo qua toOriginalAudioFilterChain.
     final afFilter = hasAudio ? 'aresample=44100' : 'anullsrc';
 
-    final gpuEncoder = await _getGpuEncoder();
-
-    // Attempt with preferred filter (HDR-aware if applicable)
     final result = await _runWithFilter(
       vfFilter,
       afFilter,
-      gpuEncoder,
+      gpuInfo,
       input: input,
       startSeconds: startSeconds,
       duration: duration,
@@ -779,8 +789,7 @@ class BatchVideoService {
 
     // If initial attempt failed (e.g. GPU error or zscale failure), retry with CPU fallback
     if (result == null && !_cancelled) {
-      final fallbackEncoder = 'libx264';
-      if (gpuEncoder != fallbackEncoder) {
+        final fallbackGpuInfo = (encoder: 'libx264', hwaccel: null, scaleFilter: null);
         onLogMsg?.call(
           '  ⚠️ [${processName ?? p.basename(input)}] Encode GPU thất bại, thử fallback CPU...',
         );
@@ -788,7 +797,7 @@ class BatchVideoService {
         return _runWithFilter(
           fallbackFilter,
           afFilter,
-          fallbackEncoder,
+          fallbackGpuInfo,
           input: input,
           startSeconds: startSeconds,
           duration: duration,
@@ -797,7 +806,6 @@ class BatchVideoService {
           onProgress: onProgress,
           onLogMsg: onLogMsg,
         );
-      }
     }
 
     // If HDR tonemapping failed (e.g. zscale not available), retry with
@@ -810,7 +818,7 @@ class BatchVideoService {
       return _runWithFilter(
         fallbackFilter,
         afFilter,
-        gpuEncoder,
+        gpuInfo,
         input: input,
         startSeconds: startSeconds,
         duration: duration,
@@ -827,7 +835,7 @@ class BatchVideoService {
   Future<String?> _runWithFilter(
     String vf,
     String af,
-    String encoder, {
+    GpuInfo gpuInfo, {
     required String input,
     required double startSeconds,
     required double duration,
@@ -840,12 +848,20 @@ class BatchVideoService {
       final List<String> args = [
         '-hide_banner',
         '-y',
-        '-hwaccel',
-        'auto',
+      ];
+
+      // Trên macOS/VideoToolbox, việc ép -hwaccel giải mã đôi khi gây xung đột với các filter phần mềm 
+      // như fps, crop hoặc color balance (lỗi Impossible to convert).
+      // Chip M4 decode cực nhanh nên ta để FFmpeg tự điều phối.
+      if (gpuInfo.hwaccel != null && !Platform.isMacOS) {
+        args.addAll(['-hwaccel', gpuInfo.hwaccel!]);
+      }
+
+      args.addAll([
         '-ss', startSeconds.toStringAsFixed(3),
         '-fflags', '+genpts+igndts',
         '-i', input,
-      ];
+      ]);
 
       if (af == 'anullsrc') {
         args.addAll(['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo']);
@@ -875,20 +891,25 @@ class BatchVideoService {
         '-colorspace', 'bt709',
         '-color_trc', 'bt709',
         '-color_primaries', 'bt709',
-        '-c:v', encoder,
+        '-c:v', gpuInfo.encoder,
       ]);
 
-      if (encoder == 'libx264') {
+      if (gpuInfo.encoder == 'libx264') {
         args.addAll([
           '-preset', 'ultrafast',
           '-b:v', '10M',
           '-maxrate', '12M',
           '-bufsize', '20M',
         ]);
-      } else if (encoder == 'h264_videotoolbox') {
+      } else if (gpuInfo.encoder == 'h264_videotoolbox') {
         args.addAll([
           '-b:v', '10M',
           '-realtime', '1',
+        ]);
+      } else if (gpuInfo.encoder == 'h264_qsv') {
+        args.addAll([
+          '-b:v', '10M',
+          '-preset', 'veryfast',
         ]);
       } else {
         args.addAll([
@@ -1046,8 +1067,7 @@ class BatchVideoService {
     final textOverlayFiles = <File>[];
 
     try {
-      // Opt-2: dùng cached encoder thay vì await lại
-      final gpuEncoder = await _getGpuEncoder();
+      final gpuInfo = await _getGpuInfo();
 
       // hasCustomAudio được xác định trước try block để probe audio duration.
 
@@ -1117,17 +1137,22 @@ class BatchVideoService {
       // 3. Build filter complex
       StringBuffer filterComplex = StringBuffer();
 
-      // Opt-4: Crop tĩnh với offset ngẫu nhiên nhỏ trực tiếp trên tỷ lệ 1080x1920
-      // Luôn render ra đúng 1080x1920 để Tiktok không tạo viền đen
-      final double zoomVal = 1.02 + (random.nextDouble() * 0.02); // 1.02x - 1.04x để dư biên an toàn
-      
-      // Sử dụng flags=bicubic thay vì lanczos để tăng tốc độ xử lý pixel (nhanh hơn 2-3 lần)
-      filterComplex.write(
-        '[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,',
-      );
-      // Crop với offset ngẫu nhiên nhẹ dựa trên kích thước thật sau khi scale
+      final double zoomVal = 1.02 + (random.nextDouble() * 0.02);
       final double randX = random.nextDouble();
       final double randY = random.nextDouble();
+
+      // Step 3: Tối ưu hóa scaling
+      final hwScale = gpuInfo.scaleFilter ?? 'scale';
+      
+      if (gpuInfo.scaleFilter != null && !Platform.isMacOS) {
+        // GPU scaling trên Windows (QSV/CUDA)
+        filterComplex.write('[0:v]$hwScale=1112:1978,');
+      } else {
+        filterComplex.write(
+          '[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,',
+        );
+      }
+      // Crop vẫn chạy trên CPU nhưng nhẹ hơn vì frame đã được chuẩn bị tốt
       filterComplex.write('crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,');
       
       if (config.generateColorFilter && colorProfile != null && curvesProfile != null) {
@@ -1467,7 +1492,7 @@ class BatchVideoService {
         '-r',
         '30',
         '-c:v',
-        gpuEncoder,
+        gpuInfo.encoder,
         '-b:v',
         '${10 + random.nextInt(6)}M', // Random 10M - 15M
         '-maxrate',
@@ -1483,9 +1508,14 @@ class BatchVideoService {
         '-color_primaries',
         'bt709',
         // Để FFMPEG tự quyết định cấu trúc B-frame, Ref frames ngầm định cho chất lượng và độ tự nhiên cao nhất
-        if (gpuEncoder == 'libx264') ...[
+        if (gpuInfo.encoder == 'libx264') ...[
           '-preset',
           'superfast',
+          '-g',
+          gopSize.toString(),
+        ] else if (gpuInfo.encoder == 'h264_qsv') ...[
+          '-preset',
+          'veryfast',
           '-g',
           gopSize.toString(),
         ] else ...[
@@ -1810,18 +1840,18 @@ class _CurvesProfile {
   const _CurvesProfile._(this.ffmpegString, this.type);
 
   factory _CurvesProfile.random(Random random) {
-    final type = random.nextInt(4); // Loại bỏ các preset gắt
+    final type = random.nextInt(4);
     switch (type) {
-      case 0: // Vintage (FFmpeg default vintage is quite subtle)
-        return _CurvesProfile._('preset=vintage', type);
-      case 1: // Custom Subtle Warmer
-        final mid = 0.495 + random.nextDouble() * 0.01; // Thu hẹp biên độ cực nhỏ để tránh ám vàng
-        return _CurvesProfile._('r=\'0/0 0.5/$mid 1/1\':b=\'0/0 0.5/${1.0-mid} 1/1\'', type);
-      case 2: // Custom Subtle Cooler
-        final mid = 0.49 + random.nextDouble() * 0.02;
-        return _CurvesProfile._('b=\'0/0 0.5/$mid 1/1\':r=\'0/0 0.5/${1.0-mid} 1/1\'', type);
-      default: // Ultra-Subtle S-Curve
-        final p = 0.005 + random.nextDouble() * 0.01; // Cực nhỏ
+      case 0: // Crisp (Trung tính, tăng độ tương phản nhẹ)
+        return _CurvesProfile._('all=\'0/0 0.5/0.48 1/1\'', type);
+      case 1: // Neutral (Gần như không đổi)
+        return _CurvesProfile._('all=\'0/0 0.5/0.5 1/1\'', type);
+      case 2: // Modern Cool (Tăng xanh, giảm đỏ để khử vàng triệt để)
+        final midB = 0.51 + random.nextDouble() * 0.02; // Tăng Blue
+        final midR = 0.48 + random.nextDouble() * 0.01; // Giảm Red
+        return _CurvesProfile._('b=\'0/0 0.5/$midB 1/1\':r=\'0/0 0.5/$midR 1/1\'', type);
+      default: // Clean S-Curve (Tăng độ trong trẻo)
+        final p = 0.01 + random.nextDouble() * 0.01;
         return _CurvesProfile._('all=\'0/0 0.25/${0.25-p} 0.75/${0.75+p} 1/1\'', type);
     }
   }
