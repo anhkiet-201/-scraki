@@ -18,6 +18,8 @@ import 'package:scraki/features/video_poster/data/services/batch_video_service.d
 import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
+import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
+import 'package:scraki/features/video_poster/domain/entities/timed_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/favorite_image.dart';
 import 'package:scraki/features/video_poster/domain/repositories/favorite_image_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/slide_model.dart';
