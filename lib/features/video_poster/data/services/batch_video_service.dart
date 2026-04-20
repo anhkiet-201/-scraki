@@ -1031,8 +1031,17 @@ class BatchVideoService {
     final double gammaG = 0.98 + random.nextDouble() * 0.04;
     final double gammaB = 0.98 + random.nextDouble() * 0.04;
 
+    _ColorFilterProfile? colorProfile;
+    _CurvesProfile? curvesProfile;
+    if (config.generateColorFilter) {
+      colorProfile = _ColorFilterProfile.random(random);
+      curvesProfile = _CurvesProfile.random(random);
+    }
+
+    final filterId = colorProfile != null ? '${colorProfile.type}_${curvesProfile?.type}' : 'none';
+
     final finalOutput =
-        '${Directory(outputDir).absolute.path}${Platform.pathSeparator}tik_final_${outputIndex.toString().padLeft(3, '0')}.mp4';
+        '${Directory(outputDir).absolute.path}${Platform.pathSeparator}tik_final_${outputIndex.toString().padLeft(3, '0')}_f$filterId.mp4';
 
     final textOverlayFiles = <File>[];
 
@@ -1121,9 +1130,7 @@ class BatchVideoService {
       final double randY = random.nextDouble();
       filterComplex.write('crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,');
       
-      if (config.generateColorFilter) {
-        final colorProfile = _ColorFilterProfile.random(random);
-        final curvesProfile = _CurvesProfile.random(random);
+      if (config.generateColorFilter && colorProfile != null && curvesProfile != null) {
         final balanceProfile = _ColorBalanceProfile.random(random);
         
         filterComplex.write('colorchannelmixer=${colorProfile.ffmpegString},');
@@ -1735,39 +1742,40 @@ class _AudioSpoofProfile {
 
 class _ColorFilterProfile {
   final String ffmpegString;
+  final int type;
 
-  const _ColorFilterProfile._(this.ffmpegString);
+  const _ColorFilterProfile._(this.ffmpegString, this.type);
 
   factory _ColorFilterProfile.random(Random random) {
     final type = random.nextInt(14); 
     
     switch (type) {
       case 0: // Warm Cinema (Làm dịu hơn để không ám vàng)
-        return _ColorFilterProfile._('rr=1.008:gg=1.003:bb=0.993:rg=0.002:bg=0.002');
+        return _ColorFilterProfile._('rr=1.008:gg=1.003:bb=0.993:rg=0.002:bg=0.002', type);
       case 1: // Cool Mystery
-        return _ColorFilterProfile._('rr=0.992:gg=1.002:bb=1.008:rb=0.002:gb=0.002');
+        return _ColorFilterProfile._('rr=0.992:gg=1.002:bb=1.008:rb=0.002:gb=0.002', type);
       case 2: // Teal & Orange (Subtle)
-        return _ColorFilterProfile._('rr=1.01:gg=1.0:bb=0.99:rg=0.005:bg=0.005');
+        return _ColorFilterProfile._('rr=1.01:gg=1.0:bb=0.99:rg=0.005:bg=0.005', type);
       case 3: // Vintage Film (Giảm ám vàng)
-        return _ColorFilterProfile._('rr=1.005:gg=1.0:bb=0.992:rg=0.005:gb=0.005');
+        return _ColorFilterProfile._('rr=1.005:gg=1.0:bb=0.992:rg=0.005:gb=0.005', type);
       case 4: // Rose Blush
-        return _ColorFilterProfile._('rr=1.015:gg=0.99:bb=1.005:rg=0.003:bg=0.003');
+        return _ColorFilterProfile._('rr=1.015:gg=0.99:bb=1.005:rg=0.003:bg=0.003', type);
       case 5: // Forest Green
-        return _ColorFilterProfile._('rr=0.99:gg=1.01:bb=0.995:rg=0.003:bg=0.003');
+        return _ColorFilterProfile._('rr=0.99:gg=1.01:bb=0.995:rg=0.003:bg=0.003', type);
       case 6: // Sunset Gold (Fix ám vàng nặng: bb từ 0.96 -> 0.99)
-        return _ColorFilterProfile._('rr=1.005:gg=1.005:bb=0.99:rg=0.005');
+        return _ColorFilterProfile._('rr=1.005:gg=1.005:bb=0.99:rg=0.005', type);
       case 7: // Deep Night (Cold)
-        return _ColorFilterProfile._('rr=0.96:gg=0.99:bb=1.03:rb=0.01:gb=0.01');
+        return _ColorFilterProfile._('rr=0.96:gg=0.99:bb=1.03:rb=0.01:gb=0.01', type);
       case 8: // Cyberpunk (Neon)
-        return _ColorFilterProfile._('rr=1.02:gg=0.97:bb=1.03:br=0.01:bg=0.01');
+        return _ColorFilterProfile._('rr=1.02:gg=0.97:bb=1.03:br=0.01:bg=0.01', type);
       case 9: // Muted Natural
-        return _ColorFilterProfile._('rr=0.99:gg=1.0:bb=0.99:rg=0.005:bg=0.005:gr=0.005:br=0.005');
+        return _ColorFilterProfile._('rr=0.99:gg=1.0:bb=0.99:rg=0.005:bg=0.005:gr=0.005:br=0.005', type);
       case 10: // Bleach Bypass (Giảm mạnh cường độ)
-        return _ColorFilterProfile._('rr=1.03:gg=1.03:bb=1.03:rg=-0.01:rb=-0.01:gr=-0.01:gb=-0.01');
+        return _ColorFilterProfile._('rr=1.03:gg=1.03:bb=1.03:rg=-0.01:rb=-0.01:gr=-0.01:gb=-0.01', type);
       case 11: // Desaturated Cold
-        return _ColorFilterProfile._('rr=1.0:gg=1.0:bb=1.02:rg=-0.005:bg=-0.005');
+        return _ColorFilterProfile._('rr=1.0:gg=1.0:bb=1.02:rg=-0.005:bg=-0.005', type);
       case 12: // Pastel Dream
-        return _ColorFilterProfile._('rr=1.01:gg=1.01:bb=1.01:rg=0.01:bg=0.01:br=0.01');
+        return _ColorFilterProfile._('rr=1.01:gg=1.01:bb=1.01:rg=0.01:bg=0.01:br=0.01', type);
       default: // Ultra-Jitter (Cân bằng trắng - White Balance Neutral)
         final r = random;
         // Lấy một mức thay đổi chung cho cả 3 kênh để giữ độ trung tính
@@ -1784,7 +1792,8 @@ class _ColorFilterProfile {
           'gb=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
           'br=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
           'bg=${((r.nextDouble() * 0.004) - 0.002).toStringAsFixed(3)}:'
-          'bb=${(neutral + jitter()).toStringAsFixed(3)}'
+          'bb=${(neutral + jitter()).toStringAsFixed(3)}',
+          type,
         );
     }
   }
@@ -1796,23 +1805,24 @@ class _ColorFilterProfile {
 
 class _CurvesProfile {
   final String ffmpegString;
+  final int type;
 
-  const _CurvesProfile._(this.ffmpegString);
+  const _CurvesProfile._(this.ffmpegString, this.type);
 
   factory _CurvesProfile.random(Random random) {
     final type = random.nextInt(4); // Loại bỏ các preset gắt
     switch (type) {
       case 0: // Vintage (FFmpeg default vintage is quite subtle)
-        return const _CurvesProfile._('preset=vintage');
+        return _CurvesProfile._('preset=vintage', type);
       case 1: // Custom Subtle Warmer
         final mid = 0.495 + random.nextDouble() * 0.01; // Thu hẹp biên độ cực nhỏ để tránh ám vàng
-        return _CurvesProfile._('r=\'0/0 0.5/$mid 1/1\':b=\'0/0 0.5/${1.0-mid} 1/1\'');
+        return _CurvesProfile._('r=\'0/0 0.5/$mid 1/1\':b=\'0/0 0.5/${1.0-mid} 1/1\'', type);
       case 2: // Custom Subtle Cooler
         final mid = 0.49 + random.nextDouble() * 0.02;
-        return _CurvesProfile._('b=\'0/0 0.5/$mid 1/1\':r=\'0/0 0.5/${1.0-mid} 1/1\'');
+        return _CurvesProfile._('b=\'0/0 0.5/$mid 1/1\':r=\'0/0 0.5/${1.0-mid} 1/1\'', type);
       default: // Ultra-Subtle S-Curve
         final p = 0.005 + random.nextDouble() * 0.01; // Cực nhỏ
-        return _CurvesProfile._('all=\'0/0 0.25/${0.25-p} 0.75/${0.75+p} 1/1\'');
+        return _CurvesProfile._('all=\'0/0 0.25/${0.25-p} 0.75/${0.75+p} 1/1\'', type);
     }
   }
 }
