@@ -87,31 +87,36 @@ class MediaLibraryPanel extends StatelessWidget {
                                 ? Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1)) 
                                 : null,
                           ),
-                          child: ListTile(
-                            dense: true,
-                            leading: Icon(
-                              Icons.movie_outlined,
-                              size: 16,
-                              color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-                            ),
-                            title: Text(
-                              path.split('/').last,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: isActive
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isActive ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.light ? const Color(0xFF475569) : Colors.white70),
+                          child: Material(
+                            color: Colors.transparent,
+                            clipBehavior: Clip.antiAlias,
+                            borderRadius: BorderRadius.circular(10),
+                            child: ListTile(
+                              dense: true,
+                              leading: Icon(
+                                Icons.movie_outlined,
+                                size: 16,
+                                color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
                               ),
-                            ),
-                            onTap: () => onVideoTap(index),
-                            trailing: IconButton(
-                              icon: Icon(
-                                Icons.close_rounded, 
-                                size: 14, 
-                                color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFCBD5E1) : Colors.white24,
+                              title: Text(
+                                path.split('/').last,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isActive
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isActive ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.light ? const Color(0xFF475569) : Colors.white70),
+                                ),
                               ),
-                              onPressed: () => store.removeSourceVideo(index),
+                              onTap: () => onVideoTap(index),
+                              trailing: IconButton(
+                                icon: Icon(
+                                  Icons.close_rounded, 
+                                  size: 14, 
+                                  color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFCBD5E1) : Colors.white24,
+                                ),
+                                onPressed: () => store.removeSourceVideo(index),
+                              ),
                             ),
                           ),
                         ),
