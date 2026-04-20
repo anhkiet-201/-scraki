@@ -102,9 +102,16 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
 
     String vfFilter;
     if (isNvidia && isHdr) {
-      // Full GPU pipeline for NVIDIA HDR: decode(cuda) -> tonemap_cuda -> scale_cuda -> encode(nvenc)
-      vfFilter = 'tonemap_cuda=t=bt709:format=nv12,$hwScale=1080:1920';
-      if (hflip) vfFilter += ',hflip_cuda'; // Use hardware hflip if available on newer cards
+      // Stable NVIDIA HDR Path: decode(cuda) -> download to RAM -> tonemap(CPU) -> scale(GPU/CPU) -> encode(nvenc)
+      vfFilter = 'hwdownload,format=p010le,'
+          'zscale=t=linear:npl=100,'
+          'format=gbrpf32le,'
+          'zscale=p=bt709,'
+          'tonemap=tonemap=hable:desat=0,'
+          'zscale=t=bt709:m=bt709,'
+          'format=nv12,'
+          'hwupload_cuda,$hwScale=1080:1920';
+      if (hflip) vfFilter += ',hflip_cuda';
     } else if (isHdr) {
       // Standard CPU tonemapping fallback (zscale)
       String base = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
