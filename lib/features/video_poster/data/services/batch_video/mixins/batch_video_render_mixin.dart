@@ -123,14 +123,16 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
       final double randY = random.nextDouble();
       final hwScale = gpuInfo.scaleFilter ?? 'scale';
       
+      final int zoomW = (1080 * zoomVal).round();
+      final int zoomH = (1920 * zoomVal).round();
       final String downloadCmd = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
 
       if (isNvidia && Platform.isWindows && gpuInfo.hasCudaFilters) {
         // High Performance Bridge: Scale in GPU, then download only for color filters
-        filterComplex.write('[0:v]$hwScale=1112:1978,hwdownload,format=nv12,');
+        filterComplex.write('[0:v]$hwScale=$zoomW:$zoomH,hwdownload,format=nv12,');
       } else if (gpuInfo.scaleFilter != null && !Platform.isMacOS && (gpuInfo.hwaccel != 'cuda' || gpuInfo.hasCudaFilters)) {
         // Support for non-Mac hardware scalers (like QSV)
-        filterComplex.write('[0:v]$hwScale=1112:1978,$downloadCmd');
+        filterComplex.write('[0:v]$hwScale=$zoomW:$zoomH,$downloadCmd');
       } else {
         // Use software scale for macOS and fallback cases to ensure 100% stability with complex effects
         filterComplex.write('[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,');
@@ -332,14 +334,17 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
       }
       if (fStr.endsWith(';')) fStr = fStr.substring(0, fStr.length - 1);
 
+      final String outputPixFmt = isNvidia ? 'nv12' : 'yuv420p';
+
       ffmpegArgs.addAll([
         '-filter_complex', fStr, '-map', lastVideoLabel, '-map', audioMapArg,
         '-c:a', 'aac', '-b:a', '${audioProfile.audioBitrate}k', '-r', '30',
         '-c:v', gpuInfo.encoder, '-b:v', '${10 + random.nextInt(6)}M',
-        '-maxrate', '16M', '-bufsize', '25M', '-pix_fmt', 'yuv420p',
+        '-maxrate', '16M', '-bufsize', '25M', '-pix_fmt', outputPixFmt,
         '-colorspace', 'bt709', '-color_trc', 'bt709', '-color_primaries', 'bt709',
         if (gpuInfo.encoder == 'libx264') ...['-preset', 'superfast', '-g', gopSize.toString()]
         else if (gpuInfo.encoder == 'h264_qsv') ...['-preset', 'veryfast', '-g', gopSize.toString()]
+        else if (gpuInfo.encoder == 'h264_nvenc') ...['-preset', 'p1', '-tune', 'hq', '-g', gopSize.toString()]
         else ...['-g', gopSize.toString()],
         '-movflags', '+faststart+use_metadata_tags', '-metadata', 'creation_time=$creationTime',
         '-avoid_negative_ts', 'make_zero', '-shortest', finalOutput,

@@ -126,7 +126,7 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
         } else {
            // No zscale: best effort tonemap or just direct scale
            final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
-           vfFilter = '${download}scale=format=yuv420p,$base';
+           vfFilter = '${download}format=yuv420p,$base';
         }
       }
     } else if (isHdr) {
