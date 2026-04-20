@@ -102,38 +102,64 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
 
     String vfFilter;
     if (isNvidia && isHdr) {
-      // Stable NVIDIA HDR Path: decode(cuda) -> download to RAM -> tonemap(CPU) -> scale(GPU/CPU) -> encode(nvenc)
-      vfFilter = 'hwdownload,format=p010le,'
-          'zscale=t=linear:npl=100,'
-          'format=gbrpf32le,'
-          'zscale=p=bt709,'
-          'tonemap=tonemap=hable:desat=0,'
-          'zscale=t=bt709:m=bt709,'
-          'format=nv12,'
-          'hwupload_cuda,$hwScale=1080:1920';
-      if (hflip) vfFilter += ',hflip_cuda';
+      if (gpuInfo.hasZscale && gpuInfo.hasCudaFilters) {
+        // High-quality NVIDIA HDR Path
+        vfFilter = 'hwdownload,format=p010le,'
+            'zscale=t=linear:npl=100,'
+            'format=gbrpf32le,'
+            'zscale=p=bt709,'
+            'tonemap=tonemap=hable:desat=0,'
+            'zscale=t=bt709:m=bt709,'
+            'format=nv12,'
+            'hwupload_cuda,$hwScale=1080:1920';
+        if (hflip) vfFilter += ',hflip_cuda';
+      } else {
+        // Fallback: Use standard scale and basic tonemap if possible, or just SDR
+        String base = (gpuInfo.hasCudaFilters)
+            ? '$hwScale=1080:1920'
+            : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
+        if (hflip) base += gpuInfo.hasCudaFilters ? ',hflip_cuda' : ',hflip';
+        
+        if (gpuInfo.hasZscale) {
+           final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
+           vfFilter = '${download}zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p,$base';
+        } else {
+           // No zscale: best effort tonemap or just direct scale
+           final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
+           vfFilter = '${download}scale=format=yuv420p,$base';
+        }
+      }
     } else if (isHdr) {
-      // Standard CPU tonemapping fallback (zscale)
+      // Standard CPU tonemapping fallback
       String base = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
           ? '$hwScale=1080:1920'
           : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
       if (hflip) base += ',hflip';
       
-      vfFilter = '$base,'
-          'zscale=t=linear:npl=100,'
-          'format=gbrpf32le,'
-          'zscale=p=bt709,'
-          'tonemap=tonemap=hable:desat=0,'
-          'zscale=t=bt709:m=bt709,'
-          'format=yuv420p';
+      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
+      if (gpuInfo.hasZscale) {
+        vfFilter = '$download$base,'
+            'zscale=t=linear:npl=100,'
+            'format=gbrpf32le,'
+            'zscale=p=bt709,'
+            'tonemap=tonemap=hable:desat=0,'
+            'zscale=t=bt709:m=bt709,'
+            'format=yuv420p';
+      } else {
+        vfFilter = '$download$base,format=yuv420p';
+      }
     } else {
       // Standard SDR path
       String base = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
           ? '$hwScale=1080:1920'
           : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
-      if (hflip) base += ',hflip';
-      // Ensure nv12 for hardware encoders to avoid pixel format compatibility issues
-      vfFilter = isNvidia ? '$base,format=nv12' : '$base,format=yuv420p';
+      
+      if (hflip) {
+        base += (isNvidia && gpuInfo.hasCudaFilters) ? ',hflip_cuda' : ',hflip';
+      }
+      
+      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
+      vfFilter = isNvidia ? '$download$base,format=nv12' : '$download$base,format=yuv420p';
     }
 
     final afFilter = hasAudio ? 'aresample=44100' : 'anullsrc';
@@ -152,13 +178,23 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
     );
 
     if (result == null && !cancelled) {
-        final fallbackGpuInfo = (encoder: 'libx264', hwaccel: null, scaleFilter: null, outputFormat: null);
+        final fallbackGpuInfo = (
+          encoder: 'libx264',
+          hwaccel: null,
+          scaleFilter: null,
+          outputFormat: null,
+          hasZscale: gpuInfo.hasZscale,
+          hasCudaFilters: false,
+        );
         onLogMsg?.call('  ⚠️ [${processName ?? p.basename(input)}] Encode GPU thất bại, thử fallback CPU...');
         
         final cpuScale = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920${hflip ? ",hflip" : ""}';
-        final fallbackFilter = isHdr 
-            ? '$cpuScale,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p' 
-            : '$cpuScale,format=yuv420p';
+        String fallbackFilter;
+        if (isHdr && gpuInfo.hasZscale) {
+           fallbackFilter = '$cpuScale,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p';
+        } else {
+           fallbackFilter = '$cpuScale,format=yuv420p';
+        }
 
         return runWithFilter(
           fallbackFilter,
@@ -294,7 +330,8 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       if (exitCode != 0 || !File(output).existsSync()) {
         final errorLog = stderrList.join('\n');
         if (errorLog.isNotEmpty && !cancelled) {
-          onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] FFmpeg lỗi (exit $exitCode):\n$errorLog');
+          final filterInfo = ' (Filters: vf=$vf)';
+          onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] FFmpeg lỗi (exit $exitCode):\n$errorLog$filterInfo');
         }
         return null;
       }

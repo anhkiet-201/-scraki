@@ -83,7 +83,7 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
       
       final List<String> ffmpegArgs = [
         '-hide_banner', '-y',
-        if (isNvidia && Platform.isWindows) ...['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']
+        if (isNvidia && Platform.isWindows && gpuInfo.hasCudaFilters) ...['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']
         else if (gpuInfo.hwaccel != null) ...['-hwaccel', 'auto'],
         '-fflags', '+genpts',
         '-f', 'concat', '-safe', '0', '-i', concatFile.path,
@@ -123,12 +123,14 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
       final double randY = random.nextDouble();
       final hwScale = gpuInfo.scaleFilter ?? 'scale';
       
-      if (isNvidia && Platform.isWindows) {
+      final String downloadCmd = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
+
+      if (isNvidia && Platform.isWindows && gpuInfo.hasCudaFilters) {
         // High Performance Bridge: Scale in GPU, then download only for color filters
         filterComplex.write('[0:v]$hwScale=1112:1978,hwdownload,format=nv12,');
-      } else if (gpuInfo.scaleFilter != null && !Platform.isMacOS) {
+      } else if (gpuInfo.scaleFilter != null && !Platform.isMacOS && (gpuInfo.hwaccel != 'cuda' || gpuInfo.hasCudaFilters)) {
         // Support for non-Mac hardware scalers (like QSV)
-        filterComplex.write('[0:v]$hwScale=1112:1978,hwdownload,format=nv12,');
+        filterComplex.write('[0:v]$hwScale=1112:1978,$downloadCmd');
       } else {
         // Use software scale for macOS and fallback cases to ensure 100% stability with complex effects
         filterComplex.write('[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,');
@@ -363,7 +365,8 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
       final success = exitCode == 0 && File(finalOutput).existsSync();
       if (!success) {
         final errorLines = stderrBuf.toString().split('\n').where((l) => l.isNotEmpty && !l.startsWith('frame=') && !l.startsWith('fps=') && !l.startsWith('size=') && !l.trim().startsWith('time=') && !l.trim().startsWith('speed=')).join('\n');
-        logs.add('  ❌ Video $outputIndex thất bại (exit=$exitCode)${errorLines.isNotEmpty ? ':\n$errorLines' : '.'}');
+        final filterInfo = ' (Filters: filter_complex=$fStr)';
+        logs.add('  ❌ Video $outputIndex thất bại (exit=$exitCode)${errorLines.isNotEmpty ? ':\n$errorLines' : '.'}\n$filterInfo');
       }
       return (success: success, logs: logs);
     } catch (e, st) {
