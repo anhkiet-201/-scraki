@@ -10,10 +10,7 @@ class SlideOverlayData {
   final Uint8List bytes;
   final String slideId;
 
-  const SlideOverlayData({
-    required this.bytes,
-    required this.slideId,
-  });
+  const SlideOverlayData({required this.bytes, required this.slideId});
 }
 
 class _StealthProfile {
@@ -49,20 +46,35 @@ class _StealthProfile {
     final randomDays = rng.nextInt(7);
     final randomHours = rng.nextInt(24);
     final randomMinutes = rng.nextInt(60);
-    final fakeDate = now.subtract(Duration(
-      days: randomDays,
-      hours: randomHours,
-      minutes: randomMinutes,
-    ));
+    final fakeDate = now.subtract(
+      Duration(days: randomDays, hours: randomHours, minutes: randomMinutes),
+    );
 
     // EXIF format: YYYY:MM:DD HH:MM:SS
-    final dateStr = fakeDate.toIso8601String().split('.').first.replaceFirst('T', ' ').replaceAll('-', ':');
+    final dateStr = fakeDate
+        .toIso8601String()
+        .split('.')
+        .first
+        .replaceFirst('T', ' ')
+        .replaceAll('-', ':');
 
     final devices = [
-      {'make': 'Samsung', 'models': ['SM-S901B', 'SM-G991B', 'SM-A536B']},
-      {'make': 'Apple', 'models': ['iPhone 13', 'iPhone 14', 'iPhone 15']},
-      {'make': 'Google', 'models': ['Pixel 6', 'Pixel 7', 'Pixel 8']},
-      {'make': 'Xiaomi', 'models': ['2201117TY', '2210132G']},
+      {
+        'make': 'Samsung',
+        'models': ['SM-S901B', 'SM-G991B', 'SM-A536B'],
+      },
+      {
+        'make': 'Apple',
+        'models': ['iPhone 13', 'iPhone 14', 'iPhone 15'],
+      },
+      {
+        'make': 'Google',
+        'models': ['Pixel 6', 'Pixel 7', 'Pixel 8'],
+      },
+      {
+        'make': 'Xiaomi',
+        'models': ['2201117TY', '2210132G'],
+      },
     ];
 
     final device = devices[rng.nextInt(devices.length)];
@@ -86,7 +98,8 @@ class _StealthProfile {
 
 class ImagePosterService {
   static String get _ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
-  static String get _ffprobeBin => Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
+  static String get _ffprobeBin =>
+      Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
   Future<bool> _checkFfmpeg() async {
     try {
@@ -112,10 +125,14 @@ class ImagePosterService {
   void cancel() {
     _cancelled = true;
     for (final process in _activeProcesses) {
-      process.kill();
+      try {
+        process.kill();
+      } catch (_) {}
     }
     _activeProcesses.clear();
   }
+
+  static int get _maxConcurrentTasks => Platform.numberOfProcessors.clamp(2, 8);
 
   Stream<String> generateImagePosters({
     required List<String> sourceVideoPaths,
@@ -142,14 +159,21 @@ class ImagePosterService {
       return;
     }
 
-    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '').replaceAll('-', '').replaceAll('T', '_').substring(0, 15);
-    
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '')
+        .replaceAll('-', '')
+        .replaceAll('T', '_')
+        .substring(0, 15);
+
     String baseOutputDir = config.outputDir ?? await _getDefaultOutputDir();
     final outputDir = p.join(baseOutputDir, 'image_posters_$timestamp');
     await Directory(outputDir).create(recursive: true);
     onOutputDir?.call(outputDir);
 
-    final tempDir = Directory(p.join(Directory.systemTemp.path, 'scraki_image_temp_$timestamp'));
+    final tempDir = Directory(
+      p.join(Directory.systemTemp.path, 'scraki_image_temp_$timestamp'),
+    );
     await tempDir.create(recursive: true);
 
     try {
@@ -179,65 +203,107 @@ class ImagePosterService {
         overlayFilePaths[entry.key] = filePath;
       }
 
-      yield '🚀 Bắt đầu tạo $totalSets bộ ảnh rải rác...';
+      final totalImages = totalSets * slides.length;
+      yield '🚀 Bắt đầu tạo $totalSets bộ ảnh ($totalImages ảnh tổng cộng)...';
 
-      for (int i = 1; i <= totalSets; i++) {
-        if (_cancelled) break;
-        
-        final setDir = p.join(outputDir, 'Set_${i}_${DateTime.now().microsecondsSinceEpoch}');
-        await Directory(setDir).create(recursive: true);
-        
-        yield '📂 Đang tạo Bộ $i...';
+      final activeTasks = <Future<void>>{};
+      int completedCount = 0;
 
-        for (int j = 0; j < slides.length; j++) {
+      // Use a StreamController to feed progress back from parallel tasks
+      final progressController = StreamController<String>();
+
+      // Internal function to process one image
+      Future<void> processImage(
+        int setIndex,
+        int slideIndex,
+        String setDir,
+      ) async {
+        if (_cancelled) return;
+
+        final slide = slides[slideIndex];
+        final videoPath = videoDurations.keys.elementAt(
+          random.nextInt(videoDurations.length),
+        );
+        final duration = videoDurations[videoPath]!;
+
+        final randomTime = _pickFrameTime(
+          duration: duration,
+          setIndex: setIndex,
+          totalSets: totalSets,
+          slideIndex: slideIndex,
+          totalSlides: slides.length,
+          rng: random,
+        );
+
+        final stealth = _StealthProfile.random(random);
+        final randomSuffix = random.nextInt(9000) + 1000;
+        final extension = config.outputFormat.toLowerCase().replaceAll('.', '');
+
+        // Fix: Use padded index first for correct OS sorting
+        final outputFileName =
+            'IMG_${(slideIndex + 1).toString().padLeft(3, '0')}$randomSuffix.$extension';
+        final outputPath = p.join(setDir, outputFileName);
+        final overlayPath = overlayFilePaths[slide.id];
+
+        if (overlayPath == null) {
+          progressController.add(
+            '  ⚠️ [Bộ $setIndex] Không tìm thấy overlay cho ${slide.name}',
+          );
+          return;
+        }
+
+        final success = await _composeImage(
+          videoPath: videoPath,
+          time: randomTime,
+          overlayPath: overlayPath,
+          outputPath: outputPath,
+          width: config.width,
+          height: config.height,
+          stealth: stealth,
+          format: config.outputFormat,
+        );
+
+        completedCount++;
+        if (success) {
+          progressController.add(
+            '  ✅ [Bộ $setIndex] Xong $outputFileName ($completedCount/$totalImages)',
+          );
+        } else {
+          progressController.add('  ❌ [Bộ $setIndex] Lỗi $outputFileName');
+        }
+      }
+
+      // Start the task pump
+      () async {
+        for (int i = 1; i <= totalSets; i++) {
           if (_cancelled) break;
-          
-          final slide = slides[j];
-          final videoPath = videoDurations.keys.elementAt(random.nextInt(videoDurations.length));
-          final duration = videoDurations[videoPath]!;
-          
-          // Improved frame selection with stratified sampling
-          int randomTime = _pickFrameTime(
-            duration: duration,
-            setIndex: i,
-            totalSets: totalSets,
-            slideIndex: j,
-            totalSlides: slides.length,
-            rng: random,
+
+          final setDir = p.join(
+            outputDir,
+            'Set_${i}_${DateTime.now().microsecondsSinceEpoch}',
           );
-          
-          // Generate stealth profile for this specific image
-          final stealth = _StealthProfile.random(random);
-          
-          // Randomized filename pattern
-          final randomSuffix = random.nextInt(9000) + 1000;
-          final extension = config.outputFormat.toLowerCase().replaceAll('.', '');
-          final outputFileName = 'IMG_${randomSuffix}_${j + 1}.$extension';
-          final outputPath = p.join(setDir, outputFileName);
-          final overlayPath = overlayFilePaths[slide.id];
+          await Directory(setDir).create(recursive: true);
 
-          if (overlayPath == null) {
-            yield '⚠️ Không tìm thấy dữ liệu overlay cho slide ${slide.name}';
-            continue;
-          }
+          for (int j = 0; j < slides.length; j++) {
+            if (_cancelled) break;
 
-          final success = await _composeImage(
-            videoPath: videoPath,
-            time: randomTime,
-            overlayPath: overlayPath,
-            outputPath: outputPath,
-            width: config.width,
-            height: config.height,
-            stealth: stealth,
-            format: config.outputFormat,
-          );
+            while (activeTasks.length >= _maxConcurrentTasks) {
+              await Future.any(activeTasks);
+            }
+            if (_cancelled) break;
 
-          if (success) {
-            yield '  ✅ [Bộ $i] Đã xong $outputFileName';
-          } else {
-            yield '  ❌ [Bộ $i] Lỗi khi tạo $outputFileName';
+            final Future<void> trackedTask = processImage(i, j, setDir);
+            activeTasks.add(trackedTask);
+            trackedTask.then((_) => activeTasks.remove(trackedTask));
           }
         }
+        await Future.wait(activeTasks);
+        await progressController.close();
+      }();
+
+      // Yield values from the controller
+      await for (final msg in progressController.stream) {
+        yield msg;
       }
 
       if (_cancelled) {
@@ -245,7 +311,6 @@ class ImagePosterService {
       } else {
         yield '✅ Hoàn tất! Ảnh đã được lưu tại: $outputDir';
       }
-
     } finally {
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
@@ -258,7 +323,9 @@ class ImagePosterService {
     String desktopPath;
     if (Platform.isWindows) {
       final userProfile = Platform.environment['USERPROFILE'];
-      desktopPath = userProfile != null ? p.join(userProfile, 'Desktop') : p.join(documentsDir.parent.path, 'Desktop');
+      desktopPath = userProfile != null
+          ? p.join(userProfile, 'Desktop')
+          : p.join(documentsDir.parent.path, 'Desktop');
     } else {
       desktopPath = p.join(documentsDir.parent.path, 'Desktop');
     }
@@ -305,7 +372,8 @@ class ImagePosterService {
 
     // Trong mỗi slide region, chia nhỏ tiếp dựa trên số lượng Set để tránh trùng lặp
     final double setSubRegionSize = slideRegionSize / totalSets;
-    final double startOfSetSubRegion = startOfSlideRegion + (setIndex - 1) * setSubRegionSize;
+    final double startOfSetSubRegion =
+        startOfSlideRegion + (setIndex - 1) * setSubRegionSize;
 
     // Pick một điểm ngẫu nhiên trong sub-region của Set này
     final int jitterRange = max(1, setSubRegionSize.floor());
@@ -325,7 +393,9 @@ class ImagePosterService {
     required String format,
   }) async {
     try {
-      final isJpg = format.toLowerCase().endsWith('jpg') || format.toLowerCase().endsWith('jpeg');
+      final isJpg =
+          format.toLowerCase().endsWith('jpg') ||
+          format.toLowerCase().endsWith('jpeg');
 
       // Build complex filter for visual jitter and micro-crop jitter
       final double zoomVal = 1.0 + (stealth.extraScale / width);
@@ -338,18 +408,24 @@ class ImagePosterService {
         'eq=brightness=${stealth.brightness.toStringAsFixed(4)}:contrast=${stealth.contrast.toStringAsFixed(4)}:saturation=${stealth.saturation.toStringAsFixed(4)},',
         'hue=h=${stealth.hue.toStringAsFixed(2)},',
         'noise=alls=${stealth.noise.toStringAsFixed(2)}:allf=t[bg];',
-        '[bg][1:v]overlay=0:0'
+        '[bg][1:v]overlay=0:0',
       ].join('');
 
       final List<String> args = [
         '-hide_banner',
         '-y',
-        '-hwaccel', 'auto',
-        '-ss', time.toString(),
-        '-i', videoPath,
-        '-i', overlayPath,
-        '-filter_complex', filter,
-        '-vframes', '1',
+        '-hwaccel',
+        'auto',
+        '-ss',
+        time.toString(),
+        '-i',
+        videoPath,
+        '-i',
+        overlayPath,
+        '-filter_complex',
+        filter,
+        '-vframes',
+        '1',
       ];
 
       if (isJpg) {
@@ -363,16 +439,22 @@ class ImagePosterService {
         ]);
       } else {
         args.addAll([
-          '-pix_fmt', 'rgba',
-          '-metadata', 'Software=',
-          '-metadata', 'Creation Time=${stealth.creationTime}',
-          '-metadata', 'Title=IMG_${stealth.creationTime.replaceAll(':', '').replaceAll(' ', '_')}',
+          '-pix_fmt',
+          'rgba',
+          '-metadata',
+          'Software=',
+          '-metadata',
+          'Creation Time=${stealth.creationTime}',
+          '-metadata',
+          'Title=IMG_${stealth.creationTime.replaceAll(':', '').replaceAll(' ', '_')}',
         ]);
       }
 
       args.addAll([
-        '-fflags', '+bitexact',
-        '-flags:v', '+bitexact',
+        '-fflags',
+        '+bitexact',
+        '-flags:v',
+        '+bitexact',
         outputPath,
       ]);
 
