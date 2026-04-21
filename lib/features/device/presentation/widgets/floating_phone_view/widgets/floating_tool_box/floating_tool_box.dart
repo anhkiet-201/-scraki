@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/store/floating_tool_box_store.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/caption_panel.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/job_selector_panel.dart';
@@ -12,6 +13,7 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/tool_box_menu.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/email_panel.dart';
 import 'package:scraki/features/auth/presentation/widgets/auth_panel.dart';
+import 'package:scraki/features/tiktok_seeding/presentation/stores/tiktok_seeding_store.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/poster/presentation/stores/poster_customization_store.dart';
 
@@ -93,6 +95,7 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
               onInboxTap: () => widget.store.openTikTokInbox(widget.serial),
               onProfileTap: () => widget.store.openTikTokProfile(widget.serial),
               onAuthTap: () => widget.store.toggleAuthPanel(),
+              onSeedingTap: () => _showQuickSeedingDialog(context),
             ),
             Container(
               key: ValueKey(widget.store.showJobSelector || 
@@ -169,5 +172,34 @@ class FloatingToolBoxState extends State<FloatingToolBox> {
       );
     }
     return const SizedBox.shrink(key: ValueKey('empty_panel'));
+  }
+
+  void _showQuickSeedingDialog(BuildContext context) async {
+    final seedingStore = inject<TikTokSeedingStore>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    // Đảm bảo store đã init để có dữ liệu persistence
+    if (seedingStore.bulkInput.isEmpty) {
+      await seedingStore.init();
+    }
+
+    if (seedingStore.keywords.isNotEmpty) {
+      await seedingStore.runRandomSeeding(widget.serial);
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã chọn từ khóa ngẫu nhiên và mở TikTok Search!'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Chưa có danh sách từ khóa. Vui lòng thiết lập trong Batch Seeding.'),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }

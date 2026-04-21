@@ -15,6 +15,7 @@ import 'package:scraki/features/device/presentation/widgets/floating_phone_view/
 import 'package:scraki/features/poster/presentation/screens/poster_creator_screen.dart';
 import 'package:scraki/features/script/presentation/screens/script_screen.dart';
 import 'package:scraki/features/settings/presentation/screens/settings_screen.dart';
+import 'package:scraki/features/tiktok_seeding/presentation/widgets/tiktok_batch_seeding_dialog.dart';
 import 'package:scraki/features/video_poster/presentation/pages/video_poster_playground_page.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -347,6 +348,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           Expanded(child: DeviceSearchBar(dashboardStore: dashboardStore)),
           const SizedBox(width: 16),
+          _buildActionButton(
+            icon: Icons.playlist_add_circle_rounded,
+            tooltip: 'Batch Seeding',
+            onPressed: () => TikTokBatchSeedingDialog.show(context),
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
           _buildActionButton(
             icon: Icons.refresh_rounded,
             tooltip: 'Refresh',

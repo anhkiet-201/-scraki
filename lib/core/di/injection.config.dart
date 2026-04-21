@@ -114,6 +114,16 @@ import '../../features/settings/presentation/stores/settings_email_store.dart'
     as _i1056;
 import '../../features/settings/presentation/stores/settings_store.dart'
     as _i151;
+import '../../features/tiktok_seeding/data/repositories/tiktok_seeding_repository_impl.dart'
+    as _i1016;
+import '../../features/tiktok_seeding/data/services/tiktok_seeding_service.dart'
+    as _i1032;
+import '../../features/tiktok_seeding/domain/repositories/i_tiktok_seeding_repository.dart'
+    as _i1022;
+import '../../features/tiktok_seeding/domain/services/i_tiktok_seeding_service.dart'
+    as _i801;
+import '../../features/tiktok_seeding/presentation/stores/tiktok_seeding_store.dart'
+    as _i478;
 import '../../features/video_poster/data/datasources/favorite_image_remote_data_source.dart'
     as _i963;
 import '../../features/video_poster/data/repositories/favorite_image_repository_impl.dart'
@@ -180,6 +190,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i589.IAuthRepository>(
       () => _i153.AuthRepositoryImpl(gh<_i107.IAuthRemoteDataSource>()),
+    );
+    gh.lazySingleton<_i1022.ITikTokSeedingRepository>(
+      () => _i1016.TikTokSeedingRepositoryImpl(),
     );
     gh.lazySingleton<_i260.IAkiRemoteService>(() => _i109.AkiRemoteService());
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
@@ -297,8 +310,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i893.BatchVideoService>(
       () => _i893.BatchVideoService(gh<_i390.AmbientAudioService>()),
     );
+    gh.lazySingleton<_i801.ITikTokSeedingService>(
+      () => _i1032.TikTokSeedingService(gh<_i229.ITikTokPostService>()),
+    );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),
+    );
+    gh.lazySingleton<_i478.TikTokSeedingStore>(
+      () => _i478.TikTokSeedingStore(
+        gh<_i801.ITikTokSeedingService>(),
+        gh<_i1022.ITikTokSeedingRepository>(),
+      ),
     );
     gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
