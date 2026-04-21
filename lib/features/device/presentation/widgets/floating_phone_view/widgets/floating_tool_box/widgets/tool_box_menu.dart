@@ -79,13 +79,21 @@ class ToolBoxMenu extends StatelessWidget {
 
                 //Auth
           const SizedBox(height: 12),
-           _buildExpandedButton(
-                  colorScheme: colorScheme,
-                  icon: Icons.rocket_launch_rounded,
-                  label: 'Seeding',
-                  onTap: onSeedingTap,
-                  isError: false,
-                ),
+          _buildExpandedButton(
+            colorScheme: colorScheme,
+            icon: Icons.shield_rounded,
+            label: 'Auth',
+            onTap: onAuthTap,
+            isError: false,
+          ),
+          const SizedBox(height: 12),
+          _buildExpandedButton(
+            colorScheme: colorScheme,
+            icon: Icons.rocket_launch_rounded,
+            label: 'Seeding',
+            onTap: onSeedingTap,
+            isError: false,
+          ),
         ],
       ),
     );

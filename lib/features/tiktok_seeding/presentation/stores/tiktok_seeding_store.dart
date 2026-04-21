@@ -77,21 +77,35 @@ abstract class _TikTokSeedingStoreBase with Store {
     isProcessing = true;
     errorMessage = null;
 
-    final random = Random();
-    final List<Future<void>> tasks = [];
-
     try {
-      for (final serial in deviceSerials) {
-        // Chọn ngẫu nhiên một từ khóa từ danh sách
-        final randomKeyword = keywords[random.nextInt(keywords.length)];
+      // 1. Chuẩn bị danh sách từ khóa đã trộn (Shuffled)
+      final shuffledKeywords = List<String>.from(keywords)..shuffle(Random());
+      int keywordIndex = 0;
+
+      for (int i = 0; i < deviceSerials.length; i++) {
+        final serial = deviceSerials[i];
         
-        logger.i('[TikTokSeedingStore] Đẩy seeding cho $serial với keyword: $randomKeyword');
+        // 2. Lấy từ khóa từ danh sách đã trộn (vòng hành nếu hết)
+        if (keywordIndex >= shuffledKeywords.length) {
+          shuffledKeywords.shuffle(Random());
+          keywordIndex = 0;
+        }
+        final selectedKeyword = shuffledKeywords[keywordIndex++];
+
+        logger.i('[TikTokSeedingStore] Đẩy seeding cho $serial với keyword: $selectedKeyword');
         
-        tasks.add(_seedingService.openSearch(serial, randomKeyword));
+        // 3. Thực thi (không await Future.wait để có thể thêm delay giữa các máy)
+        await _seedingService.openSearch(serial, selectedKeyword);
+
+        // 4. Thêm độ trễ ngẫu nhiên giữa các máy (trừ máy cuối cùng)
+        if (i < deviceSerials.length - 1) {
+          final delayMs = 1500 + Random().nextInt(2500); // 1.5s - 4.0s
+          logger.d('[TikTokSeedingStore] Delay ${delayMs}ms trước máy tiếp theo...');
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
       }
 
-      await Future.wait(tasks);
-      logger.i('[TikTokSeedingStore] Hoàn thành đẩy batch seeding.');
+      logger.i('[TikTokSeedingStore] Hoàn thành đẩy batch seeding cho ${deviceSerials.length} máy.');
     } catch (e) {
       logger.e('[TikTokSeedingStore] Lỗi khi chạy batch seeding', error: e);
       errorMessage = e.toString();
@@ -120,7 +134,7 @@ abstract class _TikTokSeedingStoreBase with Store {
       return;
     }
 
-    final random = Random();
+    final random = Random.secure();
     final randomKeyword = keywords[random.nextInt(keywords.length)];
     
     await runSingleSeeding(serial, randomKeyword);
