@@ -4,6 +4,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/error/failures.dart';
+import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
 import 'package:scraki/features/device/domain/services/i_aki_remote_service.dart';
 import 'package:scraki/features/email/domain/entities/email_account.dart';
@@ -57,7 +58,7 @@ abstract class _EmailStore with Store {
     errorMessage = null;
 
     try {
-      String resolvedEmail = targetEmail;
+      String resolvedEmail = targetEmail.trim();
 
       // Lấy email từ màn hình qua aki_remote nếu chưa nhập
       if (requireDump || targetEmail.isEmpty) {
@@ -76,7 +77,6 @@ abstract class _EmailStore with Store {
             targetEmail = resolvedEmail;
           } else {
             // Bước 2: fallback dump toàn bộ XML → parse regex
-            // (email có thể nằm trong content-desc hoặc attribute ẩn)
             final xmlDump = await _akiRemote.dump(deviceSerial);
             final match = _emailRegex.firstMatch(xmlDump);
             if (match != null) {
@@ -96,7 +96,7 @@ abstract class _EmailStore with Store {
         }
       }
 
-      return resolvedEmail;
+      return resolvedEmail.trim();
     } catch (e) {
       errorMessage = 'Lỗi hệ thống: $e';
       return null;
@@ -107,31 +107,46 @@ abstract class _EmailStore with Store {
 
   @action
   Future<void> startImapStream(String email) async {
+    final searchEmail = email.trim().toLowerCase();
+    logger.i('[EmailStore] Bắt đầu Stream tìm kiếm: $searchEmail');
+
     isLoading = true;
     isListening = false;
     errorMessage = null;
 
     // Fetch accounts from firebase
     final accountsEither = await _emailRepository.getEmailAccounts();
-
     EmailAccount? matchedAccount;
+    
     accountsEither.fold(
       (failure) {
         errorMessage = 'Không lấy được Firebase config: ${failure.message}';
       },
       (accounts) {
         if (accounts.isEmpty) {
+          logger.w('[EmailStore] Danh sách config Firebase trống.');
           errorMessage = 'Chưa thiết lập config trên Firebase.';
           return;
         }
 
+        logger.i('[EmailStore] Đã tải ${accounts.length} tài khoản từ Firebase.');
+        
         try {
           matchedAccount = accounts.firstWhere(
-            (acc) => acc.email.toLowerCase() == email.toLowerCase(),
+            (acc) {
+              final accEmail = acc.email.trim().toLowerCase();
+              return accEmail == searchEmail;
+            },
           );
+          logger.i('[EmailStore] Tìm thấy tài khoản phù hợp: ${matchedAccount!.username}');
         } catch (_) {
           errorMessage =
-              'Không tìm thấy tài khoản $email trong danh sách config Firebase.';
+              'Không tìm thấy tài khoản $searchEmail trong danh sách config Firebase (${accounts.length} items).';
+          logger.e('[EmailStore] $errorMessage');
+          // Log vài cái tiêu biểu để kiểm tra format
+          for (var i = 0; i < (accounts.length > 3 ? 3 : accounts.length); i++) {
+            logger.d('   - Item $i: ${accounts[i].email}');
+          }
         }
       },
     );
