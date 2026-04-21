@@ -105,7 +105,8 @@ class _PhoneViewState extends State<PhoneView> {
                 item.dataReader?.getSuggestedName().then((name) {
                   if (mounted &&
                       name != null &&
-                      name.toLowerCase().endsWith('.apk')) {
+                      (name.toLowerCase().endsWith('.apk') ||
+                          name.toLowerCase().endsWith('.xapk'))) {
                     _store.setDragging(widget.serial, true, isApk: true);
                   }
                 });

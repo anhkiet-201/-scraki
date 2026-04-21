@@ -427,8 +427,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       return const {'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'ts', 'm4v', 'flv', 'wmv'}.contains(ext);
     });
     final isApk = paths.every((p) => p.toLowerCase().endsWith('.apk'));
+    final isXapk = paths.every((p) => p.toLowerCase().endsWith('.xapk'));
     
-    if (!isOnDevicesTab && !isVideo && !isApk) return;
+    if (!isOnDevicesTab && !isVideo && !isApk && !isXapk) return;
 
     try {
       final fileName = p.basename(paths.first);
@@ -455,9 +456,17 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
         }
         await Future<void>.delayed(const Duration(seconds: 2));
-      } else if (isApk) {
+      } else if (isApk || isXapk) {
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đang cài $fileName...');
-        await _adbDataSource.installPackage(serial, paths.first);
+        if (isXapk) {
+           await _adbDataSource.installXapk(
+             serial, 
+             paths.first, 
+             onStatus: (status) => sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: status),
+           );
+        } else {
+           await _adbDataSource.installPackage(serial, paths.first);
+        }
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đã cài đặt xong!', phase: DeviceTaskPhase.success);
         await Future<void>.delayed(const Duration(seconds: 2));
       } else {
@@ -470,7 +479,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       logger.e('[PhoneViewStore] Task failed', error: e);
       sessionManagerStore.updateDeviceTask(
         serial,
-        type: isApk ? DeviceTaskType.install : (isVideo ? DeviceTaskType.videoGen : DeviceTaskType.push),
+        type: (isApk || isXapk) ? DeviceTaskType.install : (isVideo ? DeviceTaskType.videoGen : DeviceTaskType.push),
         status: 'Lỗi: $e',
         phase: DeviceTaskPhase.failed,
       );

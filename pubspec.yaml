@@ -88,6 +88,7 @@ dependencies:
   linked_scroll_controller: ^0.2.0
   package_info_plus: ^8.0.0
   xterm: ^4.0.0
+  archive: ^4.0.9
 dev_dependencies:
   flutter_test:
     sdk: flutter

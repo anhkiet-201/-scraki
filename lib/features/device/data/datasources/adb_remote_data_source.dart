@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:archive/archive_io.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:injectable/injectable.dart';
 import 'package:process_run/shell.dart';
@@ -77,6 +79,14 @@ abstract class IAdbRemoteDataSource {
   /// [onProgress] - Callback khi % thay đổi (0.0 đến 1.0)
   /// [onStatus] - Callback khi trạng thái thay đổi (vd: "Streaming...", "Installing...")
   Future<void> installPackage(
+    String serial,
+    String localPath, {
+    void Function(double progress)? onProgress,
+    void Function(String status)? onStatus,
+  });
+  
+  /// Cài đặt file XAPK (bao gồm Split APKs và OBB)
+  Future<void> installXapk(
     String serial,
     String localPath, {
     void Function(double progress)? onProgress,
@@ -529,6 +539,134 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException('Lỗi cài đặt: $e');
+    }
+  }
+
+  @override
+  Future<void> installXapk(
+    String serial,
+    String localPath, {
+    void Function(double progress)? onProgress,
+    void Function(String status)? onStatus,
+  }) async {
+    Directory? tempDir;
+    try {
+      onStatus?.call('Đang giải nén XAPK...');
+      final file = File(localPath);
+      if (!await file.exists()) throw ServerException('File XAPK không tồn tại');
+
+      // 1. Tạo thư mục tạm và giải nén
+      tempDir = await Directory.systemTemp.createTemp('xapk_install_');
+      final bytes = await file.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      for (final file in archive) {
+        final filename = file.name;
+        if (file.isFile) {
+          final data = file.content as List<int>;
+          File(p.join(tempDir.path, filename))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(data);
+        }
+      }
+
+      // 2. Tìm danh sách APK và OBB
+      final apkFiles = <String>[];
+      final obbFiles = <String>[];
+      String? packageName;
+
+      // Quét thư mục tạm
+      await for (final entity in tempDir.list(recursive: true)) {
+        if (entity is File) {
+          final ext = p.extension(entity.path).toLowerCase();
+          if (ext == '.apk') {
+            apkFiles.add(entity.path);
+          } else if (ext == '.obb') {
+            obbFiles.add(entity.path);
+          } else if (p.basename(entity.path) == 'manifest.json') {
+            // Đọc package name từ manifest nếu cần cho OBB
+            try {
+              final content = await entity.readAsString();
+              final json = jsonDecode(content);
+              packageName = json['package_name'] as String?;
+            } catch (_) {}
+          }
+        }
+      }
+
+      if (apkFiles.isEmpty) throw ServerException('Không tìm thấy file APK trong gói XAPK');
+
+      // 3. Cài đặt APK
+      onStatus?.call('Đang cài đặt APK (${apkFiles.length} files)...');
+      if (apkFiles.length == 1) {
+        await installPackage(serial, apkFiles.first);
+      } else {
+        // adb install-multiple -r -d base.apk split1.apk ...
+        final result = await Process.run('adb', [
+          '-s',
+          serial,
+          'install-multiple',
+          '-r',
+          ...apkFiles,
+        ]);
+        final out = (result.stdout as String).trim();
+        if (!out.contains('Success') && result.exitCode != 0) {
+          throw ServerException('Cài đặt Split APKs thất bại: $out');
+        }
+      }
+
+      // 4. Xử lý OBB (nếu có)
+      if (obbFiles.isNotEmpty) {
+        onStatus?.call('Đang đẩy dữ liệu OBB...');
+        // Nếu không lấy được từ manifest, cố gắng lấy từ tên file OBB (thường là main.123.com.pkg.name.obb)
+        if (packageName == null) {
+          for (final obbPath in obbFiles) {
+             final filename = p.basename(obbPath);
+             final parts = filename.split('.');
+             if (parts.length >= 3) {
+                // Thường format là: main.version.packageName.obb
+                // Hoặc patch.version.packageName.obb
+                packageName = parts.sublist(2, parts.length - 1).join('.');
+                break;
+             }
+          }
+        }
+
+        if (packageName != null) {
+          final remoteObbDir = '/sdcard/Android/obb/$packageName';
+          await runShellCommand(serial, 'mkdir -p $remoteObbDir');
+          
+          for (final obbPath in obbFiles) {
+            final fileName = p.basename(obbPath);
+            final result = await Process.run('adb', [
+              '-s',
+              serial,
+              'push',
+              obbPath,
+              '$remoteObbDir/$fileName',
+            ]);
+            if (result.exitCode != 0) {
+              throw ServerException('Lỗi khi đẩy OBB: ${result.stderr}');
+            }
+          }
+        } else {
+          logger.w('[ADB] Có OBB nhưng không xác định được package name để đẩy.');
+          // Thất bại 1 phần (OBB) theo yêu cầu User là thất bại toàn bộ
+          throw ServerException('Không xác định được Package Name để cài đặt OBB.');
+        }
+      }
+
+      onStatus?.call('Cài đặt hoàn tất!');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException('Lỗi cài đặt XAPK: $e');
+    } finally {
+      // Dọn dẹp temp
+      try {
+        if (tempDir != null && await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      } catch (_) {}
     }
   }
 
