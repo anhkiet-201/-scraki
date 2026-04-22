@@ -101,7 +101,7 @@ abstract class _TikTokSeedingStoreBase with Store {
         if (i < deviceSerials.length - 1) {
           final delayMs = 1500 + Random().nextInt(2500); // 1.5s - 4.0s
           logger.d('[TikTokSeedingStore] Delay ${delayMs}ms trước máy tiếp theo...');
-          await Future.delayed(Duration(milliseconds: delayMs));
+          await Future<void>.delayed(Duration(milliseconds: delayMs));
         }
       }
 
