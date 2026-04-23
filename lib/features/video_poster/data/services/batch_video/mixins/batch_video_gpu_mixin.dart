@@ -15,7 +15,8 @@ typedef GpuInfo = ({
 
 mixin BatchVideoGpuMixin {
   static String get ffmpegBin => Platform.isWindows ? 'ffmpeg.exe' : 'ffmpeg';
-  static String get ffprobeBin => Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
+  static String get ffprobeBin =>
+      Platform.isWindows ? 'ffprobe.exe' : 'ffprobe';
 
   GpuInfo? _cachedGpuInfo;
 
@@ -26,7 +27,8 @@ mixin BatchVideoGpuMixin {
   Future<GpuInfo> resolveGpuInfo() async {
     final filters = await getAvailableFilters();
     final hasZscale = filters.contains('zscale');
-    final hasCudaFilters = filters.contains('scale_cuda') && filters.contains('hwupload_cuda');
+    final hasCudaFilters =
+        filters.contains('scale_cuda') && filters.contains('hwupload_cuda');
 
     if (Platform.isMacOS) {
       // Apple Silicon: Media Engine decode + Software scale/filters + VideoToolbox encode.
@@ -43,7 +45,7 @@ mixin BatchVideoGpuMixin {
         hasZscale: hasZscale,
         hasCudaFilters: false,
         preferredPixFmt: 'yuv420p',
-        maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 4),
+        maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 8),
       );
     }
     if (Platform.isWindows) {
@@ -56,9 +58,8 @@ mixin BatchVideoGpuMixin {
           outputFormat: hasCudaFilters ? 'cuda' : null,
           hasZscale: hasZscale,
           hasCudaFilters: hasCudaFilters,
-          // nv12 là native format của NVENC, tránh chuyển đổi thừa
           preferredPixFmt: 'nv12',
-          maxConcurrentEncodes: hasCudaFilters ? 4 : 2,
+          maxConcurrentEncodes: hasCudaFilters ? 10 : 6,
         );
       }
       if (encoders.contains('h264_qsv')) {
@@ -95,7 +96,7 @@ mixin BatchVideoGpuMixin {
       hasZscale: hasZscale,
       hasCudaFilters: false,
       preferredPixFmt: 'yuv420p',
-      maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 4),
+      maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 8),
     );
   }
 
@@ -107,12 +108,11 @@ mixin BatchVideoGpuMixin {
     try {
       final result = await Process.run(ffmpegBin, ['-encoders']);
       final output = result.stdout as String;
-      _availableEncoders =
-          output
-              .split('\n')
-              .where((l) => l.contains('V....D'))
-              .map((l) => l.split(' ').where((s) => s.isNotEmpty).skip(1).first)
-              .toList();
+      _availableEncoders = output
+          .split('\n')
+          .where((l) => l.contains('V....D'))
+          .map((l) => l.split(' ').where((s) => s.isNotEmpty).skip(1).first)
+          .toList();
       return _availableEncoders!;
     } catch (_) {
       return [];
@@ -124,15 +124,19 @@ mixin BatchVideoGpuMixin {
     try {
       final result = await Process.run(ffmpegBin, ['-filters']);
       if (result.exitCode != 0) return [];
-      
+
       final output = result.stdout as String;
-      final filterRegex = RegExp(r'^\s*[TSC.]{3}\s+([a-z0-9_]+)\s+', multiLine: true);
-      
-      _availableFilters = filterRegex.allMatches(output)
+      final filterRegex = RegExp(
+        r'^\s*[TSC.]{3}\s+([a-z0-9_]+)\s+',
+        multiLine: true,
+      );
+
+      _availableFilters = filterRegex
+          .allMatches(output)
           .map((m) => m.group(1))
           .whereType<String>()
           .toList();
-          
+
       return _availableFilters!;
     } catch (_) {
       return [];

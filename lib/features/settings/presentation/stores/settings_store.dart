@@ -94,16 +94,6 @@ abstract class _SettingsStore with Store {
       return;
     }
 
-    if (settings!.aiApiKey.trim().isEmpty) {
-      errorMessage = 'AI API Key cannot be empty';
-      return;
-    }
-
-    if (settings!.posterPhoneNumber.trim().isEmpty) {
-      errorMessage = 'Phone Number cannot be empty';
-      return;
-    }
-
     isLoading = true;
     errorMessage = null;
 
