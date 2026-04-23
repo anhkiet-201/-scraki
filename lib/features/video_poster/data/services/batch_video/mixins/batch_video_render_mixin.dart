@@ -88,7 +88,6 @@ mixin BatchVideoRenderMixin on BatchVideoGpuMixin, BatchVideoStateMixin {
     try {
       final gpuInfo = await getGpuInfo();
       final isNvidia = gpuInfo.encoder == 'h264_nvenc';
-      final isMacOS = Platform.isMacOS;
 
       final List<String> ffmpegArgs = [
         '-hide_banner', '-y',
