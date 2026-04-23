@@ -1,16 +1,19 @@
-# Custom build settings for VideoDecoderPlugin with FFmpeg
+// Custom build settings for VideoDecoderPlugin with FFmpeg
+//
+// Dùng symlink /opt/homebrew/opt/ffmpeg thay vì hardcode version cụ thể.
+// Symlink này luôn trỏ đến phiên bản FFmpeg mới nhất được Homebrew install,
+// nên không cần sửa file này sau mỗi lần brew upgrade ffmpeg.
 
-# FFmpeg library and header paths (Homebrew installation)
-FFMPEG_PREFIX = /opt/homebrew/Cellar/ffmpeg/8.0.1
+FFMPEG_PREFIX = /opt/homebrew/opt/ffmpeg
 
-# Header search paths
+// Header search paths
 HEADER_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/include
 
-# Library search paths  
+// Library search paths
 LIBRARY_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/lib
 
-# Link against FFmpeg libraries
+// Link against FFmpeg libraries
 OTHER_LDFLAGS = $(inherited) -lavcodec -lavformat -lavutil -lswscale
 
-# Runtime library search paths
+// Runtime library search paths
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks $(FFMPEG_PREFIX)/lib

@@ -7,9 +7,8 @@ import 'package:scraki/features/video_poster/data/services/batch_video/mixins/ba
 import 'package:scraki/features/video_poster/data/services/batch_video/mixins/batch_video_state_mixin.dart';
 import 'package:path/path.dart' as p;
 
-mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchVideoStateMixin {
-  static int get maxConcurrentTasks => Platform.numberOfProcessors.clamp(2, 6);
-
+mixin BatchVideoSegmentMixin
+    on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchVideoStateMixin {
   List<SegmentRequest> generateSegmentPool({
     required List<String> validVideos,
     required Map<String, int> videoDurations,
@@ -23,29 +22,44 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
 
     for (final src in shuffledVideos) {
       final srcDur = videoDurations[src]!.toDouble();
-      double currentTime = (srcDur > config.minSegmentDuration + 2) 
-          ? random.nextDouble() * 2.0 
+      double currentTime = (srcDur > config.minSegmentDuration + 2)
+          ? random.nextDouble() * 2.0
           : 0.0;
 
       while (currentTime + config.minSegmentDuration <= srcDur) {
-        double maxPossible = min(config.maxSegmentDuration.toDouble(), srcDur - currentTime);
+        double maxPossible = min(
+          config.maxSegmentDuration.toDouble(),
+          srcDur - currentTime,
+        );
         if (maxPossible < config.minSegmentDuration) break;
 
         final deltaRange = maxPossible - config.minSegmentDuration;
-        final segDur = config.minSegmentDuration + (random.nextDouble() * deltaRange);
+        final segDur =
+            config.minSegmentDuration + (random.nextDouble() * deltaRange);
 
-        pool.add(SegmentRequest(
-          sourcePath: src,
-          startTime: currentTime,
-          duration: segDur,
-          hflip: isRetry ? random.nextDouble() < 0.7 : random.nextDouble() < 0.3,
-          hasAudio: videoHasAudio[src] ?? false,
-        ));
+        pool.add(
+          SegmentRequest(
+            sourcePath: src,
+            startTime: currentTime,
+            duration: segDur,
+            hflip: isRetry
+                ? random.nextDouble() < 0.7
+                : random.nextDouble() < 0.3,
+            hasAudio: videoHasAudio[src] ?? false,
+          ),
+        );
         currentTime += segDur;
       }
     }
     pool.shuffle(random);
     return pool;
+  }
+
+  /// Trả về số lượng encode task song song tối đa dựa trên hardware đang dùng.
+  /// Thay thế static getter cứng nhắc trước đây.
+  Future<int> resolveMaxConcurrentTasks() async {
+    final gpu = await getGpuInfo();
+    return gpu.maxConcurrentEncodes;
   }
 
   Future<String?> runSegmentCut({
@@ -60,7 +74,9 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
     void Function(String)? onLogMsg,
   }) async {
     if (!await File(input).exists()) {
-      onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] Lỗi: Không tìm thấy file nguồn');
+      onLogMsg?.call(
+        '  ❌ [${processName ?? p.basename(input)}] Lỗi: Không tìm thấy file nguồn',
+      );
       return null;
     }
 
@@ -101,10 +117,12 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
     final hwScale = gpuInfo.scaleFilter ?? 'scale';
 
     String vfFilter;
+
     if (isNvidia && isHdr) {
       if (gpuInfo.hasZscale && gpuInfo.hasCudaFilters) {
-        // High-quality NVIDIA HDR Path
-        vfFilter = 'hwdownload,format=p010le,'
+        // NVIDIA HDR: download→tonemap→upload lại cho NVENC
+        vfFilter =
+            'hwdownload,format=p010le,'
             'zscale=t=linear:npl=100,'
             'format=gbrpf32le,'
             'zscale=p=bt709,'
@@ -114,31 +132,38 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
             'hwupload_cuda,$hwScale=1080:1920';
         if (hflip) vfFilter += ',hflip_cuda';
       } else {
-        // Fallback: Use standard scale and basic tonemap if possible, or just SDR
-        String base = (gpuInfo.hasCudaFilters)
+        String base = gpuInfo.hasCudaFilters
             ? '$hwScale=1080:1920'
             : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
         if (hflip) base += gpuInfo.hasCudaFilters ? ',hflip_cuda' : ',hflip';
-        
+
         if (gpuInfo.hasZscale) {
-           final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
-           vfFilter = '${download}zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p,$base';
+          final download = gpuInfo.outputFormat != null
+              ? 'hwdownload,format=p010le,'
+              : '';
+          vfFilter =
+              '${download}zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p,$base';
         } else {
-           // No zscale: best effort tonemap or just direct scale
-           final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
-           vfFilter = '${download}format=yuv420p,$base';
+          final download = gpuInfo.outputFormat != null
+              ? 'hwdownload,format=p010le,'
+              : '';
+          vfFilter = '${download}format=yuv420p,$base';
         }
       }
     } else if (isHdr) {
-      // Standard CPU tonemapping fallback
-      String base = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
+      // HDR fallback cho macOS và Windows non-NVIDIA
+      String base =
+          (gpuInfo.scaleFilter != null && gpuInfo.scaleFilter != 'scale')
           ? '$hwScale=1080:1920'
           : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
       if (hflip) base += ',hflip';
-      
-      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
+
+      final download = gpuInfo.outputFormat != null
+          ? 'hwdownload,format=p010le,'
+          : '';
       if (gpuInfo.hasZscale) {
-        vfFilter = '$download$base,'
+        vfFilter =
+            '$download$base,'
             'zscale=t=linear:npl=100,'
             'format=gbrpf32le,'
             'zscale=p=bt709,'
@@ -148,18 +173,24 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       } else {
         vfFilter = '$download$base,format=yuv420p';
       }
+    } else if (isNvidia && gpuInfo.hasCudaFilters) {
+      // NVIDIA SDR: giữ frame trên GPU, chỉ download để lấy format encoder cần
+      final download = gpuInfo.outputFormat != null
+          ? 'hwdownload,format=nv12,'
+          : '';
+      vfFilter = '$download$hwScale=1080:1920';
+      if (hflip) vfFilter += ',hflip_cuda';
+      vfFilter += ',format=nv12';
     } else {
-      // Standard SDR path
-      String base = (gpuInfo.scaleFilter != null && !Platform.isMacOS)
+      // Windows non-NVIDIA SDR (QSV, AMF) hoặc software fallback
+      String base = (gpuInfo.scaleFilter != null)
           ? '$hwScale=1080:1920'
           : 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
-      
-      if (hflip) {
-        base += (isNvidia && gpuInfo.hasCudaFilters) ? ',hflip_cuda' : ',hflip';
-      }
-      
-      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
-      vfFilter = isNvidia ? '$download$base,format=nv12' : '$download$base,format=yuv420p';
+      if (hflip) base += ',hflip';
+      final download = gpuInfo.outputFormat != null
+          ? 'hwdownload,format=nv12,'
+          : '';
+      vfFilter = '$download$base,format=yuv420p';
     }
 
     final afFilter = hasAudio ? 'aresample=44100' : 'anullsrc';
@@ -178,43 +209,52 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
     );
 
     if (result == null && !cancelled) {
-        final fallbackGpuInfo = (
-          encoder: 'libx264',
-          hwaccel: null,
-          scaleFilter: null,
-          outputFormat: null,
-          hasZscale: gpuInfo.hasZscale,
-          hasCudaFilters: false,
-        );
-        onLogMsg?.call('  ⚠️ [${processName ?? p.basename(input)}] Encode GPU thất bại, thử fallback CPU...');
-        
-        final cpuScale = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920${hflip ? ",hflip" : ""}';
-        String fallbackFilter;
-        if (isHdr && gpuInfo.hasZscale) {
-           fallbackFilter = '$cpuScale,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p';
-        } else {
-           fallbackFilter = '$cpuScale,format=yuv420p';
-        }
+      final fallbackGpuInfo = (
+        encoder: 'libx264',
+        hwaccel: null,
+        scaleFilter: null,
+        outputFormat: null,
+        hasZscale: gpuInfo.hasZscale,
+        hasCudaFilters: false,
+        preferredPixFmt: 'yuv420p',
+        maxConcurrentEncodes: gpuInfo.maxConcurrentEncodes,
+      );
+      onLogMsg?.call(
+        '  ⚠️ [${processName ?? p.basename(input)}] Encode GPU thất bại, thử fallback CPU...',
+      );
 
-        return runWithFilter(
-          fallbackFilter,
-          afFilter,
-          fallbackGpuInfo,
-          input: input,
-          startSeconds: startSeconds,
-          duration: duration,
-          output: output,
-          processName: processName,
-          onProgress: onProgress,
-          onLogMsg: onLogMsg,
-        );
+      final cpuScale =
+          'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920${hflip ? ",hflip" : ""}';
+      String fallbackFilter;
+      if (isHdr && gpuInfo.hasZscale) {
+        fallbackFilter =
+            '$cpuScale,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p';
+      } else {
+        fallbackFilter = '$cpuScale,format=yuv420p';
+      }
+
+      return runWithFilter(
+        fallbackFilter,
+        afFilter,
+        fallbackGpuInfo,
+        input: input,
+        startSeconds: startSeconds,
+        duration: duration,
+        output: output,
+        processName: processName,
+        onProgress: onProgress,
+        onLogMsg: onLogMsg,
+      );
     }
 
     if (result == null && isHdr && !cancelled) {
-      onLogMsg?.call('  ⚠️ [${processName ?? p.basename(input)}] Tonemapping thất bại, thử fallback SDR...');
-      final cpuScale = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920${hflip ? ",hflip" : ""}';
+      onLogMsg?.call(
+        '  ⚠️ [${processName ?? p.basename(input)}] Tonemapping thất bại, thử fallback SDR...',
+      );
+      final cpuScale =
+          'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920${hflip ? ",hflip" : ""}';
       final fallbackFilter = '$cpuScale,format=yuv420p';
-      
+
       return runWithFilter(
         fallbackFilter,
         afFilter,
@@ -246,7 +286,12 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
   }) async {
     try {
       final List<String> args = ['-hide_banner', '-y'];
-      if (gpuInfo.hwaccel != null && !Platform.isMacOS) {
+
+      // Khôi phục hwaccel cho macOS:
+      // Giải mã bằng GPU (videotoolbox), sau đó do dùng CPU filter (scale, trim của -t)
+      // nên FFmpeg tự động hwdownload xuống nv12. Điều này giúp tận dụng GPU decode
+      // mà không làm vỡ các CPU filter ở bước sau.
+      if (gpuInfo.hwaccel != null) {
         args.addAll(['-hwaccel', gpuInfo.hwaccel!]);
         if (gpuInfo.outputFormat != null) {
           args.addAll(['-hwaccel_output_format', gpuInfo.outputFormat!]);
@@ -254,9 +299,12 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       }
 
       args.addAll([
-        '-ss', startSeconds.toStringAsFixed(3),
-        '-fflags', '+genpts+igndts',
-        '-i', input,
+        '-ss',
+        startSeconds.toStringAsFixed(3),
+        '-fflags',
+        '+genpts+igndts',
+        '-i',
+        input,
       ]);
 
       if (af == 'anullsrc') {
@@ -266,13 +314,22 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       args.addAll(['-t', duration.toStringAsFixed(3), '-vf', vf]);
 
       if (af == 'anullsrc') {
-        args.addAll(['-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-shortest']);
+        args.addAll([
+          '-map',
+          '0:v:0',
+          '-map',
+          '1:a:0',
+          '-c:a',
+          'aac',
+          '-shortest',
+        ]);
       } else {
         args.addAll(['-af', af, '-c:a', 'aac']);
       }
 
       args.addAll([
-        '-pix_fmt', 'yuv420p',
+        // Fix Bug 4: dùng preferredPixFmt phù hợp với từng encoder
+        '-pix_fmt', gpuInfo.preferredPixFmt,
         '-colorspace', 'bt709',
         '-color_trc', 'bt709',
         '-color_primaries', 'bt709',
@@ -280,7 +337,16 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       ]);
 
       if (gpuInfo.encoder == 'libx264') {
-        args.addAll(['-preset', 'ultrafast', '-b:v', '10M', '-maxrate', '12M', '-bufsize', '20M']);
+        args.addAll([
+          '-preset',
+          'ultrafast',
+          '-b:v',
+          '10M',
+          '-maxrate',
+          '12M',
+          '-bufsize',
+          '20M',
+        ]);
       } else if (gpuInfo.encoder == 'h264_videotoolbox') {
         args.addAll(['-b:v', '10M', '-realtime', '1']);
       } else if (gpuInfo.encoder == 'h264_qsv') {
@@ -290,9 +356,12 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
       }
 
       args.addAll([
-        '-movflags', '+faststart',
-        '-avoid_negative_ts', 'make_zero',
-        '-map_metadata', '-1',
+        '-movflags',
+        '+faststart',
+        '-avoid_negative_ts',
+        'make_zero',
+        '-map_metadata',
+        '-1',
         output,
       ]);
 
@@ -301,7 +370,7 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
 
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
       final stderrList = <String>[];
-      
+
       process.stderr.listen((data) {
         final out = String.fromCharCodes(data);
         final lines = out.split('\n');
@@ -331,13 +400,18 @@ mixin BatchVideoSegmentMixin on BatchVideoGpuMixin, BatchVideoProbeMixin, BatchV
         final errorLog = stderrList.join('\n');
         if (errorLog.isNotEmpty && !cancelled) {
           final filterInfo = ' (Filters: vf=$vf)';
-          onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] FFmpeg lỗi (exit $exitCode):\n$errorLog$filterInfo');
+          onLogMsg?.call(
+            '  ❌ [${processName ?? p.basename(input)}] FFmpeg lỗi (exit $exitCode):\n$errorLog$filterInfo',
+          );
         }
         return null;
       }
       return output;
     } catch (e) {
-      if (!cancelled) onLogMsg?.call('  ❌ [${processName ?? p.basename(input)}] Exception: $e');
+      if (!cancelled)
+        onLogMsg?.call(
+          '  ❌ [${processName ?? p.basename(input)}] Exception: $e',
+        );
       return null;
     }
   }

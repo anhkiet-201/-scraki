@@ -7,6 +7,10 @@ typedef GpuInfo = ({
   String? outputFormat,
   bool hasZscale,
   bool hasCudaFilters,
+  // Pixel format tối ưu cho encoder: 'nv12' với NVENC/VT, 'yuv420p' với libx264/QSV
+  String preferredPixFmt,
+  // Số lượng encode song song tối đa dựa trên hardware
+  int maxConcurrentEncodes,
 });
 
 mixin BatchVideoGpuMixin {
@@ -25,13 +29,21 @@ mixin BatchVideoGpuMixin {
     final hasCudaFilters = filters.contains('scale_cuda') && filters.contains('hwupload_cuda');
 
     if (Platform.isMacOS) {
+      // Apple Silicon: Media Engine decode + Software scale/filters + VideoToolbox encode.
+      // - hwaccel: 'videotoolbox' giúp giảm tải CPU khi giải mã. Do ta dùng scale (software)
+      //   nên FFmpeg sẽ tự động download frame xuống RAM (nv12) sau khi giải mã xong,
+      //   nhờ đó các CPU filter (như trim, crop) hoạt động hoàn hảo mà không bị lỗi context.
+      // - scale_vt bị bỏ vì không hỗ trợ tốt filter pipeline và không mang lại khác biệt lớn
+      //   về tốc độ so với CPU NEON scale.
       return (
         encoder: 'h264_videotoolbox',
         hwaccel: 'videotoolbox',
-        scaleFilter: 'scale_vt',
+        scaleFilter: 'scale',
         outputFormat: null,
         hasZscale: hasZscale,
         hasCudaFilters: false,
+        preferredPixFmt: 'yuv420p',
+        maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 4),
       );
     }
     if (Platform.isWindows) {
@@ -44,6 +56,9 @@ mixin BatchVideoGpuMixin {
           outputFormat: hasCudaFilters ? 'cuda' : null,
           hasZscale: hasZscale,
           hasCudaFilters: hasCudaFilters,
+          // nv12 là native format của NVENC, tránh chuyển đổi thừa
+          preferredPixFmt: 'nv12',
+          maxConcurrentEncodes: hasCudaFilters ? 4 : 2,
         );
       }
       if (encoders.contains('h264_qsv')) {
@@ -55,6 +70,8 @@ mixin BatchVideoGpuMixin {
           outputFormat: hasQsvFilters ? 'qsv' : null,
           hasZscale: hasZscale,
           hasCudaFilters: false,
+          preferredPixFmt: 'yuv420p',
+          maxConcurrentEncodes: 3,
         );
       }
       if (encoders.contains('h264_amf')) {
@@ -65,6 +82,8 @@ mixin BatchVideoGpuMixin {
           outputFormat: null,
           hasZscale: hasZscale,
           hasCudaFilters: false,
+          preferredPixFmt: 'yuv420p',
+          maxConcurrentEncodes: 2,
         );
       }
     }
@@ -75,6 +94,8 @@ mixin BatchVideoGpuMixin {
       outputFormat: null,
       hasZscale: hasZscale,
       hasCudaFilters: false,
+      preferredPixFmt: 'yuv420p',
+      maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 4),
     );
   }
 
@@ -122,9 +143,12 @@ mixin BatchVideoGpuMixin {
     try {
       final result = await Process.run(ffmpegBin, ['-version']);
       if (result.exitCode == 0) {
-        // Log capabilities once
         final gpu = await getGpuInfo();
-        print('🚀 Video Engine Initialized: Encoder=${gpu.encoder}, Zscale=${gpu.hasZscale}, CudaFilters=${gpu.hasCudaFilters}');
+        print(
+          '🚀 Video Engine Initialized: Encoder=${gpu.encoder}, '
+          'PixFmt=${gpu.preferredPixFmt}, MaxConcurrent=${gpu.maxConcurrentEncodes}, '
+          'Zscale=${gpu.hasZscale}, CudaFilters=${gpu.hasCudaFilters}',
+        );
       }
       return result.exitCode == 0;
     } catch (_) {
@@ -134,5 +158,7 @@ mixin BatchVideoGpuMixin {
 
   void clearGpuCache() {
     _cachedGpuInfo = null;
+    _availableEncoders = null;
+    _availableFilters = null;
   }
 }

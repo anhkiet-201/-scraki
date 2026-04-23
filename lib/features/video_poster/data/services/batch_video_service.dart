@@ -239,13 +239,15 @@ class BatchVideoService with
       final activeCutTasks = <Future<void>>{};
       int completedSegments = 0;
       final totalSegments = allUniqueSegments.length;
+      // Resolve số lượng task song song tối đa dựa trên hardware (GPU vs CPU)
+      final maxCutTasks = await resolveMaxConcurrentTasks();
 
       onLog?.call('_PROGRESS_LAZY: ⏳ Đang render segments: 0/$totalSegments...');
 
       for (final req in allUniqueSegments) {
         if (cancelled) break;
 
-        while (activeCutTasks.length >= BatchVideoSegmentMixin.maxConcurrentTasks) {
+        while (activeCutTasks.length >= maxCutTasks) {
           await Future.any(activeCutTasks);
         }
         if (cancelled) break;
@@ -289,6 +291,8 @@ class BatchVideoService with
       int successCount = 0;
       final activeTasks = <Future<void>>{};
       int currentIndex = 1;
+      // Dùng cùng limit cho render tasks (hardware encoder có thể xử lý nhiều stream)
+      final maxRenderTasks = await resolveMaxConcurrentTasks();
 
       final streamController = StreamController<String>();
       final streamPump = streamController.stream.listen(
@@ -339,7 +343,7 @@ class BatchVideoService with
 
       while (currentIndex <= config.outputCount || activeTasks.isNotEmpty) {
         if (cancelled) break;
-        while (activeTasks.length >= BatchVideoSegmentMixin.maxConcurrentTasks) {
+        while (activeTasks.length >= maxRenderTasks) {
           await Future.any(activeTasks);
         }
         if (cancelled) break;
