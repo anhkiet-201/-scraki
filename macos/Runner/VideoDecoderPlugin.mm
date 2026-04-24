@@ -517,7 +517,7 @@ typedef NS_ENUM(NSInteger, FrameType) {
             }
         }
         result(nil);
-    } else if ([@"flushDecoding" isEqualToString:call.method]) {
+    } else if ([@"flush" isEqualToString:call.method]) {
         NSNumber* textureId = call.arguments[@"textureId"];
         if (textureId) {
             VideoDecoder* decoder = _sessions[textureId];
