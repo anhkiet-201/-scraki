@@ -157,27 +157,37 @@ typedef NS_ENUM(NSInteger, FrameType) {
     NSLog(@"[VideoDecoder] Stopping session TextureID: %lld", _textureId);
     *_isDecodingPtr = false;
     
-    // Close socket to unblock recv()
+    // 1. Close socket immediately to break any blocking recv()
     if (_socketFd >= 0) {
         shutdown(_socketFd, SHUT_RDWR);
         close(_socketFd);
         _socketFd = -1;
     }
     
-    if (_decoderThread) {
-        if (_decoderThread->joinable()) {
-            _decoderThread->join();
-        }
-        delete _decoderThread;
-        _decoderThread = nullptr;
-    }
-    
-    if (_textureId != 0) {
-        [_registry unregisterTexture:_textureId];
+    // 2. Unregister texture immediately on Main Thread to free engine resources
+    int64_t tid = _textureId;
+    if (tid != 0) {
+        [_registry unregisterTexture:tid];
         _textureId = 0;
     }
-    
-    [self cleanupDecoder];
+
+    std::thread* t = _decoderThread;
+    _decoderThread = nullptr;
+
+    // 3. Join thread and cleanup in background to avoid hanging UI Thread
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        if (t) {
+            if (t->joinable()) {
+                t->join();
+            }
+            delete t;
+        }
+        
+        // Final FFmpeg cleanup can also happen in background now that thread is joined
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self cleanupDecoder];
+        });
+    });
 }
 
 - (void)flush {

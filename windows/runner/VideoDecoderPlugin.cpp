@@ -293,11 +293,16 @@ void VideoDecoderPlugin::StartDecoding(const std::string& url,
 }
 
 void VideoDecoderPlugin::StopDecoding(int64_t texture_id) {
-    std::lock_guard<std::mutex> lock(sessions_mutex_);
-    auto it = sessions_.find(texture_id);
-    if (it != sessions_.end()) {
-        sessions_.erase(it);
+    std::unique_ptr<VideoSession> session_to_destroy;
+    {
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = sessions_.find(texture_id);
+        if (it != sessions_.end()) {
+            session_to_destroy = std::move(it->second);
+            sessions_.erase(it);
+        }
     }
+    // session_to_destroy is destroyed here, calling destructor WITHOUT holding mutex
 }
 
 void VideoDecoderPlugin::StopAllDecoding() {
@@ -390,7 +395,6 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
     LogTrace("VideoSession Destructor [%lld] - START. Sessions left: %d", tid, current);
     
     if (state_) {
-        // 1. Signal immediate stop to threads
         state_->is_decoding = false;
         state_->is_alive = false;
         
