@@ -321,29 +321,26 @@ typedef NS_ENUM(NSInteger, FrameType) {
         *_needsFlushPtr = false;
     }
 
-    // [Logic mới] Chặn tất cả frame rác nếu đang chờ I-Frame (sau khi Flush hoặc Resume)
+    // [Logic mới] Chặn P-Frame nếu đang chờ I-Frame (sau khi Flush hoặc Resume)
+    // TUY NHIÊN: Luôn cho phép Config Packets (HeaderOnly) đi qua để bộ giải mã không bị mất thông số.
     bool isKeyframe = false;
-    if (*_waitingForIFramePtr) {
+    bool isHeader = false;
+    if (*_waitingForIFramePtr || !*_isVisiblePtr) {
         FrameType type = [self analyzePacket:data];
         if (type == FrameTypeKeyframe) {
-            NSLog(@"[VideoDecoder] Keyframe detected! Unlocking decoder for TextureID: %lld", _textureId);
-            *_waitingForIFramePtr = false;
+            if (*_waitingForIFramePtr) {
+                NSLog(@"[VideoDecoder] Keyframe detected! Unlocking decoder for TextureID: %lld", _textureId);
+                *_waitingForIFramePtr = false;
+            }
             isKeyframe = true;
-            // Cho phép chạy tiếp xuống phần giải mã bên dưới để warm-up
         } else if (type == FrameTypeHeaderOnly) {
-            NSLog(@"[VideoDecoder] Header detected while waiting for I-Frame.");
-        } else {
-            // Drop P-Frame
+            isHeader = true;
+            // NSLog(@"[VideoDecoder] Header allowed for TextureID: %lld", _textureId);
+        } else if (*_waitingForIFramePtr || !*_isVisiblePtr) {
+            // Drop P-Frame nếu đang ẩn HOẶC đang đợi I-Frame
             av_packet_unref(_packet);
             return;
         }
-    }
-
-    // [Optimization] Early Return nếu đang ẩn để đưa GPU về 0%
-    // NGOẠI LỆ: Cho phép I-Frame chạy qua để warm-up bộ giải mã kể cả khi ẩn.
-    if (!*_isVisiblePtr && !isKeyframe) {
-        av_packet_unref(_packet);
-        return;
     }
     
     if (avcodec_send_packet(_codecContext, _packet) < 0) return;
