@@ -85,6 +85,9 @@ class VideoDecoderPlugin : public flutter::Plugin {
       std::atomic<int64_t> last_visible_time{0};
       std::atomic<bool> is_bg_decoding_active{false};
       std::atomic<bool> using_hw{false};
+      
+      enum class HWRequest { None, Upgrade, Downgrade };
+      std::atomic<HWRequest> pending_hw_request{HWRequest::None};
 
       VideoSessionState(flutter::TextureRegistrar* registrar) : texture_registrar(registrar), texture_id(-1) {
           memset(&flutter_pixel_buffer, 0, sizeof(flutter_pixel_buffer));
@@ -107,6 +110,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
     static void DecodingLoop(std::shared_ptr<VideoSessionState> state, std::string host, int port);
     static bool ConnectToServer(std::shared_ptr<VideoSessionState> state, const std::string& host, int port);
     static bool InitializeDecoder(std::shared_ptr<VideoSessionState> state);
+    static void CleanupDecoder(std::shared_ptr<VideoSessionState> state);
     static void DecodePacket(std::shared_ptr<VideoSessionState> state, const std::vector<uint8_t>& data);
     static void ProcessFrame(std::shared_ptr<VideoSessionState> state, AVFrame* frame);
 

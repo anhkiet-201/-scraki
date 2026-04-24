@@ -474,11 +474,39 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
-        bool old_visible = state_->is_visible.exchange(visible);
-        if (old_visible && !visible) {
-            state_->last_visible_time = GetTickCount64();
+        bool was_visible = state_->is_visible.exchange(visible);
+        if (visible) state_->last_visible_time = GetTickCount64();
+
+        // [Smart Resource Management] 
+        // Visible sessions want GPU, Invisible sessions MUST release GPU for others.
+        if (visible && !state_->using_hw) {
+            state_->pending_hw_request = VideoSessionState::HWRequest::Upgrade;
+        } else if (!visible && state_->using_hw) {
+            state_->pending_hw_request = VideoSessionState::HWRequest::Downgrade;
         }
-        // LogTrace("SetVisible [%lld] - %s", state_->texture_id, visible ? "YES" : "NO");
+    }
+}
+
+void VideoDecoderPlugin::VideoSession::CleanupDecoder(std::shared_ptr<VideoSessionState> state) {
+    if (!state) return;
+    
+    // Protection for mass re-init
+    std::lock_guard<std::mutex> lock(g_ffmpeg_init_mutex);
+
+    if (state->sws_context) { sws_freeContext(state->sws_context); state->sws_context = nullptr; }
+    if (state->frame) av_frame_free(&state->frame);
+    if (state->sw_frame) av_frame_free(&state->sw_frame);
+    if (state->packet) av_packet_free(&state->packet);
+    if (state->codec_context) avcodec_free_context(&state->codec_context);
+    
+    if (state->hw_device_ctx) {
+        av_buffer_unref(&state->hw_device_ctx);
+        state->hw_device_ctx = nullptr;
+    }
+
+    if (state->using_hw) {
+        g_hw_sessions_count--;
+        state->using_hw = false;
     }
 }
 
@@ -545,7 +573,8 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
 
     // GPU Decoder (D3D11VA) Initialization with Session Limiter
     bool can_use_hw = false;
-    if (g_hw_sessions_count < MAX_HW_SESSIONS) {
+    // [Smart Resource Management] ONLY use GPU for VISIBLE sessions
+    if (state->is_visible && g_hw_sessions_count < MAX_HW_SESSIONS) {
         g_hw_sessions_count++;
         can_use_hw = true;
         state->using_hw = true;
@@ -613,6 +642,21 @@ void VideoDecoderPlugin::VideoSession::DecodingLoop(std::shared_ptr<VideoSession
         std::vector<uint8_t> config_data;
 
         while (state->is_decoding) {
+            // [Smart Resource Management] Check for HW Upgrade/Downgrade requests
+            VideoSessionState::HWRequest req = state->pending_hw_request.exchange(VideoSessionState::HWRequest::None);
+            if (req != VideoSessionState::HWRequest::None) {
+                LogTrace("DecodingLoop [%lld] - Handling HW Change Request: %s", 
+                         state->texture_id, req == VideoSessionState::HWRequest::Upgrade ? "UPGRADE" : "DOWNGRADE");
+                CleanupDecoder(state);
+                if (!InitializeDecoder(state)) {
+                    LogTrace("DecodingLoop [%lld] - Re-init failed after HW change", state->texture_id);
+                    break;
+                }
+                // When switching, we MUST wait for next I-frame to avoid green/corrupt screen
+                state->waiting_for_iframe = true;
+                state->needs_flush = true;
+            }
+
             int bytes_read = recv(state->socket, temp_buf, sizeof(temp_buf), 0);
             if (bytes_read <= 0) {
                 LogTrace("Socket recv <= 0, breaking loop. Error: %d", WSAGetLastError());
