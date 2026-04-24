@@ -1,6 +1,7 @@
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
-import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
+import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 
 part 'native_video_decoder_store.g.dart';
 
@@ -22,7 +23,7 @@ abstract class _NativeVideoDecoderStore with Store {
   final void Function(String error)? onError;
 
   /// The decoder service to use (shared between grid and floating)
-  final NativeVideoDecoderService service;
+  final IVideoDecoderService service;
 
   /// The session identifier
   final String sessionId;
@@ -58,13 +59,13 @@ abstract class _NativeVideoDecoderStore with Store {
   Future<void> acquireTexture() async {
     _isInitializing = true;
     try {
-      logger.i('[NativeVideoDecoder] Acquiring texture for $streamUrl');
+      logger.d('[NativeVideoDecoder] Acquiring texture for $streamUrl');
       _textureId = await service.start(streamUrl, sessionId);
       _isInitializing = false;
       if (_textureId != null && isVisible) {
         await service.setVisibility(streamUrl, true);
       }
-      logger.i('[NativeVideoDecoder] Received texture ID: $_textureId');
+      logger.d('[NativeVideoDecoder] Received texture ID: $_textureId');
     } catch (e) {
       logger.e('[NativeVideoDecoder] Error acquiring texture', error: e);
       _isInitializing = false;

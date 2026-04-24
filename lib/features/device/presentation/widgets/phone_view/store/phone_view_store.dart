@@ -16,7 +16,7 @@ import 'package:scraki/features/device/data/datasources/video_worker_manager.dar
 import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
-import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
+import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
 import 'package:path/path.dart' as p;
@@ -59,7 +59,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final ITikTokPostService _tikTokService = getIt<ITikTokPostService>();
   final IAdbRemoteDataSource _adbDataSource = getIt<IAdbRemoteDataSource>();
-  final NativeVideoDecoderService _decoderService = getIt<NativeVideoDecoderService>();
+  final IVideoDecoderService _decoderService = getIt<IVideoDecoderService>();
   final String serial;
   final bool isFloatingView;
 
@@ -195,12 +195,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       // Việc này giúp Resume tức thì và hoàn hảo 100%.
       if (wasVisible != _isVisible && session != null) {
         if (_isVisible) {
-          getIt<NativeVideoDecoderService>().setVisibility(session!.videoUrl, true);
-          getIt<NativeVideoDecoderService>().flush(session!.videoUrl);
+          _decoderService.setVisibility(session!.videoUrl, true);
+          _decoderService.flush(session!.videoUrl);
           _workerManager.resumeMirroring(sessionId);
           _workerManager.requestKeyFrame(sessionId);
         } else {
-          getIt<NativeVideoDecoderService>().setVisibility(session!.videoUrl, false);
+          _decoderService.setVisibility(session!.videoUrl, false);
           _workerManager.pauseMirroring(sessionId);
         }
       }

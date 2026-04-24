@@ -429,7 +429,7 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
         state_->is_visible = visible;
-        LogTrace("SetVisible [%lld] - %s", state_->texture_id, visible ? "YES" : "NO");
+        // LogTrace("SetVisible [%lld] - %s", state_->texture_id, visible ? "YES" : "NO");
     }
 }
 
@@ -437,12 +437,12 @@ void VideoDecoderPlugin::VideoSession::Flush() {
     if (state_) {
         state_->needs_flush = true;
         state_->waiting_for_iframe = true;
-        LogTrace("Flush [%lld] - Requested (Waiting for I-Frame)", state_->texture_id);
+        // LogTrace("Flush [%lld] - Requested (Waiting for I-Frame)", state_->texture_id);
     }
 }
 
 bool VideoDecoderPlugin::VideoSession::ConnectToServer(std::shared_ptr<VideoSessionState> state, const std::string& host, int port) {
-    LogTrace("Connecting to server: %s:%d", host.c_str(), port);
+    // LogTrace("Connecting to server: %s:%d", host.c_str(), port);
     state->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (state->socket == INVALID_SOCKET) {
         int err = WSAGetLastError();

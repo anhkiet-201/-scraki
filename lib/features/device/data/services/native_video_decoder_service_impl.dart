@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
+import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 
 class _DecoderSession {
   final int textureId;
@@ -15,15 +16,20 @@ class _DecoderSession {
   _DecoderSession(this.textureId, this.sessionId, {required this.refCount});
 }
 
-@lazySingleton
-class NativeVideoDecoderService with WidgetsBindingObserver {
+@LazySingleton(as: IVideoDecoderService)
+class NativeVideoDecoderServiceImpl with WidgetsBindingObserver implements IVideoDecoderService {
   static const _channel = MethodChannel('com.scraki.video_decoder');
 
   // Map of URL -> Session info
   final Map<String, _DecoderSession> _sessions = {};
   bool _isAppVisible = true;
 
-  NativeVideoDecoderService() {
+  NativeVideoDecoderServiceImpl() {
+    initialize();
+  }
+
+  @override
+  void initialize() {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -59,6 +65,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     }
   }
 
+  @override
   Future<int?> start(String url, String sessionId) async {
     try {
       // 1. If session exists for this URL, just increment refCount and return textureId
@@ -67,14 +74,14 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
         session.stopTimer?.cancel();
         session.stopTimer = null;
         session.refCount++;
-        logger.i(
+        logger.d(
           '[NativeVideoDecoderService] Reusing texture ${session.textureId} for $url (RefCount: ${session.refCount})',
         );
         return session.textureId;
       }
 
       // 2. Otherwise, start new native decoding session
-      logger.i('[NativeVideoDecoderService] Requesting startDecoding for $url');
+      logger.d('[NativeVideoDecoderService] Requesting startDecoding for $url');
       final result = await _channel.invokeMethod('startDecoding', {'url': url});
       if (result is int) {
         _sessions[url] = _DecoderSession(result, sessionId, refCount: 1);
@@ -87,6 +94,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     }
   }
 
+  @override
   Future<void> stop(String url) async {
     final session = _sessions[url];
     if (session == null) return;
@@ -124,6 +132,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     }
   }
 
+  @override
   Future<void> flush(String url) async {
     final session = _sessions[url];
     if (session == null) return;
@@ -135,6 +144,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     }
   }
 
+  @override
   Future<void> setVisibility(String url, bool visible) async {
     final session = _sessions[url];
     if (session == null) return;
@@ -172,5 +182,14 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     } else {
       logger.d('[NativeVideoDecoderService] Visibility refCount updated to ${session.visibleRefCount} (Actual visibility remains $newActualVisible)');
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (final session in _sessions.values) {
+      session.stopTimer?.cancel();
+    }
+    _sessions.clear();
   }
 }

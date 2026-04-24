@@ -129,17 +129,13 @@ typedef NS_ENUM(NSInteger, FrameType) {
 
 - (void)setVisibility:(BOOL)visible {
     *_isVisiblePtr = visible;
-    if (visible) {
-        NSLog(@"[VideoDecoder] Visibility set to YES for TextureID: %lld", _textureId);
-    } else {
-        NSLog(@"[VideoDecoder] Visibility set to NO for TextureID: %lld, skipping render.", _textureId);
-    }
+    // NSLog(@"[VideoDecoder] Visibility set to YES for TextureID: %lld", _textureId);
 }
 
 - (void)startWithHost:(NSString*)host port:(int)port result:(FlutterResult)result {
     // Register texture first to get ID
     _textureId = [_registry registerTexture:self];
-    NSLog(@"[VideoDecoder] Created session for %@:%d with TextureID: %lld", host, port, _textureId);
+    // NSLog(@"[VideoDecoder] Created session for %@:%d with TextureID: %lld", host, port, _textureId);
     
     // Start thread
     *_isDecodingPtr = true;

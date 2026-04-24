@@ -1,5 +1,5 @@
 
-import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart';
+import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 
 class MirrorSession {
   final String videoUrl;
@@ -7,7 +7,7 @@ class MirrorSession {
   final int height;
   final int port;
   final String scid;
-  final NativeVideoDecoderService decoderService;
+  final IVideoDecoderService decoderService;
 
   MirrorSession({
     required this.videoUrl,

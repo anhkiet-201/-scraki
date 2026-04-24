@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 import 'package:scraki/features/device/presentation/widgets/native_video_decoder/store/native_video_decoder_store.dart';
-import 'native_video_decoder_service.dart';
 
 /// A widget that decodes and displays a native video stream using Texture.
 class NativeVideoDecoder extends StatefulWidget {
@@ -21,7 +21,7 @@ class NativeVideoDecoder extends StatefulWidget {
   final void Function(String error)? onError;
 
   /// The decoder service to use (shared between grid and floating)
-  final NativeVideoDecoderService service;
+  final IVideoDecoderService service;
 
   /// Whether the video is currently visible in the viewport.
   /// When false, texture will be released to save GPU memory.
