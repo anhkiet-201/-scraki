@@ -36,9 +36,9 @@ class DashboardTabs {
 /// Performance profiles for different viewing modes.
 class PerformanceProfiles {
   static const grid = ScrcpyOptions(
-    bitRate: 200000, // 1 Mbps
+    bitRate: 500000, // 5 Mbps
     maxFps: 10,
-    control: true, // Bắt buộc phải có để gửi lệnh RESET_VIDEO khi resume
+    control: true,
     maxSize: 360,
   );
 
