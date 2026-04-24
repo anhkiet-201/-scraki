@@ -58,6 +58,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 @property(nonatomic, assign) std::thread* decoderThread;
 @property(nonatomic, assign) std::mutex* pixelBufferMutex;
 @property(nonatomic, assign) CVPixelBufferRef latestPixelBuffer;
+@property(nonatomic, assign) std::atomic<bool>* needsFlushPtr;
 
 // FFmpeg
 @property(nonatomic, assign) AVCodecContext* codecContext;
@@ -71,6 +72,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 - (instancetype)initWithRegistry:(id<FlutterTextureRegistry>)registry;
 - (void)startWithHost:(NSString*)host port:(int)port result:(FlutterResult)result;
 - (void)stop;
+- (void)flush;
 
 @end
 
@@ -85,6 +87,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
         _latestPixelBuffer = nil;
         _socketFd = -1;
         _decoderThread = nullptr;
+        _needsFlushPtr = new std::atomic<bool>(false);
         
         // Initialize FFmpeg structures to null
         _codecContext = nullptr;
@@ -99,6 +102,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
     [self stop];
     delete _isDecodingPtr;
     delete _pixelBufferMutex;
+    delete _needsFlushPtr;
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
@@ -152,6 +156,10 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
     }
     
     [self cleanupDecoder];
+}
+
+- (void)flush {
+    *_needsFlushPtr = true;
 }
 
 - (void)decoderThreadMain:(NSString*)host port:(int)port {
@@ -273,6 +281,14 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 }
 
 - (void)decodePacket:(const std::vector<uint8_t>&)data {
+    if (*_needsFlushPtr) {
+        if (_codecContext) {
+            avcodec_flush_buffers(_codecContext);
+            NSLog(@"[VideoDecoder] Decoder flushed for TextureID: %lld", _textureId);
+        }
+        *_needsFlushPtr = false;
+    }
+    
     _packet->data = (uint8_t*)data.data();
     _packet->size = (int)data.size();
     
@@ -403,6 +419,15 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
             if (decoder) {
                 [decoder stop];
                 [_sessions removeObjectForKey:textureId];
+            }
+        }
+        result(nil);
+    } else if ([@"flushDecoding" isEqualToString:call.method]) {
+        NSNumber* textureId = call.arguments[@"textureId"];
+        if (textureId) {
+            VideoDecoder* decoder = _sessions[textureId];
+            if (decoder) {
+                [decoder flush];
             }
         }
         result(nil);

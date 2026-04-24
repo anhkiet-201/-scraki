@@ -190,6 +190,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       if (wasVisible != _isVisible && session != null) {
         if (_isVisible) {
           _workerManager.resumeMirroring(sessionId);
+          getIt<NativeVideoDecoderService>().flush(url);
         } else {
           _workerManager.pauseMirroring(sessionId);
         }

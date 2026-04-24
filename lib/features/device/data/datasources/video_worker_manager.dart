@@ -232,7 +232,7 @@ void _workerEntryPoint(SendPort managerPort) async {
           }
           // [Fix Leak] Đóng session cũ nếu đã tồn tại trước khi khởi tạo cái mới
           sessions[message.sessionId]?.stop();
-          
+
           final session = _IsolateVideoSession(
             message.sessionId,
             message.url,
@@ -285,8 +285,6 @@ class _IsolateVideoSession {
   // Stream buffering for first connect
   final List<List<int>> _initialBuffer = [];
   bool _anyPlayerConnected = false;
-  bool _waitingForIFrame = false;
-  Timer? _requestKeyFrameTimer;
 
   _IsolateVideoSession(this.sessionId, this.url, this.eventPort);
 
@@ -333,22 +331,31 @@ class _IsolateVideoSession {
             _adbSocket = socket;
             _adbSubscription = _adbSocket!.listen(
               _handleAdbData,
-              onError: (Object e) => logger.w('[Isolate-Video] VIDEO socket error for $sessionId: $e'),
+              onError: (Object e) => logger.w(
+                '[Isolate-Video] VIDEO socket error for $sessionId: $e',
+              ),
               onDone: () {
                 logger.i('[Isolate-Video] VIDEO socket closed for $sessionId');
                 _adbSocket = null;
                 _adbSubscription?.cancel();
                 eventPort?.send(
-                  VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
+                  VideoWorkerEvent(
+                    sessionId: sessionId,
+                    type: 'connection_lost',
+                  ),
                 );
               },
             );
 
-            _adbSocket!.done.then((_) {
-              // Handled by onDone above, but keep for completeness
-            }).catchError((Object e) {
-              logger.w('[Isolate-Video] VIDEO socket done error for $sessionId: $e');
-            });
+            _adbSocket!.done
+                .then((_) {
+                  // Handled by onDone above, but keep for completeness
+                })
+                .catchError((Object e) {
+                  logger.w(
+                    '[Isolate-Video] VIDEO socket done error for $sessionId: $e',
+                  );
+                });
           } else if (_controlSocket == null) {
             logger.i(
               '[Isolate-Video] Accepted CONTROL socket for $sessionId (Count: $_connectionCount)',
@@ -356,18 +363,28 @@ class _IsolateVideoSession {
             _controlSocket = socket;
             _controlSocket!.listen(
               _handleControlData,
-              onError: (Object e) => logger.w('[Isolate-Video] CONTROL socket error for $sessionId: $e'),
+              onError: (Object e) => logger.w(
+                '[Isolate-Video] CONTROL socket error for $sessionId: $e',
+              ),
               onDone: () {
-                logger.i('[Isolate-Video] CONTROL socket closed for $sessionId');
+                logger.i(
+                  '[Isolate-Video] CONTROL socket closed for $sessionId',
+                );
                 _controlSocket = null;
                 eventPort?.send(
-                  VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
+                  VideoWorkerEvent(
+                    sessionId: sessionId,
+                    type: 'connection_lost',
+                  ),
                 );
               },
             );
           }
         },
-        onError: (Object e) => logger.e('[Isolate-Video] ADB ServerSocket error for $sessionId', error: e),
+        onError: (Object e) => logger.e(
+          '[Isolate-Video] ADB ServerSocket error for $sessionId',
+          error: e,
+        ),
       );
 
       // Lắng nghe kết nối từ Player (Native)
@@ -395,13 +412,18 @@ class _IsolateVideoSession {
             }
             _initialBuffer.clear();
           } else {
-            logger.i('[Isolate-Video] Late player connected. Sending Meta only.');
+            logger.i(
+              '[Isolate-Video] Late player connected. Sending Meta only.',
+            );
             if (_configHeader.isNotEmpty) {
               _playerSocket!.add(_configHeader);
             }
           }
         },
-        onError: (Object e) => logger.e('[Isolate-Video] Proxy ServerSocket error for $sessionId', error: e),
+        onError: (Object e) => logger.e(
+          '[Isolate-Video] Proxy ServerSocket error for $sessionId',
+          error: e,
+        ),
       );
     } catch (e) {
       eventPort?.send(
@@ -462,54 +484,12 @@ class _IsolateVideoSession {
     // Forward to current player
     try {
       if (!_isPaused) {
-        if (_waitingForIFrame) {
-          if (_isIFrame(data)) {
-            logger.i('[Isolate-Video] First I-Frame detected after resume, resuming stream.');
-            _waitingForIFrame = false;
-            _requestKeyFrameTimer?.cancel();
-            _requestKeyFrameTimer = null;
-          } else {
-            // Discard delta frames until we get a clean I-Frame to avoid smearing/grey screen
-            return;
-          }
-        }
         _playerSocket?.add(data);
       }
     } catch (_) {
       _anyPlayerConnected = false;
       _playerSocket = null;
     }
-  }
-
-  bool _isIFrame(List<int> data) {
-    // Scrcpy packet: [8 bytes PTS][4 bytes Size][NAL Units...]
-    if (data.length < 15) return false;
-
-    // Skip scrcpy header (12 bytes)
-    int offset = 12;
-
-    // Find Annex B start code (00 00 00 01 or 00 00 01)
-    if (data[offset] == 0 && data[offset + 1] == 0) {
-      if (data[offset + 2] == 1) {
-        offset += 3;
-      } else if (data[offset + 2] == 0 && data[offset + 3] == 1) {
-        offset += 4;
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
-
-    if (data.length <= offset) return false;
-
-    // HEVC NAL unit header (2 bytes)
-    // NAL type is (byte1 >> 1) & 0x3F
-    final nalType = (data[offset] >> 1) & 0x3F;
-
-    // HEVC IDR NAL types: 19 (IDR_W_RADL), 20 (IDR_N_LP)
-    // Also CRA (Clean Random Access) type 21 is often a keyframe
-    return nalType == 19 || nalType == 20 || nalType == 21;
   }
 
   void _extractConfigHeaders() {
@@ -598,21 +578,11 @@ class _IsolateVideoSession {
 
   void resume() {
     _isPaused = false;
-    _waitingForIFrame = true;
-    logger.i('[Isolate-Video] Session $sessionId resumed decoding, waiting for I-Frame...');
+    logger.i('[Isolate-Video] Session $sessionId resumed decoding');
     _parseBuffer.clear();
 
-    // Start a timer to request keyframes periodically until one arrives
-    _requestKeyFrameTimer?.cancel();
-    _requestKeyFrameTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
-      if (!_waitingForIFrame || _isPaused) {
-        timer.cancel();
-        _requestKeyFrameTimer = null;
-        return;
-      }
-      logger.d('[Isolate-Video] Requesting Keyframe for $sessionId...');
-      sendControl(Uint8List.fromList([12]));
-    });
+    // Request a Keyframe immediately
+    sendControl(Uint8List.fromList([12]));
 
     // Ensure meta is sent on resume just in case
     if (_configHeader.isNotEmpty && _playerSocket != null) {
@@ -621,8 +591,6 @@ class _IsolateVideoSession {
   }
 
   void stop() {
-    _requestKeyFrameTimer?.cancel();
-    _requestKeyFrameTimer = null;
     _adbSubscription?.cancel();
     _adbSocket?.destroy();
     _controlSocket?.destroy();
