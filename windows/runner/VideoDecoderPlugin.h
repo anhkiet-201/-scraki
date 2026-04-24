@@ -80,11 +80,14 @@ class VideoDecoderPlugin : public flutter::Plugin {
       AVBufferRef* hw_device_ctx = nullptr;
 
       std::atomic<bool> is_visible{false};
-      std::atomic<bool> waiting_for_iframe{false};
+      std::atomic<bool> waiting_for_iframe{true};
       std::atomic<bool> needs_flush{false};
+      std::atomic<int64_t> last_visible_time{0};
+      std::atomic<bool> is_bg_decoding_active{false};
 
       VideoSessionState(flutter::TextureRegistrar* registrar) : texture_registrar(registrar), texture_id(-1) {
           memset(&flutter_pixel_buffer, 0, sizeof(flutter_pixel_buffer));
+          last_visible_time = GetTickCount64();
       }
 
       ~VideoSessionState();

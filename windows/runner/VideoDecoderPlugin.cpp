@@ -18,6 +18,8 @@ static std::mutex g_ffmpeg_init_mutex;
 std::atomic<int64_t> g_active_buffers{0};
 std::atomic<int64_t> g_total_pixels_allocated{0};
 std::atomic<int> g_active_sessions{0};
+static std::atomic<int> g_bg_decoding_sessions{0};
+const int MAX_BG_DECODING_SESSIONS = 10;
 
 static void LogTrace(const char* format, ...) {
     va_list args;
@@ -166,14 +168,16 @@ static enum AVPixelFormat get_hw_format_d3d11(AVCodecContext* ctx, const enum AV
 }
 
 static bool IsKeyframe(const uint8_t* data, size_t size) {
-    // HEVC NAL Unit Types for Keyframes (IRAP): 16-21
+    // HEVC NAL Unit Types:
+    // 16-21: IRAP (Keyframes)
+    // 32-34: Parameter Sets (VPS, SPS, PPS)
     for (size_t i = 0; i < size - 4; ++i) {
         if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 0 && data[i+3] == 1) {
             uint8_t nal_type = (data[i+4] & 0x7E) >> 1;
-            if (nal_type >= 16 && nal_type <= 21) return true;
+            if ((nal_type >= 16 && nal_type <= 21) || (nal_type >= 32 && nal_type <= 34)) return true;
         } else if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 1) {
             uint8_t nal_type = (data[i+3] & 0x7E) >> 1;
-            if (nal_type >= 16 && nal_type <= 21) return true;
+            if ((nal_type >= 16 && nal_type <= 21) || (nal_type >= 32 && nal_type <= 34)) return true;
         }
     }
     return false;
@@ -196,58 +200,59 @@ VideoDecoderPlugin::~VideoDecoderPlugin() {
 void VideoDecoderPlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (method_call.method_name().compare("startDecoding") == 0) {
-    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+  
+  const std::string& method_name = method_call.method_name();
+  const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+
+  if (method_name.compare("startDecoding") == 0) {
     if (arguments) {
       auto url_it = arguments->find(flutter::EncodableValue("url"));
       if (url_it != arguments->end()) {
         std::string url = std::get<std::string>(url_it->second);
         StartDecoding(url, std::move(result));
         return;
+      }
+      result->Error("INVALID_ARGS", "Missing url parameter");
+    } else {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
     }
-    result->Error("INVALID_ARGS", "Missing url parameter");
-  } else if (method_call.method_name().compare("stopDecoding") == 0) {
-    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+  } else if (method_name.compare("stopDecoding") == 0) {
     if (arguments) {
-        auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
-        if (tid_it != arguments->end()) {
-            int64_t texture_id = tid_it->second.LongValue();
-            StopDecoding(texture_id);
-            result->Success();
-            return;
-        }
-    }
-    result->Success();
-  } else if (method_call.method_name().compare("setVisibility") == 0) {
-    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
-    if (arguments) {
-        auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
-        auto vis_it = arguments->find(flutter::EncodableValue("visible"));
-        if (tid_it != arguments->end() && vis_it != arguments->end()) {
-            int64_t texture_id = tid_it->second.LongValue();
-            bool visible = std::get<bool>(vis_it->second);
-            
-            std::lock_guard<std::mutex> lock(sessions_mutex_);
-            auto it = sessions_.find(texture_id);
-            if (it != sessions_.end()) {
-                it->second->SetVisible(visible);
-            }
-        }
+      auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
+      if (tid_it != arguments->end()) {
+        int64_t texture_id = tid_it->second.LongValue();
+        StopDecoding(texture_id);
+      }
     }
     result->Success();
-  } else if (method_call.method_name().compare("flush") == 0) {
-    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+  } else if (method_name.compare("setVisibility") == 0) {
     if (arguments) {
-        auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
-        if (tid_it != arguments->end()) {
-            int64_t texture_id = tid_it->second.LongValue();
-            
-            std::lock_guard<std::mutex> lock(sessions_mutex_);
-            auto it = sessions_.find(texture_id);
-            if (it != sessions_.end()) {
-                it->second->Flush();
-            }
+      auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
+      auto vis_it = arguments->find(flutter::EncodableValue("visible"));
+      if (tid_it != arguments->end() && vis_it != arguments->end()) {
+        int64_t texture_id = tid_it->second.LongValue();
+        bool visible = std::get<bool>(vis_it->second);
+        
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = sessions_.find(texture_id);
+        if (it != sessions_.end()) {
+          it->second->SetVisible(visible);
         }
+      }
+    }
+    result->Success();
+  } else if (method_name.compare("flush") == 0) {
+    if (arguments) {
+      auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
+      if (tid_it != arguments->end()) {
+        int64_t texture_id = tid_it->second.LongValue();
+        
+        std::lock_guard<std::mutex> lock(sessions_mutex_);
+        auto it = sessions_.find(texture_id);
+        if (it != sessions_.end()) {
+          it->second->Flush();
+        }
+      }
     }
     result->Success();
   } else {
@@ -313,6 +318,11 @@ void VideoDecoderPlugin::StopAllDecoding() {
 // VideoSessionState Implementation
 VideoDecoderPlugin::VideoSessionState::~VideoSessionState() {
     LogTrace("VideoSessionState Destructor [%lld] - START", texture_id);
+
+    if (is_bg_decoding_active) {
+        g_bg_decoding_sessions--;
+        is_bg_decoding_active = false;
+    }
     
     // The actual cleanup happens here, only when shared_ptr count reaches 0!
     // This is safe because both UI and Decoder threads have finished.
@@ -428,7 +438,10 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
-        state_->is_visible = visible;
+        bool old_visible = state_->is_visible.exchange(visible);
+        if (old_visible && !visible) {
+            state_->last_visible_time = GetTickCount64();
+        }
         // LogTrace("SetVisible [%lld] - %s", state_->texture_id, visible ? "YES" : "NO");
     }
 }
@@ -637,20 +650,54 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
         LogTrace("DecodePacket [%lld] - Context Flushed", state->texture_id);
     }
 
-    bool is_keyframe = false;
-    if (state->waiting_for_iframe) {
-        if (IsKeyframe(data.data(), data.size())) {
-            LogTrace("DecodePacket [%lld] - I-Frame detected! Unlocking decoder.", state->texture_id);
-            state->waiting_for_iframe = false;
-            is_keyframe = true;
-        } else {
-            // Drop P-Frames after flush
-            return;
+    bool is_keyframe = IsKeyframe(data.data(), data.size());
+    if (is_keyframe) {
+        state->waiting_for_iframe = false;
+    }
+
+    // CRITICAL: If we are waiting for a keyframe, we MUST drop everything else.
+    // This prevents "Error constructing the frame RPS" which occurs when P-frames
+    // are sent to a decoder that has missing reference frames.
+    if (state->waiting_for_iframe && !is_keyframe) {
+        return;
+    }
+
+    bool is_visible = state->is_visible.load();
+    bool should_decode = is_visible || is_keyframe;
+
+    // Grace period logic: keep decoding for a few seconds after becoming invisible
+    // to allow instant resume. Also applies to new sessions during warmup.
+    if (!should_decode) {
+        uint64_t now = GetTickCount64();
+        if (now - state->last_visible_time.load() < 3000) { // 3 second grace period
+            // Apply global limit to background decoders to prevent GPU overload
+            if (state->is_bg_decoding_active) {
+                should_decode = true;
+            } else if (g_bg_decoding_sessions.load() < MAX_BG_DECODING_SESSIONS) {
+                if (g_bg_decoding_sessions.fetch_add(1) < MAX_BG_DECODING_SESSIONS) {
+                    state->is_bg_decoding_active = true;
+                    should_decode = true;
+                } else {
+                    g_bg_decoding_sessions.fetch_sub(1);
+                }
+            }
         }
     }
 
-    // Early Return if not visible (Except for the keyframe to warm up the context)
-    if (!state->is_visible && !is_keyframe) {
+    // Cleanup bg counter if we stop background decoding (expiry, visible, or keyframe)
+    if (state->is_bg_decoding_active && (is_visible || is_keyframe || !should_decode)) {
+        g_bg_decoding_sessions--;
+        state->is_bg_decoding_active = false;
+        
+        // If we stopped background decoding because the grace period expired,
+        // we must wait for a fresh I-frame next time to avoid corrupt state.
+        if (!is_visible && !is_keyframe && !should_decode) {
+            state->waiting_for_iframe = true;
+            state->needs_flush = true;
+        }
+    }
+
+    if (!should_decode && !is_keyframe) {
         return;
     }
 
