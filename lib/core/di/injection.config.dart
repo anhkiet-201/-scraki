@@ -40,6 +40,8 @@ import '../../features/device/data/repositories/device_group_repository_firebase
     as _i936;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
+import '../../features/device/data/services/native_video_decoder_service_impl.dart'
+    as _i892;
 import '../../features/device/domain/repositories/device_group_repository.dart'
     as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
@@ -48,12 +50,12 @@ import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
     as _i229;
+import '../../features/device/domain/services/i_video_decoder_service.dart'
+    as _i768;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
 import '../../features/device/presentation/stores/device_nickname_store.dart'
     as _i391;
-import '../../features/device/presentation/widgets/native_video_decoder/native_video_decoder_service.dart'
-    as _i438;
 import '../../features/email/data/datasources/credential_remote_data_source.dart'
     as _i296;
 import '../../features/email/data/datasources/imap_remote_data_source.dart'
@@ -183,9 +185,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i607.ScrcpySocketClient(),
     );
     gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
-    gh.lazySingleton<_i438.NativeVideoDecoderService>(
-      () => _i438.NativeVideoDecoderService(),
-    );
     gh.lazySingleton<_i763.RecentColorRepository>(
       () => _i763.RecentColorRepository(),
     );
@@ -240,6 +239,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
       () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
+    );
+    gh.lazySingleton<_i768.IVideoDecoderService>(
+      () => _i892.NativeVideoDecoderServiceImpl(),
     );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(

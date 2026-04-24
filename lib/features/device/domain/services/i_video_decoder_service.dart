@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Interface for the video decoder service.
 /// This service manages native video decoding sessions across platforms.

@@ -1,6 +1,5 @@
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
-import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 
 part 'native_video_decoder_store.g.dart';
