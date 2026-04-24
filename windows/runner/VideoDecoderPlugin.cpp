@@ -484,14 +484,9 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
-        bool was_visible = state_->is_visible.exchange(visible);
+        state_->is_visible.exchange(visible);
         if (visible) {
             state_->last_visible_time = GetTickCount64();
-            // [Resume Logic] Force I-Frame wait and Flush on visible transition
-            if (!was_visible) {
-                state_->waiting_for_iframe = true;
-                state_->needs_flush = true;
-            }
         }
 
         // [Smart Resource Management] 

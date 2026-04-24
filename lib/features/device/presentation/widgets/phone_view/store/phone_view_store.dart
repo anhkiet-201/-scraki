@@ -301,11 +301,14 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       });
 
       // Đồng bộ trạng thái visibility ngay khi session đã được đăng ký vào MobX
-      if (_isVisible) {
+      if (_isVisible || isFloatingView) {
         await mirrorSession.decoderService.setVisibility(url, true);
-        // Không cần flush ở đây nếu là session mới vì decoder vừa tạo đã sạch sẽ.
-        // Chỉ requestKeyFrame để đảm bảo có hình ngay lập tức.
-        _workerManager.requestKeyFrame(sessionId);
+        // [Fix] Yêu cầu I-Frame có delay để đảm bảo Native Decoder đã sẵn sàng nhận dữ liệu
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (sessionManagerStore.activeSessions.containsKey(sessionId)) {
+            _workerManager.requestKeyFrame(sessionId);
+          }
+        });
       }
 
       return mirrorSession;
