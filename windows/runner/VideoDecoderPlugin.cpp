@@ -29,26 +29,6 @@ const int MAX_HW_SESSIONS = 16; // Safe limit for consumer RTX cards
 static FILE* g_log_file = nullptr;
 static std::mutex g_log_mutex;
 
-// Global Hardware Context to prevent NVIDIA Driver Crashes due to resource exhaustion
-static AVBufferRef* g_hw_device_ctx = nullptr;
-static std::mutex g_hw_ctx_mutex;
-
-static AVBufferRef* GetGlobalHWContext() {
-    std::lock_guard<std::mutex> lock(g_hw_ctx_mutex);
-    if (g_hw_device_ctx) {
-        return av_buffer_ref(g_hw_device_ctx);
-    }
-
-    LogTrace("GetGlobalHWContext - Initializing Global D3D11VA Device Context...");
-    if (av_hwdevice_ctx_create(&g_hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {
-        LogTrace("GetGlobalHWContext - SUCCESS: Global D3D11VA Enabled");
-        return av_buffer_ref(g_hw_device_ctx);
-    }
-
-    LogTrace("GetGlobalHWContext - FAILED: Hardware Acceleration not available on this system");
-    return nullptr;
-}
-
 static void LogTrace(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -84,6 +64,26 @@ static void LogTrace(const char* format, ...) {
         fprintf(stderr, "%s", full_log);
         fflush(stderr);
     }
+}
+
+// Global Hardware Context to prevent NVIDIA Driver Crashes due to resource exhaustion
+static AVBufferRef* g_hw_device_ctx = nullptr;
+static std::mutex g_hw_ctx_mutex;
+
+static AVBufferRef* GetGlobalHWContext() {
+    std::lock_guard<std::mutex> lock(g_hw_ctx_mutex);
+    if (g_hw_device_ctx) {
+        return av_buffer_ref(g_hw_device_ctx);
+    }
+
+    LogTrace("GetGlobalHWContext - Initializing Global D3D11VA Device Context...");
+    if (av_hwdevice_ctx_create(&g_hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {
+        LogTrace("GetGlobalHWContext - SUCCESS: Global D3D11VA Enabled");
+        return av_buffer_ref(g_hw_device_ctx);
+    }
+
+    LogTrace("GetGlobalHWContext - FAILED: Hardware Acceleration not available on this system");
+    return nullptr;
 }
 
 // Singleton to manage thread joining in a central worker thread
@@ -569,7 +569,6 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->flags2 |= AV_CODEC_FLAG2_FAST;
     state->codec_context->thread_count = 1;
     state->codec_context->get_format = get_hw_format_d3d11;
-    state->codec_context->thread_safe_callbacks = 1;
 
     // GPU Decoder (D3D11VA) Initialization with Session Limiter
     bool can_use_hw = false;
