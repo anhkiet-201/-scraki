@@ -75,7 +75,13 @@ class VideoDecoderPlugin : public flutter::Plugin {
       const AVCodec* codec = nullptr;
       AVPacket* packet = nullptr;
       AVFrame* frame = nullptr;
+      AVFrame* sw_frame = nullptr; // For hardware to software transfer
       SwsContext* sws_context = nullptr;
+      AVBufferRef* hw_device_ctx = nullptr;
+
+      std::atomic<bool> is_visible{false};
+      std::atomic<bool> waiting_for_iframe{false};
+      std::atomic<bool> needs_flush{false};
 
       VideoSessionState(flutter::TextureRegistrar* registrar) : texture_registrar(registrar), texture_id(-1) {
           memset(&flutter_pixel_buffer, 0, sizeof(flutter_pixel_buffer));
@@ -90,6 +96,8 @@ class VideoDecoderPlugin : public flutter::Plugin {
     ~VideoSession();
 
     int64_t texture_id() const { return state_ ? state_->texture_id : -1; }
+    void SetVisible(bool visible);
+    void Flush();
 
    private:
     static void DecodingLoop(std::shared_ptr<VideoSessionState> state, std::string host, int port);

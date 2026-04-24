@@ -156,7 +156,19 @@ static int AvCodecReceiveFrameSafe(AVCodecContext* ctx, AVFrame* frame) {
     }
 }
 
-
+static bool IsKeyframe(const uint8_t* data, size_t size) {
+    // HEVC NAL Unit Types for Keyframes (IRAP): 16-21
+    for (size_t i = 0; i < size - 4; ++i) {
+        if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 0 && data[i+3] == 1) {
+            uint8_t nal_type = (data[i+4] & 0x7E) >> 1;
+            if (nal_type >= 16 && nal_type <= 21) return true;
+        } else if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 1) {
+            uint8_t nal_type = (data[i+3] & 0x7E) >> 1;
+            if (nal_type >= 16 && nal_type <= 21) return true;
+        }
+    }
+    return false;
+}
 
 VideoDecoderPlugin::VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar)
     : texture_registrar_(texture_registrar) {
@@ -183,7 +195,6 @@ void VideoDecoderPlugin::HandleMethodCall(
         std::string url = std::get<std::string>(url_it->second);
         StartDecoding(url, std::move(result));
         return;
-      }
     }
     result->Error("INVALID_ARGS", "Missing url parameter");
   } else if (method_call.method_name().compare("stopDecoding") == 0) {
@@ -195,6 +206,38 @@ void VideoDecoderPlugin::HandleMethodCall(
             StopDecoding(texture_id);
             result->Success();
             return;
+        }
+    }
+    result->Success();
+  } else if (method_call.method_name().compare("setVisibility") == 0) {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (arguments) {
+        auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
+        auto vis_it = arguments->find(flutter::EncodableValue("visible"));
+        if (tid_it != arguments->end() && vis_it != arguments->end()) {
+            int64_t texture_id = tid_it->second.LongValue();
+            bool visible = std::get<bool>(vis_it->second);
+            
+            std::lock_guard<std::mutex> lock(sessions_mutex_);
+            auto it = sessions_.find(texture_id);
+            if (it != sessions_.end()) {
+                it->second->SetVisible(visible);
+            }
+        }
+    }
+    result->Success();
+  } else if (method_call.method_name().compare("flush") == 0) {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (arguments) {
+        auto tid_it = arguments->find(flutter::EncodableValue("textureId"));
+        if (tid_it != arguments->end()) {
+            int64_t texture_id = tid_it->second.LongValue();
+            
+            std::lock_guard<std::mutex> lock(sessions_mutex_);
+            auto it = sessions_.find(texture_id);
+            if (it != sessions_.end()) {
+                it->second->Flush();
+            }
         }
     }
     result->Success();
@@ -267,8 +310,10 @@ VideoDecoderPlugin::VideoSessionState::~VideoSessionState() {
 
     if (sws_context) { sws_freeContext(sws_context); sws_context = nullptr; }
     if (frame) av_frame_free(&frame);
+    if (sw_frame) av_frame_free(&sw_frame);
     if (packet) av_packet_free(&packet);
     if (codec_context) avcodec_free_context(&codec_context);
+    if (hw_device_ctx) av_buffer_unref(&hw_device_ctx);
     
     front_buffer.reset();
     last_front_buffer.reset();
@@ -368,6 +413,21 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
     LogTrace("VideoSession Destructor [%lld] - END", tid);
 }
 
+void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
+    if (state_) {
+        state_->is_visible = visible;
+        LogTrace("SetVisible [%lld] - %s", state_->texture_id, visible ? "YES" : "NO");
+    }
+}
+
+void VideoDecoderPlugin::VideoSession::Flush() {
+    if (state_) {
+        state_->needs_flush = true;
+        state_->waiting_for_iframe = true;
+        LogTrace("Flush [%lld] - Requested (Waiting for I-Frame)", state_->texture_id);
+    }
+}
+
 bool VideoDecoderPlugin::VideoSession::ConnectToServer(std::shared_ptr<VideoSessionState> state, const std::string& host, int port) {
     LogTrace("Connecting to server: %s:%d", host.c_str(), port);
     state->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -419,6 +479,14 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->flags2 |= AV_CODEC_FLAG2_FAST;
     state->codec_context->thread_count = 1;
 
+    // GPU Decoder (D3D11VA) Initialization
+    if (av_hwdevice_ctx_create(&state->hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {
+        LogTrace("InitializeDecoder [%lld] - D3D11VA Hardware Acceleration Enabled", state->texture_id);
+        state->codec_context->hw_device_ctx = av_buffer_ref(state->hw_device_ctx);
+    } else {
+        LogTrace("InitializeDecoder [%lld] - Hardware Acceleration not available, using Software", state->texture_id);
+    }
+
     // For mass concurrency, we still need protection for the sensitive avcodec_open2
     {
         std::lock_guard<std::mutex> lock(g_ffmpeg_init_mutex);
@@ -430,7 +498,8 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
 
     state->packet = av_packet_alloc();
     state->frame = av_frame_alloc();
-    if (!state->packet || !state->frame) {
+    state->sw_frame = av_frame_alloc(); // Used for GPU-to-CPU transfer
+    if (!state->packet || !state->frame || !state->sw_frame) {
         LogTrace("InitializeDecoder [%lld] - Packet/Frame alloc failed", state->texture_id);
         return false;
     }
@@ -546,7 +615,30 @@ void VideoDecoderPlugin::VideoSession::DecodingLoop(std::shared_ptr<VideoSession
 
 void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSessionState> state, const std::vector<uint8_t>& data) {
     if (!state || !state->is_decoding || !state->is_alive || !state->codec_context) return;
-    if (!state->packet || !state->frame) return; // EXTRA SAFETY
+    if (!state->packet || !state->frame) return;
+
+    if (state->needs_flush) {
+        avcodec_flush_buffers(state->codec_context);
+        state->needs_flush = false;
+        LogTrace("DecodePacket [%lld] - Context Flushed", state->texture_id);
+    }
+
+    bool is_keyframe = false;
+    if (state->waiting_for_iframe) {
+        if (IsKeyframe(data.data(), data.size())) {
+            LogTrace("DecodePacket [%lld] - I-Frame detected! Unlocking decoder.", state->texture_id);
+            state->waiting_for_iframe = false;
+            is_keyframe = true;
+        } else {
+            // Drop P-Frames after flush
+            return;
+        }
+    }
+
+    // Early Return if not visible (Except for the keyframe to warm up the context)
+    if (!state->is_visible && !is_keyframe) {
+        return;
+    }
 
     state->packet->data = (uint8_t*)data.data();
     state->packet->size = (int)data.size();
@@ -568,7 +660,18 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
             else LogTrace("DecodePacket [%lld] - receive_frame error: %d", state->texture_id, ret);
             break;
         }
-        ProcessFrame(state, state->frame);
+
+        // If it's a hardware frame, transfer it to CPU for rendering (PixelBuffer path)
+        if (state->is_visible) {
+            if (state->frame->format == AV_PIX_FMT_D3D11) {
+                if (av_hwframe_transfer_data(state->sw_frame, state->frame, 0) < 0) {
+                    continue;
+                }
+                ProcessFrame(state, state->sw_frame);
+            } else {
+                ProcessFrame(state, state->frame);
+            }
+        }
     }
     av_packet_unref(state->packet);
 }
@@ -656,7 +759,7 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
                         ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);
 
     auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-        registrar->messenger(), "scraki/video_decoder",
+        registrar->messenger(), "com.scraki.video_decoder",
         &flutter::StandardMethodCodec::GetInstance());
 
     auto plugin = std::make_unique<VideoDecoderPlugin>(registrar->texture_registrar());
