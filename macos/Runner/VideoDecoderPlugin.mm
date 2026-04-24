@@ -38,6 +38,16 @@ extern "C" {
 //------------------------------------------------------------------------------
 // VideoDecoder Class (Handles one video stream)
 //------------------------------------------------------------------------------
+
+static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
+    for (const enum AVPixelFormat *p = pix_fmts; *p != -1; p++) {
+        if (*p == AV_PIX_FMT_VIDEOTOOLBOX) {
+            return *p;
+        }
+    }
+    return AV_PIX_FMT_YUV420P; // Fallback
+}
+
 @interface VideoDecoder : NSObject <FlutterTexture>
 
 @property(nonatomic, assign) int64_t textureId;
@@ -188,6 +198,7 @@ extern "C" {
     AVBufferRef* hw_device_ctx = nullptr;
     if (av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0) >= 0) {
         _codecContext->hw_device_ctx = av_buffer_ref(hw_device_ctx);
+        _codecContext->get_format = get_hw_format; // Ép buộc FFmpeg trả về frame phần cứng
         av_buffer_unref(&hw_device_ctx);
     }
     
@@ -290,6 +301,16 @@ extern "C" {
 }
 
 - (CVPixelBufferRef)convertFrameToPixelBuffer:(AVFrame*)frame {
+    // 1. Zero-copy GPU path: Trích xuất trực tiếp CVPixelBufferRef từ Hardware Frame
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame->data[3];
+        if (pixelBuffer) {
+            CVPixelBufferRetain(pixelBuffer);
+            return pixelBuffer;
+        }
+    }
+
+    // 2. CPU Fallback path: Nếu frame giải mã bằng phần mềm
     CVPixelBufferRef pixelBuffer = nullptr;
     NSDictionary* options = @{
         (id)kCVPixelBufferCGImageCompatibilityKey: @YES,
