@@ -21,6 +21,26 @@ std::atomic<int> g_active_sessions{0};
 static std::atomic<int> g_bg_decoding_sessions{0};
 const int MAX_BG_DECODING_SESSIONS = 10;
 
+// Global Hardware Context to prevent NVIDIA Driver Crashes due to resource exhaustion
+static AVBufferRef* g_hw_device_ctx = nullptr;
+static std::mutex g_hw_ctx_mutex;
+
+static AVBufferRef* GetGlobalHWContext() {
+    std::lock_guard<std::mutex> lock(g_hw_ctx_mutex);
+    if (g_hw_device_ctx) {
+        return av_buffer_ref(g_hw_device_ctx);
+    }
+
+    LogTrace("GetGlobalHWContext - Initializing Global D3D11VA Device Context...");
+    if (av_hwdevice_ctx_create(&g_hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {
+        LogTrace("GetGlobalHWContext - SUCCESS: Global D3D11VA Enabled");
+        return av_buffer_ref(g_hw_device_ctx);
+    }
+
+    LogTrace("GetGlobalHWContext - FAILED: Hardware Acceleration not available on this system");
+    return nullptr;
+}
+
 static void LogTrace(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -505,11 +525,14 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->flags2 |= AV_CODEC_FLAG2_FAST;
     state->codec_context->thread_count = 1;
     state->codec_context->get_format = get_hw_format_d3d11;
+    state->codec_context->thread_safe_callbacks = 1;
 
-    // GPU Decoder (D3D11VA) Initialization
-    if (av_hwdevice_ctx_create(&state->hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {
-        LogTrace("InitializeDecoder [%lld] - D3D11VA Hardware Acceleration Enabled", state->texture_id);
-        state->codec_context->hw_device_ctx = av_buffer_ref(state->hw_device_ctx);
+    // GPU Decoder (D3D11VA) Initialization - Use Shared Global Context to prevent NVIDIA crashes
+    AVBufferRef* global_hw_ctx = GetGlobalHWContext();
+    if (global_hw_ctx) {
+        LogTrace("InitializeDecoder [%lld] - Using Global D3D11VA Context", state->texture_id);
+        state->hw_device_ctx = global_hw_ctx; 
+        state->codec_context->hw_device_ctx = av_buffer_ref(global_hw_ctx);
     } else {
         LogTrace("InitializeDecoder [%lld] - Hardware Acceleration not available, using Software", state->texture_id);
     }
