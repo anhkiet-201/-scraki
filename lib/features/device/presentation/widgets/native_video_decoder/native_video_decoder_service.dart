@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:injectable/injectable.dart';
 import 'package:scraki/core/utils/logger.dart';
 
 class _DecoderSession {
@@ -9,6 +10,7 @@ class _DecoderSession {
   _DecoderSession(this.textureId, {required this.refCount});
 }
 
+@lazySingleton
 class NativeVideoDecoderService {
   static const _channel = MethodChannel('scraki/video_decoder');
 
@@ -48,6 +50,8 @@ class NativeVideoDecoderService {
     if (session == null) return;
 
     session.refCount--;
+    if (session.refCount < 0) session.refCount = 0;
+    
     logger.i(
       '[NativeVideoDecoderService] Decremented RefCount for $url (Remaining: ${session.refCount})',
     );

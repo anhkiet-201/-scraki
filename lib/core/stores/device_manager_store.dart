@@ -150,7 +150,11 @@ abstract class _DeviceManagerStore with Store {
       },
       (_) async {
         logger.i('[DeviceManagerStore] Device disconnected successfully');
-        await loadDevices();
+        // Thay vì loadDevices() (gây overload ADB), chỉ cần xóa khỏi danh sách local
+        runInAction(() {
+          devices.removeWhere((d) => d.serial == serial);
+          selectedSerials.remove(serial);
+        });
       },
     );
   }

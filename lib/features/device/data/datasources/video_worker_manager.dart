@@ -230,6 +230,9 @@ void _workerEntryPoint(SendPort managerPort) async {
           if (message.token != null) {
             BackgroundIsolateBinaryMessenger.ensureInitialized(message.token!);
           }
+          // [Fix Leak] Đóng session cũ nếu đã tồn tại trước khi khởi tạo cái mới
+          sessions[message.sessionId]?.stop();
+          
           final session = _IsolateVideoSession(
             message.sessionId,
             message.url,
@@ -305,84 +308,99 @@ class _IsolateVideoSession {
       );
 
       // Lắng nghe kết nối từ ADB
-      _adbServerSocket!.listen((socket) {
-        _connectionCount++;
-        socket.setOption(SocketOption.tcpNoDelay, true);
+      _adbServerSocket!.listen(
+        (socket) {
+          _connectionCount++;
+          socket.setOption(SocketOption.tcpNoDelay, true);
 
-        // scrcpy connects Video first, then Control.
-        // If it retries, it closes existing and connects again.
-        if (_adbSocket == null) {
-          logger.i(
-            '[Isolate-Video] Accepted VIDEO socket for $sessionId (Count: $_connectionCount)',
-          );
-
-          // RESET state for new connection (e.g. scrcpy retry)
-          _headerParsed = false;
-          _isFirstFrameReceived = false;
-          _parseBuffer.clear();
-          _configHeader.clear();
-          _initialBuffer.clear();
-          _adbSubscription?.cancel();
-
-          _adbSocket = socket;
-          _adbSubscription = _adbSocket!.listen(_handleAdbData);
-
-          _adbSocket!.done.then((_) {
-            logger.i('[Isolate-Video] VIDEO socket closed for $sessionId');
-            _adbSocket = null;
-            _adbSubscription?.cancel();
-            eventPort?.send(
-              VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
+          // scrcpy connects Video first, then Control.
+          // If it retries, it closes existing and connects again.
+          if (_adbSocket == null) {
+            logger.i(
+              '[Isolate-Video] Accepted VIDEO socket for $sessionId (Count: $_connectionCount)',
             );
-          });
-        } else if (_controlSocket == null) {
-          logger.i(
-            '[Isolate-Video] Accepted CONTROL socket for $sessionId (Count: $_connectionCount)',
-          );
-          _controlSocket = socket;
-          _controlSocket!.listen(
-            _handleControlData,
-            onDone: () {
-              logger.i('[Isolate-Video] CONTROL socket closed for $sessionId');
-              _controlSocket = null;
-              eventPort?.send(
-                VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
-              );
-            },
-          );
-        }
-      });
+
+            // RESET state for new connection (e.g. scrcpy retry)
+            _headerParsed = false;
+            _isFirstFrameReceived = false;
+            _parseBuffer.clear();
+            _configHeader.clear();
+            _initialBuffer.clear();
+            _adbSubscription?.cancel();
+
+            _adbSocket = socket;
+            _adbSubscription = _adbSocket!.listen(
+              _handleAdbData,
+              onError: (Object e) => logger.w('[Isolate-Video] VIDEO socket error for $sessionId: $e'),
+              onDone: () {
+                logger.i('[Isolate-Video] VIDEO socket closed for $sessionId');
+                _adbSocket = null;
+                _adbSubscription?.cancel();
+                eventPort?.send(
+                  VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
+                );
+              },
+            );
+
+            _adbSocket!.done.then((_) {
+              // Handled by onDone above, but keep for completeness
+            }).catchError((Object e) {
+              logger.w('[Isolate-Video] VIDEO socket done error for $sessionId: $e');
+            });
+          } else if (_controlSocket == null) {
+            logger.i(
+              '[Isolate-Video] Accepted CONTROL socket for $sessionId (Count: $_connectionCount)',
+            );
+            _controlSocket = socket;
+            _controlSocket!.listen(
+              _handleControlData,
+              onError: (Object e) => logger.w('[Isolate-Video] CONTROL socket error for $sessionId: $e'),
+              onDone: () {
+                logger.i('[Isolate-Video] CONTROL socket closed for $sessionId');
+                _controlSocket = null;
+                eventPort?.send(
+                  VideoWorkerEvent(sessionId: sessionId, type: 'connection_lost'),
+                );
+              },
+            );
+          }
+        },
+        onError: (Object e) => logger.e('[Isolate-Video] ADB ServerSocket error for $sessionId', error: e),
+      );
 
       // Lắng nghe kết nối từ Player (Native)
-      _proxyServerSocket!.listen((socket) {
-        _playerSocket = socket;
-        _playerSocket!.setOption(SocketOption.tcpNoDelay, true);
+      _proxyServerSocket!.listen(
+        (socket) {
+          _playerSocket = socket;
+          _playerSocket!.setOption(SocketOption.tcpNoDelay, true);
 
-        final isFirst = !_anyPlayerConnected;
-        _anyPlayerConnected = true;
+          final isFirst = !_anyPlayerConnected;
+          _anyPlayerConnected = true;
 
-        if (isFirst) {
-          logger.i(
-            '[Isolate-Video] Player connected. Dumping initial buffer: ${_initialBuffer.length} chunks',
-          );
+          if (isFirst) {
+            logger.i(
+              '[Isolate-Video] Player connected. Dumping initial buffer: ${_initialBuffer.length} chunks',
+            );
 
-          // Always send config header first to ensure decoder has parameters
-          // even if initial buffer was truncated.
-          if (_configHeader.isNotEmpty) {
-            _playerSocket!.add(_configHeader);
+            // Always send config header first to ensure decoder has parameters
+            // even if initial buffer was truncated.
+            if (_configHeader.isNotEmpty) {
+              _playerSocket!.add(_configHeader);
+            }
+
+            for (final chunk in _initialBuffer) {
+              _playerSocket!.add(chunk);
+            }
+            _initialBuffer.clear();
+          } else {
+            logger.i('[Isolate-Video] Late player connected. Sending Meta only.');
+            if (_configHeader.isNotEmpty) {
+              _playerSocket!.add(_configHeader);
+            }
           }
-
-          for (final chunk in _initialBuffer) {
-            _playerSocket!.add(chunk);
-          }
-          _initialBuffer.clear();
-        } else {
-          logger.i('[Isolate-Video] Late player connected. Sending Meta only.');
-          if (_configHeader.isNotEmpty) {
-            _playerSocket!.add(_configHeader);
-          }
-        }
-      });
+        },
+        onError: (Object e) => logger.e('[Isolate-Video] Proxy ServerSocket error for $sessionId', error: e),
+      );
     } catch (e) {
       eventPort?.send(
         VideoWorkerEvent(
@@ -432,18 +450,18 @@ class _IsolateVideoSession {
       _extractConfigHeaders();
     }
 
-    if (!_anyPlayerConnected || _isPaused) {
-      // Still buffering key info but not forwarding to player when paused
-      if (!_anyPlayerConnected) {
-        _initialBuffer.add(data);
-        if (_initialBuffer.length > 2000) _initialBuffer.removeAt(0);
-      }
+    if (!_anyPlayerConnected) {
+      // Still buffering key info but not forwarding to player when not connected
+      _initialBuffer.add(data);
+      if (_initialBuffer.length > 2000) _initialBuffer.removeAt(0);
       return;
     }
 
     // Forward to current player
     try {
-      _playerSocket?.add(data);
+      if (!_isPaused) {
+        _playerSocket?.add(data);
+      }
     } catch (_) {
       _anyPlayerConnected = false;
       _playerSocket = null;

@@ -57,6 +57,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final ITikTokPostService _tikTokService = getIt<ITikTokPostService>();
   final IAdbRemoteDataSource _adbDataSource = getIt<IAdbRemoteDataSource>();
+  final NativeVideoDecoderService _decoderService = getIt<NativeVideoDecoderService>();
   final String serial;
   final bool isFloatingView;
 
@@ -182,7 +183,23 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   @action
   void setVisibility(String serial, bool isVisible, {bool isFloating = false}) {
     if (isFloating == isFloatingView) {
+      final bool wasVisible = _isVisible;
       _isVisible = isVisible || isFloating;
+
+      // [Optimization] Tạm dừng/Tiếp tục xử lý trong isolate khi ẩn/hiện để tiết kiệm CPU
+      if (wasVisible != _isVisible && session != null) {
+        if (_isVisible) {
+          _workerManager.resumeMirroring(sessionId);
+        } else {
+          _workerManager.pauseMirroring(sessionId);
+        }
+      }
+
+      // [Auto-Reconnect] Nếu trở nên hiển thị và trước đó bị mất kết nối, tự động kết nối lại
+      if (!wasVisible && _isVisible && hasLostConnection && !isLoading && !isConnecting) {
+        logger.i('[PhoneViewStore] Widget became visible, triggering auto-reconnect for $serial');
+        startMirroring();
+      }
     }
   }
 
@@ -191,7 +208,21 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // ═══════════════════════════════════════════════════════════════
 
   @action
-  Future<MirrorSession> startMirroring([ScrcpyOptions? options]) async {
+  Future<MirrorSession?> startMirroring([ScrcpyOptions? options]) async {
+    if (isConnecting || isLoading) return session;
+
+    // [Optimization] Nếu đã có session đang hoạt động cho ID này, tái sử dụng nó thay vì start mới
+    if (session != null) {
+      logger.i('[PhoneViewStore] Reusing existing session for $sessionId');
+      runInAction(() {
+        isLoading = false;
+        isConnecting = false;
+        error = null;
+        hasLostConnection = false;
+      });
+      return session;
+    }
+
     runInAction(() {
       isLoading = true;
       error = null;
@@ -248,7 +279,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         height: height,
         port: adbPort,
         scid: scid,
-        decoderService: NativeVideoDecoderService(),
+        decoderService: _decoderService,
       );
 
       await mirrorSession.decoderService.start(url);
@@ -286,6 +317,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
     sessionManagerStore.activeSessions.remove(sessionId);
     _workerManager.stopMirroring(sessionId);
+
+    runInAction(() {
+      isLoading = false;
+      isConnecting = false;
+      error = null;
+    });
 
     final hasOtherSessions = sessionManagerStore.activeSessions.keys.any((k) => k.startsWith('${serial}_'));
     if (!hasOtherSessions) {

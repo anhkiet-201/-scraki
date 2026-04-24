@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:process_run/shell.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/scrcpy_options.dart';
@@ -15,9 +14,7 @@ import '../../../../core/utils/logger.dart';
 /// and cleaning up server processes.
 @lazySingleton
 class ScrcpyService {
-  final Shell _shell;
-
-  ScrcpyService() : _shell = Shell();
+  ScrcpyService();
 
   final Map<String, Process> _serverProcesses = {};
 
@@ -42,9 +39,13 @@ class ScrcpyService {
   Future<void> pushServer(String deviceSerial) async {
     try {
       final localPath = await _getServerPath();
-      await _shell.run(
-        'adb -s $deviceSerial push $localPath $_remoteServerPath',
-      );
+      await Process.run('adb', [
+        '-s',
+        deviceSerial,
+        'push',
+        localPath,
+        _remoteServerPath,
+      ]);
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
     }
@@ -94,9 +95,12 @@ class ScrcpyService {
 
   Future<void> killServer(String serial) async {
     try {
-      await _shell.run(
-        'adb -s $serial shell "ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true"',
-      );
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'shell',
+        'ps -en | grep app_process | awk \'{print \$2}\' | xargs kill -9 || true'
+      ]);
 
       // Kill local adb process if tracked
       if (_serverProcesses.containsKey(serial)) {
@@ -182,8 +186,8 @@ class ScrcpyService {
 
   Future<bool> isDeviceConnected(String serial) async {
     try {
-      final result = await _shell.run('adb -s $serial get-state');
-      return result.outText.trim() == 'device';
+      final result = await Process.run('adb', ['-s', serial, 'get-state']);
+      return (result.stdout as String).trim() == 'device';
     } catch (_) {
       return false;
     }

@@ -105,6 +105,18 @@ mixin _$TikTokSeedingStore on _TikTokSeedingStoreBase, Store {
     );
   }
 
+  late final _$runRandomSeedingAsyncAction = AsyncAction(
+    '_TikTokSeedingStoreBase.runRandomSeeding',
+    context: context,
+  );
+
+  @override
+  Future<void> runRandomSeeding(String serial) {
+    return _$runRandomSeedingAsyncAction.run(
+      () => super.runRandomSeeding(serial),
+    );
+  }
+
   late final _$_TikTokSeedingStoreBaseActionController = ActionController(
     name: '_TikTokSeedingStoreBase',
     context: context,

@@ -103,30 +103,46 @@ class _NameFetchInput {
 
 /// Hàm tĩnh chạy ở Isolate để lấy tên hàng loạt thiết bị [Rule #10, #31]
 Future<List<DeviceEntity>> _fetchDeviceNames(_NameFetchInput input) async {
-  return await Future.wait(
-    input.devices.map((device) async {
-      // Chỉ lấy tên cho thiết bị đã kết nối
-      if (device.status != DeviceStatus.connected) return device;
+  final results = <DeviceEntity>[];
+  final devices = input.devices;
+  
+  // Chia nhỏ danh sách để xử lý theo đợt (batch), tránh overload ADB server [Rule #10, #21]
+  const batchSize = 10;
+  for (var i = 0; i < devices.length; i += batchSize) {
+    final end = (i + batchSize < devices.length) ? i + batchSize : devices.length;
+    final batch = devices.sublist(i, end);
+    
+    final batchResults = await Future.wait(
+      batch.map((device) async {
+        // Chỉ lấy tên cho thiết bị đã kết nối và chưa có tên cụ thể
+        if (device.status != DeviceStatus.connected) return device;
 
-      try {
-        // Dùng trực tiếp Process.run trong Isolate để tránh overhead của Shell/DataSource
-        final result = await Process.run('adb', [
-          '-s',
-          device.serial,
-          'shell',
-          'settings',
-          'get',
-          'global',
-          'device_name',
-        ]).timeout(const Duration(seconds: 2));
+        try {
+          final result = await Process.run('adb', [
+            '-s',
+            device.serial,
+            'shell',
+            'settings',
+            'get',
+            'global',
+            'device_name',
+          ]).timeout(const Duration(seconds: 2));
 
-        final name = (result.stdout as String).trim();
-        // Android trả về 'null' (string) nếu chưa được đặt tên
-        if (name.isEmpty || name == 'null') return device;
-        return device.copyWith(modelName: name);
-      } catch (_) {
-        return device; // Giữ nguyên trạng thái cũ nếu lỗi/timeout
-      }
-    }),
-  );
+          final name = (result.stdout as String).trim();
+          if (name.isEmpty || name == 'null') return device;
+          return device.copyWith(modelName: name);
+        } catch (_) {
+          return device;
+        }
+      }),
+    );
+    results.addAll(batchResults);
+    
+    // Nghỉ một chút giữa các batch để ADB server "thở"
+    if (end < devices.length) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+  
+  return results;
 }

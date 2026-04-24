@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
-import 'package:process_run/shell.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../core/error/exceptions.dart';
 import '../datasources/scrcpy_header.dart';
@@ -22,21 +21,27 @@ class ScrcpySession {
 
 @lazySingleton
 class ScrcpyClient {
-  final Shell _shell;
-
-  ScrcpyClient() : _shell = Shell();
+  ScrcpyClient();
 
   /// Sets up ADB reverse tunnel: adb reverse localabstract:scrcpy_$scid tcp:localPort
   Future<void> setupTunnel(String serial, int localPort, String scid) async {
     try {
       // With tunnel_forward=true, server connects to 'scrcpy_<scid>'
-      await _shell.run(
-        'adb -s $serial reverse localabstract:scrcpy_$scid tcp:$localPort',
-      );
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'reverse',
+        'localabstract:scrcpy_$scid',
+        'tcp:$localPort'
+      ]);
       // Also setup 'scrcpy' as fallback name just in case
-      await _shell.run(
-        'adb -s $serial reverse localabstract:scrcpy tcp:$localPort',
-      );
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'reverse',
+        'localabstract:scrcpy',
+        'tcp:$localPort'
+      ]);
       logger.i(
         '[ScrcpyClient] Reverse tunnel setup for scrcpy_$scid on port $localPort',
       );
@@ -48,9 +53,13 @@ class ScrcpyClient {
   /// Removes ADB reverse tunnel for a specific scid
   Future<void> removeTunnel(String serial, String scid) async {
     try {
-      await _shell.run(
-        'adb -s $serial reverse --remove localabstract:scrcpy_$scid',
-      );
+      await Process.run('adb', [
+        '-s',
+        serial,
+        'reverse',
+        '--remove',
+        'localabstract:scrcpy_$scid'
+      ]);
     } catch (_) {
       // Ignore cleanup errors
     }

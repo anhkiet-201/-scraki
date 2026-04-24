@@ -124,6 +124,7 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
                       visibleSerials!.contains(device.serial);
 
                   return Offstage(
+                    key: ValueKey('grid_item_${device.serial}'),
                     offstage: !isVisible,
                     child: TweenAnimationBuilder<double>(
                       duration: const Duration(milliseconds: 400),

@@ -234,7 +234,7 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   );
 
   @override
-  Future<MirrorSession> startMirroring([ScrcpyOptions? options]) {
+  Future<MirrorSession?> startMirroring([ScrcpyOptions? options]) {
     return _$startMirroringAsyncAction.run(() => super.startMirroring(options));
   }
 
@@ -256,6 +256,33 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   @override
   Future<void> handlePaste(String serial) {
     return _$handlePasteAsyncAction.run(() => super.handlePaste(serial));
+  }
+
+  late final _$handlePerformDropAsyncAction = AsyncAction(
+    '_PhoneViewStore.handlePerformDrop',
+    context: context,
+  );
+
+  @override
+  Future<void> handlePerformDrop(PerformDropEvent event) {
+    return _$handlePerformDropAsyncAction.run(
+      () => super.handlePerformDrop(event),
+    );
+  }
+
+  late final _$handleInternalDragAcceptAsyncAction = AsyncAction(
+    '_PhoneViewStore.handleInternalDragAccept',
+    context: context,
+  );
+
+  @override
+  Future<void> handleInternalDragAccept(
+    PosterData data,
+    Future<File?> Function(PosterData)? onPosterDropped,
+  ) {
+    return _$handleInternalDragAcceptAsyncAction.run(
+      () => super.handleInternalDragAccept(data, onPosterDropped),
+    );
   }
 
   late final _$uploadFilesAsyncAction = AsyncAction(
@@ -369,6 +396,54 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
     );
     try {
       return super.setDragging(serial, isDragging, isApk: isApk);
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  DropOperation handleDropOver(DropOverEvent event) {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.handleDropOver',
+    );
+    try {
+      return super.handleDropOver(event);
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void handleDropLeave() {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.handleDropLeave',
+    );
+    try {
+      return super.handleDropLeave();
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  bool handleInternalDragWillAccept() {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.handleInternalDragWillAccept',
+    );
+    try {
+      return super.handleInternalDragWillAccept();
+    } finally {
+      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void handleInternalDragLeave() {
+    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
+      name: '_PhoneViewStore.handleInternalDragLeave',
+    );
+    try {
+      return super.handleInternalDragLeave();
     } finally {
       _$_PhoneViewStoreActionController.endAction(_$actionInfo);
     }

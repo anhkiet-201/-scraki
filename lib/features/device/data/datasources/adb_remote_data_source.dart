@@ -5,7 +5,6 @@ import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:injectable/injectable.dart';
-import 'package:process_run/shell.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/logger.dart';
 
@@ -109,26 +108,49 @@ abstract class IAdbRemoteDataSource {
 
 @LazySingleton(as: IAdbRemoteDataSource)
 class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
-  final Shell _shell;
-  static const _cmdListDevices = 'adb devices -l';
-
-  AdbRemoteDataSourceImpl() : _shell = Shell();
+  AdbRemoteDataSourceImpl();
 
   @override
   Future<String> getConnectedDevicesOutput() async {
-    try {
-      final result = await _shell.run(_cmdListDevices);
-      return result.outText;
-    } catch (e) {
-      throw ServerException('Failed to execute $_cmdListDevices: $e');
+    for (int i = 0; i < 3; i++) {
+      try {
+        final result = await Process.run('adb', ['devices', '-l']);
+        final output = (result.stdout as String).trim();
+        final stderr = (result.stderr as String).trim();
+        
+        // Kiểm tra tính hợp lệ của đầu ra. 
+        if (output.contains('List of devices attached')) {
+          // Nếu chứa thông báo daemon đang khởi động, hãy đợi và thử lại
+          if (output.contains('daemon not running') || output.contains('daemon started successfully') || stderr.contains('daemon')) {
+             logger.w('[ADB] Daemon is restarting/starting, waiting 1s before retry ($i)...');
+             await Future<void>.delayed(const Duration(seconds: 1));
+             continue;
+          }
+          
+          return output;
+        }
+        
+        if (i < 2) {
+          logger.w('[ADB] Invalid output, retrying ($i): $output $stderr');
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+
+        throw ServerException('Invalid ADB output: ${output.isEmpty ? stderr : output}');
+      } catch (e) {
+        if (i < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        if (e is ServerException) rethrow;
+        throw ServerException('Failed to list devices after retries: $e');
+      }
     }
+    throw ServerException('Failed to list devices: Unknown error');
   }
 
   @override
   Future<void> connectTcp(String ip, int port) async {
-    // Dùng Process.run thay vì _shell.run vì Shell có internal queue
-    // serialize các lệnh tuần tự — khiến Future.wait không thực sự parallel.
-    // Process.run tạo process độc lập, cho phép nhiều kết nối chạy đồng thời.
     try {
       final result = await Process.run('adb', ['connect', '$ip:$port']);
       final output = (result.stdout as String).trim();
@@ -143,19 +165,27 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Future<void> disconnect(String serial) async {
-    final cmd = 'adb disconnect $serial';
+    if (serial.isEmpty) {
+      logger.w('[ADB] Attempted to disconnect with empty serial. Aborting to prevent global disconnect.');
+      return;
+    }
     try {
-      await _shell.run(cmd);
+      final result = await Process.run('adb', ['disconnect', serial]);
+      final output = (result.stdout as String).trim();
+      if (output.contains('error')) {
+        throw ServerException(output);
+      }
     } catch (e) {
-      throw ServerException('Failed to execute $cmd: $e');
+      if (e is ServerException) rethrow;
+      throw ServerException('Failed to disconnect $serial: $e');
     }
   }
 
   @override
   Future<void> restartServer() async {
     try {
-      await _shell.run('adb kill-server');
-      await _shell.run('adb start-server');
+      await Process.run('adb', ['kill-server']);
+      await Process.run('adb', ['start-server']);
     } catch (e) {
       throw ServerException('Failed to restart ADB server: $e');
     }
@@ -228,11 +258,10 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   Future<void> launchApp(String serial, String packageName) async {
     // Sử dụng monkey command để launch app
     // monkey -p <package> 1 sẽ mở main activity của app
-    final cmd = 'adb -s $serial shell monkey -p $packageName 1';
 
     try {
-      final result = await _shell.run(cmd);
-      final output = result.outText;
+      final result = await Process.run('adb', ['-s', serial, 'shell', 'monkey', '-p', packageName, '1']);
+      final output = (result.stdout as String).trim();
 
       // Kiểm tra lỗi thường gặp
       if (output.contains('monkey: not found') ||
@@ -249,10 +278,9 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   @override
   Future<void> sendPowerKey(String serial) async {
     // KEYCODE_POWER = 26
-    final cmd = 'adb -s $serial shell input keyevent 26';
 
     try {
-      await _shell.run(cmd);
+      await Process.run('adb', ['-s', serial, 'shell', 'input', 'keyevent', '26']);
     } catch (e) {
       throw ServerException('Failed to send power key: $e');
     }
@@ -260,9 +288,8 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
   @override
   Future<void> sendKeyEvent(String serial, int keyCode) async {
-    final cmd = 'adb -s $serial shell input keyevent $keyCode';
     try {
-      await _shell.run(cmd);
+      await Process.run('adb', ['-s', serial, 'shell', 'input', 'keyevent', keyCode.toString()]);
     } catch (e) {
       // Ignored for non-critical navigation keys
     }
@@ -274,17 +301,16 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
 
     try {
       // 1. Dump UI on device
-      final dumpResult = await _shell.run(
-        'adb -s $serial shell uiautomator dump $remotePath',
-      );
-      if (dumpResult.outText.contains('ERROR')) {
-        throw ServerException('Failed to dump UI: ${dumpResult.outText}');
+      final dumpResult = await Process.run('adb', ['-s', serial, 'shell', 'uiautomator', 'dump', remotePath]);
+      final dumpOutput = (dumpResult.stdout as String).trim();
+      if (dumpOutput.contains('ERROR')) {
+        throw ServerException('Failed to dump UI: $dumpOutput');
       }
 
       // 2. Pull the file to a safe system temp directory
       final localPath = '${Directory.systemTemp.path}/window_dump_$serial.xml';
 
-      await _shell.run('adb -s $serial pull $remotePath $localPath');
+      await Process.run('adb', ['-s', serial, 'pull', remotePath, localPath]);
 
       final file = File(localPath);
       if (!await file.exists()) {
@@ -312,16 +338,15 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       } catch (_) {}
 
       try {
-        await _shell.run('adb -s $serial shell rm $remotePath');
+        await Process.run('adb', ['-s', serial, 'shell', 'rm', remotePath]);
       } catch (_) {}
     }
   }
 
   @override
   Future<void> inputText(String serial, String text) async {
-    final cmd = 'adb -s $serial shell input text "$text"';
     try {
-      await _shell.run(cmd);
+      await Process.run('adb', ['-s', serial, 'shell', 'input', 'text', '"$text"']);
     } catch (e) {
       throw ServerException('Failed to input text: $e');
     }
