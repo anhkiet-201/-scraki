@@ -128,8 +128,13 @@ typedef NS_ENUM(NSInteger, FrameType) {
 }
 
 - (void)setVisibility:(BOOL)visible {
-    *_isVisiblePtr = visible;
-    // NSLog(@"[VideoDecoder] Visibility set to YES for TextureID: %lld", _textureId);
+    BOOL wasVisible = _isVisiblePtr->exchange(visible);
+    if (visible) {
+        // [Resume Logic] Khi hiện trở lại, bắt buộc đợi I-Frame mới và xóa bộ đệm cũ
+        // Điều này đảm bảo hình ảnh không bị vỡ hoặc đứng hình từ dữ liệu cũ.
+        *_waitingForIFramePtr = true;
+        *_needsFlushPtr = true;
+    }
 }
 
 - (void)startWithHost:(NSString*)host port:(int)port result:(FlutterResult)result {
@@ -377,7 +382,7 @@ typedef NS_ENUM(NSInteger, FrameType) {
     BOOL hasKeyframe = NO;
     size_t offset = 0;
 
-    while (offset < data.size() - 4) {
+    while (offset < (int)data.size() - 4) {
         if (data[offset] == 0 && data[offset+1] == 0) {
             size_t startCodeLen = 0;
             if (data[offset+2] == 1) {
@@ -389,18 +394,22 @@ typedef NS_ENUM(NSInteger, FrameType) {
             if (startCodeLen > 0) {
                 size_t nalStart = offset + startCodeLen;
                 if (nalStart < data.size()) {
+                    // HEVC: NAL unit type is in bits 1-6 of the first byte
                     uint8_t hevcType = (data[nalStart] >> 1) & 0x3F;
+                    // H.264: NAL unit type is in bits 0-4 of the first byte
                     uint8_t h264Type = data[nalStart] & 0x1F;
                     
-                    if (hevcType >= 16 && hevcType <= 23) hasKeyframe = YES; // HEVC BLA/IDR/CRA (IRAP)
-                    if (hevcType >= 32 && hevcType <= 34) hasHeader = YES;   // HEVC VPS/SPS/PPS
+                    // HEVC Keyframes: IDR_W_RADL (19), IDR_N_LP (20), CRA_NUT (21)
+                    if (hevcType >= 16 && hevcType <= 21) hasKeyframe = YES;
+                    // HEVC Headers: VPS (32), SPS (33), PPS (34)
+                    if (hevcType >= 32 && hevcType <= 34) hasHeader = YES;
                     
-                    if (h264Type == 5) hasKeyframe = YES;                    // H264 IDR
-                    if (h264Type == 7 || h264Type == 8) hasHeader = YES;     // H264 SPS/PPS
+                    // H264 Keyframe: IDR (5)
+                    if (h264Type == 5) hasKeyframe = YES;
+                    // H264 Headers: SPS (7), PPS (8)
+                    if (h264Type == 7 || h264Type == 8) hasHeader = YES;
                     
-                    if (hasKeyframe) {
-                        return FrameTypeKeyframe; // Fast exit if we found a keyframe
-                    }
+                    if (hasKeyframe) return FrameTypeKeyframe; 
                 }
                 offset += startCodeLen;
                 continue;

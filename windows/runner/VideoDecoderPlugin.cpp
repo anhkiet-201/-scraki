@@ -199,16 +199,26 @@ static enum AVPixelFormat get_hw_format_d3d11(AVCodecContext* ctx, const enum AV
 }
 
 static bool IsKeyframe(const uint8_t* data, size_t size) {
-    // HEVC NAL Unit Types:
-    // 16-21: IRAP (Keyframes)
-    // 32-34: Parameter Sets (VPS, SPS, PPS)
+    // Detect HEVC and H.264 Keyframes & Headers
     for (size_t i = 0; i < size - 4; ++i) {
-        if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 0 && data[i+3] == 1) {
-            uint8_t nal_type = (data[i+4] & 0x7E) >> 1;
-            if ((nal_type >= 16 && nal_type <= 21) || (nal_type >= 32 && nal_type <= 34)) return true;
-        } else if (data[i] == 0 && data[i+1] == 0 && data[i+2] == 1) {
-            uint8_t nal_type = (data[i+3] & 0x7E) >> 1;
-            if ((nal_type >= 16 && nal_type <= 21) || (nal_type >= 32 && nal_type <= 34)) return true;
+        if (data[i] == 0 && data[i+1] == 0) {
+            size_t startCodeLen = 0;
+            if (data[i+2] == 1) startCodeLen = 3;
+            else if (data[i+2] == 0 && data[i+3] == 1) startCodeLen = 4;
+
+            if (startCodeLen > 0) {
+                size_t nalStart = i + startCodeLen;
+                if (nalStart < size) {
+                    uint8_t hevcType = (data[nalStart] >> 1) & 0x3F;
+                    uint8_t h264Type = data[nalStart] & 0x1F;
+
+                    // HEVC: IRAP (16-21) or Parameter Sets (32-34)
+                    if ((hevcType >= 16 && hevcType <= 21) || (hevcType >= 32 && hevcType <= 34)) return true;
+                    // H.264: IDR (5) or SPS/PPS (7-8)
+                    if (h264Type == 5 || h264Type == 7 || h264Type == 8) return true;
+                }
+                i += startCodeLen;
+            }
         }
     }
     return false;
@@ -474,8 +484,15 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
-        state_->is_visible.exchange(visible);
-        if (visible) state_->last_visible_time = GetTickCount64();
+        bool was_visible = state_->is_visible.exchange(visible);
+        if (visible) {
+            state_->last_visible_time = GetTickCount64();
+            // [Resume Logic] Force I-Frame wait and Flush on visible transition
+            if (!was_visible) {
+                state_->waiting_for_iframe = true;
+                state_->needs_flush = true;
+            }
+        }
 
         // [Smart Resource Management] 
         // Visible sessions want GPU, Invisible sessions MUST release GPU for others.
