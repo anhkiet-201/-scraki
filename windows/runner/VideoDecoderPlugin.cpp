@@ -474,7 +474,7 @@ VideoDecoderPlugin::VideoSession::~VideoSession() {
 
 void VideoDecoderPlugin::VideoSession::SetVisible(bool visible) {
     if (state_) {
-        bool was_visible = state_->is_visible.exchange(visible);
+        state_->is_visible.exchange(visible);
         if (visible) state_->last_visible_time = GetTickCount64();
 
         // [Smart Resource Management] 
