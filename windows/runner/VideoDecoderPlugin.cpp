@@ -21,6 +21,10 @@ std::atomic<int> g_active_sessions{0};
 static std::atomic<int> g_bg_decoding_sessions{0};
 const int MAX_BG_DECODING_SESSIONS = 10;
 
+// Optimized Logger to prevent I/O bottlenecks
+static FILE* g_log_file = nullptr;
+static std::mutex g_log_mutex;
+
 // Global Hardware Context to prevent NVIDIA Driver Crashes due to resource exhaustion
 static AVBufferRef* g_hw_device_ctx = nullptr;
 static std::mutex g_hw_ctx_mutex;
@@ -65,10 +69,13 @@ static void LogTrace(const char* format, ...) {
                         strstr(message, "Cleanup");
 
     if (is_important) {
-        FILE* f = fopen("C:\\Users\\Public\\scraki_errors.log", "a");
-        if (f) {
-            fprintf(f, "%s", full_log);
-            fclose(f);
+        std::lock_guard<std::mutex> lock(g_log_mutex);
+        if (!g_log_file) {
+            g_log_file = fopen("C:\\Users\\Public\\scraki_errors.log", "a");
+        }
+        if (g_log_file) {
+            fprintf(g_log_file, "%s", full_log);
+            fflush(g_log_file); // Ensure it's written but keep handle open
         }
         fprintf(stderr, "%s", full_log);
         fflush(stderr);
