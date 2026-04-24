@@ -20,6 +20,8 @@ import 'package:scraki/features/device/presentation/widgets/native_video_decoder
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
 import 'package:path/path.dart' as p;
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
+import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
 part 'phone_view_store.g.dart';
 
@@ -413,9 +415,109 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   void setDragging(String serial, bool isDragging, {bool isApk = false}) {
-    if (!isOnDevicesTab) return;
+    if (!isOnDevicesTab && !isFloatingView) return;
     isDraggingFile = isDragging;
     isDraggingApk = isDragging ? isApk : false;
+  }
+
+  @action
+  DropOperation handleDropOver(DropOverEvent event) {
+    if (!isFloatingView && !isOnDevicesTab) {
+      return DropOperation.none;
+    }
+    if (isBlockedByFloating) return DropOperation.none;
+
+    // Mặc định là dragging file bình thường
+    setDragging(serial, true);
+
+    // Kiểm tra xem có file APK nào đang được kéo không (Xử lý async)
+    for (final item in event.session.items) {
+      item.dataReader?.getSuggestedName().then((name) {
+        if (name != null &&
+            (name.toLowerCase().endsWith('.apk') ||
+                name.toLowerCase().endsWith('.xapk'))) {
+          runInAction(() => isDraggingApk = true);
+        }
+      });
+    }
+
+    return DropOperation.copy;
+  }
+
+  @action
+  void handleDropLeave() {
+    setDragging(serial, false);
+  }
+
+  @action
+  Future<void> handlePerformDrop(PerformDropEvent event) async {
+    setDragging(serial, false);
+
+    // Guard 1: Không cho phép drop khi đang ở tab khác
+    if (!isFloatingView && !isOnDevicesTab) return;
+
+    // Guard 2: Nếu floating đang mở, chỉ floating view mới được nhận drop;
+    if (isBlockedByFloating) return;
+
+    final paths = <String>[];
+    final completer = Completer<void>();
+    var pending = 0;
+
+    void tryComplete() {
+      pending--;
+      if (pending == 0) completer.complete();
+    }
+
+    for (final item in event.session.items) {
+      final reader = item.dataReader;
+      if (reader != null && reader.canProvide(Formats.fileUri)) {
+        pending++;
+        reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
+          if (uri != null) paths.add(uri.toFilePath());
+          tryComplete();
+        });
+      }
+    }
+
+    if (pending == 0) return; // không có file nào
+
+    // Chờ tất cả callbacks
+    await completer.future;
+
+    if (paths.isNotEmpty) {
+      uploadFiles(serial, paths);
+    }
+  }
+
+  @action
+  bool handleInternalDragWillAccept() {
+    // Guard 1: Từ chối nếu không ở tab Devices
+    if (!isFloatingView && !isOnDevicesTab) return false;
+
+    // Guard 2: Từ chối nếu floating đang che grid
+    if (isBlockedByFloating) return false;
+
+    setDragging(serial, true);
+    return true;
+  }
+
+  @action
+  void handleInternalDragLeave() {
+    setDragging(serial, false);
+  }
+
+  @action
+  Future<void> handleInternalDragAccept(
+    PosterData data,
+    Future<File?> Function(PosterData)? onPosterDropped,
+  ) async {
+    setDragging(serial, false);
+    if (onPosterDropped != null) {
+      final file = await onPosterDropped(data);
+      if (file != null) {
+        await uploadFiles(serial, [file.path]);
+      }
+    }
   }
 
   @action

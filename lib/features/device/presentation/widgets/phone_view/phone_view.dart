@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -91,97 +90,17 @@ class _PhoneViewState extends State<PhoneView> {
           },
           child: DropRegion(
             formats: Formats.standardFormats,
-            onDropOver: (event) {
-              if (!widget.isFloating && !_store.isOnDevicesTab) {
-                return DropOperation.none;
-              }
-              if (_store.isBlockedByFloating) return DropOperation.none;
-
-              // Mặc định là dragging file bình thường
-              _store.setDragging(widget.serial, true);
-
-              // Kiểm tra xem có file APK nào đang được kéo không (Xử lý async)
-              for (final item in event.session.items) {
-                item.dataReader?.getSuggestedName().then((name) {
-                  if (mounted &&
-                      name != null &&
-                      (name.toLowerCase().endsWith('.apk') ||
-                          name.toLowerCase().endsWith('.xapk'))) {
-                    _store.setDragging(widget.serial, true, isApk: true);
-                  }
-                });
-              }
-
-              return DropOperation.copy;
-            },
-            onDropLeave: (_) => _store.setDragging(widget.serial, false),
-            onPerformDrop: (event) async {
-              _store.setDragging(widget.serial, false);
-
-              // Guard 1: Không cho phép drop khi đang ở tab khác
-              if (!widget.isFloating && !_store.isOnDevicesTab) return;
-
-              // Guard 2: Nếu floating đang mở, chỉ floating view mới được nhận drop;
-              // grid view bên dưới bị block.
-              if (_store.isBlockedByFloating) return;
-
-              // Collect file paths từ getValue callbacks.
-              // getValue callback fires synchronously trên Windows → completer
-              // resolve NGAY trong vòng lặp → await bên dưới return gần như instant,
-              // không block platform thread đáng kể.
-              final paths = <String>[];
-              final completer = Completer<void>();
-              var pending = 0;
-
-              void tryComplete() {
-                pending--;
-                if (pending == 0) completer.complete();
-              }
-
-              for (final item in event.session.items) {
-                final reader = item.dataReader;
-                if (reader != null && reader.canProvide(Formats.fileUri)) {
-                  pending++;
-                  reader.getValue<Uri>(Formats.fileUri, (Uri? uri) {
-                    if (uri != null) paths.add(uri.toFilePath());
-                    tryComplete();
-                  });
-                }
-              }
-
-              if (pending == 0) return; // không có file nào
-
-              // Chờ tất cả callbacks → gần như instant vì getValue fires synchronously
-              await completer.future;
-
-              if (paths.isNotEmpty) {
-                // ignore: discarded_futures — uploadFiles chạy background, không block UI
-                _store.uploadFiles(widget.serial, paths);
-              }
-            },
+            onDropOver: _store.handleDropOver,
+            onDropLeave: (_) => _store.handleDropLeave(),
+            onPerformDrop: _store.handlePerformDrop,
             child: DragTarget<PosterData>(
-              onWillAcceptWithDetails: (details) {
-                // Guard 1: Từ chối nếu không ở tab Devices
-                if (!widget.isFloating && !_store.isOnDevicesTab) return false;
-
-                // Guard 2: Từ chối nếu floating đang che grid
-                if (_store.isBlockedByFloating) return false;
-
-                _store.setDragging(widget.serial, true);
-                return true;
-              },
-              onLeave: (data) {
-                _store.setDragging(widget.serial, false);
-              },
-              onAcceptWithDetails: (details) async {
-                _store.setDragging(widget.serial, false);
-                if (widget.onPosterDropped != null) {
-                  final file = await widget.onPosterDropped!(details.data);
-                  if (mounted && file != null) {
-                    await _store.uploadFiles(widget.serial, [file.path]);
-                  }
-                }
-              },
+              onWillAcceptWithDetails: (_) => _store.handleInternalDragWillAccept(),
+              onLeave: (_) => _store.handleInternalDragLeave(),
+              onAcceptWithDetails:
+                  (details) => _store.handleInternalDragAccept(
+                    details.data,
+                    widget.onPosterDropped,
+                  ),
               builder: (context, candidateData, rejectedData) {
                 return Stack(
                   alignment: Alignment.center,
