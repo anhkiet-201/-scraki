@@ -84,6 +84,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
       std::atomic<bool> needs_flush{false};
       std::atomic<int64_t> last_visible_time{0};
       std::atomic<bool> is_bg_decoding_active{false};
+      std::atomic<bool> using_hw{false};
 
       VideoSessionState(flutter::TextureRegistrar* registrar) : texture_registrar(registrar), texture_id(-1) {
           memset(&flutter_pixel_buffer, 0, sizeof(flutter_pixel_buffer));

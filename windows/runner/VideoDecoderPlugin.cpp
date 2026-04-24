@@ -21,6 +21,10 @@ std::atomic<int> g_active_sessions{0};
 static std::atomic<int> g_bg_decoding_sessions{0};
 const int MAX_BG_DECODING_SESSIONS = 10;
 
+// Hardware Session Limiter to prevent GPU NVDEC overload
+static std::atomic<int> g_hw_sessions_count{0};
+const int MAX_HW_SESSIONS = 16; // Safe limit for consumer RTX cards
+
 // Optimized Logger to prevent I/O bottlenecks
 static FILE* g_log_file = nullptr;
 static std::mutex g_log_mutex;
@@ -350,6 +354,11 @@ VideoDecoderPlugin::VideoSessionState::~VideoSessionState() {
         g_bg_decoding_sessions--;
         is_bg_decoding_active = false;
     }
+
+    if (using_hw) {
+        g_hw_sessions_count--;
+        using_hw = false;
+    }
     
     // The actual cleanup happens here, only when shared_ptr count reaches 0!
     // This is safe because both UI and Decoder threads have finished.
@@ -534,14 +543,26 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->get_format = get_hw_format_d3d11;
     state->codec_context->thread_safe_callbacks = 1;
 
-    // GPU Decoder (D3D11VA) Initialization - Use Shared Global Context to prevent NVIDIA crashes
-    AVBufferRef* global_hw_ctx = GetGlobalHWContext();
+    // GPU Decoder (D3D11VA) Initialization with Session Limiter
+    bool can_use_hw = false;
+    if (g_hw_sessions_count < MAX_HW_SESSIONS) {
+        g_hw_sessions_count++;
+        can_use_hw = true;
+        state->using_hw = true;
+    }
+
+    AVBufferRef* global_hw_ctx = can_use_hw ? GetGlobalHWContext() : nullptr;
     if (global_hw_ctx) {
-        LogTrace("InitializeDecoder [%lld] - Using Global D3D11VA Context", state->texture_id);
-        state->hw_device_ctx = global_hw_ctx; 
+        LogTrace("InitializeDecoder [%lld] - Using Global D3D11VA Context (HW Session %d/%d)", 
+                 state->texture_id, g_hw_sessions_count.load(), MAX_HW_SESSIONS);
+        state->hw_device_ctx = global_hw_ctx; // Store ref in state for cleanup
         state->codec_context->hw_device_ctx = av_buffer_ref(global_hw_ctx);
     } else {
-        LogTrace("InitializeDecoder [%lld] - Hardware Acceleration not available, using Software", state->texture_id);
+        if (can_use_hw) {
+            g_hw_sessions_count--;
+            state->using_hw = false;
+        }
+        LogTrace("InitializeDecoder [%lld] - Hardware Acceleration NOT used (Limit reached or Not available), using Software", state->texture_id);
     }
 
     // For mass concurrency, we still need protection for the sensitive avcodec_open2
