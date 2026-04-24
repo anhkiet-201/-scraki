@@ -27,9 +27,13 @@ class NativeVideoDecoder extends StatefulWidget {
   /// When false, texture will be released to save GPU memory.
   final bool isVisible;
 
+  /// The session identifier
+  final String sessionId;
+
   const NativeVideoDecoder({
     super.key,
     required this.streamUrl,
+    required this.sessionId,
     required this.nativeWidth,
     required this.nativeHeight,
     required this.service,
@@ -49,6 +53,7 @@ class _NativeVideoDecoderState extends State<NativeVideoDecoder> {
   void initState() {
     _store = NativeVideoDecoderStore(
       streamUrl: widget.streamUrl,
+      sessionId: widget.sessionId,
       nativeWidth: widget.nativeWidth,
       nativeHeight: widget.nativeHeight,
       service: widget.service,

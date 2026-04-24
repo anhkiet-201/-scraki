@@ -233,6 +233,7 @@ class _PhoneViewState extends State<PhoneView> {
                 return NativeVideoDecoder(
                   key: Key('decoder_${widget.serial}'),
                   streamUrl: session.videoUrl,
+                  sessionId: widget.serial,
                   nativeWidth: session.width,
                   nativeHeight: session.height,
                   service: session.decoderService,

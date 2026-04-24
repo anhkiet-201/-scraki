@@ -312,25 +312,6 @@ typedef NS_ENUM(NSInteger, FrameType) {
             avcodec_flush_buffers(_codecContext);
             NSLog(@"[VideoDecoder] Decoder flushed for TextureID: %lld", _textureId);
         }
-        
-        // Clear latest pixel buffer to avoid showing old smeared frames
-        {
-            std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
-            if (_latestPixelBuffer) {
-                CVPixelBufferRelease(_latestPixelBuffer);
-                _latestPixelBuffer = nil;
-            }
-        }
-        
-        // Notify Flutter to clear the texture
-        __weak VideoDecoder* weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            VideoDecoder* strongSelf = weakSelf;
-            if (strongSelf && strongSelf.textureId != 0) {
-                [strongSelf.registry textureFrameAvailable:strongSelf.textureId];
-            }
-        });
-        
         *_needsFlushPtr = false;
     }
 
@@ -486,7 +467,7 @@ typedef NS_ENUM(NSInteger, FrameType) {
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     FlutterMethodChannel* channel = [FlutterMethodChannel
-                                     methodChannelWithName:@"scraki/video_decoder"
+                                     methodChannelWithName:@"com.scraki.video_decoder"
                                      binaryMessenger:[registrar messenger]];
     VideoDecoderPlugin* instance = [[VideoDecoderPlugin alloc] initWithRegistrar:registrar];
     [registrar addMethodCallDelegate:instance channel:channel];

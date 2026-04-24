@@ -292,7 +292,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         decoderService: _decoderService,
       );
 
-      await mirrorSession.decoderService.start(url);
+      await mirrorSession.decoderService.start(url, sessionId);
       
       runInAction(() {
         sessionManagerStore.activeSessions[sessionId] = mirrorSession;

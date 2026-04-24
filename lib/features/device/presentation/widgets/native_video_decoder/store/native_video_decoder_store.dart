@@ -24,6 +24,9 @@ abstract class _NativeVideoDecoderStore with Store {
   /// The decoder service to use (shared between grid and floating)
   final NativeVideoDecoderService service;
 
+  /// The session identifier
+  final String sessionId;
+
   /// Whether the video is currently visible in the viewport.
   /// When false, texture will be released to save GPU memory.
   final bool isVisible;
@@ -32,6 +35,7 @@ abstract class _NativeVideoDecoderStore with Store {
     required this.nativeWidth,
     required this.nativeHeight,
     required this.service,
+    required this.sessionId,
     required this.isVisible,
     required this.onError,
   }) {
@@ -55,8 +59,11 @@ abstract class _NativeVideoDecoderStore with Store {
     _isInitializing = true;
     try {
       logger.i('[NativeVideoDecoder] Acquiring texture for $streamUrl');
-      _textureId = await service.start(streamUrl);
+      _textureId = await service.start(streamUrl, sessionId);
       _isInitializing = false;
+      if (_textureId != null && isVisible) {
+        await service.setVisibility(streamUrl, true);
+      }
       logger.i('[NativeVideoDecoder] Received texture ID: $_textureId');
     } catch (e) {
       logger.e('[NativeVideoDecoder] Error acquiring texture', error: e);

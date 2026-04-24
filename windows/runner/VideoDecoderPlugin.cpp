@@ -156,6 +156,15 @@ static int AvCodecReceiveFrameSafe(AVCodecContext* ctx, AVFrame* frame) {
     }
 }
 
+static enum AVPixelFormat get_hw_format_d3d11(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts) {
+    for (const enum AVPixelFormat* p = pix_fmts; *p != -1; p++) {
+        if (*p == AV_PIX_FMT_D3D11) {
+            return *p;
+        }
+    }
+    return AV_PIX_FMT_YUV420P; // Fallback to software
+}
+
 static bool IsKeyframe(const uint8_t* data, size_t size) {
     // HEVC NAL Unit Types for Keyframes (IRAP): 16-21
     for (size_t i = 0; i < size - 4; ++i) {
@@ -478,6 +487,7 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->flags |= AV_CODEC_FLAG_LOW_DELAY;
     state->codec_context->flags2 |= AV_CODEC_FLAG2_FAST;
     state->codec_context->thread_count = 1;
+    state->codec_context->get_format = get_hw_format_d3d11;
 
     // GPU Decoder (D3D11VA) Initialization
     if (av_hwdevice_ctx_create(&state->hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) >= 0) {

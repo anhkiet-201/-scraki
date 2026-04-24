@@ -2,14 +2,17 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import 'package:flutter/widgets.dart';
+import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
 
 class _DecoderSession {
   final int textureId;
+  final String sessionId;
   int refCount;
   int visibleRefCount = 0;
   Timer? stopTimer;
-  _DecoderSession(this.textureId, {required this.refCount});
+  _DecoderSession(this.textureId, this.sessionId, {required this.refCount});
 }
 
 @lazySingleton
@@ -36,7 +39,9 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
   }
 
   Future<void> _syncAllSessionsVisibility() async {
-    for (final session in _sessions.values) {
+    final workerManager = getIt<VideoWorkerManager>();
+    final sessions = List<_DecoderSession>.from(_sessions.values);
+    for (final session in sessions) {
       final bool shouldBeVisible = _isAppVisible && session.visibleRefCount > 0;
       try {
         await _channel.invokeMethod('setVisibility', {
@@ -44,8 +49,9 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
           'visible': shouldBeVisible,
         });
         if (shouldBeVisible) {
-          // Khi hiện lại, ép Flush và Request I-Frame để có hình ngay
+          // Khi hiện lại, ép Flush và Request I-Frame để có hình ngay mà không bị chớp đen
           await _channel.invokeMethod('flush', {'textureId': session.textureId});
+          workerManager.requestKeyFrame(session.sessionId);
         }
       } catch (e) {
         logger.e('[NativeVideoDecoderService] Error syncing global visibility', error: e);
@@ -53,7 +59,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     }
   }
 
-  Future<int?> start(String url) async {
+  Future<int?> start(String url, String sessionId) async {
     try {
       // 1. If session exists for this URL, just increment refCount and return textureId
       if (_sessions.containsKey(url)) {
@@ -71,7 +77,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
       logger.i('[NativeVideoDecoderService] Requesting startDecoding for $url');
       final result = await _channel.invokeMethod('startDecoding', {'url': url});
       if (result is int) {
-        _sessions[url] = _DecoderSession(result, refCount: 1);
+        _sessions[url] = _DecoderSession(result, sessionId, refCount: 1);
         return result;
       }
       return null;
@@ -143,26 +149,29 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
 
     if (session.visibleRefCount < 0) session.visibleRefCount = 0;
 
-    // Chỉ gọi Native khi trạng thái thực tế thay đổi
-    // Lưu ý: Phải tính đến cả trạng thái hiển thị của App
-    final bool shouldCallNative = _isAppVisible && (
-      (visible && oldVisibleCount == 0) || 
-      (!visible && oldVisibleCount > 0 && session.visibleRefCount == 0)
-    );
+    // Luôn tính toán trạng thái hiển thị thực tế (Kết hợp cả Widget Visibility và App Visibility)
+    final bool oldActualVisible = _isAppVisible && oldVisibleCount > 0;
+    final bool newActualVisible = _isAppVisible && session.visibleRefCount > 0;
 
-    if (shouldCallNative) {
+    // Chỉ gọi Native nếu trạng thái thực tế CÓ SỰ THAY ĐỔI
+    if (oldActualVisible != newActualVisible) {
       try {
-        final bool finalVisible = visible && _isAppVisible;
-        logger.i('[NativeVideoDecoderService] Actual native visibility change to $finalVisible for texture ${session.textureId}');
+        logger.i('[NativeVideoDecoderService] Actual native visibility change to $newActualVisible for texture ${session.textureId}');
         await _channel.invokeMethod('setVisibility', {
           'textureId': session.textureId,
-          'visible': finalVisible,
+          'visible': newActualVisible,
         });
+        
+        // Nếu vừa mới hiển thị trở lại, yêu cầu I-Frame ngay để có hình mượt
+        if (newActualVisible) {
+           await _channel.invokeMethod('flush', {'textureId': session.textureId});
+           getIt<VideoWorkerManager>().requestKeyFrame(session.sessionId);
+        }
       } catch (e) {
         logger.e('[NativeVideoDecoderService] Error setting visibility', error: e);
       }
     } else {
-      logger.d('[NativeVideoDecoderService] Visibility refCount updated to ${session.visibleRefCount} for $url (No native call needed)');
+      logger.d('[NativeVideoDecoderService] Visibility refCount updated to ${session.visibleRefCount} (Actual visibility remains $newActualVisible)');
     }
   }
 }
