@@ -130,7 +130,7 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     if (session == null) return;
     try {
       logger.i('[NativeVideoDecoderService] Flushing decoder for texture ${session.textureId}');
-      await _channel.invokeMethod('flushDecoding', {'textureId': session.textureId});
+      await _channel.invokeMethod('flush', {'textureId': session.textureId});
     } catch (e) {
       logger.e('[NativeVideoDecoderService] Error flushing decoder', error: e);
     }
