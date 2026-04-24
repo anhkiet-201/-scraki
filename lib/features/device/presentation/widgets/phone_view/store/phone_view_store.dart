@@ -25,6 +25,8 @@ import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
 part 'phone_view_store.g.dart';
 
+typedef PosterDropHandler = Future<File?> Function(PosterData);
+
 /// Dashboard tab indices
 class DashboardTabs {
   static const int devices = 0; // PhoneView grid/floating
@@ -36,7 +38,7 @@ class PerformanceProfiles {
   static const grid = ScrcpyOptions(
     bitRate: 200000, // 1 Mbps
     maxFps: 10,
-    control: false,
+    control: true, // Bắt buộc phải có để gửi lệnh RESET_VIDEO khi resume
     maxSize: 360,
   );
 
@@ -185,13 +187,20 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     if (isFloating == isFloatingView) {
       final bool wasVisible = _isVisible;
       _isVisible = isVisible || isFloating;
+      
 
       // [Optimization] Tạm dừng/Tiếp tục xử lý trong isolate khi ẩn/hiện để tiết kiệm CPU
+      // UPDATE: Các thiết bị lỗi không hỗ trợ ép tạo I-Frame. Nếu flush decoder, nó sẽ chết cứng.
+      // Do đó, ta PHẢI giữ luồng video liên tục. C++ sẽ tự động giải mã ngầm (chiếm 1-2% CPU).
+      // Việc này giúp Resume tức thì và hoàn hảo 100%.
       if (wasVisible != _isVisible && session != null) {
         if (_isVisible) {
+          getIt<NativeVideoDecoderService>().setVisibility(session!.videoUrl, true);
+          getIt<NativeVideoDecoderService>().flush(session!.videoUrl);
           _workerManager.resumeMirroring(sessionId);
-          getIt<NativeVideoDecoderService>().flush(url);
+          _workerManager.requestKeyFrame(sessionId);
         } else {
+          getIt<NativeVideoDecoderService>().setVisibility(session!.videoUrl, false);
           _workerManager.pauseMirroring(sessionId);
         }
       }
@@ -284,12 +293,20 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       );
 
       await mirrorSession.decoderService.start(url);
-
+      
       runInAction(() {
         sessionManagerStore.activeSessions[sessionId] = mirrorSession;
         isLoading = false;
         _retryCount = 0;
       });
+
+      // Đồng bộ trạng thái visibility ngay khi session đã được đăng ký vào MobX
+      if (_isVisible) {
+        await mirrorSession.decoderService.setVisibility(url, true);
+        // Không cần flush ở đây nếu là session mới vì decoder vừa tạo đã sạch sẽ.
+        // Chỉ requestKeyFrame để đảm bảo có hình ngay lập tức.
+        _workerManager.requestKeyFrame(sessionId);
+      }
 
       return mirrorSession;
     } catch (e, stackTrace) {
@@ -547,7 +564,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   @action
   Future<void> handleInternalDragAccept(
     PosterData data,
-    Future<File?> Function(PosterData)? onPosterDropped,
+    PosterDropHandler? onPosterDropped,
   ) async {
     setDragging(serial, false);
     if (onPosterDropped != null) {

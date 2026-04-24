@@ -48,6 +48,12 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
     return AV_PIX_FMT_YUV420P; // Fallback
 }
 
+typedef NS_ENUM(NSInteger, FrameType) {
+    FrameTypeDrop = 0,
+    FrameTypeHeaderOnly = 1,
+    FrameTypeKeyframe = 2
+};
+
 @interface VideoDecoder : NSObject <FlutterTexture>
 
 @property(nonatomic, assign) int64_t textureId;
@@ -59,6 +65,8 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 @property(nonatomic, assign) std::mutex* pixelBufferMutex;
 @property(nonatomic, assign) CVPixelBufferRef latestPixelBuffer;
 @property(nonatomic, assign) std::atomic<bool>* needsFlushPtr;
+@property(nonatomic, assign) std::atomic<bool>* waitingForIFramePtr;
+@property(nonatomic, assign) std::atomic<bool>* isVisiblePtr;
 
 // FFmpeg
 @property(nonatomic, assign) AVCodecContext* codecContext;
@@ -73,6 +81,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 - (void)startWithHost:(NSString*)host port:(int)port result:(FlutterResult)result;
 - (void)stop;
 - (void)flush;
+- (void)setVisibility:(BOOL)visible;
 
 @end
 
@@ -88,6 +97,8 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
         _socketFd = -1;
         _decoderThread = nullptr;
         _needsFlushPtr = new std::atomic<bool>(false);
+        _waitingForIFramePtr = new std::atomic<bool>(false);
+        _isVisiblePtr = new std::atomic<bool>(false);
         
         // Initialize FFmpeg structures to null
         _codecContext = nullptr;
@@ -100,9 +111,11 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 
 - (void)dealloc {
     [self stop];
-    delete _isDecodingPtr;
-    delete _pixelBufferMutex;
-    delete _needsFlushPtr;
+    if (_isDecodingPtr) delete _isDecodingPtr;
+    if (_pixelBufferMutex) delete _pixelBufferMutex;
+    if (_needsFlushPtr) delete _needsFlushPtr;
+    if (_waitingForIFramePtr) delete _waitingForIFramePtr;
+    if (_isVisiblePtr) delete _isVisiblePtr;
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
@@ -112,6 +125,15 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
         return _latestPixelBuffer;
     }
     return nullptr;
+}
+
+- (void)setVisibility:(BOOL)visible {
+    *_isVisiblePtr = visible;
+    if (visible) {
+        NSLog(@"[VideoDecoder] Visibility set to YES for TextureID: %lld", _textureId);
+    } else {
+        NSLog(@"[VideoDecoder] Visibility set to NO for TextureID: %lld, skipping render.", _textureId);
+    }
 }
 
 - (void)startWithHost:(NSString*)host port:(int)port result:(FlutterResult)result {
@@ -160,6 +182,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 
 - (void)flush {
     *_needsFlushPtr = true;
+    *_waitingForIFramePtr = true;
 }
 
 - (void)decoderThreadMain:(NSString*)host port:(int)port {
@@ -281,39 +304,130 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
 }
 
 - (void)decodePacket:(const std::vector<uint8_t>&)data {
+    _packet->data = (uint8_t*)data.data();
+    _packet->size = (int)data.size();
+
     if (*_needsFlushPtr) {
         if (_codecContext) {
             avcodec_flush_buffers(_codecContext);
             NSLog(@"[VideoDecoder] Decoder flushed for TextureID: %lld", _textureId);
         }
+        
+        // Clear latest pixel buffer to avoid showing old smeared frames
+        {
+            std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
+            if (_latestPixelBuffer) {
+                CVPixelBufferRelease(_latestPixelBuffer);
+                _latestPixelBuffer = nil;
+            }
+        }
+        
+        // Notify Flutter to clear the texture
+        __weak VideoDecoder* weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            VideoDecoder* strongSelf = weakSelf;
+            if (strongSelf && strongSelf.textureId != 0) {
+                [strongSelf.registry textureFrameAvailable:strongSelf.textureId];
+            }
+        });
+        
         *_needsFlushPtr = false;
     }
-    
-    _packet->data = (uint8_t*)data.data();
-    _packet->size = (int)data.size();
+
+    // [Logic mới] Chặn tất cả frame rác nếu đang chờ I-Frame (sau khi Flush hoặc Resume)
+    bool isKeyframe = false;
+    if (*_waitingForIFramePtr) {
+        FrameType type = [self analyzePacket:data];
+        if (type == FrameTypeKeyframe) {
+            NSLog(@"[VideoDecoder] Keyframe detected! Unlocking decoder for TextureID: %lld", _textureId);
+            *_waitingForIFramePtr = false;
+            isKeyframe = true;
+            // Cho phép chạy tiếp xuống phần giải mã bên dưới để warm-up
+        } else if (type == FrameTypeHeaderOnly) {
+            NSLog(@"[VideoDecoder] Header detected while waiting for I-Frame.");
+        } else {
+            // Drop P-Frame
+            av_packet_unref(_packet);
+            return;
+        }
+    }
+
+    // [Optimization] Early Return nếu đang ẩn để đưa GPU về 0%
+    // NGOẠI LỆ: Cho phép I-Frame chạy qua để warm-up bộ giải mã kể cả khi ẩn.
+    if (!*_isVisiblePtr && !isKeyframe) {
+        av_packet_unref(_packet);
+        return;
+    }
     
     if (avcodec_send_packet(_codecContext, _packet) < 0) return;
     
     while (avcodec_receive_frame(_codecContext, _frame) == 0) {
-        CVPixelBufferRef pb = [self convertFrameToPixelBuffer:_frame];
-        if (pb) {
-            {
-                std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
-                if (_latestPixelBuffer) CVPixelBufferRelease(_latestPixelBuffer);
-                _latestPixelBuffer = pb;
-            }
-            // Notify Flutter
-            __weak VideoDecoder* weakSelf = self;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                VideoDecoder* strongSelf = weakSelf;
-                if (strongSelf && strongSelf.textureId != 0) {
-                    [strongSelf.registry textureFrameAvailable:strongSelf.textureId];
+        // Chỉ xử lý render nếu đang hiển thị để tiết kiệm GPU/CPU
+        if (*_isVisiblePtr) {
+            CVPixelBufferRef pb = [self convertFrameToPixelBuffer:_frame];
+            if (pb) {
+                {
+                    std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
+                    if (_latestPixelBuffer) CVPixelBufferRelease(_latestPixelBuffer);
+                    _latestPixelBuffer = pb;
                 }
-            });
+                // Notify Flutter
+                __weak VideoDecoder* weakSelf = self;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    VideoDecoder* strongSelf = weakSelf;
+                    if (strongSelf && strongSelf.textureId != 0) {
+                        [strongSelf.registry textureFrameAvailable:strongSelf.textureId];
+                    }
+                });
+            }
         }
         av_frame_unref(_frame);
     }
     av_packet_unref(_packet);
+}
+
+- (FrameType)analyzePacket:(const std::vector<uint8_t>&)data {
+    if (data.size() < 5) return FrameTypeDrop;
+
+    BOOL hasHeader = NO;
+    BOOL hasKeyframe = NO;
+    size_t offset = 0;
+
+    while (offset < data.size() - 4) {
+        if (data[offset] == 0 && data[offset+1] == 0) {
+            size_t startCodeLen = 0;
+            if (data[offset+2] == 1) {
+                startCodeLen = 3;
+            } else if (data[offset+2] == 0 && data[offset+3] == 1) {
+                startCodeLen = 4;
+            }
+            
+            if (startCodeLen > 0) {
+                size_t nalStart = offset + startCodeLen;
+                if (nalStart < data.size()) {
+                    uint8_t hevcType = (data[nalStart] >> 1) & 0x3F;
+                    uint8_t h264Type = data[nalStart] & 0x1F;
+                    
+                    if (hevcType >= 16 && hevcType <= 23) hasKeyframe = YES; // HEVC BLA/IDR/CRA (IRAP)
+                    if (hevcType >= 32 && hevcType <= 34) hasHeader = YES;   // HEVC VPS/SPS/PPS
+                    
+                    if (h264Type == 5) hasKeyframe = YES;                    // H264 IDR
+                    if (h264Type == 7 || h264Type == 8) hasHeader = YES;     // H264 SPS/PPS
+                    
+                    if (hasKeyframe) {
+                        return FrameTypeKeyframe; // Fast exit if we found a keyframe
+                    }
+                }
+                offset += startCodeLen;
+                continue;
+            }
+        }
+        offset++;
+    }
+
+    if (hasKeyframe) return FrameTypeKeyframe;
+    if (hasHeader) return FrameTypeHeaderOnly;
+    return FrameTypeDrop;
 }
 
 - (CVPixelBufferRef)convertFrameToPixelBuffer:(AVFrame*)frame {
@@ -428,6 +542,16 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelF
             VideoDecoder* decoder = _sessions[textureId];
             if (decoder) {
                 [decoder flush];
+            }
+        }
+        result(nil);
+    } else if ([@"setVisibility" isEqualToString:call.method]) {
+        NSNumber* textureId = call.arguments[@"textureId"];
+        BOOL visible = [call.arguments[@"visible"] boolValue];
+        if (textureId) {
+            VideoDecoder* decoder = _sessions[textureId];
+            if (decoder) {
+                [decoder setVisibility:visible];
             }
         }
         result(nil);

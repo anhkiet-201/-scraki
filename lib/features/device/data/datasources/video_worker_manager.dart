@@ -165,6 +165,18 @@ class VideoWorkerManager {
     }
   }
 
+  void requestKeyFrame(String sessionId) {
+    for (final worker in _workers) {
+      worker.sendPort.send(
+        VideoWorkerCommand(
+          type: 'request_keyframe',
+          sessionId: sessionId,
+          url: '',
+        ),
+      );
+    }
+  }
+
   void sendControl(String sessionId, List<int> data) {
     for (final worker in _workers) {
       worker.sendPort.send(
@@ -256,6 +268,9 @@ void _workerEntryPoint(SendPort managerPort) async {
         case 'resume':
           sessions[message.sessionId]?.resume();
           break;
+        case 'request_keyframe':
+          sessions[message.sessionId]?.requestKeyFrame();
+          break;
       }
     }
   }
@@ -280,7 +295,6 @@ class _IsolateVideoSession {
   bool _isFirstFrameReceived = false;
   final List<int> _parseBuffer = [];
   bool _headerParsed = false;
-  bool _isPaused = false;
 
   // Stream buffering for first connect
   final List<List<int>> _initialBuffer = [];
@@ -483,9 +497,7 @@ class _IsolateVideoSession {
 
     // Forward to current player
     try {
-      if (!_isPaused) {
-        _playerSocket?.add(data);
-      }
+      _playerSocket?.add(data);
     } catch (_) {
       _anyPlayerConnected = false;
       _playerSocket = null;
@@ -572,22 +584,19 @@ class _IsolateVideoSession {
   }
 
   void pause() {
-    _isPaused = true;
-    logger.i('[Isolate-Video] Session $sessionId paused decoding');
+    // Không được drop data ở tầng TCP thô vì sẽ làm hỏng framing của C++.
+    // Native plugin sẽ tự động drop frame khi bị flush (waitingForIFrame).
+    logger.i('[Isolate-Video] Session $sessionId paused (Dart passthrough)');
   }
 
   void resume() {
-    _isPaused = false;
-    logger.i('[Isolate-Video] Session $sessionId resumed decoding');
-    _parseBuffer.clear();
+    logger.i('[Isolate-Video] Session $sessionId resumed (Dart passthrough)');
+  }
 
-    // Request a Keyframe immediately
-    sendControl(Uint8List.fromList([12]));
-
-    // Ensure meta is sent on resume just in case
-    if (_configHeader.isNotEmpty && _playerSocket != null) {
-      _playerSocket!.add(_configHeader);
-    }
+  void requestKeyFrame() {
+    logger.d('[Isolate-Video] Requesting Keyframe (RESET_VIDEO byte 17) for $sessionId...');
+    // CHỈ gửi duy nhất byte 17. Gửi các byte khác (12, 16) sẽ làm treo luồng Control socket của Server.
+    sendControl(Uint8List.fromList([17]));
   }
 
   void stop() {

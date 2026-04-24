@@ -278,7 +278,7 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   @override
   Future<void> handleInternalDragAccept(
     PosterData data,
-    Future<File?> Function(PosterData)? onPosterDropped,
+    PosterDropHandler? onPosterDropped,
   ) {
     return _$handleInternalDragAcceptAsyncAction.run(
       () => super.handleInternalDragAccept(data, onPosterDropped),

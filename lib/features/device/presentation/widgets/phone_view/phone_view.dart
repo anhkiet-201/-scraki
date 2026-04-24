@@ -23,7 +23,6 @@ import 'widgets/drag_overlay_view.dart';
 /// - File drag and drop
 ///
 /// All business logic and state management is handled by [SessionManagerStore].
-import 'dart:io';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
 class PhoneView extends StatefulWidget {
@@ -31,7 +30,7 @@ class PhoneView extends StatefulWidget {
   final BoxFit fit;
   final bool isFloating;
   final FocusNode? focusNode;
-  final Future<File?> Function(PosterData)? onPosterDropped;
+  final PosterDropHandler? onPosterDropped;
 
   const PhoneView({
     super.key,
