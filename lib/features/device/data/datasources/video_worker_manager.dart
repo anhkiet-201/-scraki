@@ -556,6 +556,10 @@ class _IsolateVideoSession {
     _isPaused = false;
     logger.i('[Isolate-Video] Session $sessionId resumed decoding');
     _parseBuffer.clear();
+
+    // Request a Keyframe immediately
+    sendControl(Uint8List.fromList([12]));
+
     // Ensure meta is sent on resume just in case
     if (_configHeader.isNotEmpty && _playerSocket != null) {
       _playerSocket!.add(_configHeader);

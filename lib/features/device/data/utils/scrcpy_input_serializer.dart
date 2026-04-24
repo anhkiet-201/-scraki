@@ -232,3 +232,14 @@ class SetClipboardControlMessage extends ControlMessage {
     return buffer.toBytes();
   }
 }
+
+class RequestKeyFrameControlMessage extends ControlMessage {
+  static const int typeRequestKeyFrame = 12; // 0x0c
+
+  @override
+  Uint8List serialize() {
+    final buffer = BytesBuilder();
+    buffer.addByte(typeRequestKeyFrame);
+    return buffer.toBytes();
+  }
+}
