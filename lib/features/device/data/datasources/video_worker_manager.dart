@@ -555,6 +555,7 @@ class _IsolateVideoSession {
   void resume() {
     _isPaused = false;
     logger.i('[Isolate-Video] Session $sessionId resumed decoding');
+    _parseBuffer.clear();
     // Ensure meta is sent on resume just in case
     if (_configHeader.isNotEmpty && _playerSocket != null) {
       _playerSocket!.add(_configHeader);
