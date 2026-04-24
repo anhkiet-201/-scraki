@@ -75,6 +75,10 @@ abstract class _NativeVideoDecoderStore with Store {
   void releaseTexture() {
     if (_textureId != null) {
       logger.i('[NativeVideoDecoder] Releasing texture for $streamUrl');
+      // Đảm bảo giảm visible ref count trước khi stop
+      if (isVisible) {
+        service.setVisibility(streamUrl, false);
+      }
       service.stop(streamUrl);
       _textureId = null;
     }

@@ -91,7 +91,6 @@ class NativeVideoDecoderService with WidgetsBindingObserver {
     final session = _sessions[url];
     if (session == null) return;
 
-    session.visibleRefCount = 0; // Reset để tránh phantom reference khi khởi động lại cùng URL
     session.refCount--;
     if (session.refCount < 0) session.refCount = 0;
     
