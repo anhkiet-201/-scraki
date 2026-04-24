@@ -38,14 +38,12 @@ class PerformanceProfiles {
     maxFps: 10,
     control: false,
     maxSize: 360,
-    videoCodecOptions: 'i-frame-interval=1',
   );
 
   static const floating = ScrcpyOptions(
     bitRate: 2500000, // 25 Mbps
     maxFps: 60,
     control: true,
-    videoCodecOptions: 'i-frame-interval=1',
   );
 }
 
