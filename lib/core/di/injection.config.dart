@@ -136,10 +136,30 @@ import '../../features/video_poster/data/repositories/ffmpeg_video_processing_re
     as _i1007;
 import '../../features/video_poster/data/repositories/recent_color_repository.dart'
     as _i763;
-import '../../features/video_poster/data/services/ambient_audio_service.dart'
-    as _i390;
-import '../../features/video_poster/data/services/batch_video_service.dart'
-    as _i893;
+import '../../features/video_poster/data/services/batch_video/engines/audio/ambient_audio_provider.dart'
+    as _i761;
+import '../../features/video_poster/data/services/batch_video/engines/composition/macos_video_batch_composer.dart'
+    as _i1050;
+import '../../features/video_poster/data/services/batch_video/engines/composition/video_batch_composer.dart'
+    as _i247;
+import '../../features/video_poster/data/services/batch_video/engines/composition/windows_video_batch_composer.dart'
+    as _i8;
+import '../../features/video_poster/data/services/batch_video/engines/hardware/macos_video_hardware_capability_resolver.dart'
+    as _i815;
+import '../../features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart'
+    as _i9;
+import '../../features/video_poster/data/services/batch_video/engines/hardware/windows_video_hardware_capability_resolver.dart'
+    as _i746;
+import '../../features/video_poster/data/services/batch_video/engines/metadata/video_metadata_analyzer.dart'
+    as _i606;
+import '../../features/video_poster/data/services/batch_video/engines/metadata/video_metadata_analyzer_impl.dart'
+    as _i1051;
+import '../../features/video_poster/data/services/batch_video/engines/segment/video_segment_processor.dart'
+    as _i461;
+import '../../features/video_poster/data/services/batch_video/engines/segment/video_segment_processor_impl.dart'
+    as _i854;
+import '../../features/video_poster/data/services/batch_video/video_batch_orchestrator.dart'
+    as _i633;
 import '../../features/video_poster/data/services/giphy_service.dart' as _i298;
 import '../../features/video_poster/data/services/image_drop_service.dart'
     as _i113;
@@ -158,6 +178,9 @@ import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
 import 'register_module.dart' as _i291;
+
+const String _windows = 'windows';
+const String _macos = 'macos';
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -223,6 +246,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i348.ImageDropStore>(
       () => _i348.ImageDropStore(gh<_i113.ImageDropService>()),
     );
+    gh.lazySingleton<_i9.VideoHardwareCapabilityResolver>(
+      () => _i746.WindowsVideoHardwareCapabilityResolver(),
+      registerFor: {_windows},
+    );
     gh.lazySingleton<_i992.LocalScriptDataSource>(
       () => _i992.LocalScriptDataSourceImpl(),
       instanceName: 'local_script',
@@ -246,6 +273,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i768.IVideoDecoderService>(
       () => _i892.NativeVideoDecoderServiceImpl(),
     );
+    gh.lazySingleton<_i247.VideoBatchComposer>(
+      () => _i8.WindowsVideoBatchComposer(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+      ),
+      registerFor: {_windows},
+    );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(
         gh<_i296.ICredentialRemoteDataSource>(),
@@ -257,8 +290,17 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i521.DeviceGroupRemoteDataSource>(),
       ),
     );
+    gh.lazySingleton<_i9.VideoHardwareCapabilityResolver>(
+      () => _i815.MacOSVideoHardwareCapabilityResolver(),
+      registerFor: {_macos},
+    );
     gh.lazySingleton<_i229.ITikTokPostService>(
       () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
+    );
+    gh.lazySingleton<_i606.VideoMetadataAnalyzer>(
+      () => _i1051.VideoMetadataAnalyzerImpl(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+      ),
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
@@ -304,8 +346,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i260.IAkiRemoteService>(),
       ),
     );
-    gh.factory<_i390.AmbientAudioService>(
-      () => _i390.AmbientAudioService(gh<_i667.DioClient>()),
+    gh.lazySingleton<_i247.VideoBatchComposer>(
+      () => _i1050.MacOSVideoBatchComposer(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+      ),
+      registerFor: {_macos},
+    );
+    gh.factory<_i761.AmbientAudioProvider>(
+      () => _i761.AmbientAudioProvider(gh<_i667.DioClient>()),
     );
     gh.lazySingleton<_i298.GiphyService>(
       () => _i298.GiphyService(gh<_i667.DioClient>()),
@@ -322,8 +370,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
       () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i893.BatchVideoService>(
-      () => _i893.BatchVideoService(gh<_i390.AmbientAudioService>()),
+    gh.lazySingleton<_i461.VideoSegmentProcessor>(
+      () => _i854.VideoSegmentProcessorImpl(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+        gh<_i606.VideoMetadataAnalyzer>(),
+      ),
     );
     gh.lazySingleton<_i801.ITikTokSeedingService>(
       () => _i1032.TikTokSeedingService(gh<_i229.ITikTokPostService>()),
@@ -342,6 +393,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),
         gh<_i545.SearchJobsWithAiUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i633.VideoBatchOrchestrator>(
+      () => _i633.VideoBatchOrchestrator(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+        gh<_i606.VideoMetadataAnalyzer>(),
+        gh<_i461.VideoSegmentProcessor>(),
+        gh<_i247.VideoBatchComposer>(),
+        gh<_i761.AmbientAudioProvider>(),
       ),
     );
     gh.factory<_i69.RunScriptUseCase>(
