@@ -118,9 +118,9 @@ abstract class _DeviceGroupStore with Store {
   StreamSubscription<Either<Failure, List<DeviceGroupEntity>>>?
   _groupSubscription;
   
-  // Quản lý các subscription lẻ cho từng thiết bị
+  // Quản lý các subscription
   final Map<String, StreamSubscription<String?>> _emailSubscriptions = {};
-  final Map<String, StreamSubscription<String?>> _nicknameSubscriptions = {};
+  StreamSubscription<Map<String, String>>? _nicknameSubscription;
   
   bool _isListeningToGroups = false;
 
@@ -137,6 +137,17 @@ abstract class _DeviceGroupStore with Store {
     });
 
     _groupSubscription?.cancel();
+    _nicknameSubscription?.cancel();
+
+    _nicknameSubscription = _repository
+        .watchNicknamesMap(_settingsStore.deviceGroupCollection)
+        .listen((map) {
+      runInAction(() {
+        allNicknames.clear();
+        allNicknames.addAll(map);
+      });
+    });
+
     _groupSubscription = _repository.watchGroups(_settingsStore.deviceGroupCollection).listen((result) {
       result.fold(
         (failure) {
@@ -178,14 +189,6 @@ abstract class _DeviceGroupStore with Store {
             runInAction(() => allEmails[serial] = value ?? '');
           });
     }
-    
-    if (!_nicknameSubscriptions.containsKey(serial)) {
-      _nicknameSubscriptions[serial] = _repository
-          .watchDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', serial)
-          .listen((value) {
-            runInAction(() => allNicknames[serial] = value ?? '');
-          });
-    }
   }
 
   @action
@@ -196,14 +199,11 @@ abstract class _DeviceGroupStore with Store {
 
   void dispose() {
     _groupSubscription?.cancel();
+    _nicknameSubscription?.cancel();
     for (var sub in _emailSubscriptions.values) {
       sub.cancel();
     }
-    for (var sub in _nicknameSubscriptions.values) {
-      sub.cancel();
-    }
     _emailSubscriptions.clear();
-    _nicknameSubscriptions.clear();
   }
 
   @action
@@ -326,22 +326,19 @@ abstract class _DeviceGroupStore with Store {
   @action
   Future<void> saveNicknameForDevice(String deviceSerial, String nickname) async {
     logger.i(
-      '[DeviceGroupStore] Saving nickname "$nickname" for device "$deviceSerial" to granular document.',
+      '[DeviceGroupStore] Saving nickname "$nickname" for device "$deviceSerial" to metadata map.',
     );
 
-    if (nickname.isEmpty) {
-      final result = await _repository.removeDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', deviceSerial);
-      result.fold(
-        (failure) => errorMessage = failure.message,
-        (_) => logger.i('[DeviceGroupStore] Removed nickname for $deviceSerial'),
-      );
-    } else {
-      final result = await _repository.updateDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', deviceSerial, nickname);
-      result.fold(
-        (failure) => errorMessage = failure.message,
-        (_) => logger.i('[DeviceGroupStore] Saved nickname $nickname for $deviceSerial'),
-      );
-    }
+    final result = await _repository.updateNickname(
+      _settingsStore.deviceGroupCollection,
+      deviceSerial,
+      nickname,
+    );
+    
+    result.fold(
+      (failure) => errorMessage = failure.message,
+      (_) => logger.i('[DeviceGroupStore] Saved nickname $nickname for $deviceSerial'),
+    );
   }
 
   @action

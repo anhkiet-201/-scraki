@@ -73,6 +73,25 @@ class DeviceGroupRepositoryFirebaseImpl implements DeviceGroupRepository {
   }
 
   @override
+  Stream<Map<String, String>> watchNicknamesMap(String collectionName) {
+    return _remoteDataSource.watchNicknamesMap(collectionName);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateNickname(
+    String collectionName,
+    String deviceSerial,
+    String nickname,
+  ) async {
+    try {
+      await _remoteDataSource.updateNickname(collectionName, deviceSerial, nickname);
+      return const Right(unit);
+    } catch (e) {
+      return Left(ApiFailure('Failed to update nickname in $collectionName: $e'));
+    }
+  }
+
+  @override
   Stream<String?> watchDeviceMetadata(String collectionName, String type, String deviceSerial) {
     return _remoteDataSource.watchDeviceMetadata(collectionName, type, deviceSerial);
   }

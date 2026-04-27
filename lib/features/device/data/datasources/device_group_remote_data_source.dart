@@ -8,7 +8,11 @@ abstract class DeviceGroupRemoteDataSource {
   Future<void> saveGroup(String collectionName, DeviceGroupModel group);
   Future<void> deleteGroup(String collectionName, String groupId);
 
-  // Device Metadata Methods (Granular access)
+  // Nickname Methods (Map based for performance)
+  Stream<Map<String, String>> watchNicknamesMap(String collectionName);
+  Future<void> updateNickname(String collectionName, String deviceSerial, String nickname);
+
+  // Device Metadata Methods (Granular access - e.g. for Email)
   Stream<String?> watchDeviceMetadata(String collectionName, String type, String deviceSerial);
   Future<void> updateDeviceMetadata(String collectionName, String type, String deviceSerial, String value);
   Future<void> removeDeviceMetadata(String collectionName, String type, String deviceSerial);
@@ -57,6 +61,47 @@ class DeviceGroupRemoteDataSourceImpl implements DeviceGroupRemoteDataSource {
       logger.i('[Firestore] Saved group ${group.id} to $collectionName/data/group');
     } catch (e) {
       logger.e('[Firestore] Save group failed: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Stream<Map<String, String>> watchNicknamesMap(String collectionName) {
+    return _getBaseCollection(collectionName)
+        .doc('data')
+        .collection('metadata')
+        .doc('nicknames')
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists) return {};
+          final data = doc.data();
+          final nicknames = data?['values'] as Map<String, dynamic>? ?? {};
+          return nicknames.map((key, value) => MapEntry(key, value.toString()));
+        });
+  }
+
+  @override
+  Future<void> updateNickname(String collectionName, String deviceSerial, String nickname) async {
+    final safeSerial = deviceSerial.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
+    try {
+      final docRef = _getBaseCollection(collectionName)
+          .doc('data')
+          .collection('metadata')
+          .doc('nicknames');
+          
+      if (nickname.isEmpty) {
+        await docRef.update({
+          'values.$safeSerial': FieldValue.delete(),
+        });
+      } else {
+        await docRef.set({
+          'values': {
+            safeSerial: nickname,
+          }
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      logger.e('[Firestore] Update nickname failed: $e');
       rethrow;
     }
   }

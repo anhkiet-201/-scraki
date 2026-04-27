@@ -202,6 +202,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.IAdbRemoteDataSource>(
       () => _i165.AdbRemoteDataSourceImpl(),
     );
+    gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
+      () => _i521.DeviceGroupRemoteDataSourceImpl(),
+    );
     gh.factory<_i427.VideoProcessingRepository>(
       () => _i1007.FfmpegVideoProcessingRepositoryImpl(),
     );
@@ -247,6 +250,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i352.EmailRepositoryImpl(
         gh<_i296.ICredentialRemoteDataSource>(),
         gh<_i583.IImapRemoteDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i510.DeviceGroupRepository>(
+      () => _i936.DeviceGroupRepositoryFirebaseImpl(
+        gh<_i521.DeviceGroupRemoteDataSource>(),
       ),
     );
     gh.lazySingleton<_i229.ITikTokPostService>(
@@ -347,16 +355,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i730.SettingsConfigProvider>(
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
-    );
-    gh.lazySingleton<_i521.DeviceGroupRemoteDataSource>(
-      () => _i521.DeviceGroupRemoteDataSourceImpl(
-        gh<_i730.SettingsConfigProvider>(),
-      ),
-    );
-    gh.lazySingleton<_i510.DeviceGroupRepository>(
-      () => _i936.DeviceGroupRepositoryFirebaseImpl(
-        gh<_i521.DeviceGroupRemoteDataSource>(),
-      ),
     );
     gh.lazySingleton<_i246.DeviceGroupStore>(
       () => _i246.DeviceGroupStore(

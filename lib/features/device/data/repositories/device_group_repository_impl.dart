@@ -64,6 +64,31 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   }
 
   @override
+  Stream<Map<String, String>> watchNicknamesMap(String collectionName) async* {
+    final box = await Hive.openBox<String>('nickname');
+    yield box.toMap().cast<String, String>();
+    
+    await for (final _ in box.watch()) {
+      yield box.toMap().cast<String, String>();
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateNickname(String collectionName, String deviceSerial, String nickname) async {
+    try {
+      final box = await Hive.openBox<String>('nickname');
+      if (nickname.isEmpty) {
+        await box.delete(deviceSerial);
+      } else {
+        await box.put(deviceSerial, nickname);
+      }
+      return const Right(unit);
+    } catch (e) {
+      return Left(CacheFailure('Failed to update nickname: $e'));
+    }
+  }
+
+  @override
   Stream<Either<Failure, List<DeviceGroupEntity>>> watchGroups(String collectionName) async* {
     yield await getGroups(collectionName);
   }
