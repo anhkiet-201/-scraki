@@ -14,7 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
-import 'package:scraki/features/video_poster/data/services/batch_video_service.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/video_batch_orchestrator.dart';
 import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
@@ -726,7 +726,7 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
-  BatchVideoService? _batchService;
+  VideoBatchOrchestrator? _batchService;
   StreamSubscription<String>? _batchSub;
 
   @action
@@ -738,7 +738,7 @@ abstract class _VideoPosterStore with Store {
   Future<void> createBatchVideos() async {
     if (sourceVideoPaths.isEmpty || isBatchCreating) return;
 
-    _batchService = inject<BatchVideoService>();
+    _batchService = inject<VideoBatchOrchestrator>();
 
     // Fix: Tạm thời tắt isPreviewMode và dừng video để khi chụp PNG UI
     // không bị dính logic render text theo thời gian thực (giúp hiển thị tất cả text).

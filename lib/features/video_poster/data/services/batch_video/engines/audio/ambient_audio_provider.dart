@@ -5,14 +5,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 import 'package:injectable/injectable.dart';
 import 'package:scraki/core/network/dio_client.dart';
-import '../models/freesound_response.dart';
+import 'package:scraki/features/video_poster/data/models/freesound_response.dart';
 
 @injectable
-class AmbientAudioService {
+class AmbientAudioProvider {
   final DioClient _dioClient;
   final Random _random = Random();
 
-  AmbientAudioService(this._dioClient);
+  AmbientAudioProvider(this._dioClient);
 
   /// Tải [count] file audio ambient từ Freesound
   Future<List<String>> fetchRandomAmbientAudios(

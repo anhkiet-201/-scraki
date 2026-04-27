@@ -1,21 +1,29 @@
 import 'dart:io';
-import 'package:scraki/features/video_poster/data/services/batch_video/mixins/batch_video_gpu_mixin.dart';
+import 'package:injectable/injectable.dart';
+import '../hardware/video_hardware_capability_resolver.dart';
+import 'video_metadata_analyzer.dart';
 
-mixin BatchVideoProbeMixin on BatchVideoGpuMixin {
-  final Map<String, ({String transfer, String primaries, String pixFmt})> colorInfoCache = {};
+@LazySingleton(as: VideoMetadataAnalyzer)
+class VideoMetadataAnalyzerImpl implements VideoMetadataAnalyzer {
+  final VideoHardwareCapabilityResolver _hardwareResolver;
+  final Map<String, ProbeResult> _probeCache = {};
 
-  Future<({int duration, bool hasAudio, ({String transfer, String primaries, String pixFmt}) colorInfo})>
-  probeSourceVideo(String path) async {
+  VideoMetadataAnalyzerImpl(this._hardwareResolver);
+
+  @override
+  Future<ProbeResult> probeSourceVideo(String path) async {
+    if (_probeCache.containsKey(path)) return _probeCache[path]!;
+
     try {
-      final result = await Process.run(BatchVideoGpuMixin.ffprobeBin, [
-        '-show_entries',
-        'format=duration:stream=codec_type,color_transfer,color_primaries,pix_fmt,duration',
+      final result = await Process.run(_hardwareResolver.ffprobeBin, [
+        '-v', 'error',
+        '-show_entries', 'format=duration:stream=codec_type,color_transfer,color_primaries,pix_fmt',
         '-of', 'default=noprint_wrappers=1:nokey=0',
         path,
       ]);
-      final out = result.stdout as String;
-      final err = result.stderr as String;
 
+      final out = result.stdout as String;
+      
       double durationSec = 0;
       bool hasAudio = false;
       String transfer = 'unknown';
@@ -43,34 +51,23 @@ mixin BatchVideoProbeMixin on BatchVideoGpuMixin {
         }
       }
 
-      if (durationSec == 0) {
-        final durationRegex = RegExp(r'Duration:\s*(\d+):(\d+):(\d+\.\d+)');
-        final match = durationRegex.firstMatch(err);
-        if (match != null) {
-          final h = int.parse(match.group(1)!);
-          final m = int.parse(match.group(2)!);
-          final s = double.tryParse(match.group(3)!) ?? 0;
-          durationSec = (h * 3600) + (m * 60) + s;
-        }
-      }
-
-      final info = (
-        duration: durationSec.round(),
-        hasAudio: hasAudio,
-        colorInfo: (transfer: transfer, primaries: primaries, pixFmt: pixFmt),
+      final res = (
+        duration: durationSec.round(), 
+        hasAudio: hasAudio, 
+        colorInfo: (transfer: transfer, primaries: primaries, pixFmt: pixFmt)
       );
-      
-      colorInfoCache[path] = info.colorInfo;
-      return info;
+      _probeCache[path] = res;
+      return res;
     } catch (_) {
       return (
-        duration: 0,
-        hasAudio: false,
-        colorInfo: (transfer: '', primaries: '', pixFmt: ''),
+        duration: 0, 
+        hasAudio: false, 
+        colorInfo: (transfer: 'unknown', primaries: 'unknown', pixFmt: 'unknown')
       );
     }
   }
 
+  @override
   bool isHdr({required String transfer, required String pixFmt}) {
     const hdrTransfers = {'smpte2084', 'arib-std-b67', 'smpte428'};
     final hdrTransfer = hdrTransfers.contains(transfer);
@@ -82,7 +79,8 @@ mixin BatchVideoProbeMixin on BatchVideoGpuMixin {
     return hdrTransfer || hdrPixFmt;
   }
 
-  void clearProbeCache() {
-    colorInfoCache.clear();
+  @override
+  void clearCache() {
+    _probeCache.clear();
   }
 }

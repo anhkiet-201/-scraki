@@ -1,5 +1,19 @@
 import 'dart:math';
 
+typedef GpuInfo = ({
+  String encoder,
+  String? hwaccel,
+  String? scaleFilter,
+  String? outputFormat,
+  bool hasZscale,
+  bool hasCudaFilters,
+  // Pixel format tối ưu cho encoder: 'nv12' với NVENC/VT, 'yuv420p' với libx264/QSV
+  String preferredPixFmt,
+  // Số lượng encode song song tối đa dựa trên hardware
+  int maxConcurrentEncodes,
+});
+
+
 // ============================================================================
 // SegmentRequest — planning data for a single video slice
 // ============================================================================

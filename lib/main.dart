@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:media_kit/media_kit.dart';
@@ -20,7 +22,8 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(ScriptModelAdapter());
   MediaKit.ensureInitialized();
-  configureDependencies();
+  final env = Platform.isMacOS ? 'macos' : (Platform.isWindows ? 'windows' : null);
+  configureDependencies(environment: env);
 
   // Load settings khi khởi động
   final settingsStore = getIt<SettingsStore>();
