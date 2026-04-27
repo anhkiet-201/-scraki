@@ -44,6 +44,42 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
     });
   }
 
+  late final _$allEmailsAtom = Atom(
+    name: '_DeviceGroupStore.allEmails',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, String> get allEmails {
+    _$allEmailsAtom.reportRead();
+    return super.allEmails;
+  }
+
+  @override
+  set allEmails(ObservableMap<String, String> value) {
+    _$allEmailsAtom.reportWrite(value, super.allEmails, () {
+      super.allEmails = value;
+    });
+  }
+
+  late final _$allNicknamesAtom = Atom(
+    name: '_DeviceGroupStore.allNicknames',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, String> get allNicknames {
+    _$allNicknamesAtom.reportRead();
+    return super.allNicknames;
+  }
+
+  @override
+  set allNicknames(ObservableMap<String, String> value) {
+    _$allNicknamesAtom.reportWrite(value, super.allNicknames, () {
+      super.allNicknames = value;
+    });
+  }
+
   late final _$selectedGroupIdAtom = Atom(
     name: '_DeviceGroupStore.selectedGroupId',
     context: context,
@@ -166,6 +202,18 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
   }
 
   @override
+  void _syncMetadataSubscriptions() {
+    final _$actionInfo = _$_DeviceGroupStoreActionController.startAction(
+      name: '_DeviceGroupStore._syncMetadataSubscriptions',
+    );
+    try {
+      return super._syncMetadataSubscriptions();
+    } finally {
+      _$_DeviceGroupStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void _updateGroups(List<DeviceGroupEntity> list) {
     final _$actionInfo = _$_DeviceGroupStoreActionController.startAction(
       name: '_DeviceGroupStore._updateGroups',
@@ -193,6 +241,8 @@ mixin _$DeviceGroupStore on _DeviceGroupStore, Store {
   String toString() {
     return '''
 groups: ${groups},
+allEmails: ${allEmails},
+allNicknames: ${allNicknames},
 selectedGroupId: ${selectedGroupId},
 errorMessage: ${errorMessage},
 selectedGroup: ${selectedGroup},

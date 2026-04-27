@@ -6,94 +6,78 @@ import '../models/auth_token_model.dart';
 import '../../domain/entities/auth_token.dart';
 
 abstract class IAuthRemoteDataSource {
-  Future<Either<Failure, String>> getRawAuthTokens(
-    String groupCollection,
-    String serial,
-  );
-  Future<Either<Failure, Unit>> saveRawAuthTokens(
-    String groupCollection,
-    String serial,
-    String rawText,
-  );
   Future<Either<Failure, List<AuthToken>>> getAuthTokens(
     String groupCollection,
     String serial,
+  );
+  Future<Either<Failure, Unit>> saveAuthTokens(
+    String groupCollection,
+    String serial,
+    List<AuthToken> tokens,
   );
 }
 
 @LazySingleton(as: IAuthRemoteDataSource)
 class AuthRemoteDataSourceFirebaseImpl implements IAuthRemoteDataSource {
-  static const String _collectionName = 'app_configs';
-  // static const String _documentId = 'auth_tokens'; // Không dùng ID cố định nữa
-  static const String _fieldKey = 'raw_text';
-
   final FirebaseFirestore _firestore;
 
   AuthRemoteDataSourceFirebaseImpl() : _firestore = FirebaseFirestore.instance;
 
   DocumentReference _getDocument(String groupCollection, String serial) {
-    // Tạo document ID phân tách theo group và serial
-    final documentId = 'auth_tokens_${groupCollection}_$serial';
-    return _firestore.collection(_collectionName).doc(documentId);
+    final safeSerial = serial.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
+    return _firestore
+        .collection(groupCollection)
+        .doc('data')
+        .collection('auth_tokens')
+        .doc(safeSerial);
   }
 
   @override
-  Future<Either<Failure, String>> getRawAuthTokens(
+  Future<Either<Failure, List<AuthToken>>> getAuthTokens(
     String groupCollection,
     String serial,
   ) async {
     try {
       final snapshot = await _getDocument(groupCollection, serial).get();
       if (!snapshot.exists) {
-        return const Right('');
+        return const Right([]);
       }
 
       final data = snapshot.data() as Map<String, dynamic>?;
-      final rawText = data?[_fieldKey] as String? ?? '';
-      return Right(rawText);
+      final tokensList = data?['tokens'] as List<dynamic>? ?? [];
+      
+      final tokens = tokensList.map((t) {
+        // Nếu là String cũ (trong quá trình chuyển đổi hoặc migration)
+        if (t is String) {
+          return AuthTokenModel.fromRawLine(t);
+        }
+        // Giả sử sau này ta lưu Map đầy đủ, nhưng hiện tại ta lưu String line
+        return AuthTokenModel.fromRawLine(t.toString());
+      }).toList();
+
+      return Right(tokens);
     } catch (e) {
       return Left(ApiFailure('Failed to get auth tokens from Firebase: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, Unit>> saveRawAuthTokens(
+  Future<Either<Failure, Unit>> saveAuthTokens(
     String groupCollection,
     String serial,
-    String rawText,
+    List<AuthToken> tokens,
   ) async {
     try {
+      final tokenLines = tokens.map((t) => AuthTokenModel.fromEntity(t).toRawLine()).toList();
+      
       await _getDocument(groupCollection, serial).set({
-        _fieldKey: rawText,
+        'tokens': tokenLines,
         'updated_at': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      
       return const Right(unit);
     } catch (e) {
       return Left(ApiFailure('Failed to save auth tokens to Firebase: $e'));
     }
-  }
-
-  @override
-  Future<Either<Failure, List<AuthToken>>> getAuthTokens(
-    String groupCollection,
-    String serial,
-  ) async {
-    final rawEither = await getRawAuthTokens(groupCollection, serial);
-    return rawEither.fold(
-      (failure) => Left(failure),
-      (rawText) {
-        try {
-          if (rawText.trim().isEmpty) return const Right([]);
-          final lines = rawText.split('\n');
-          final tokens = lines
-              .where((line) => line.trim().isNotEmpty)
-              .map((line) => AuthTokenModel.fromRawLine(line))
-              .toList();
-          return Right(tokens);
-        } catch (e) {
-          return Left(ApiFailure('Failed to parse auth tokens: $e'));
-        }
-      },
-    );
   }
 }

@@ -6,16 +6,12 @@ class DeviceGroupModel extends HiveObject {
   String name;
   int colorValue;
   List<String> deviceSerials;
-  Map<String, String> deviceEmails;
-  Map<String, String> deviceNicknames;
 
   DeviceGroupModel({
     required this.id,
     required this.name,
     required this.colorValue,
     required this.deviceSerials,
-    this.deviceEmails = const {},
-    this.deviceNicknames = const {},
   });
 
   factory DeviceGroupModel.fromEntity(DeviceGroupEntity entity) {
@@ -24,8 +20,6 @@ class DeviceGroupModel extends HiveObject {
       name: entity.name,
       colorValue: entity.colorValue,
       deviceSerials: entity.deviceSerials,
-      deviceEmails: entity.deviceEmails,
-      deviceNicknames: entity.deviceNicknames,
     );
   }
 
@@ -39,22 +33,6 @@ class DeviceGroupModel extends HiveObject {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      deviceEmails:
-          (json['deviceEmails'] as Map<String, dynamic>?)?.map((key, value) {
-            final originalKey = key
-                .replaceAll('_dot_', '.')
-                .replaceAll('_colon_', ':');
-            return MapEntry(originalKey, value.toString());
-          }) ??
-          {},
-      deviceNicknames:
-          (json['deviceNicknames'] as Map<String, dynamic>?)?.map((key, value) {
-            final originalKey = key
-                .replaceAll('_dot_', '.')
-                .replaceAll('_colon_', ':');
-            return MapEntry(originalKey, value.toString());
-          }) ??
-          {},
     );
   }
 
@@ -64,14 +42,6 @@ class DeviceGroupModel extends HiveObject {
       'name': name,
       'colorValue': colorValue,
       'deviceSerials': deviceSerials,
-      'deviceEmails': deviceEmails.map((key, value) {
-        final safeKey = key.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
-        return MapEntry(safeKey, value);
-      }),
-      'deviceNicknames': deviceNicknames.map((key, value) {
-        final safeKey = key.replaceAll('.', '_dot_').replaceAll(':', '_colon_');
-        return MapEntry(safeKey, value);
-      }),
     };
   }
 
@@ -81,8 +51,6 @@ class DeviceGroupModel extends HiveObject {
       name: name,
       colorValue: colorValue,
       deviceSerials: deviceSerials,
-      deviceEmails: deviceEmails,
-      deviceNicknames: deviceNicknames,
     );
   }
 }
@@ -102,15 +70,13 @@ class DeviceGroupModelAdapter extends TypeAdapter<DeviceGroupModel> {
       name: fields[1] as String,
       colorValue: fields[2] as int,
       deviceSerials: (fields[3] as List).cast<String>(),
-      deviceEmails: (fields[4] as Map?)?.cast<String, String>() ?? {},
-      deviceNicknames: (fields[5] as Map?)?.cast<String, String>() ?? {},
     );
   }
 
   @override
   void write(BinaryWriter writer, DeviceGroupModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -118,11 +84,7 @@ class DeviceGroupModelAdapter extends TypeAdapter<DeviceGroupModel> {
       ..writeByte(2)
       ..write(obj.colorValue)
       ..writeByte(3)
-      ..write(obj.deviceSerials)
-      ..writeByte(106)
-      ..write(obj.deviceEmails)
-      ..writeByte(5)
-      ..write(obj.deviceNicknames);
+      ..write(obj.deviceSerials);
   }
 
   @override

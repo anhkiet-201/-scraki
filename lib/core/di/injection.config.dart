@@ -363,6 +363,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i510.DeviceGroupRepository>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i891.DashboardStore>(),
+        gh<_i151.SettingsStore>(),
       ),
     );
     gh.singleton<_i391.DeviceNicknameStore>(

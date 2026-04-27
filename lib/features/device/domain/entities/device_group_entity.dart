@@ -9,8 +9,6 @@ abstract class DeviceGroupEntity with _$DeviceGroupEntity {
     required String name,
     required int colorValue,
     required List<String> deviceSerials,
-    @Default(<String, String>{}) Map<String, String> deviceEmails,
-    @Default(<String, String>{}) Map<String, String> deviceNicknames,
   }) = _DeviceGroupEntity;
 
   const DeviceGroupEntity._();
@@ -26,8 +24,6 @@ abstract class DeviceGroupEntity with _$DeviceGroupEntity {
       name: name,
       colorValue: colorValue,
       deviceSerials: [],
-      deviceEmails: {},
-      deviceNicknames: {},
     );
   }
 }

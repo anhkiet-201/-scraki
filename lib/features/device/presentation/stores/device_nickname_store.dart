@@ -18,16 +18,8 @@ abstract class _DeviceNicknameStore with Store {
     // DeviceGroupStore handles syncing
   }
 
-  // nicknames map is no longer needed as an observable here, 
-  // but we keep it for backward compatibility or computed
   @computed
-  ObservableMap<String, String> get nicknames {
-    final map = ObservableMap<String, String>();
-    for (final group in _deviceGroupStore.groups) {
-      map.addAll(group.deviceNicknames);
-    }
-    return map;
-  }
+  ObservableMap<String, String> get nicknames => _deviceGroupStore.allNicknames;
 
   @observable
   bool isLoading = false;

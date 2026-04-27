@@ -8,6 +8,7 @@ import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/domain/entities/device_group_entity.dart';
 import 'package:scraki/features/device/domain/repositories/device_group_repository.dart';
+import 'package:scraki/features/settings/presentation/stores/settings_store.dart';
 
 part 'device_group_store.g.dart';
 
@@ -19,16 +20,33 @@ abstract class _DeviceGroupStore with Store {
   final DeviceGroupRepository _repository;
   final DeviceManagerStore _deviceManagerStore;
   final DashboardStore _dashboardStore;
+  final SettingsStore _settingsStore;
 
   _DeviceGroupStore(
     this._repository,
     this._deviceManagerStore,
     this._dashboardStore,
-  );
+    this._settingsStore,
+  ) {
+    // Tự động re-subscribe khi collection thay đổi trong Settings
+    reaction((_) => _settingsStore.deviceGroupCollection, (collection) {
+      logger.i(
+        '[DeviceGroupStore] Collection changed to "$collection". Re-initializing streams...',
+      );
+      _isListeningToGroups = false;
+      listenToGroups();
+    });
+  }
 
   @observable
   ObservableList<DeviceGroupEntity> groups =
       ObservableList<DeviceGroupEntity>();
+
+  @observable
+  ObservableMap<String, String> allEmails = ObservableMap<String, String>();
+
+  @observable
+  ObservableMap<String, String> allNicknames = ObservableMap<String, String>();
 
   @observable
   String? selectedGroupId;
@@ -99,6 +117,11 @@ abstract class _DeviceGroupStore with Store {
 
   StreamSubscription<Either<Failure, List<DeviceGroupEntity>>>?
   _groupSubscription;
+  
+  // Quản lý các subscription lẻ cho từng thiết bị
+  final Map<String, StreamSubscription<String?>> _emailSubscriptions = {};
+  final Map<String, StreamSubscription<String?>> _nicknameSubscriptions = {};
+  
   bool _isListeningToGroups = false;
 
   @action
@@ -106,8 +129,15 @@ abstract class _DeviceGroupStore with Store {
     if (_isListeningToGroups) return;
     _isListeningToGroups = true;
 
+    // Clear old data when switching collections
+    runInAction(() {
+      groups.clear();
+      allEmails.clear();
+      allNicknames.clear();
+    });
+
     _groupSubscription?.cancel();
-    _groupSubscription = _repository.watchGroups().listen((result) {
+    _groupSubscription = _repository.watchGroups(_settingsStore.deviceGroupCollection).listen((result) {
       result.fold(
         (failure) {
           errorMessage = failure.message;
@@ -119,11 +149,43 @@ abstract class _DeviceGroupStore with Store {
           logger.i(
             '[DeviceGroupStore] Received ${list.length} groups from Firebase',
           );
-          // Wrap in action to mutate observable
           _updateGroups(list);
+          
+          // Sau khi có danh sách group, hãy đảm bảo metadata được load cho các thiết bị trong group
+          _syncMetadataSubscriptions();
         },
       );
     });
+  }
+
+  /// Quản lý việc subscribe/unsubscribe metadata cho các thiết bị cần thiết
+  @action
+  void _syncMetadataSubscriptions() {
+    final allSerialsInGroups = groups.expand((g) => g.deviceSerials).toSet();
+    
+    // Tạm thời: Load metadata cho tất cả thiết bị có trong group
+    // (Trong tương lai có thể tối ưu chỉ load thiết bị đang hiển thị)
+    for (final serial in allSerialsInGroups) {
+      _subscribeToDeviceMetadata(serial);
+    }
+  }
+
+  void _subscribeToDeviceMetadata(String serial) {
+    if (!_emailSubscriptions.containsKey(serial)) {
+      _emailSubscriptions[serial] = _repository
+          .watchDeviceMetadata(_settingsStore.deviceGroupCollection, 'email', serial)
+          .listen((value) {
+            runInAction(() => allEmails[serial] = value ?? '');
+          });
+    }
+    
+    if (!_nicknameSubscriptions.containsKey(serial)) {
+      _nicknameSubscriptions[serial] = _repository
+          .watchDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', serial)
+          .listen((value) {
+            runInAction(() => allNicknames[serial] = value ?? '');
+          });
+    }
   }
 
   @action
@@ -134,6 +196,14 @@ abstract class _DeviceGroupStore with Store {
 
   void dispose() {
     _groupSubscription?.cancel();
+    for (var sub in _emailSubscriptions.values) {
+      sub.cancel();
+    }
+    for (var sub in _nicknameSubscriptions.values) {
+      sub.cancel();
+    }
+    _emailSubscriptions.clear();
+    _nicknameSubscriptions.clear();
   }
 
   @action
@@ -177,7 +247,7 @@ abstract class _DeviceGroupStore with Store {
       colorValue: colorValue,
     );
 
-    final result = await _repository.saveGroup(newGroup);
+    final result = await _repository.saveGroup(_settingsStore.deviceGroupCollection, newGroup);
     result.fold((failure) => errorMessage = failure.message, (_) {
       // Stream updates ui automatically
       logger.i('[DeviceGroupStore] Created group: $name (Pending sync)');
@@ -186,7 +256,7 @@ abstract class _DeviceGroupStore with Store {
 
   @action
   Future<void> deleteGroup(String groupId) async {
-    final result = await _repository.deleteGroup(groupId);
+    final result = await _repository.deleteGroup(_settingsStore.deviceGroupCollection, groupId);
     result.fold((failure) => errorMessage = failure.message, (_) {
       // Stream updates ui automatically
       if (selectedGroupId == groupId) {
@@ -207,7 +277,7 @@ abstract class _DeviceGroupStore with Store {
       deviceSerials: [...group.deviceSerials, deviceSerial],
     );
 
-    final result = await _repository.updateGroup(updatedGroup);
+    final result = await _repository.updateGroup(_settingsStore.deviceGroupCollection, updatedGroup);
     result.fold((failure) => errorMessage = failure.message, (_) {
       groups[index] = updatedGroup;
     });
@@ -230,7 +300,7 @@ abstract class _DeviceGroupStore with Store {
           .toList(),
     );
 
-    final result = await _repository.updateGroup(updatedGroup);
+    final result = await _repository.updateGroup(_settingsStore.deviceGroupCollection, updatedGroup);
     result.fold((failure) => errorMessage = failure.message, (_) {
       groups[index] = updatedGroup;
     });
@@ -246,199 +316,52 @@ abstract class _DeviceGroupStore with Store {
   }
 
   String? getEmailForDevice(String deviceSerial) {
-    for (final group in groups) {
-      if (group.deviceSerials.contains(deviceSerial)) {
-        return group.deviceEmails[deviceSerial];
-      }
-    }
-    return null;
+    return allEmails[deviceSerial];
   }
 
   String? getNicknameForDevice(String deviceSerial) {
-    for (final group in groups) {
-      if (group.deviceSerials.contains(deviceSerial)) {
-        return group.deviceNicknames[deviceSerial];
-      }
-    }
-    return null;
+    return allNicknames[deviceSerial];
   }
 
   @action
   Future<void> saveNicknameForDevice(String deviceSerial, String nickname) async {
     logger.i(
-      '[DeviceGroupStore] Trying to save nickname "$nickname" for device "$deviceSerial". Total groups: ${groups.length}',
+      '[DeviceGroupStore] Saving nickname "$nickname" for device "$deviceSerial" to granular document.',
     );
-    bool foundDeviceInAnyGroup = false;
 
-    for (final group in groups) {
-      if (group.deviceSerials.contains(deviceSerial)) {
-        foundDeviceInAnyGroup = true;
-        logger.i(
-          '[DeviceGroupStore] Found device in group: ${group.name}. Current nickname: ${group.deviceNicknames[deviceSerial]}',
-        );
-
-        if (group.deviceNicknames[deviceSerial] != nickname) {
-          logger.i(
-            '[DeviceGroupStore] Nickname changed. Proceeding to update group in Firebase...',
-          );
-          final newNicknames = Map<String, String>.from(group.deviceNicknames);
-          if (nickname.isEmpty) {
-            newNicknames.remove(deviceSerial);
-          } else {
-            newNicknames[deviceSerial] = nickname;
-          }
-          
-          final updatedGroup = group.copyWith(deviceNicknames: newNicknames);
-          final result = await _repository.updateGroup(updatedGroup);
-          result.fold(
-            (failure) {
-              logger.e('[DeviceGroupStore] Lỗi lưu nickname: ${failure.message}');
-              errorMessage = failure.message;
-            },
-            (_) {
-              logger.i(
-                '[DeviceGroupStore] Saved nickname $nickname for device $deviceSerial to group ${group.name}',
-              );
-              final index = groups.indexWhere((g) => g.id == group.id);
-              if (index != -1) groups[index] = updatedGroup;
-            },
-          );
-        } else {
-          logger.i(
-            '[DeviceGroupStore] Nickname is already assigned to this device in Firebase. Skipping update.',
-          );
-        }
-        break; // Update the first matching group only
-      }
-    }
-
-    if (!foundDeviceInAnyGroup) {
-      if (groups.isNotEmpty) {
-        logger.w(
-          '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Automatically adding it to the first group: ${groups.first.name} before saving nickname.',
-        );
-        final targetGroup = groups.first;
-
-        final newSerials = List<String>.from(targetGroup.deviceSerials);
-        newSerials.add(deviceSerial);
-
-        final newNicknames = Map<String, String>.from(targetGroup.deviceNicknames);
-        newNicknames[deviceSerial] = nickname;
-
-        final updatedGroup = targetGroup.copyWith(
-          deviceSerials: newSerials,
-          deviceNicknames: newNicknames,
-        );
-
-        final result = await _repository.updateGroup(updatedGroup);
-        result.fold(
-          (failure) {
-            logger.e(
-              '[DeviceGroupStore] Lỗi thêm device & nickname vào group: ${failure.message}',
-            );
-            errorMessage = failure.message;
-          },
-          (_) {
-            logger.i(
-              '[DeviceGroupStore] Automatically saved orphaned device $deviceSerial with nickname $nickname to group ${targetGroup.name}',
-            );
-            final index = groups.indexWhere((g) => g.id == targetGroup.id);
-            if (index != -1) groups[index] = updatedGroup;
-          },
-        );
-      } else {
-        logger.w(
-          '[DeviceGroupStore] FATAL: Device $deviceSerial is NOT in any group, and there are NO GROUPS available to assign it to! Cannot save nickname.',
-        );
-        errorMessage = 'Không có Device Group nào để lưu thông tin thiết bị!';
-      }
+    if (nickname.isEmpty) {
+      final result = await _repository.removeDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', deviceSerial);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => logger.i('[DeviceGroupStore] Removed nickname for $deviceSerial'),
+      );
+    } else {
+      final result = await _repository.updateDeviceMetadata(_settingsStore.deviceGroupCollection, 'nickname', deviceSerial, nickname);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => logger.i('[DeviceGroupStore] Saved nickname $nickname for $deviceSerial'),
+      );
     }
   }
 
   @action
   Future<void> saveEmailForDevice(String deviceSerial, String email) async {
     logger.i(
-      '[DeviceGroupStore] Trying to save email "$email" for device "$deviceSerial". Total groups: ${groups.length}',
+      '[DeviceGroupStore] Saving email "$email" for device "$deviceSerial" to granular document.',
     );
-    bool foundDeviceInAnyGroup = false;
 
-    for (final group in groups) {
-      if (group.deviceSerials.contains(deviceSerial)) {
-        foundDeviceInAnyGroup = true;
-        logger.i(
-          '[DeviceGroupStore] Found device in group: ${group.name}. Current email: ${group.deviceEmails[deviceSerial]}',
-        );
-
-        if (group.deviceEmails[deviceSerial] != email) {
-          logger.i(
-            '[DeviceGroupStore] Email changed. Proceeding to update group in Firebase...',
-          );
-          final newEmails = Map<String, String>.from(group.deviceEmails);
-          newEmails[deviceSerial] = email;
-          final updatedGroup = group.copyWith(deviceEmails: newEmails);
-          final result = await _repository.updateGroup(updatedGroup);
-          result.fold(
-            (failure) {
-              logger.e('[DeviceGroupStore] Lỗi lưu email: ${failure.message}');
-              errorMessage = failure.message;
-            },
-            (_) {
-              logger.i(
-                '[DeviceGroupStore] Saved email $email for device $deviceSerial to group ${group.name}',
-              );
-              final index = groups.indexWhere((g) => g.id == group.id);
-              if (index != -1) groups[index] = updatedGroup;
-            },
-          );
-        } else {
-          logger.i(
-            '[DeviceGroupStore] Email is already assigned to this device in Firebase. Skipping update.',
-          );
-        }
-        break; // Update the first matching group only
-      }
-    }
-
-    if (!foundDeviceInAnyGroup) {
-      if (groups.isNotEmpty) {
-        logger.w(
-          '[DeviceGroupStore] WARNING: Device $deviceSerial is NOT in any group. Automatically adding it to the first group: ${groups.first.name} before saving email.',
-        );
-        final targetGroup = groups.first;
-
-        final newSerials = List<String>.from(targetGroup.deviceSerials);
-        newSerials.add(deviceSerial);
-
-        final newEmails = Map<String, String>.from(targetGroup.deviceEmails);
-        newEmails[deviceSerial] = email;
-
-        final updatedGroup = targetGroup.copyWith(
-          deviceSerials: newSerials,
-          deviceEmails: newEmails,
-        );
-
-        final result = await _repository.updateGroup(updatedGroup);
-        result.fold(
-          (failure) {
-            logger.e(
-              '[DeviceGroupStore] Lỗi thêm device & email vào group: ${failure.message}',
-            );
-            errorMessage = failure.message;
-          },
-          (_) {
-            logger.i(
-              '[DeviceGroupStore] Automatically saved orphaned device $deviceSerial with email $email to group ${targetGroup.name}',
-            );
-            final index = groups.indexWhere((g) => g.id == targetGroup.id);
-            if (index != -1) groups[index] = updatedGroup;
-          },
-        );
-      } else {
-        logger.w(
-          '[DeviceGroupStore] FATAL: Device $deviceSerial is NOT in any group, and there are NO GROUPS available to assign it to! Cannot save email.',
-        );
-        errorMessage = 'Không có Device Group nào để lưu thông tin thiết bị!';
-      }
+    if (email.isEmpty) {
+      final result = await _repository.removeDeviceMetadata(_settingsStore.deviceGroupCollection, 'email', deviceSerial);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => logger.i('[DeviceGroupStore] Removed email for $deviceSerial'),
+      );
+    } else {
+      final result = await _repository.updateDeviceMetadata(_settingsStore.deviceGroupCollection, 'email', deviceSerial, email);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => logger.i('[DeviceGroupStore] Saved email $email for $deviceSerial'),
+      );
     }
   }
 }

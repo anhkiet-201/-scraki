@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DeviceGroupEntity {
 
- String get id; String get name; int get colorValue; List<String> get deviceSerials; Map<String, String> get deviceEmails; Map<String, String> get deviceNicknames;
+ String get id; String get name; int get colorValue; List<String> get deviceSerials;
 /// Create a copy of DeviceGroupEntity
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $DeviceGroupEntityCopyWith<DeviceGroupEntity> get copyWith => _$DeviceGroupEntit
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceGroupEntity&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.colorValue, colorValue) || other.colorValue == colorValue)&&const DeepCollectionEquality().equals(other.deviceSerials, deviceSerials)&&const DeepCollectionEquality().equals(other.deviceEmails, deviceEmails)&&const DeepCollectionEquality().equals(other.deviceNicknames, deviceNicknames));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceGroupEntity&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.colorValue, colorValue) || other.colorValue == colorValue)&&const DeepCollectionEquality().equals(other.deviceSerials, deviceSerials));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,colorValue,const DeepCollectionEquality().hash(deviceSerials),const DeepCollectionEquality().hash(deviceEmails),const DeepCollectionEquality().hash(deviceNicknames));
+int get hashCode => Object.hash(runtimeType,id,name,colorValue,const DeepCollectionEquality().hash(deviceSerials));
 
 @override
 String toString() {
-  return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials, deviceEmails: $deviceEmails, deviceNicknames: $deviceNicknames)';
+  return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $DeviceGroupEntityCopyWith<$Res>  {
   factory $DeviceGroupEntityCopyWith(DeviceGroupEntity value, $Res Function(DeviceGroupEntity) _then) = _$DeviceGroupEntityCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, int colorValue, List<String> deviceSerials, Map<String, String> deviceEmails, Map<String, String> deviceNicknames
+ String id, String name, int colorValue, List<String> deviceSerials
 });
 
 
@@ -62,15 +62,13 @@ class _$DeviceGroupEntityCopyWithImpl<$Res>
 
 /// Create a copy of DeviceGroupEntity
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? colorValue = null,Object? deviceSerials = null,Object? deviceEmails = null,Object? deviceNicknames = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? colorValue = null,Object? deviceSerials = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,colorValue: null == colorValue ? _self.colorValue : colorValue // ignore: cast_nullable_to_non_nullable
 as int,deviceSerials: null == deviceSerials ? _self.deviceSerials : deviceSerials // ignore: cast_nullable_to_non_nullable
-as List<String>,deviceEmails: null == deviceEmails ? _self.deviceEmails : deviceEmails // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,deviceNicknames: null == deviceNicknames ? _self.deviceNicknames : deviceNicknames // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,
+as List<String>,
   ));
 }
 
@@ -155,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  int colorValue,  List<String> deviceSerials,  Map<String, String> deviceEmails,  Map<String, String> deviceNicknames)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  int colorValue,  List<String> deviceSerials)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DeviceGroupEntity() when $default != null:
-return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.deviceEmails,_that.deviceNicknames);case _:
+return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials);case _:
   return orElse();
 
 }
@@ -176,10 +174,10 @@ return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.d
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  int colorValue,  List<String> deviceSerials,  Map<String, String> deviceEmails,  Map<String, String> deviceNicknames)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  int colorValue,  List<String> deviceSerials)  $default,) {final _that = this;
 switch (_that) {
 case _DeviceGroupEntity():
-return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.deviceEmails,_that.deviceNicknames);case _:
+return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -196,10 +194,10 @@ return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.d
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  int colorValue,  List<String> deviceSerials,  Map<String, String> deviceEmails,  Map<String, String> deviceNicknames)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  int colorValue,  List<String> deviceSerials)?  $default,) {final _that = this;
 switch (_that) {
 case _DeviceGroupEntity() when $default != null:
-return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.deviceEmails,_that.deviceNicknames);case _:
+return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials);case _:
   return null;
 
 }
@@ -211,7 +209,7 @@ return $default(_that.id,_that.name,_that.colorValue,_that.deviceSerials,_that.d
 
 
 class _DeviceGroupEntity extends DeviceGroupEntity {
-  const _DeviceGroupEntity({required this.id, required this.name, required this.colorValue, required final  List<String> deviceSerials, final  Map<String, String> deviceEmails = const <String, String>{}, final  Map<String, String> deviceNicknames = const <String, String>{}}): _deviceSerials = deviceSerials,_deviceEmails = deviceEmails,_deviceNicknames = deviceNicknames,super._();
+  const _DeviceGroupEntity({required this.id, required this.name, required this.colorValue, required final  List<String> deviceSerials}): _deviceSerials = deviceSerials,super._();
   
 
 @override final  String id;
@@ -222,20 +220,6 @@ class _DeviceGroupEntity extends DeviceGroupEntity {
   if (_deviceSerials is EqualUnmodifiableListView) return _deviceSerials;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_deviceSerials);
-}
-
- final  Map<String, String> _deviceEmails;
-@override@JsonKey() Map<String, String> get deviceEmails {
-  if (_deviceEmails is EqualUnmodifiableMapView) return _deviceEmails;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_deviceEmails);
-}
-
- final  Map<String, String> _deviceNicknames;
-@override@JsonKey() Map<String, String> get deviceNicknames {
-  if (_deviceNicknames is EqualUnmodifiableMapView) return _deviceNicknames;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_deviceNicknames);
 }
 
 
@@ -249,16 +233,16 @@ _$DeviceGroupEntityCopyWith<_DeviceGroupEntity> get copyWith => __$DeviceGroupEn
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeviceGroupEntity&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.colorValue, colorValue) || other.colorValue == colorValue)&&const DeepCollectionEquality().equals(other._deviceSerials, _deviceSerials)&&const DeepCollectionEquality().equals(other._deviceEmails, _deviceEmails)&&const DeepCollectionEquality().equals(other._deviceNicknames, _deviceNicknames));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeviceGroupEntity&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.colorValue, colorValue) || other.colorValue == colorValue)&&const DeepCollectionEquality().equals(other._deviceSerials, _deviceSerials));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,colorValue,const DeepCollectionEquality().hash(_deviceSerials),const DeepCollectionEquality().hash(_deviceEmails),const DeepCollectionEquality().hash(_deviceNicknames));
+int get hashCode => Object.hash(runtimeType,id,name,colorValue,const DeepCollectionEquality().hash(_deviceSerials));
 
 @override
 String toString() {
-  return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials, deviceEmails: $deviceEmails, deviceNicknames: $deviceNicknames)';
+  return 'DeviceGroupEntity(id: $id, name: $name, colorValue: $colorValue, deviceSerials: $deviceSerials)';
 }
 
 
@@ -269,7 +253,7 @@ abstract mixin class _$DeviceGroupEntityCopyWith<$Res> implements $DeviceGroupEn
   factory _$DeviceGroupEntityCopyWith(_DeviceGroupEntity value, $Res Function(_DeviceGroupEntity) _then) = __$DeviceGroupEntityCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, int colorValue, List<String> deviceSerials, Map<String, String> deviceEmails, Map<String, String> deviceNicknames
+ String id, String name, int colorValue, List<String> deviceSerials
 });
 
 
@@ -286,15 +270,13 @@ class __$DeviceGroupEntityCopyWithImpl<$Res>
 
 /// Create a copy of DeviceGroupEntity
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? colorValue = null,Object? deviceSerials = null,Object? deviceEmails = null,Object? deviceNicknames = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? colorValue = null,Object? deviceSerials = null,}) {
   return _then(_DeviceGroupEntity(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,colorValue: null == colorValue ? _self.colorValue : colorValue // ignore: cast_nullable_to_non_nullable
 as int,deviceSerials: null == deviceSerials ? _self._deviceSerials : deviceSerials // ignore: cast_nullable_to_non_nullable
-as List<String>,deviceEmails: null == deviceEmails ? _self._deviceEmails : deviceEmails // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,deviceNicknames: null == deviceNicknames ? _self._deviceNicknames : deviceNicknames // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,
+as List<String>,
   ));
 }
 

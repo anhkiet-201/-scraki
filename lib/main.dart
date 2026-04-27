@@ -29,7 +29,7 @@ void main() async {
   // Initialize config provider với settings đã load
   final configProvider = getIt<SettingsConfigProvider>();
   await configProvider.initialize();
-
+  
   runApp(const MyApp());
 }
 

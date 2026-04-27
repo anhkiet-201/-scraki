@@ -4,7 +4,6 @@ import 'package:scraki/core/error/failures.dart';
 import '../../domain/entities/auth_token.dart';
 import '../../domain/repositories/i_auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
-import '../models/auth_token_model.dart';
 
 @LazySingleton(as: IAuthRepository)
 class AuthRepositoryImpl implements IAuthRepository {
@@ -26,13 +25,10 @@ class AuthRepositoryImpl implements IAuthRepository {
     String serial,
     List<AuthToken> tokens,
   ) async {
-    final rawText = tokens
-        .map((t) => AuthTokenModel.fromEntity(t).toRawLine())
-        .join('\n');
-    return await _remoteDataSource.saveRawAuthTokens(
+    return await _remoteDataSource.saveAuthTokens(
       groupCollection,
       serial,
-      rawText,
+      tokens,
     );
   }
 

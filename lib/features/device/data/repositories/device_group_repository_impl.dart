@@ -25,7 +25,7 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> deleteGroup(String groupId) async {
+  Future<Either<Failure, Unit>> deleteGroup(String collectionName, String groupId) async {
     try {
       final box = await _getBox();
       await box.delete(groupId);
@@ -36,7 +36,7 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   }
 
   @override
-  Future<Either<Failure, List<DeviceGroupEntity>>> getGroups() async {
+  Future<Either<Failure, List<DeviceGroupEntity>>> getGroups(String collectionName) async {
     try {
       final box = await _getBox();
       final groups = box.values.map((e) => e.toEntity()).toList();
@@ -47,7 +47,7 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> saveGroup(DeviceGroupEntity group) async {
+  Future<Either<Failure, Unit>> saveGroup(String collectionName, DeviceGroupEntity group) async {
     try {
       final box = await _getBox();
       final model = DeviceGroupModel.fromEntity(group);
@@ -59,12 +59,49 @@ class DeviceGroupRepositoryImpl implements DeviceGroupRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> updateGroup(DeviceGroupEntity group) async {
-    return saveGroup(group); // Save handles update if ID exists
+  Future<Either<Failure, Unit>> updateGroup(String collectionName, DeviceGroupEntity group) async {
+    return saveGroup(collectionName, group); // Save handles update if ID exists
   }
 
   @override
-  Stream<Either<Failure, List<DeviceGroupEntity>>> watchGroups() async* {
-    yield await getGroups();
+  Stream<Either<Failure, List<DeviceGroupEntity>>> watchGroups(String collectionName) async* {
+    yield await getGroups(collectionName);
+  }
+
+  @override
+  Stream<String?> watchDeviceMetadata(String collectionName, String type, String deviceSerial) async* {
+    final box = await Hive.openBox<String>(type);
+    yield box.get(deviceSerial);
+    
+    await for (final event in box.watch(key: deviceSerial)) {
+      yield event.value as String?;
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> updateDeviceMetadata(
+    String collectionName,
+    String type,
+    String deviceSerial,
+    String value,
+  ) async {
+    try {
+      final box = await Hive.openBox<String>(type);
+      await box.put(deviceSerial, value);
+      return const Right(unit);
+    } catch (e) {
+      return Left(CacheFailure('Failed to update metadata: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> removeDeviceMetadata(String collectionName, String type, String deviceSerial) async {
+    try {
+      final box = await Hive.openBox<String>(type);
+      await box.delete(deviceSerial);
+      return const Right(unit);
+    } catch (e) {
+      return Left(CacheFailure('Failed to remove metadata: $e'));
+    }
   }
 }
