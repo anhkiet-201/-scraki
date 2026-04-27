@@ -15,14 +15,14 @@ class NvidiaCompositionEngine implements VideoCompositionEngine {
     final zoomW = (1080 * zoomVal).round();
     final zoomH = (1920 * zoomVal).round();
 
-    // Stage 1: HW Scale & Crop
     if (gpuInfo.hasCudaFilters) {
-      sb.write('[0:v]scale_cuda=$zoomW:$zoomH,crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,hwdownload,format=nv12');
+      // Scale trên GPU, sau đó download về CPU để làm Crop và Color filters
+      sb.write('[0:v]scale_cuda=$zoomW:$zoomH,hwdownload,format=nv12,crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY');
     } else {
+      // Toàn bộ trên CPU
       sb.write('[0:v]scale=$zoomW:$zoomH:force_original_aspect_ratio=increase,crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,format=nv12');
     }
 
-    // Stage 2: Color Correction (CPU - since complex filters usually run on CPU)
     if (colorSettings.colorChannelMixer != null) {
       sb.write(',colorchannelmixer=${colorSettings.colorChannelMixer}');
     }
@@ -47,7 +47,6 @@ class NvidiaCompositionEngine implements VideoCompositionEngine {
     sb.write(',hue=h=${colorSettings.hueShift.toStringAsFixed(2)}:s=${colorSettings.satFactor.toStringAsFixed(4)}');
     sb.write(',vignette=${colorSettings.vignetteAngle.toStringAsFixed(4)}');
 
-    // Stage 3: Final Format & Time
     sb.write(',format=nv12,trim=start=0,setpts=${pts.toStringAsFixed(6)}*N/30/TB');
 
     return sb.toString();
@@ -75,6 +74,6 @@ class NvidiaCompositionEngine implements VideoCompositionEngine {
 
   @override
   String getPreferredPixFmt(GpuInfo gpuInfo) {
-    return 'nv12';
+    return gpuInfo.preferredPixFmt;
   }
 }

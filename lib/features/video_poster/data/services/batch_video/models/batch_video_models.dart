@@ -34,7 +34,10 @@ class SegmentRequest {
   });
 
   String get id {
-    final name = sourcePath.split(RegExp(r'[/\\]')).last;
+    final fullName = sourcePath.split(RegExp(r'[/\\]')).last;
+    final name = fullName.contains('.') 
+        ? fullName.substring(0, fullName.lastIndexOf('.')) 
+        : fullName;
     final hflipVal = hflip ? 1 : 0;
     final audioVal = hasAudio ? 1 : 0;
     return 's${startTime}_d${duration}_f${hflipVal}_a${audioVal}_$name';

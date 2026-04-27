@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$ffmpegVersion = "6.0"
+$ffmpegVersion = "8.1"
 $ffmpegRelease = "ffmpeg-$ffmpegVersion-full_build-shared"
 $ffmpegDev = "ffmpeg-$ffmpegVersion-full_build-dev"
 $ffmpegUrlShared = "https://github.com/GyanD/codexffmpeg/releases/download/$ffmpegVersion/ffmpeg-$ffmpegVersion-full_build-shared.7z"

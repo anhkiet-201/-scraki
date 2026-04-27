@@ -10,37 +10,46 @@ class NvidiaSegmentEngine implements VideoSegmentEngine {
     required int height,
     required GpuInfo gpuInfo,
   }) {
-    final hwScale = gpuInfo.scaleFilter ?? 'scale_cuda';
-    final resolution = '$width:$height';
+    final String hwScale = gpuInfo.scaleFilter ?? 'scale';
+    final String targetFormat = (gpuInfo.outputFormat == null || gpuInfo.outputFormat == 'cuda') ? 'nv12' : gpuInfo.outputFormat!;
 
-    if (isHdr) {
-      if (gpuInfo.hasZscale && gpuInfo.hasCudaFilters) {
-        String filter = 'hwdownload,format=p010le,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=nv12,hwupload_cuda,$hwScale=$resolution';
-        if (hflip) filter += ',hflip_cuda';
+    if (gpuInfo.hasCudaFilters) {
+      if (isHdr) {
+        // HDR to SDR: Chạy 100% trên nhân CUDA bằng tonemap_cuda
+        String filter = 'tonemap_cuda=format=$targetFormat:p=bt709:t=bt709:m=bt709';
+        
+        // Sau đó thực hiện scale
+        filter += ',$hwScale=w=$width:h=$height';
+        
+        // Và lật hình nếu cần (sử dụng transpose_cuda chuẩn)
+        if (hflip) {
+          filter += ',transpose_cuda=dir=hflip';
+        }
         return filter;
-      } else {
-        String base = gpuInfo.hasCudaFilters
-            ? '$hwScale=$resolution'
-            : 'scale=$resolution:force_original_aspect_ratio=increase,crop=$resolution';
-        if (hflip) base += gpuInfo.hasCudaFilters ? ',hflip_cuda' : ',hflip';
-        final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
-        return gpuInfo.hasZscale 
-            ? '${download}zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=yuv420p,$base'
-            : '${download}format=yuv420p,$base';
       }
-    } else if (gpuInfo.hasCudaFilters) {
-      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
-      String filter = '$download$hwScale=$resolution';
-      if (hflip) filter += ',hflip_cuda';
-      filter += ',format=nv12';
-      return filter;
+
+      // Luồng non-HDR: Chạy 100% trên CUDA
+      List<String> filters = [];
+      
+      // 1. Scale và Format conversion ngay trên GPU
+      filters.add('$hwScale=w=$width:h=$height:format=$targetFormat');
+
+      // 2. Flip trên GPU bằng transpose_cuda
+      if (hflip) {
+        filters.add('transpose_cuda=dir=hflip');
+      }
+
+      return filters.join(',');
     } else {
-      String base = (gpuInfo.scaleFilter != null)
-          ? '$hwScale=$resolution'
-          : 'scale=$resolution:force_original_aspect_ratio=increase,crop=$resolution';
-      if (hflip) base += ',hflip';
-      final download = gpuInfo.outputFormat != null ? 'hwdownload,format=nv12,' : '';
-      return '$download$base,format=yuv420p';
+      // Fallback: Nếu không có CUDA filters, chạy scale/flip trên CPU
+      final resolution = '$width:$height';
+      final cpuScale = 'scale=$resolution:force_original_aspect_ratio=increase,crop=$resolution${hflip ? ",hflip" : ""}';
+      
+      if (isHdr && gpuInfo.hasZscale) {
+        // HDR Tonemap trên CPU tương tự CpuSegmentEngine
+        return '$cpuScale,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709,format=nv12';
+      }
+      return '$cpuScale,format=nv12';
     }
   }
 
@@ -48,16 +57,16 @@ class NvidiaSegmentEngine implements VideoSegmentEngine {
   List<String> getSegmentEncoderArgs(GpuInfo gpuInfo) {
     return [
       '-c:v', 'h264_nvenc',
-      '-preset', 'p1', // Tối ưu tốc độ cho giai đoạn cut
-      '-tune', 'll', // Low latency
+      '-preset', 'p1', // Tối ưu tốc độ cho giai đoạn cắt/segment
+      '-tune', 'll',   // Low latency
       '-b:v', '10M',
       '-maxrate', '12M',
-      '-bufsize', '20M'
+      '-bufsize', '20M',
     ];
   }
 
   @override
   String getPreferredPixFmt(GpuInfo gpuInfo) {
-    return gpuInfo.preferredPixFmt;
+    return gpuInfo.outputFormat ?? gpuInfo.preferredPixFmt;
   }
 }
