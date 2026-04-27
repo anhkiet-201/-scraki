@@ -104,6 +104,7 @@ class CredentialRemoteDataSourceFirebaseImpl
     }
   }
 
+  @override
   Future<Either<Failure, PaginatedEmailResult>> fetchEmailAccountsPaginated({
     int limit = 50,
     String? lastUpdate,
