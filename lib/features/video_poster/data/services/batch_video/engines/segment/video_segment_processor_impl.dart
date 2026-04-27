@@ -4,8 +4,8 @@ import '../../models/batch_video_models.dart';
 import '../../models/video_batch_execution_context.dart';
 import '../hardware/video_hardware_capability_resolver.dart';
 import '../metadata/video_metadata_analyzer.dart';
-import '../encoding/video_encoding_engine.dart';
-import '../encoding/video_encoding_engine_factory.dart';
+import '../encoding/video_segment_engine.dart';
+import '../encoding/video_segment_engine_factory.dart';
 import 'video_segment_processor.dart';
 
 @LazySingleton(as: VideoSegmentProcessor)
@@ -39,9 +39,9 @@ class VideoSegmentProcessorImpl implements VideoSegmentProcessor {
     );
 
     final gpuInfo = await _hardwareResolver.getGpuInfo();
-    final engine = VideoEncodingEngineFactory.getEngine(gpuInfo);
+    final engine = VideoSegmentEngineFactory.getEngine(gpuInfo);
 
-    final vfFilter = engine.buildVideoFilter(
+    final vfFilter = engine.buildSegmentFilter(
       isHdr: hdr,
       hflip: hflip,
       width: 1080,
@@ -78,11 +78,11 @@ class VideoSegmentProcessorImpl implements VideoSegmentProcessor {
         maxConcurrentEncodes: gpuInfo.maxConcurrentEncodes,
       );
       
-      final fallbackEngine = VideoEncodingEngineFactory.getEngine(fallbackGpuInfo);
+      final fallbackEngine = VideoSegmentEngineFactory.getEngine(fallbackGpuInfo);
       
       onLogMsg?.call('  ⚠️ [$processName] Encode GPU thất bại, thử fallback CPU...');
       
-      final fallbackFilter = fallbackEngine.buildVideoFilter(
+      final fallbackFilter = fallbackEngine.buildSegmentFilter(
         isHdr: hdr,
         hflip: hflip,
         width: 1080,
@@ -110,7 +110,7 @@ class VideoSegmentProcessorImpl implements VideoSegmentProcessor {
     String vf,
     String af,
     GpuInfo gpuInfo, {
-    required VideoEncodingEngine engine,
+    required VideoSegmentEngine engine,
     required String input,
     required double startSeconds,
     required double duration,
@@ -140,10 +140,9 @@ class VideoSegmentProcessorImpl implements VideoSegmentProcessor {
         '-colorspace', 'bt709',
         '-color_trc', 'bt709',
         '-color_primaries', 'bt709',
-        '-c:v', gpuInfo.encoder,
       ]);
 
-      args.addAll(engine.getEncoderArgs(gpuInfo));
+      args.addAll(engine.getSegmentEncoderArgs(gpuInfo));
       args.addAll(['-movflags', '+faststart', '-avoid_negative_ts', 'make_zero', '-map_metadata', '-1', output]);
 
       final process = await Process.start(_hardwareResolver.ffmpegBin, args);

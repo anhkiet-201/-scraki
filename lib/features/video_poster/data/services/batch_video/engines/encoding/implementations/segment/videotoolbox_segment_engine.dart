@@ -1,23 +1,17 @@
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/encoding/video_segment_engine.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
-import '../video_encoding_engine.dart';
 
-class VideoToolboxVideoEngine implements VideoEncodingEngine {
+class VideoToolboxSegmentEngine implements VideoSegmentEngine {
   @override
-  String buildVideoFilter({
+  String buildSegmentFilter({
     required bool isHdr,
     required bool hflip,
     required int width,
     required int height,
     required GpuInfo gpuInfo,
   }) {
-    final hwScale = gpuInfo.scaleFilter ?? 'scale';
     final resolution = '$width:$height';
-
-    String base = (gpuInfo.scaleFilter != null && gpuInfo.scaleFilter != 'scale')
-        ? '$hwScale=$resolution'
-        : 'scale=$resolution:force_original_aspect_ratio=increase,crop=$resolution';
-    
-    if (hflip) base += ',hflip';
+    final base = 'scale=$resolution:force_original_aspect_ratio=increase,crop=$resolution${hflip ? ",hflip" : ""}';
     
     if (isHdr) {
       final download = gpuInfo.outputFormat != null ? 'hwdownload,format=p010le,' : '';
@@ -31,12 +25,16 @@ class VideoToolboxVideoEngine implements VideoEncodingEngine {
   }
 
   @override
-  List<String> getEncoderArgs(GpuInfo gpuInfo) {
-    return ['-b:v', '10M', '-realtime', '1'];
+  List<String> getSegmentEncoderArgs(GpuInfo gpuInfo) {
+    return [
+      '-c:v', 'h264_videotoolbox',
+      '-realtime', '1',
+      '-b:v', '10M',
+    ];
   }
 
   @override
   String getPreferredPixFmt(GpuInfo gpuInfo) {
-    return gpuInfo.preferredPixFmt;
+    return 'yuv420p';
   }
 }

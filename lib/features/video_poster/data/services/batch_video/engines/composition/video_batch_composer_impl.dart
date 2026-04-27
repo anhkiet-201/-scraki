@@ -7,13 +7,14 @@ import 'package:scraki/features/video_poster/domain/entities/batch_video_config.
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/video_batch_execution_context.dart';
 import '../hardware/video_hardware_capability_resolver.dart';
+import '../encoding/video_composition_engine_factory.dart';
 import 'video_batch_composer.dart';
 
-@LazySingleton(as: VideoBatchComposer, env: ['macos'])
-class MacOSVideoBatchComposer implements VideoBatchComposer {
+@LazySingleton(as: VideoBatchComposer)
+class VideoBatchComposerImpl implements VideoBatchComposer {
   final VideoHardwareCapabilityResolver _hardwareResolver;
 
-  MacOSVideoBatchComposer(this._hardwareResolver);
+  VideoBatchComposerImpl(this._hardwareResolver);
 
   @override
   Future<ComposerResult> createOutputVideo({
@@ -38,6 +39,8 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
     await concatFile.writeAsString(buffer.toString());
 
     final gpuInfo = await _hardwareResolver.getGpuInfo();
+    final engine = VideoCompositionEngineFactory.getEngine(gpuInfo);
+    
     final targetDuration = config.minFinalDuration + random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
     final pts = 0.99 + random.nextDouble() * 0.02;
     final brightness = (random.nextDouble() * 0.04) - 0.02;
@@ -57,6 +60,7 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
       final List<String> ffmpegArgs = [
         '-hide_banner', '-y',
         if (gpuInfo.hwaccel != null) ...['-hwaccel', gpuInfo.hwaccel!],
+        if (gpuInfo.hwaccel != null && gpuInfo.outputFormat != null) ...['-hwaccel_output_format', gpuInfo.outputFormat!],
         '-fflags', '+genpts', '-f', 'concat', '-safe', '0', '-i', concatFile.path,
       ];
 
@@ -81,26 +85,47 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
       final double randX = random.nextDouble();
       final double randY = random.nextDouble();
 
-      // Step 1: Scale + crop (macOS software fallback logic)
-      filterComplex.write('[0:v]scale=\'if(gt(iw/ih,1080/1920),-1,1080*$zoomVal)\':\'if(gt(iw/ih,1080/1920),1920*$zoomVal,-1)\':flags=bicubic,');
-      filterComplex.write('crop=1080:1920:(iw-1080)*$randX:(ih-1920)*$randY,');
+      // Stage 1: Build Background Filter via Engine
+      ColorFilterProfile? cp;
+      CurvesProfile? crp;
+      ColorBalanceProfile? bp;
+      double? gamma;
+      double? gammaR, gammaG, gammaB;
 
-      // Step 2: CPU Color filters
       if (config.generateColorFilter) {
-        final cp = ColorFilterProfile.random(random);
-        final crp = CurvesProfile.random(random);
-        final bp = ColorBalanceProfile.random(random);
-        filterComplex.write('colorchannelmixer=${cp.ffmpegString},curves=${crp.ffmpegString},colorbalance=${bp.ffmpegString},');
-        final double gammaBase = 0.98 + random.nextDouble() * 0.04;
-        filterComplex.write('eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}:gamma=${gammaBase.toStringAsFixed(3)},');
+        cp = ColorFilterProfile.random(random);
+        crp = CurvesProfile.random(random);
+        bp = ColorBalanceProfile.random(random);
+        gamma = 0.98 + random.nextDouble() * 0.04;
       } else {
-        final double gR = 0.98 + random.nextDouble() * 0.04;
-        final double gG = 0.98 + random.nextDouble() * 0.04;
-        final double gB = 0.98 + random.nextDouble() * 0.04;
-        filterComplex.write('eq=brightness=${brightness.toStringAsFixed(4)}:contrast=${contrast.toStringAsFixed(4)}:gamma_r=${gR.toStringAsFixed(3)}:gamma_g=${gG.toStringAsFixed(3)}:gamma_b=${gB.toStringAsFixed(3)},');
+        gammaR = 0.98 + random.nextDouble() * 0.04;
+        gammaG = 0.98 + random.nextDouble() * 0.04;
+        gammaB = 0.98 + random.nextDouble() * 0.04;
       }
-      filterComplex.write('hue=h=${hueShift.toStringAsFixed(2)}:s=${satFactor.toStringAsFixed(4)},vignette=${vignetteAngle.toStringAsFixed(4)},');
-      filterComplex.write('format=yuv420p,trim=start=0,setpts=${pts.toStringAsFixed(6)}*N/30/TB[bg];');
+
+      final bgFilter = engine.buildCompositionFilter(
+        zoomVal: zoomVal,
+        randX: randX,
+        randY: randY,
+        pts: pts,
+        colorSettings: (
+          colorChannelMixer: cp?.ffmpegString,
+          curves: crp?.ffmpegString,
+          colorBalance: bp?.ffmpegString,
+          brightness: brightness,
+          contrast: contrast,
+          gamma: gamma,
+          gammaR: gammaR,
+          gammaG: gammaG,
+          gammaB: gammaB,
+          hueShift: hueShift,
+          satFactor: satFactor,
+          vignetteAngle: vignetteAngle,
+        ),
+        gpuInfo: gpuInfo,
+      );
+      
+      filterComplex.write('$bgFilter[bg];');
 
       String lastVideoLabel = '[bg]';
       int overlayIdx = 1;
@@ -218,7 +243,7 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
         }
       }
 
-      // Audio mix logic
+      // Audio mix
       if (hasCustomAudio) {
         filterComplex.write('[0:a]${audioProfile.toOriginalAudioFilterChain(volume: 0.25, pts: pts)}[orig_a];');
         filterComplex.write('[1:a]${audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: pts)}[music_a];');
@@ -244,9 +269,19 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
         '-filter_complex', filterComplex.toString(),
         '-map', lastVideoLabel, '-map', '[mixed_a]',
         '-c:a', 'aac', '-b:a', '${audioProfile.audioBitrate}k', '-r', '30',
-        '-c:v', gpuInfo.encoder, '-b:v', '${10 + random.nextInt(6)}M', '-maxrate', '16M', '-bufsize', '25M',
-        '-pix_fmt', gpuInfo.preferredPixFmt, '-colorspace', 'bt709', '-color_trc', 'bt709', '-color_primaries', 'bt709',
-        '-realtime', '0', '-g', gopSize.toString(),
+      ]);
+
+      ffmpegArgs.addAll(engine.getCompositionEncoderArgs(
+        gpuInfo,
+        bitrate: '${10 + random.nextInt(6)}M',
+        maxRate: '16M',
+        bufSize: '25M',
+        gop: gopSize,
+      ));
+
+      ffmpegArgs.addAll([
+        '-pix_fmt', engine.getPreferredPixFmt(gpuInfo),
+        '-colorspace', 'bt709', '-color_trc', 'bt709', '-color_primaries', 'bt709',
         '-movflags', '+faststart+use_metadata_tags', '-metadata', 'creation_time=$creationTime', '-avoid_negative_ts', 'make_zero', '-shortest',
         finalOutput
       ]);
@@ -265,10 +300,8 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
     final process = await Process.start(_hardwareResolver.ffmpegBin, args);
     context.addProcess(process);
     final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-    final stderrBuf = StringBuffer();
     process.stderr.listen((data) {
       final out = String.fromCharCodes(data);
-      stderrBuf.write(out);
       if (onProgress == null || context.cancelled) return;
       final match = regex.firstMatch(out);
       if (match != null) {
@@ -280,10 +313,7 @@ class MacOSVideoBatchComposer implements VideoBatchComposer {
     context.removeProcess(process);
     final success = exitCode == 0 && File(output).existsSync();
     final logs = <String>[];
-    if (!success) {
-      logs.add('  ❌ Video $idx thất bại (exit=$exitCode).');
-      // Thêm log lỗi chi tiết nếu cần
-    }
+    if (!success) logs.add('  ❌ Video $idx thất bại (exit=$exitCode).');
     return (success: success, logs: logs);
   }
 

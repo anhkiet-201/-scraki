@@ -138,12 +138,10 @@ import '../../features/video_poster/data/repositories/recent_color_repository.da
     as _i763;
 import '../../features/video_poster/data/services/batch_video/engines/audio/ambient_audio_provider.dart'
     as _i761;
-import '../../features/video_poster/data/services/batch_video/engines/composition/macos_video_batch_composer.dart'
-    as _i1050;
 import '../../features/video_poster/data/services/batch_video/engines/composition/video_batch_composer.dart'
     as _i247;
-import '../../features/video_poster/data/services/batch_video/engines/composition/windows_video_batch_composer.dart'
-    as _i8;
+import '../../features/video_poster/data/services/batch_video/engines/composition/video_batch_composer_impl.dart'
+    as _i257;
 import '../../features/video_poster/data/services/batch_video/engines/hardware/macos_video_hardware_capability_resolver.dart'
     as _i815;
 import '../../features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart'
@@ -273,12 +271,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i768.IVideoDecoderService>(
       () => _i892.NativeVideoDecoderServiceImpl(),
     );
-    gh.lazySingleton<_i247.VideoBatchComposer>(
-      () => _i8.WindowsVideoBatchComposer(
-        gh<_i9.VideoHardwareCapabilityResolver>(),
-      ),
-      registerFor: {_windows},
-    );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(
         gh<_i296.ICredentialRemoteDataSource>(),
@@ -346,12 +338,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i260.IAkiRemoteService>(),
       ),
     );
-    gh.lazySingleton<_i247.VideoBatchComposer>(
-      () => _i1050.MacOSVideoBatchComposer(
-        gh<_i9.VideoHardwareCapabilityResolver>(),
-      ),
-      registerFor: {_macos},
-    );
     gh.factory<_i761.AmbientAudioProvider>(
       () => _i761.AmbientAudioProvider(gh<_i667.DioClient>()),
     );
@@ -386,6 +372,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i478.TikTokSeedingStore(
         gh<_i801.ITikTokSeedingService>(),
         gh<_i1022.ITikTokSeedingRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i247.VideoBatchComposer>(
+      () => _i257.VideoBatchComposerImpl(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
       ),
     );
     gh.factory<_i876.PosterCreationStore>(

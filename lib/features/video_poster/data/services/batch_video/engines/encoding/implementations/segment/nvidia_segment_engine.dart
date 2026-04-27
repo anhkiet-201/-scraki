@@ -1,16 +1,16 @@
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/encoding/video_segment_engine.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
-import '../video_encoding_engine.dart';
 
-class NvidiaVideoEngine implements VideoEncodingEngine {
+class NvidiaSegmentEngine implements VideoSegmentEngine {
   @override
-  String buildVideoFilter({
+  String buildSegmentFilter({
     required bool isHdr,
     required bool hflip,
     required int width,
     required int height,
     required GpuInfo gpuInfo,
   }) {
-    final hwScale = gpuInfo.scaleFilter ?? 'scale';
+    final hwScale = gpuInfo.scaleFilter ?? 'scale_cuda';
     final resolution = '$width:$height';
 
     if (isHdr) {
@@ -45,8 +45,15 @@ class NvidiaVideoEngine implements VideoEncodingEngine {
   }
 
   @override
-  List<String> getEncoderArgs(GpuInfo gpuInfo) {
-    return ['-b:v', '10M', '-maxrate', '12M', '-bufsize', '20M'];
+  List<String> getSegmentEncoderArgs(GpuInfo gpuInfo) {
+    return [
+      '-c:v', 'h264_nvenc',
+      '-preset', 'p1', // Tối ưu tốc độ cho giai đoạn cut
+      '-tune', 'll', // Low latency
+      '-b:v', '10M',
+      '-maxrate', '12M',
+      '-bufsize', '20M'
+    ];
   }
 
   @override

@@ -1,10 +1,9 @@
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/encoding/video_segment_engine.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 
-import '../video_encoding_engine.dart';
-
-class CpuVideoEngine implements VideoEncodingEngine {
+class CpuSegmentEngine implements VideoSegmentEngine {
   @override
-  String buildVideoFilter({
+  String buildSegmentFilter({
     required bool isHdr,
     required bool hflip,
     required int width,
@@ -20,8 +19,12 @@ class CpuVideoEngine implements VideoEncodingEngine {
   }
 
   @override
-  List<String> getEncoderArgs(GpuInfo gpuInfo) {
-    return ['-preset', 'ultrafast', '-b:v', '10M', '-maxrate', '12M', '-bufsize', '20M'];
+  List<String> getSegmentEncoderArgs(GpuInfo gpuInfo) {
+    return [
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-b:v', '10M',
+    ];
   }
 
   @override
