@@ -9,12 +9,18 @@ class CpuToolkit extends BaseFfmpegToolkit {
   String get scaleFilterName => gpuInfo.scaleFilter ?? 'scale';
 
   @override
-  String scale(int width, int height) {
+  String scale(int width, int height, {double? iwScale, String? expression}) {
+    if (expression != null) return '$scaleFilterName=$expression';
+    if (iwScale != null) return '$scaleFilterName=iw*$iwScale:-1';
+
     if (scaleFilterName == 'zscale') {
       return 'zscale=w=$width:h=$height';
     }
     return '$scaleFilterName=$width:$height';
   }
+
+  @override
+  String getPreferredPixelFormat() => gpuInfo.preferredPixFmt;
 
   @override
   String crop(int width, int height, int x, int y) => 'crop=$width:$height:$x:$y';
@@ -101,31 +107,31 @@ class CpuToolkit extends BaseFfmpegToolkit {
       final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
       String scaleLabel = '[scaled$overlayIdx]';
-      String scaleF = '[$currentInputIdx:v]scale=$fTargetW:$fTargetH,format=rgba,eq=brightness=$oBright:saturation=$oSat';
+      String scaleF = '[$currentInputIdx:v]${scale(fTargetW, fTargetH)},format=rgba,${eq(brightness: oBright, saturation: oSat)}';
       
       if (imgConfig.rotation != 0 || oRotate != 0) {
         final double totalRot = imgConfig.rotation + oRotate;
-        scaleF += ',rotate=$totalRot*PI/180:c=black@0:ow=$finalW:oh=$finalH';
+        scaleF += ',${rotate(totalRot, ow: finalW, oh: finalH)}';
       }
       
       if (imgConfig.borderWidth > 0) {
         final String borderH = colorToHex(imgConfig.borderColor ?? 'white');
-        scaleF += ',drawbox=c=$borderH:t=${(imgConfig.borderWidth * 1.5).round()}';
+        scaleF += ',${drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
       }
       
       sb.write('$scaleF$scaleLabel;');
       
       final String nextLabel = '[v_ov${overlayIdx++}]';
-      sb.write('$lastLabel$scaleLabel' 'overlay=${targetX + jX}:${targetY + jY}:enable=\'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})\'${imgConfig.isGif ? ":shortest=1" : ""}$nextLabel;');
+      sb.write('$lastLabel$scaleLabel' '${overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})', shortest: imgConfig.isGif)}$nextLabel;');
       lastLabel = nextLabel;
     }
 
     // 2. Text Overlays
     for (var i = 0; i < plan.textOverlayPaths.length; i++) {
-      final overlay = config.textOverlays[i];
+      final overlayCfg = config.textOverlays[i];
       final int textInputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + config.imageOverlays.length + i;
       
-      if (!overlay.isAnimated) {
+      if (!overlayCfg.isAnimated) {
         final int tJX = random.nextInt(51) - 25;
         final int tJY = random.nextInt(51) - 25;
         final double tOpacity = 0.90 + (random.nextDouble() * 0.10);
@@ -133,64 +139,64 @@ class CpuToolkit extends BaseFfmpegToolkit {
         final double tScale = 0.97 + (random.nextDouble() * 0.06);
         
         String label = '[static_txt$i]';
-        sb.write('[$textInputIdx:v]scale=iw*$tScale:-1,format=rgba,rotate=$tRotate*PI/180:c=black@0,colorchannelmixer=aa=$tOpacity$label;');
+        sb.write('[$textInputIdx:v]${scale(0, 0, iwScale: tScale)},format=rgba,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}$label;');
         
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' 'overlay=x=\'$tJX+1.0*sin(2*PI*n/15)\':y=\'$tJY+1.0*cos(2*PI*n/15)\':enable=\'between(t,${overlay.startTime},${overlay.endTime ?? 99999})\':shortest=1$nextLabel;');
+        sb.write('$lastLabel$label' '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', shortest: true)}$nextLabel;');
         lastLabel = nextLabel;
       } else {
-        final int tW = (overlay.width * 1.5).round();
-        final int tH = (overlay.height * 1.5).round();
+        final int tW = (overlayCfg.width * 1.5).round();
+        final int tH = (overlayCfg.height * 1.5).round();
         int fW = tW; int fH = tH;
-        if (overlay.rotation != 0) {
-          final double a = overlay.rotation * pi / 180;
+        if (overlayCfg.rotation != 0) {
+          final double a = overlayCfg.rotation * pi / 180;
           fW = (tW * cos(a).abs() + tH * sin(a).abs()).round();
           fH = (tW * sin(a).abs() + tH * cos(a).abs()).round();
         }
         
-        final int centerX = (overlay.x * 1080).round();
-        final int centerY = (overlay.y * 1920).round();
+        final int centerX = (overlayCfg.x * 1080).round();
+        final int centerY = (overlayCfg.y * 1920).round();
         final int tX = centerX - (fW ~/ 2);
         final int tY = centerY - (fH ~/ 2);
         
-        String fBlock = '[$textInputIdx:v]scale=$tW:$tH,format=rgba';
-        if (overlay.rotation != 0) fBlock += ',rotate=${overlay.rotation}*PI/180:c=black@0:ow=$fW:oh=$fH';
+        String fBlock = '[$textInputIdx:v]${scale(tW, tH)},format=rgba';
+        if (overlayCfg.rotation != 0) fBlock += ',${rotate(overlayCfg.rotation, ow: fW, oh: fH)}';
         
-        final start = overlay.startTime; 
-        final end = overlay.endTime ?? 40.0;
+        final start = overlayCfg.startTime; 
+        final end = overlayCfg.endTime ?? 40.0;
         final totalDur = (end - start).abs();
         
         String xE = '$tX'; String yE = '$tY'; String sE = '1.0';
         
-        if (overlay.animationInType != 'none') {
-          final dIn = totalDur * overlay.animationInDuration;
-          if (overlay.animationInType == 'fade') fBlock += ',fade=t=in:st=$start:d=$dIn:alpha=1';
-          else if (overlay.animationInType == 'slideUp') yE = 'if(lt(t,${start+dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
-          else if (overlay.animationInType == 'slideDown') yE = 'if(lt(t,${start+dIn}),$tY-75+75*(t-$start)/$dIn,$yE)';
-          else if (overlay.animationInType == 'slideLeft') xE = 'if(lt(t,${start+dIn}),$tX+75-75*(t-$start)/$dIn,$xE)';
-          else if (overlay.animationInType == 'slideRight') xE = 'if(lt(t,${start+dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
-          else if (overlay.animationInType == 'zoom') {
+        if (overlayCfg.animationInType != 'none') {
+          final dIn = totalDur * overlayCfg.animationInDuration;
+          if (overlayCfg.animationInType == 'fade') fBlock += ',${fade(type: 'in', start: start, duration: dIn)}';
+          else if (overlayCfg.animationInType == 'slideUp') yE = 'if(lt(t,${start+dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
+          else if (overlayCfg.animationInType == 'slideDown') yE = 'if(lt(t,${start+dIn}),$tY-75+75*(t-$start)/$dIn,$yE)';
+          else if (overlayCfg.animationInType == 'slideLeft') xE = 'if(lt(t,${start+dIn}),$tX+75-75*(t-$start)/$dIn,$xE)';
+          else if (overlayCfg.animationInType == 'slideRight') xE = 'if(lt(t,${start+dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
+          else if (overlayCfg.animationInType == 'zoom') {
             sE = 'if(lt(t,${start+dIn}),(t-$start)/$dIn,$sE)';
-            fBlock += ',fade=t=in:st=$start:d=$dIn:alpha=1';
+            fBlock += ',${fade(type: 'in', start: start, duration: dIn)}';
           }
         }
         
-        if (overlay.animationOutType != 'none' && totalDur > 0) {
-          final dOut = totalDur * overlay.animationOutDuration; 
+        if (overlayCfg.animationOutType != 'none' && totalDur > 0) {
+          final dOut = totalDur * overlayCfg.animationOutDuration; 
           final stOut = end - dOut;
-          if (overlay.animationOutType == 'fade') fBlock += ',fade=t=out:st=$stOut:d=$dOut:alpha=1';
-          else if (overlay.animationOutType == 'slideUp') yE = 'if(gt(t,$stOut),$tY-75*(t-$stOut)/$dOut,$yE)';
-          else if (overlay.animationOutType == 'slideDown') yE = 'if(gt(t,$stOut),$tY+75*(t-$stOut)/$dOut,$yE)';
-          else if (overlay.animationOutType == 'slideLeft') xE = 'if(gt(t,$stOut),$tX-75*(t-$stOut)/$dOut,$xE)';
-          else if (overlay.animationOutType == 'slideRight') xE = 'if(gt(t,$stOut),$tX+75*(t-$stOut)/$dOut,$xE)';
-          else if (overlay.animationOutType == 'zoom') {
+          if (overlayCfg.animationOutType == 'fade') fBlock += ',${fade(type: 'out', start: stOut, duration: dOut)}';
+          else if (overlayCfg.animationOutType == 'slideUp') yE = 'if(gt(t,$stOut),$tY-75*(t-$stOut)/$dOut,$yE)';
+          else if (overlayCfg.animationOutType == 'slideDown') yE = 'if(gt(t,$stOut),$tY+75*(t-$stOut)/$dOut,$yE)';
+          else if (overlayCfg.animationOutType == 'slideLeft') xE = 'if(gt(t,$stOut),$tX-75*(t-$stOut)/$dOut,$xE)';
+          else if (overlayCfg.animationOutType == 'slideRight') xE = 'if(gt(t,$stOut),$tX+75*(t-$stOut)/$dOut,$xE)';
+          else if (overlayCfg.animationOutType == 'zoom') {
             sE = 'if(gt(t,$stOut),1.0-(t-$stOut)/$dOut,$sE)';
-            fBlock += ',fade=t=out:st=$stOut:d=$dOut:alpha=1';
+            fBlock += ',${fade(type: 'out', start: stOut, duration: dOut)}';
           }
         }
         
         if (sE != '1.0') {
-          fBlock += ",scale='bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame";
+          fBlock += ",${scale(0, 0, expression: "'bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame")}";
           xE = '$centerX-w/2'; yE = '$centerY-h/2';
         }
         
@@ -198,7 +204,7 @@ class CpuToolkit extends BaseFfmpegToolkit {
         sb.write('$fBlock$label;');
         
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' 'overlay=x=\'$xE+1.0*sin(2*PI*n/20)\':y=\'$yE+1.0*cos(2*PI*n/20)\':enable=\'between(t,$start,$end)\':shortest=1$nextLabel;');
+        sb.write('$lastLabel$label' '${overlay(x: '$xE+1.0*sin(2*PI*n/20)', y: '$yE+1.0*cos(2*PI*n/20)', enable: 'between(t,$start,$end)', shortest: true)}$nextLabel;');
         lastLabel = nextLabel;
       }
     }
@@ -267,6 +273,4 @@ class CpuToolkit extends BaseFfmpegToolkit {
     return filters.join(',');
   }
 
-  @override
-  String getPreferredPixelFormat() => 'yuv420p';
 }

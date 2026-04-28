@@ -14,6 +14,37 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   GpuInfo get gpuInfo => hardwareResolver.gpuInfo!;
 
   @override
+  String rotate(double angle, {int? ow, int? oh}) {
+    String res = 'rotate=$angle*PI/180:c=black@0';
+    if (ow != null) res += ':ow=$ow';
+    if (oh != null) res += ':oh=$oh';
+    return res;
+  }
+
+  @override
+  String fade({required String type, required double start, required double duration}) {
+    return 'fade=t=$type:st=$start:d=$duration:alpha=1';
+  }
+
+  @override
+  String drawbox({required String c, required int t}) {
+    return 'drawbox=c=$c:t=$t';
+  }
+
+  @override
+  String colorToHex(dynamic color) {
+    if (color is String) return color;
+    // Giả định color là một đối tượng Color từ Flutter (0xXXRRGGBB)
+    // FFmpeg drawbox/color dùng định dạng 0xRRGGBB hoặc tên màu
+    try {
+      final String hex = color.toARGB32().toRadixString(16).padLeft(8, '0');
+      return '0x${hex.substring(2)}';
+    } catch (_) {
+      return 'white';
+    }
+  }
+
+  @override
   void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String outputDir, int index) {
     final concatFile = File('$outputDir/concat_$index.txt');
     concatFile.writeAsStringSync(paths.map((p) => "file '$p'").join('\n'));

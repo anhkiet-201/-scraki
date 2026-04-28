@@ -4,8 +4,20 @@ import 'package:scraki/features/video_poster/data/services/batch_video/core/doma
 import 'package:scraki/features/video_poster/data/services/batch_video/models/video_batch_execution_context.dart';
 
 abstract class VideoToolkit {
-  /// Thao tác phóng to/thu nhỏ
-  String scale(int width, int height);
+  /// Thao tác phóng to/thu nhỏ. Hỗ trợ kích thước cố định hoặc theo tỉ lệ (iwScale) hoặc expression tùy chỉnh.
+  String scale(int width, int height, {double? iwScale, String? expression});
+
+  /// Thao tác xoay
+  String rotate(double angle, {int? ow, int? oh});
+
+  /// Hiệu ứng mờ dần (Fade)
+  String fade({required String type, required double start, required double duration});
+
+  /// Vẽ khung viền (Drawbox)
+  String drawbox({required String c, required int t});
+
+  /// Helper chuyển đổi màu sang Hex string (FFmpeg format)
+  String colorToHex(dynamic color);
 
   /// Thao tác cắt khung hình
   String crop(int width, int height, int x, int y);
