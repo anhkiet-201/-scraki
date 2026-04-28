@@ -9,13 +9,23 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
   String get scaleFilterName => gpuInfo.scaleFilter ?? 'scale_cuda';
 
   @override
-  String scale(int width, int height) => '$scaleFilterName=$width:$height';
+  String scale(int width, int height) {
+    if (scaleFilterName == 'zscale') {
+      return 'zscale=w=$width:h=$height';
+    }
+    return '$scaleFilterName=$width:$height';
+  }
 
   @override
-  String crop(int width, int height, int x, int y) => 'crop=$width:$height:$x:$y';
+  String crop(int width, int height, int x, int y) {
+    final filterName = gpuInfo.hasCudaFilters ? 'crop_cuda' : 'crop';
+    return '$filterName=$width:$height:$x:$y';
+  }
 
   @override
-  String hflip() => 'hflip';
+  String hflip() {
+    return gpuInfo.hasCudaFilters ? 'hflip_cuda' : 'hflip';
+  }
 
   @override
   String adjustSpeed(double pts) => 'setpts=${pts.toStringAsFixed(6)}*N/30/TB';
@@ -52,7 +62,9 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
     if (y != null) parts.add('y=$y');
     if (enable != null) parts.add('enable=\'$enable\'');
     if (shortest) parts.add('shortest=1');
-    return 'overlay=${parts.join(':')}';
+    
+    final filterName = gpuInfo.hasCudaFilters ? 'overlay_cuda' : 'overlay';
+    return '$filterName=${parts.join(':')}';
   }
 
   @override
@@ -66,50 +78,134 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
 
     // 1. Image Overlays
     for (var i = 0; i < config.imageOverlays.length; i++) {
-      final img = config.imageOverlays[i];
-      if (img.localPath == null) continue;
+      final imgConfig = config.imageOverlays[i];
+      if (imgConfig.localPath == null) continue;
       
-      final int inputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + i;
-      final int targetW = (img.width * 1.5).round();
-      final int targetH = (img.height * 1.5).round();
+      final int currentInputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + i;
       
-      final int jX = random.nextInt(21) - 10;
-      final int jY = random.nextInt(21) - 10;
-      final double oOpacity = 0.94 + (random.nextDouble() * 0.06);
+      final int targetW = (imgConfig.width * 1.5).round();
+      final int targetH = (imgConfig.height * 1.5).round();
       
-      final int targetX = (img.x * 1080 - targetW / 2).round();
-      final int targetY = (img.y * 1920 - targetH / 2).round();
+      int finalW = targetW;
+      int finalH = targetH;
+      if (imgConfig.rotation != 0) {
+        final double angle = imgConfig.rotation * pi / 180;
+        finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs()).round();
+        finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs()).round();
+      }
 
-      // Nvidia: Scale to target size
-      String scaleF = '[$inputIdx:v]${scale(targetW, targetH)},format=rgba,colorchannelmixer=aa=$oOpacity';
-      if (img.rotation != 0) {
-        scaleF += ',rotate=${img.rotation}*PI/180:c=black@0:ow=$targetW:oh=$targetH';
+      final double oScale = 0.90 + (random.nextDouble() * 0.20);
+      final double oRotate = (random.nextDouble() * 6.0) - 3.0;
+      final double oBright = (random.nextDouble() * 0.08) - 0.04;
+      final double oSat = 0.95 + (random.nextDouble() * 0.1);
+      final int jX = random.nextInt(61) - 30;
+      final int jY = random.nextInt(61) - 30;
+      
+      final int fTargetW = (targetW * oScale).round();
+      final int fTargetH = (targetH * oScale).round();
+      
+      final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
+      final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
+
+      String scaleLabel = '[scaled$overlayIdx]';
+      String scaleF = '[$currentInputIdx:v]$scaleFilterName=$fTargetW:$fTargetH,format=rgba,eq=brightness=$oBright:saturation=$oSat';
+      
+      if (imgConfig.rotation != 0 || oRotate != 0) {
+        final double totalRot = imgConfig.rotation + oRotate;
+        scaleF += ',rotate=$totalRot*PI/180:c=black@0:ow=$finalW:oh=$finalH';
       }
       
-      final String label = '[img_ov$i]';
-      sb.write('$scaleF$label;');
+      if (imgConfig.borderWidth > 0) {
+        final String borderH = colorToHex(imgConfig.borderColor ?? 'white');
+        scaleF += ',drawbox=c=$borderH:t=${(imgConfig.borderWidth * 1.5).round()}';
+      }
+      
+      sb.write('$scaleF$scaleLabel;');
       
       final String nextLabel = '[v_ov${overlayIdx++}]';
-      sb.write('$lastLabel$label' '${overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${img.startTime},${img.endTime ?? 99999})', shortest: img.isGif)}$nextLabel;');
+      sb.write('$lastLabel$scaleLabel' 'overlay=${targetX + jX}:${targetY + jY}:enable=\'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})\'${imgConfig.isGif ? ":shortest=1" : ""}$nextLabel;');
       lastLabel = nextLabel;
     }
 
     // 2. Text Overlays
     for (var i = 0; i < plan.textOverlayPaths.length; i++) {
-      final textIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + config.imageOverlays.length + i;
-      final overlayInfo = config.textOverlays[i];
+      final overlay = config.textOverlays[i];
+      final int textInputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + config.imageOverlays.length + i;
       
-      String label = '[text_ov$i]';
-      if (!overlayInfo.isAnimated) {
+      if (!overlay.isAnimated) {
+        final int tJX = random.nextInt(51) - 25;
+        final int tJY = random.nextInt(51) - 25;
         final double tOpacity = 0.90 + (random.nextDouble() * 0.10);
-        sb.write('[$textIdx:v]format=rgba,colorchannelmixer=aa=$tOpacity$label;');
+        final double tRotate = (random.nextDouble() * 3.0) - 1.5;
+        final double tScale = 0.97 + (random.nextDouble() * 0.06);
+        
+        String label = '[static_txt$i]';
+        sb.write('[$textInputIdx:v]$scaleFilterName=iw*$tScale:-1,format=rgba,rotate=$tRotate*PI/180:c=black@0,colorchannelmixer=aa=$tOpacity$label;');
+        
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' '${overlay(x: '1.0*sin(2*PI*n/15)', y: '1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayInfo.startTime},${overlayInfo.endTime ?? 99999})', shortest: true)}$nextLabel;');
+        sb.write('$lastLabel$label' 'overlay=x=\'$tJX+1.0*sin(2*PI*n/15)\':y=\'$tJY+1.0*cos(2*PI*n/15)\':enable=\'between(t,${overlay.startTime},${overlay.endTime ?? 99999})\':shortest=1$nextLabel;');
         lastLabel = nextLabel;
       } else {
-        sb.write('[$textIdx:v]format=rgba$label;');
+        final int tW = (overlay.width * 1.5).round();
+        final int tH = (overlay.height * 1.5).round();
+        int fW = tW; int fH = tH;
+        if (overlay.rotation != 0) {
+          final double a = overlay.rotation * pi / 180;
+          fW = (tW * cos(a).abs() + tH * sin(a).abs()).round();
+          fH = (tW * sin(a).abs() + tH * cos(a).abs()).round();
+        }
+        
+        final int centerX = (overlay.x * 1080).round();
+        final int centerY = (overlay.y * 1920).round();
+        final int tX = centerX - (fW ~/ 2);
+        final int tY = centerY - (fH ~/ 2);
+        
+        String fBlock = '[$textInputIdx:v]$scaleFilterName=$tW:$tH,format=rgba';
+        if (overlay.rotation != 0) fBlock += ',rotate=${overlay.rotation}*PI/180:c=black@0:ow=$fW:oh=$fH';
+        
+        final start = overlay.startTime; 
+        final end = overlay.endTime ?? 40.0;
+        final totalDur = (end - start).abs();
+        
+        String xE = '$tX'; String yE = '$tY'; String sE = '1.0';
+        
+        if (overlay.animationInType != 'none') {
+          final dIn = totalDur * overlay.animationInDuration;
+          if (overlay.animationInType == 'fade') fBlock += ',fade=t=in:st=$start:d=$dIn:alpha=1';
+          else if (overlay.animationInType == 'slideUp') yE = 'if(lt(t,${start+dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
+          else if (overlay.animationInType == 'slideDown') yE = 'if(lt(t,${start+dIn}),$tY-75+75*(t-$start)/$dIn,$yE)';
+          else if (overlay.animationInType == 'slideLeft') xE = 'if(lt(t,${start+dIn}),$tX+75-75*(t-$start)/$dIn,$xE)';
+          else if (overlay.animationInType == 'slideRight') xE = 'if(lt(t,${start+dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
+          else if (overlay.animationInType == 'zoom') {
+            sE = 'if(lt(t,${start+dIn}),(t-$start)/$dIn,$sE)';
+            fBlock += ',fade=t=in:st=$start:d=$dIn:alpha=1';
+          }
+        }
+        
+        if (overlay.animationOutType != 'none' && totalDur > 0) {
+          final dOut = totalDur * overlay.animationOutDuration; 
+          final stOut = end - dOut;
+          if (overlay.animationOutType == 'fade') fBlock += ',fade=t=out:st=$stOut:d=$dOut:alpha=1';
+          else if (overlay.animationOutType == 'slideUp') yE = 'if(gt(t,$stOut),$tY-75*(t-$stOut)/$dOut,$yE)';
+          else if (overlay.animationOutType == 'slideDown') yE = 'if(gt(t,$stOut),$tY+75*(t-$stOut)/$dOut,$yE)';
+          else if (overlay.animationOutType == 'slideLeft') xE = 'if(gt(t,$stOut),$tX-75*(t-$stOut)/$dOut,$xE)';
+          else if (overlay.animationOutType == 'slideRight') xE = 'if(gt(t,$stOut),$tX+75*(t-$stOut)/$dOut,$xE)';
+          else if (overlay.animationOutType == 'zoom') {
+            sE = 'if(gt(t,$stOut),1.0-(t-$stOut)/$dOut,$sE)';
+            fBlock += ',fade=t=out:st=$stOut:d=$dOut:alpha=1';
+          }
+        }
+        
+        if (sE != '1.0') {
+          fBlock += ",scale='bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame";
+          xE = '$centerX-w/2'; yE = '$centerY-h/2';
+        }
+        
+        String label = '[anim_txt$i]';
+        sb.write('$fBlock$label;');
+        
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' '${overlay(x: '1.0*sin(2*PI*n/20)', y: '1.0*cos(2*PI*n/20)', enable: 'between(t,${overlayInfo.startTime},${overlayInfo.endTime ?? 99999})', shortest: true)}$nextLabel;');
+        sb.write('$lastLabel$label' 'overlay=x=\'$xE+1.0*sin(2*PI*n/20)\':y=\'$yE+1.0*cos(2*PI*n/20)\':enable=\'between(t,$start,$end)\':shortest=1$nextLabel;');
         lastLabel = nextLabel;
       }
     }
