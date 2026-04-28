@@ -38,8 +38,9 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
   }) async {
     if (!await File(request.sourcePath).exists()) {
       onLog?.call('  ❌ Lỗi: Không tìm thấy file nguồn ${request.sourcePath}');
-      return ExecutionResult(success: false, logs: []);
+      return ExecutionResult(success: false);
     }
+
 
     final probe = await _metadataAnalyzer.probeSourceVideo(request.sourcePath);
     final isHdr = _metadataAnalyzer.isHdr(

@@ -26,6 +26,7 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
 
     // Apple Silicon / Intel Mac: VideoToolbox encode.
     _cachedGpuInfo = (
+      name: 'Apple VideoToolbox',
       encoder: 'h264_videotoolbox',
       hwaccel: 'videotoolbox',
       scaleFilter: 'scale',
@@ -35,6 +36,7 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
       preferredPixFmt: 'yuv420p',
       maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 8),
     );
+
     
     return _cachedGpuInfo!;
   }

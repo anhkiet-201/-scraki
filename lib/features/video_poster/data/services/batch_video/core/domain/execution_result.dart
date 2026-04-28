@@ -5,9 +5,10 @@ class ExecutionResult {
 
   ExecutionResult({
     required this.success,
-    required this.logs,
+    this.logs = const [],
     this.outputPath,
   });
+
 
   factory ExecutionResult.failure(String error) {
     return ExecutionResult(success: false, logs: [error]);

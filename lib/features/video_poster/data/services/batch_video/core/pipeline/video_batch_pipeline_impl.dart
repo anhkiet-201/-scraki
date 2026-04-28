@@ -21,7 +21,11 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   final AmbientAudioProvider _ambientAudioProvider;
   
   late PipelineContext _context;
+  bool _isContextInitialized = false;
+  bool _isProcessing = false;
+
   final _eventController = StreamController<String>.broadcast();
+
 
   VideoBatchPipelineImpl(
     this._hardwareResolver,
@@ -37,15 +41,29 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     required List<String> sourceVideoPaths,
     required BatchVideoConfig config,
   }) async {
+    if (_isProcessing) return;
+    _isProcessing = true;
+    
     _context = PipelineContext(config: config);
+    _isContextInitialized = true;
     _eventController.add('📋 Đang khởi tạo pipeline...');
 
+
+
+    final ctx = _context;
     // 1. Hardware Discovery
     await _hardwareResolver.resolve();
-    _context.engine = VideoBatchEngineFactory.createEngine(_hardwareResolver, _metadataAnalyzer);
-    await _context.engine.initialize();
+    ctx.engine = VideoBatchEngineFactory.createEngine(_hardwareResolver, _metadataAnalyzer);
+    await ctx.engine.initialize();
 
-    _context.gpuInfo = _hardwareResolver.gpuInfo!;
+    ctx.gpuInfo = _hardwareResolver.gpuInfo!;
+    _eventController.add('🚀 Phần cứng: ${ctx.gpuInfo.name} | Encoder: ${ctx.gpuInfo.encoder} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}');
+    if (ctx.gpuInfo.hwaccel != null) {
+      _eventController.add('  💡 Tăng tốc: ${ctx.gpuInfo.hwaccel} | PixFmt: ${ctx.gpuInfo.preferredPixFmt}');
+    }
+
+
+
 
     // 2. Metadata Analysis
     _eventController.add('📋 Kiểm tra video nguồn...');
@@ -63,9 +81,13 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
 
     if (_context.validSourceVideos.isEmpty) {
-      _eventController.add('❌ Không có video hợp lệ!');
+      _eventController.add('❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!');
+      _isProcessing = false;
       return;
     }
+    _eventController.add('✅ Tìm thấy ${_context.validSourceVideos.length} video hợp lệ.');
+
+
 
     // 3. Ambient Sourcing
     if (config.generateAmbientAudio) {
@@ -89,35 +111,38 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
   @override
   Future<void> executeCutSegments() async {
-    if (_context.cancelled) return;
+    if (!_isContextInitialized || _context.cancelled) return;
+    final ctx = _context;
     
-    _eventController.add('[2/3] Đang xử lý ${_context.allUniqueSegments.length} segments...');
+    _eventController.add('[2/3] Đang xử lý ${ctx.allUniqueSegments.length} segments...');
     
     // Create temp dir
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    _context.tempDir = Directory(p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'));
-    await _context.tempDir.create(recursive: true);
+    ctx.tempDir = Directory(p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'));
+    await ctx.tempDir.create(recursive: true);
 
     final activeTasks = <Future<void>>{};
     int completed = 0;
-    final maxConcurrent = _context.gpuInfo.maxConcurrentEncodes;
+    final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
 
-    for (final req in _context.allUniqueSegments) {
-      if (_context.cancelled) break;
+    for (final req in ctx.allUniqueSegments) {
+      if (ctx.cancelled) break;
       while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
       
-      final outputPath = p.join(_context.tempDir.path, '${req.id}.mp4');
-      _context.segmentFileMap[req] = outputPath;
+      final outputPath = p.join(ctx.tempDir.path, '${req.id}.mp4');
+      ctx.segmentFileMap[req] = outputPath;
 
       late Future<void> task;
-      task = _context.engine.cutSegment(
+      task = ctx.engine.cutSegment(
         request: req, 
         outputPath: outputPath, 
-        context: _context.executionContext,
+        context: ctx.executionContext,
       ).then((_) {
+        if (_context != ctx) return; // Bỏ qua nếu đã bắt đầu session mới
         activeTasks.remove(task);
         completed++;
-        _eventController.add('_PROGRESS_LAZY: ⏳ Đang render segments: $completed/${_context.allUniqueSegments.length}...');
+        final pct = (completed / ctx.allUniqueSegments.length * 100).toStringAsFixed(0);
+        _eventController.add('_PROGRESS_LAZY: ⏳ Đang cắt ghép: $pct% ($completed/${ctx.allUniqueSegments.length})');
       });
       
       activeTasks.add(task);
@@ -126,17 +151,22 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
   }
 
+
   @override
   Future<void> executeRender() async {
-    if (_context.cancelled) return;
+    if (!_isContextInitialized || _context.cancelled) {
+      _isProcessing = false;
+      return;
+    }
+    final ctx = _context;
     
-    _eventController.add('[3/3] Đang ghép ${_context.config.outputCount} videos...');
+    _eventController.add('[3/3] Đang ghép ${ctx.config.outputCount} videos...');
     
     // Prepare output dir
     final timestamp = DateTime.now().toIso8601String().replaceAll(':', '').replaceAll('-', '').replaceAll('T', '_').substring(0, 15);
     String baseOutputDir;
-    if (_context.config.outputDir != null) {
-      baseOutputDir = _context.config.outputDir!;
+    if (ctx.config.outputDir != null) {
+      baseOutputDir = ctx.config.outputDir!;
     } else {
       try {
         final documentsDir = await getApplicationDocumentsDirectory();
@@ -154,28 +184,33 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       }
     }
 
-    _context.outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
-    await Directory(_context.outputDir).create(recursive: true);
+    ctx.outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
+    await Directory(ctx.outputDir).create(recursive: true);
 
     final activeTasks = <Future<void>>{};
-    final maxConcurrent = _context.gpuInfo.maxConcurrentEncodes;
+    final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
 
-    for (int i = 1; i <= _context.config.outputCount; i++) {
-      if (_context.cancelled) break;
+    for (int i = 1; i <= ctx.config.outputCount; i++) {
+      if (ctx.cancelled) break;
       while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
-      final plan = await _generateCompositionPlan(i);
+      final plan = await _generateCompositionPlan(ctx, i);
       
       late Future<void> task;
-      task = _context.engine.renderVideo(
+      task = ctx.engine.renderVideo(
         plan: plan, 
-        context: _context.executionContext,
-        onProgress: (pct) => _eventController.add('_PROGRESS_VID$i: [$i/${_context.config.outputCount}] $pct'),
+        context: ctx.executionContext,
+        onProgress: (pct) {
+          if (_context != ctx) return;
+          final progress = (pct * 100).toStringAsFixed(0);
+          _eventController.add('_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: $progress%');
+        },
       ).then((result) {
+        if (_context != ctx) return;
         activeTasks.remove(task);
         if (result.success) {
-          _eventController.add('_UPDATE_VID$i: ✅ Hoàn tất video $i');
+          _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
         } else {
-          _eventController.add('_UPDATE_VID$i: ❌ Thất bại video $i');
+          _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
         }
       });
       
@@ -184,13 +219,22 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
     _eventController.add('✅ Hoàn thành pipeline.');
+    _isProcessing = false;
   }
+
 
   @override
   void cancel() {
-    _context.cancel();
+    if (_isContextInitialized) {
+      try {
+        _context.cancel();
+      } catch (_) {}
+    }
+    _isProcessing = false;
     _eventController.add('🛑 Đã dừng pipeline.');
   }
+
+
 
   void _generatePlanning(BatchVideoConfig config) {
     final random = Random();
@@ -259,9 +303,9 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     return pool..shuffle(random);
   }
 
-  Future<CompositionPlan> _generateCompositionPlan(int index) async {
+  Future<CompositionPlan> _generateCompositionPlan(PipelineContext ctx, int index) async {
     final random = Random();
-    final config = _context.config;
+    final config = ctx.config;
     
     final params = CompositionParams(
       targetDuration: config.minFinalDuration + random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1),
@@ -286,16 +330,23 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       gammaB: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
     );
 
-    final plan = _context.videoPlans[index]!;
-    final segmentsToMerge = plan.map((r) => _context.segmentFileMap[r]!).toList();
-    final ambientPath = (_context.tempAmbientAudioPaths.isNotEmpty && index - 1 < _context.tempAmbientAudioPaths.length) ? _context.tempAmbientAudioPaths[index - 1] : null;
+    final plan = ctx.videoPlans[index]!;
+    final segmentsToMerge = <String>[];
+    for (final r in plan) {
+      final path = ctx.segmentFileMap[r];
+      if (path != null) {
+        segmentsToMerge.add(path);
+      }
+    }
+
+    final ambientPath = (ctx.tempAmbientAudioPaths.isNotEmpty && index - 1 < ctx.tempAmbientAudioPaths.length) ? ctx.tempAmbientAudioPaths[index - 1] : null;
 
     final hasCustomAudio = config.customAudioPath != null && config.customAudioPath!.isNotEmpty && File(config.customAudioPath!).existsSync();
     
     // Prepare text overlays
     final textPaths = <String>[];
     for (var i = 0; i < config.textOverlays.length; i++) {
-      final file = File(p.join(_context.tempDir.path, 'text_${index}_$i.png'));
+      final file = File(p.join(ctx.tempDir.path, 'text_${index}_$i.png'));
       await file.writeAsBytes(config.textOverlays[i].bytes);
       textPaths.add(file.absolute.path);
     }
@@ -303,7 +354,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     return CompositionPlan(
       outputIndex: index,
       segmentPaths: segmentsToMerge,
-      outputDir: _context.outputDir,
+      outputDir: ctx.outputDir,
       config: config,
       params: params,
       ambientAudioPath: ambientPath,

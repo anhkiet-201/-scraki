@@ -1,6 +1,7 @@
 import 'dart:math';
 
 typedef GpuInfo = ({
+  String name,
   String encoder,
   String? hwaccel,
   String? scaleFilter,
@@ -12,6 +13,7 @@ typedef GpuInfo = ({
   // Số lượng encode song song tối đa dựa trên hardware
   int maxConcurrentEncodes,
 });
+
 
 
 // ============================================================================

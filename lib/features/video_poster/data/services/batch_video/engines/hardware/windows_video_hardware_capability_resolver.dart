@@ -30,6 +30,7 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
 
     if (encoders.contains('h264_nvenc')) {
       _cachedGpuInfo = (
+        name: 'NVIDIA NVENC',
         encoder: 'h264_nvenc',
         hwaccel: 'cuda',
         scaleFilter: hasCudaFilters ? 'scale_cuda' : 'scale',
@@ -42,6 +43,7 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
     } else if (encoders.contains('h264_qsv')) {
       final hasQsvFilters = filters.contains('vpp_qsv');
       _cachedGpuInfo = (
+        name: 'Intel QSV',
         encoder: 'h264_qsv',
         hwaccel: 'qsv',
         scaleFilter: hasQsvFilters ? 'vpp_qsv' : 'scale',
@@ -53,6 +55,7 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
       );
     } else if (encoders.contains('h264_amf')) {
       _cachedGpuInfo = (
+        name: 'AMD AMF',
         encoder: 'h264_amf',
         hwaccel: 'd3d11va',
         scaleFilter: null,
@@ -64,6 +67,7 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
       );
     } else {
       _cachedGpuInfo = (
+        name: 'CPU (Software)',
         encoder: 'libx264',
         hwaccel: null,
         scaleFilter: null,
@@ -74,6 +78,7 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
         maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 8),
       );
     }
+
     
     return _cachedGpuInfo!;
   }
