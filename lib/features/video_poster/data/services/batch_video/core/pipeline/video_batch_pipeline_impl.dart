@@ -42,8 +42,9 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     // 1. Hardware Discovery
     await _hardwareResolver.resolve();
-    _context.engine = VideoBatchEngineFactory.createEngine(_hardwareResolver);
+    _context.engine = VideoBatchEngineFactory.createEngine(_hardwareResolver, _metadataAnalyzer);
     await _context.engine.initialize();
+
     _context.gpuInfo = _hardwareResolver.gpuInfo!;
 
     // 2. Metadata Analysis

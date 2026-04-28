@@ -7,17 +7,13 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/a
 class VtBatchEngine extends BaseVideoBatchEngine {
   VtBatchEngine({
     required super.hardwareResolver,
-  }) : super(
-          toolkit: VtToolkit(hardwareResolver),
-        );
+    required super.metadataAnalyzer,
+  }) : super(toolkit: VtToolkit(hardwareResolver));
 
   @override
-  FfmpegInputArgs getSegmentInputArgs(SegmentRequest request) {
-    return FfmpegInputArgs();
-  }
+  FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
 
-  @override
-  FilterPipe buildSegmentFilter(SegmentRequest request) {
+
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());

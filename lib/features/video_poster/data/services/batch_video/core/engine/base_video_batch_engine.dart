@@ -7,16 +7,22 @@ import 'package:scraki/features/video_poster/data/services/batch_video/core/tool
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/video_batch_execution_context.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/metadata/video_metadata_analyzer.dart';
+import 'dart:io';
+
 
 abstract class BaseVideoBatchEngine implements VideoBatchEngine {
   final VideoHardwareCapabilityResolver hardwareResolver;
   final VideoToolkit toolkit;
+  final VideoMetadataAnalyzer _metadataAnalyzer;
   late GpuInfo gpuInfo;
 
   BaseVideoBatchEngine({
     required this.hardwareResolver,
     required this.toolkit,
-  });
+    required VideoMetadataAnalyzer metadataAnalyzer,
+  }) : _metadataAnalyzer = metadataAnalyzer;
+
 
   @override
   Future<void> initialize() async {
@@ -30,20 +36,83 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
     required VideoBatchExecutionContext context,
     void Function(String)? onLog,
   }) async {
+    if (!await File(request.sourcePath).exists()) {
+      onLog?.call('  ❌ Lỗi: Không tìm thấy file nguồn ${request.sourcePath}');
+      return ExecutionResult(success: false, logs: []);
+    }
+
+    final probe = await _metadataAnalyzer.probeSourceVideo(request.sourcePath);
+    final isHdr = _metadataAnalyzer.isHdr(
+      transfer: probe.colorInfo.transfer, 
+      pixFmt: probe.colorInfo.pixFmt
+    );
+
+    final FfmpegInputArgs inputs = FfmpegInputArgs();
+    _appendInputFlags(inputs);
+    _appendSeekAndInput(inputs, request);
+    _appendAudioSource(inputs, request);
+
+    final FilterPipe vf = buildSegmentFilter(request, isHdr: isHdr);
+
     final List<String> args = [
+
       '-hide_banner', '-y',
-      ...getSegmentInputArgs(request).toArgs(),
-      '-i', request.sourcePath,
-      '-ss', request.startTime.toStringAsFixed(3),
+      ...inputs.toArgs(),
       '-t', request.duration.toStringAsFixed(3),
-      '-filter_complex', buildSegmentFilter(request).toString(),
-      ...getSegmentEncoderArgs(request).toArgs(),
-      '-avoid_negative_ts', 'make_zero',
-      outputPath,
+      '-vf', vf.toString(),
     ];
+
+    _appendMappingAndAudio(args, request);
+    _appendOutputSettings(args, request);
+    args.add(outputPath);
 
     return toolkit.runToolkit(args, context, onLog: onLog);
   }
+
+  void _appendInputFlags(FfmpegInputArgs inputs) {
+    if (gpuInfo.hwaccel != null) {
+      inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
+      if (gpuInfo.outputFormat != null) {
+        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
+      }
+    }
+  }
+
+  void _appendSeekAndInput(FfmpegInputArgs inputs, SegmentRequest request) {
+    inputs.addAll([
+      '-ss', request.startTime.toStringAsFixed(3),
+      '-fflags', '+genpts+igndts',
+      '-i', request.sourcePath,
+    ]);
+  }
+
+  void _appendAudioSource(FfmpegInputArgs inputs, SegmentRequest request) {
+    if (!request.hasAudio) {
+      inputs.addInput('anullsrc=r=44100:cl=stereo', format: 'lavfi');
+    }
+  }
+
+  void _appendMappingAndAudio(List<String> args, SegmentRequest request) {
+    if (!request.hasAudio) {
+      args.addAll(['-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-shortest']);
+    } else {
+      args.addAll(['-af', 'aresample=44100', '-c:a', 'aac']);
+    }
+  }
+
+  void _appendOutputSettings(List<String> args, SegmentRequest request) {
+    args.addAll([
+      '-pix_fmt', toolkit.getPreferredPixelFormat(),
+      '-colorspace', 'bt709',
+      '-color_trc', 'bt709',
+      '-color_primaries', 'bt709',
+      ...getSegmentEncoderArgs(request).toArgs(),
+      '-movflags', '+faststart',
+      '-avoid_negative_ts', 'make_zero',
+      '-map_metadata', '-1',
+    ]);
+  }
+
 
   @override
   Future<ExecutionResult> renderVideo({
@@ -101,9 +170,10 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
   String buildColorFilter(CompositionPlan plan) => toolkit.buildColorGradingChain(plan);
 
   /// Các phương thức abstract cho các bước nhỏ
-  FfmpegInputArgs getSegmentInputArgs(SegmentRequest request);
-  FilterPipe buildSegmentFilter(SegmentRequest request);
+  FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr});
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request);
+
+
 
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan);
   

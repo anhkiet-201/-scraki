@@ -7,20 +7,15 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/n
 class NvidiaBatchEngine extends BaseVideoBatchEngine {
   NvidiaBatchEngine({
     required super.hardwareResolver,
+    required super.metadataAnalyzer,
   }) : super(
           toolkit: NvidiaToolkit(hardwareResolver),
         );
 
   @override
-  FfmpegInputArgs getSegmentInputArgs(SegmentRequest request) {
-    final inputs = FfmpegInputArgs();
-    if (gpuInfo.hwaccel != null) inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
-    if (gpuInfo.outputFormat != null) inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
-    return inputs;
-  }
+  FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
 
-  @override
-  FilterPipe buildSegmentFilter(SegmentRequest request) {
+
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
