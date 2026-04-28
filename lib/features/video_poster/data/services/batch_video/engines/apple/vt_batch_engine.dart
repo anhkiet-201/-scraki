@@ -45,7 +45,12 @@ class VtBatchEngine extends BaseVideoBatchEngine {
 
     // 4. Image Overlays
     for (final img in plan.config.imageOverlays) {
-      if (img.localPath != null) inputs.addInput(img.localPath!);
+      if (img.localPath != null) {
+        inputs.addInput(
+          img.localPath!, 
+          extraArgs: img.isGif ? ['-ignore_loop', '0'] : null,
+        );
+      }
     }
 
     // 5. Text Overlays (PNGs)

@@ -91,17 +91,15 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
 
     String lastLabel = inputLabel;
     int overlayIdx = 0;
+    
+    int currentInputCounter = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0);
 
     // 1. Image Overlays
     for (var i = 0; i < config.imageOverlays.length; i++) {
       final imgConfig = config.imageOverlays[i];
       if (imgConfig.localPath == null) continue;
 
-      final int currentInputIdx =
-          1 +
-          (plan.hasCustomAudio ? 1 : 0) +
-          (plan.hasAmbientAudio ? 1 : 0) +
-          i;
+      final int currentInputIdx = currentInputCounter++;
 
       final int targetW = (imgConfig.width * 1.5).round();
       final int targetH = (imgConfig.height * 1.5).round();
@@ -110,10 +108,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
       int finalH = targetH;
       if (imgConfig.rotation != 0) {
         final double angle = imgConfig.rotation * pi / 180;
-        finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs())
-            .round();
-        finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs())
-            .round();
+        finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs()).round();
+        finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs()).round();
       }
 
       final double oScale = 0.90 + (random.nextDouble() * 0.20);
@@ -130,23 +126,21 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
       final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
       String scaleLabel = '[scaled$overlayIdx]';
-      String upload = gpuInfo.hasCudaFilters ? 'hwupload_cuda,' : '';
-      String pixFmt = gpuInfo.hasCudaFilters ? 'nv12' : 'rgba';
-      String scaleF =
-          '[$currentInputIdx:v]$upload${scale(fTargetW, fTargetH)},format=$pixFmt,${eq(brightness: oBright, saturation: oSat)}';
-
+      
+      String softwareFilters = 'scale=$fTargetW:$fTargetH,format=rgba,${eq(brightness: oBright, saturation: oSat)}';
+      
       if (imgConfig.rotation != 0 || oRotate != 0) {
         final double totalRot = imgConfig.rotation + oRotate;
-        scaleF += ',${rotate(totalRot, ow: finalW, oh: finalH)}';
+        softwareFilters += ',${rotate(totalRot, ow: finalW, oh: finalH)}';
       }
 
       if (imgConfig.borderWidth > 0) {
         final String borderH = colorToHex(imgConfig.borderColor ?? 'white');
-        scaleF +=
-            ',${drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
+        softwareFilters += ',${drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
       }
 
-      sb.write('$scaleF$scaleLabel;');
+      String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
+      sb.write('[$currentInputIdx:v]$softwareFilters,$uploadChain$scaleLabel;');
 
       final String nextLabel = '[v_ov${overlayIdx++}]';
       sb.write(
@@ -159,12 +153,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
     // 2. Text Overlays
     for (var i = 0; i < plan.textOverlayPaths.length; i++) {
       final overlayCfg = config.textOverlays[i];
-      final int textInputIdx =
-          1 +
-          (plan.hasCustomAudio ? 1 : 0) +
-          (plan.hasAmbientAudio ? 1 : 0) +
-          config.imageOverlays.length +
-          i;
+      final int textInputIdx = currentInputCounter++;
 
       if (!overlayCfg.isAnimated) {
         final int tJX = random.nextInt(51) - 25;
@@ -174,16 +163,15 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         final double tScale = 0.97 + (random.nextDouble() * 0.06);
 
         String label = '[static_txt$i]';
-        String upload = gpuInfo.hasCudaFilters ? 'hwupload_cuda,' : '';
-        String pixFmt = gpuInfo.hasCudaFilters ? 'nv12' : 'rgba';
-        sb.write(
-          '[$textInputIdx:v]${upload}${scale(0, 0, iwScale: tScale)},format=$pixFmt,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}$label;',
-        );
+        String softwareFilters = 'scale=iw*$tScale:-1,format=rgba,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}';
+        String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
+        
+        sb.write('[$textInputIdx:v]$softwareFilters,$uploadChain$label;');
 
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
           '$lastLabel$label'
-          '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', shortest: true)}$nextLabel;',
+          '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})')}$nextLabel;',
         );
         lastLabel = nextLabel;
       } else {
@@ -202,13 +190,9 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         final int tX = centerX - (fW ~/ 2);
         final int tY = centerY - (fH ~/ 2);
 
-        String upload = gpuInfo.hasCudaFilters ? 'hwupload_cuda,' : '';
-        String pixFmt = gpuInfo.hasCudaFilters ? 'nv12' : 'rgba';
-        String fBlock =
-            '[$textInputIdx:v]${upload}${scale(tW, tH)},format=$pixFmt';
-
+        String softwareFilters = 'scale=$tW:$tH,format=rgba';
         if (overlayCfg.rotation != 0)
-          fBlock += ',${rotate(overlayCfg.rotation, ow: fW, oh: fH)}';
+          softwareFilters += ',${rotate(overlayCfg.rotation, ow: fW, oh: fH)}';
 
         final start = overlayCfg.startTime;
         final end = overlayCfg.endTime ?? 40.0;
@@ -221,7 +205,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         if (overlayCfg.animationInType != 'none') {
           final dIn = totalDur * overlayCfg.animationInDuration;
           if (overlayCfg.animationInType == 'fade')
-            fBlock += ',${fade(type: 'in', start: start, duration: dIn)}';
+            softwareFilters += ',${fade(type: 'in', start: start, duration: dIn)}';
           else if (overlayCfg.animationInType == 'slideUp')
             yE = 'if(lt(t,${start + dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
           else if (overlayCfg.animationInType == 'slideDown')
@@ -232,7 +216,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
             xE = 'if(lt(t,${start + dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
           else if (overlayCfg.animationInType == 'zoom') {
             sE = 'if(lt(t,${start + dIn}),(t-$start)/$dIn,$sE)';
-            fBlock += ',${fade(type: 'in', start: start, duration: dIn)}';
+            softwareFilters += ',${fade(type: 'in', start: start, duration: dIn)}';
           }
         }
 
@@ -240,7 +224,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
           final dOut = totalDur * overlayCfg.animationOutDuration;
           final stOut = end - dOut;
           if (overlayCfg.animationOutType == 'fade')
-            fBlock += ',${fade(type: 'out', start: stOut, duration: dOut)}';
+            softwareFilters += ',${fade(type: 'out', start: stOut, duration: dOut)}';
           else if (overlayCfg.animationOutType == 'slideUp')
             yE = 'if(gt(t,$stOut),$tY-75*(t-$stOut)/$dOut,$yE)';
           else if (overlayCfg.animationOutType == 'slideDown')
@@ -251,24 +235,25 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
             xE = 'if(gt(t,$stOut),$tX+75*(t-$stOut)/$dOut,$xE)';
           else if (overlayCfg.animationOutType == 'zoom') {
             sE = 'if(gt(t,$stOut),1.0-(t-$stOut)/$dOut,$sE)';
-            fBlock += ',${fade(type: 'out', start: stOut, duration: dOut)}';
+            softwareFilters += ',${fade(type: 'out', start: stOut, duration: dOut)}';
           }
         }
 
         if (sE != '1.0') {
-          fBlock +=
-              ",${scale(0, 0, expression: "'bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame")}";
+          softwareFilters +=
+              ",scale='bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame";
           xE = '$centerX-w/2';
           yE = '$centerY-h/2';
         }
 
         String label = '[anim_txt$i]';
-        sb.write('$fBlock$label;');
+        String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
+        sb.write('[$textInputIdx:v]$softwareFilters,$uploadChain$label;');
 
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
           '$lastLabel$label'
-          '${overlay(x: '$xE+1.0*sin(2*PI*n/20)', y: '$yE+1.0*cos(2*PI*n/20)', enable: 'between(t,$start,$end)', shortest: true)}$nextLabel;',
+          '${overlay(x: '$xE+1.0*sin(2*PI*n/20)', y: '$yE+1.0*cos(2*PI*n/20)', enable: 'between(t,$start,$end)')}$nextLabel;',
         );
         lastLabel = nextLabel;
       }

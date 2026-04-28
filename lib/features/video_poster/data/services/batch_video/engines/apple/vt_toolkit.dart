@@ -74,12 +74,15 @@ class VtToolkit extends BaseFfmpegToolkit {
     String lastLabel = inputLabel;
     int overlayIdx = 0;
 
+    // Biến đếm số lượng input thực tế đã sử dụng
+    int currentInputCounter = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0);
+
     // 1. Image Overlays
     for (var i = 0; i < config.imageOverlays.length; i++) {
       final imgConfig = config.imageOverlays[i];
       if (imgConfig.localPath == null) continue;
       
-      final int currentInputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + i;
+      final int currentInputIdx = currentInputCounter++;
       
       final int targetW = (imgConfig.width * 1.5).round();
       final int targetH = (imgConfig.height * 1.5).round();
@@ -128,7 +131,7 @@ class VtToolkit extends BaseFfmpegToolkit {
     // 2. Text Overlays
     for (var i = 0; i < plan.textOverlayPaths.length; i++) {
       final overlayCfg = config.textOverlays[i];
-      final int textInputIdx = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0) + config.imageOverlays.length + i;
+      final int textInputIdx = currentInputCounter++;
       
       if (!overlayCfg.isAnimated) {
         final int tJX = random.nextInt(51) - 25;
@@ -141,7 +144,7 @@ class VtToolkit extends BaseFfmpegToolkit {
         sb.write('[$textInputIdx:v]${scale(0, 0, iwScale: tScale)},format=rgba,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}$label;');
         
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', shortest: true)}$nextLabel;');
+        sb.write('$lastLabel$label' '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/20)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})')}$nextLabel;');
         lastLabel = nextLabel;
       } else {
         final int tW = (overlayCfg.width * 1.5).round();
@@ -195,7 +198,7 @@ class VtToolkit extends BaseFfmpegToolkit {
         }
         
         if (sE != '1.0') {
-          fBlock += ",${scale(0, 0, expression: "'bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame")}";
+          fBlock += ",scale='bitand(iw*$sE,-2)':'bitand(ih*$sE,-2)':eval=frame";
           xE = '$centerX-w/2'; yE = '$centerY-h/2';
         }
         
@@ -203,7 +206,7 @@ class VtToolkit extends BaseFfmpegToolkit {
         sb.write('$fBlock$label;');
         
         final nextLabel = '[v_ov${overlayIdx++}]';
-        sb.write('$lastLabel$label' '${overlay(x: '$xE+1.0*sin(2*PI*n/20)', y: '$yE+1.0*cos(2*PI*n/20)', enable: 'between(t,$start,$end)', shortest: true)}$nextLabel;');
+        sb.write('$lastLabel$label' '${overlay(x: '$xE+1.0*sin(2*PI*n/20)', y: '$yE+1.0*cos(2*PI*n/20)', enable: 'between(t,$start,$end)')}$nextLabel;');
         lastLabel = nextLabel;
       }
     }
