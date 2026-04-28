@@ -34,12 +34,16 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   @override
   String colorToHex(dynamic color) {
     if (color is String) return color;
+    
     // Giả định color là một đối tượng Color từ Flutter (0xXXRRGGBB)
     // FFmpeg drawbox/color dùng định dạng 0xRRGGBB hoặc tên màu
     try {
-      final String hex = color.toARGB32().toRadixString(16).padLeft(8, '0');
+      // Gọi toARGB32() qua dynamic và ép kiểu kết quả về int
+      final int argb = (color as dynamic).toARGB32() as int;
+      final String hex = argb.toRadixString(16).padLeft(8, '0');
       return '0x${hex.substring(2)}';
     } catch (_) {
+      // Fallback nếu không có toARGB32() hoặc lỗi
       return 'white';
     }
   }
