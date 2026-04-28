@@ -24,13 +24,13 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=${gpuInfo.preferredPixFmt}');
+    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
     return pipe;
   }
 
   @override
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request) {
-    return NvidiaNvencOptions(bitrate: '10M', preset: 'p1', cq: '20');
+    return NvidiaNvencOptions(bitrate: '12M', preset: 'p1', cq: '20');
   }
 
   @override

@@ -21,7 +21,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=yuv420p');
+    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
     return pipe;
   }
 

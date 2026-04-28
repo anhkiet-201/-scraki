@@ -21,13 +21,13 @@ class VtBatchEngine extends BaseVideoBatchEngine {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=yuv420p');
+    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
     return pipe;
   }
 
   @override
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request) {
-    return VideoToolboxOptions(bitrate: '10M');
+    return VideoToolboxOptions(bitrate: '12M');
   }
 
   @override

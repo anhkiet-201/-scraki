@@ -106,6 +106,8 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request);
 
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan);
+  
+  @override
   EncoderOptions getEncoderArgs(CompositionPlan plan);
 
   String colorToHex(dynamic color) {
