@@ -14,7 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
-import 'package:scraki/features/video_poster/data/services/batch_video/video_batch_orchestrator.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/core/pipeline/video_batch_pipeline.dart';
 import 'package:scraki/features/video_poster/data/repositories/recent_color_repository.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
@@ -726,7 +726,7 @@ abstract class _VideoPosterStore with Store {
     }
   }
 
-  VideoBatchOrchestrator? _batchService;
+  VideoBatchPipeline? _batchService;
   StreamSubscription<String>? _batchSub;
 
   @action
@@ -738,7 +738,7 @@ abstract class _VideoPosterStore with Store {
   Future<void> createBatchVideos() async {
     if (sourceVideoPaths.isEmpty || isBatchCreating) return;
 
-    _batchService = inject<VideoBatchOrchestrator>();
+    _batchService = inject<VideoBatchPipeline>();
 
     // Fix: Tạm thời tắt isPreviewMode và dừng video để khi chụp PNG UI
     // không bị dính logic render text theo thời gian thực (giúp hiển thị tất cả text).
@@ -851,21 +851,24 @@ abstract class _VideoPosterStore with Store {
       generateAmbientAudio: generateAmbientAudio,
     );
 
-    final stream = _batchService!.createBatchVideos(
-      sourceVideoPaths: List<String>.from(sourceVideoPaths),
-      config: config,
-      onOutputDir: (dir) => runInAction(() => batchOutputDir = dir),
-      onLog: (line) => runInAction(() => _handleLogUpdate(line)),
-    );
+    try {
+      _batchSub = _batchService!.events.listen((line) {
+        runInAction(() => _handleLogUpdate(line));
+      });
 
-    _batchSub = stream.listen(
-      (line) => runInAction(() => _handleLogUpdate(line)),
-      onDone: () => runInAction(() => isBatchCreating = false),
-      onError: (Object e) => runInAction(() {
-        batchLogs.add('❌ Lỗi: $e');
-        isBatchCreating = false;
-      }),
-    );
+      await _batchService!.plan(
+        sourceVideoPaths: List<String>.from(sourceVideoPaths),
+        config: config,
+      );
+
+      await _batchService!.executeCutSegments();
+      await _batchService!.executeRender();
+
+    } catch (e) {
+      runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+    } finally {
+      runInAction(() => isBatchCreating = false);
+    }
   }
 
   final Map<String, int> _progressLineIndices = {};

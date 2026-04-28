@@ -136,12 +136,12 @@ import '../../features/video_poster/data/repositories/ffmpeg_video_processing_re
     as _i1007;
 import '../../features/video_poster/data/repositories/recent_color_repository.dart'
     as _i763;
+import '../../features/video_poster/data/services/batch_video/core/pipeline/video_batch_pipeline.dart'
+    as _i514;
+import '../../features/video_poster/data/services/batch_video/core/pipeline/video_batch_pipeline_impl.dart'
+    as _i454;
 import '../../features/video_poster/data/services/batch_video/engines/audio/ambient_audio_provider.dart'
     as _i761;
-import '../../features/video_poster/data/services/batch_video/engines/composition/video_batch_composer.dart'
-    as _i247;
-import '../../features/video_poster/data/services/batch_video/engines/composition/video_batch_composer_impl.dart'
-    as _i257;
 import '../../features/video_poster/data/services/batch_video/engines/hardware/macos_video_hardware_capability_resolver.dart'
     as _i815;
 import '../../features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart'
@@ -152,12 +152,6 @@ import '../../features/video_poster/data/services/batch_video/engines/metadata/v
     as _i606;
 import '../../features/video_poster/data/services/batch_video/engines/metadata/video_metadata_analyzer_impl.dart'
     as _i1051;
-import '../../features/video_poster/data/services/batch_video/engines/segment/video_segment_processor.dart'
-    as _i461;
-import '../../features/video_poster/data/services/batch_video/engines/segment/video_segment_processor_impl.dart'
-    as _i854;
-import '../../features/video_poster/data/services/batch_video/video_batch_orchestrator.dart'
-    as _i633;
 import '../../features/video_poster/data/services/giphy_service.dart' as _i298;
 import '../../features/video_poster/data/services/image_drop_service.dart'
     as _i113;
@@ -356,12 +350,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i545.SearchJobsWithAiUseCase>(
       () => _i545.SearchJobsWithAiUseCase(gh<_i481.RecruitmentRepository>()),
     );
-    gh.lazySingleton<_i461.VideoSegmentProcessor>(
-      () => _i854.VideoSegmentProcessorImpl(
-        gh<_i9.VideoHardwareCapabilityResolver>(),
-        gh<_i606.VideoMetadataAnalyzer>(),
-      ),
-    );
     gh.lazySingleton<_i801.ITikTokSeedingService>(
       () => _i1032.TikTokSeedingService(gh<_i229.ITikTokPostService>()),
     );
@@ -374,25 +362,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1022.ITikTokSeedingRepository>(),
       ),
     );
-    gh.lazySingleton<_i247.VideoBatchComposer>(
-      () => _i257.VideoBatchComposerImpl(
-        gh<_i9.VideoHardwareCapabilityResolver>(),
-      ),
-    );
     gh.factory<_i876.PosterCreationStore>(
       () => _i876.PosterCreationStore(
         gh<_i405.ParseJobTextUseCase>(),
         gh<_i420.FetchJobsUseCase>(),
         gh<_i545.SearchJobsWithAiUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i633.VideoBatchOrchestrator>(
-      () => _i633.VideoBatchOrchestrator(
-        gh<_i9.VideoHardwareCapabilityResolver>(),
-        gh<_i606.VideoMetadataAnalyzer>(),
-        gh<_i461.VideoSegmentProcessor>(),
-        gh<_i247.VideoBatchComposer>(),
-        gh<_i761.AmbientAudioProvider>(),
       ),
     );
     gh.factory<_i69.RunScriptUseCase>(
@@ -403,6 +377,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i240.SaveScriptUseCase>(
       () => _i240.SaveScriptUseCase(gh<_i55.ScriptRepository>()),
+    );
+    gh.lazySingleton<_i514.VideoBatchPipeline>(
+      () => _i454.VideoBatchPipelineImpl(
+        gh<_i9.VideoHardwareCapabilityResolver>(),
+        gh<_i606.VideoMetadataAnalyzer>(),
+        gh<_i761.AmbientAudioProvider>(),
+      ),
     );
     gh.singleton<_i730.SettingsConfigProvider>(
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),

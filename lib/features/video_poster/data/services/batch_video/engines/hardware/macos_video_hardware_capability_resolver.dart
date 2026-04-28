@@ -15,7 +15,10 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
   List<String>? _availableFilters;
 
   @override
-  Future<GpuInfo> getGpuInfo() async {
+  GpuInfo? get gpuInfo => _cachedGpuInfo;
+
+  @override
+  Future<GpuInfo> resolve() async {
     if (_cachedGpuInfo != null) return _cachedGpuInfo!;
     
     final filters = await _getAvailableFilters();

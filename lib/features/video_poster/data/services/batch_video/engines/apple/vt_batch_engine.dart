@@ -1,0 +1,67 @@
+import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/ffmpeg_options.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/core/engine/base_video_batch_engine.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/apple/vt_toolkit.dart';
+
+class VtBatchEngine extends BaseVideoBatchEngine {
+  VtBatchEngine({
+    required super.hardwareResolver,
+  }) : super(
+          toolkit: VtToolkit(hardwareResolver),
+        );
+
+  @override
+  FfmpegInputArgs getSegmentInputArgs(SegmentRequest request) {
+    return FfmpegInputArgs();
+  }
+
+  @override
+  FilterPipe buildSegmentFilter(SegmentRequest request) {
+    final pipe = FilterPipe();
+    pipe.add(toolkit.scale(1080, 1920));
+    if (request.hflip) pipe.add(toolkit.hflip());
+    pipe.add('format=yuv420p');
+    return pipe;
+  }
+
+  @override
+  EncoderOptions getSegmentEncoderArgs(SegmentRequest request) {
+    return VideoToolboxOptions(bitrate: '10M');
+  }
+
+  @override
+  FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
+    final inputs = FfmpegInputArgs();
+    
+    // 1. Video Segments (Concat file)
+    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.outputDir, plan.outputIndex);
+
+    // 2. Custom Audio
+    if (plan.hasCustomAudio) {
+      inputs.addInput(plan.config.customAudioPath!);
+    }
+
+    // 3. Ambient Audio
+    if (plan.hasAmbientAudio) {
+      inputs.addInput(plan.ambientAudioPath!);
+    }
+
+    // 4. Image Overlays
+    for (final img in plan.config.imageOverlays) {
+      if (img.localPath != null) inputs.addInput(img.localPath!);
+    }
+
+    // 5. Text Overlays (PNGs)
+    for (final path in plan.textOverlayPaths) {
+      inputs.addInput(path);
+    }
+
+    return inputs;
+  }
+
+  @override
+  EncoderOptions getEncoderArgs(CompositionPlan plan) {
+    return VideoToolboxOptions(bitrate: '12M');
+  }
+}

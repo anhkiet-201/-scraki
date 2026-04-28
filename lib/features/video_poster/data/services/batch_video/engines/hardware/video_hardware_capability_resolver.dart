@@ -3,8 +3,9 @@ import 'package:scraki/features/video_poster/data/services/batch_video/models/ba
 abstract class VideoHardwareCapabilityResolver {
   String get ffmpegBin;
   String get ffprobeBin;
+  GpuInfo? get gpuInfo;
   
-  Future<GpuInfo> getGpuInfo();
+  Future<GpuInfo> resolve();
   Future<bool> checkFfmpeg();
   void clearCache();
 }
