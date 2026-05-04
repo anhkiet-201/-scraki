@@ -52,29 +52,35 @@ class PanelComponents {
 
   /// Builds a small, uppercase section label.
   static Widget buildSectionLabel(String label, {BuildContext? context}) {
-    final isLight = context != null ? Theme.of(context).brightness == Brightness.light : false;
+    final isLight = context != null
+        ? Theme.of(context).brightness == Brightness.light
+        : false;
     return Text(
       label,
       style: TextStyle(
         fontSize: 9,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
-        color: isLight ? const Color(0xFF64748B) : Colors.white38, // Using Slate 500 for light mode
+        color: isLight
+            ? const Color(0xFF64748B)
+            : Colors.white38, // Using Slate 500 for light mode
       ),
     );
   }
 
   /// Builds a stylized divider with text in the middle.
   static Widget buildPaletteDivider({BuildContext? context}) {
-    final isLight = context != null ? Theme.of(context).brightness == Brightness.light : false;
-    final dividerColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.08);
+    final isLight = context != null
+        ? Theme.of(context).brightness == Brightness.light
+        : false;
+    final dividerColor = isLight
+        ? Colors.black.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.08);
     final textColor = isLight ? Colors.black26 : Colors.white24;
 
     return Row(
       children: [
-        const Expanded(
-          child: SizedBox.shrink(),
-        ),
+        const Expanded(child: SizedBox.shrink()),
         const SizedBox(width: 8),
         Text(
           'OR',
@@ -86,12 +92,7 @@ class PanelComponents {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: dividerColor,
-          ),
-        ),
+        Expanded(child: Container(height: 1, color: dividerColor)),
       ],
     );
   }
@@ -109,8 +110,10 @@ class PanelComponents {
   }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final thumbColor = isLight ? accentColor : Colors.white;
-    final inactiveColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white12;
-    
+    final inactiveColor = isLight
+        ? Colors.black.withValues(alpha: 0.08)
+        : Colors.white12;
+
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
         trackHeight: 3,
@@ -181,11 +184,14 @@ class PanelComponents {
       runSpacing: 6,
       children: [
         ...colors.map((c) {
-          final isSelected = selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
-          final borderColor = isSelected 
-              ? accentColor 
-              : (isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1));
-              
+          final isSelected =
+              selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
+          final borderColor = isSelected
+              ? accentColor
+              : (isLight
+                    ? Colors.black.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.1));
+
           return GestureDetector(
             onTap: () => onSelect(c),
             child: AnimatedContainer(
@@ -220,10 +226,14 @@ class PanelComponents {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white12,
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.08)
+                    : Colors.white12,
                 width: 1,
               ),
-              color: isLight ? Colors.black.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.03),
+              color: isLight
+                  ? Colors.black.withValues(alpha: 0.02)
+                  : Colors.white.withValues(alpha: 0.03),
             ),
             child: Icon(
               Icons.colorize_rounded,
@@ -271,7 +281,9 @@ class PanelComponents {
           spacing: 6,
           runSpacing: 6,
           children: colors.take(7).map((c) {
-            final isSelected = selectedColor != null && selectedColor.toARGB32() == c.toARGB32();
+            final isSelected =
+                selectedColor != null &&
+                selectedColor.toARGB32() == c.toARGB32();
             return GestureDetector(
               onTap: () => onSelect(c),
               child: AnimatedContainer(
@@ -282,9 +294,11 @@ class PanelComponents {
                   color: c,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected 
-                        ? accentColor 
-                        : (isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1)),
+                    color: isSelected
+                        ? accentColor
+                        : (isLight
+                              ? Colors.black.withValues(alpha: 0.08)
+                              : Colors.white.withValues(alpha: 0.1)),
                     width: isSelected ? 2.5 : 1,
                   ),
                 ),
@@ -305,7 +319,7 @@ class PanelComponents {
   }) async {
     Color pickedColor = initialColor;
     final isLight = Theme.of(context).brightness == Brightness.light;
-    
+
     await showDialog<void>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -429,11 +443,13 @@ class PanelComponents {
     Color accentColor = kPanelAccentColor,
   }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final backgroundColor = active 
-        ? accentColor.withValues(alpha: 0.15) 
-        : (isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.04));
-    final iconColor = active 
-        ? accentColor 
+    final backgroundColor = active
+        ? accentColor.withValues(alpha: 0.15)
+        : (isLight
+              ? Colors.black.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.04));
+    final iconColor = active
+        ? accentColor
         : (isLight ? const Color(0xFF64748B) : Colors.white38);
 
     return GestureDetector(
@@ -450,15 +466,11 @@ class PanelComponents {
                     color: accentColor.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: iconColor,
-        ),
+        child: Icon(icon, size: 18, color: iconColor),
       ),
     );
   }
@@ -472,8 +484,8 @@ class PanelComponents {
     Color accentColor = kPanelAccentColor,
   }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final iconColor = active 
-        ? accentColor 
+    final iconColor = active
+        ? accentColor
         : (isLight ? const Color(0xFF94A3B8) : Colors.white24);
 
     return GestureDetector(
@@ -481,14 +493,12 @@ class PanelComponents {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
+          color: active
+              ? accentColor.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: iconColor,
-        ),
+        child: Icon(icon, size: 18, color: iconColor),
       ),
     );
   }
@@ -586,12 +596,14 @@ class PanelComponents {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isLight 
-            ? Colors.black.withValues(alpha: 0.03) 
+        color: isLight
+            ? Colors.black.withValues(alpha: 0.03)
             : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
+          color: isLight
+              ? Colors.black.withValues(alpha: 0.05)
+              : Colors.white10,
           width: 0.5,
         ),
       ),
@@ -607,7 +619,7 @@ class PanelComponents {
           ),
           isExpanded: true,
           style: TextStyle(
-            color: isLight ? const Color(0xFF0F172A) : Colors.white, 
+            color: isLight ? const Color(0xFF0F172A) : Colors.white,
             fontSize: 13,
           ),
           onChanged: (String? newValue) {
@@ -642,44 +654,58 @@ class PanelComponents {
     bool initiallyExpanded = false,
   }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final backgroundColor = isLight 
-        ? Colors.black.withValues(alpha: 0.02) 
+    final backgroundColor = isLight
+        ? Colors.black.withValues(alpha: 0.02)
         : Colors.white.withValues(alpha: 0.02);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        // Subtle border for light mode sections
-        border: isLight ? Border.all(color: Colors.black.withValues(alpha: 0.02)) : null,
-      ),
-      child: Theme(
-        data: (isLight ? ThemeData.light() : ThemeData.dark()).copyWith(
-          dividerColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          splashColor: Colors.transparent,
-        ),
-        child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
-          leading: icon != null 
-              ? Icon(icon, size: 18, color: kPanelAccentColor.withValues(alpha: 0.8)) 
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          // Subtle border for light mode sections
+          border: isLight
+              ? Border.all(color: Colors.black.withValues(alpha: 0.02))
               : null,
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.8,
-              color: isLight ? const Color(0xFF1E293B) : Colors.white,
-            ),
+        ),
+        child: Theme(
+          data: (isLight ? ThemeData.light() : ThemeData.dark()).copyWith(
+            dividerColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            splashColor: Colors.transparent,
           ),
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          iconColor: kPanelAccentColor,
-          collapsedIconColor: isLight ? const Color(0xFF94A3B8) : Colors.white30,
-          children: children,
+          child: ExpansionTile(
+            initiallyExpanded: initiallyExpanded,
+            leading: icon != null
+                ? Icon(
+                    icon,
+                    size: 18,
+                    color: kPanelAccentColor.withValues(alpha: 0.8),
+                  )
+                : null,
+            title: Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+                color: isLight ? const Color(0xFF1E293B) : Colors.white,
+              ),
+            ),
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            iconColor: kPanelAccentColor,
+            collapsedIconColor: isLight
+                ? const Color(0xFF94A3B8)
+                : Colors.white30,
+            children: children,
+          ),
         ),
       ),
     );
