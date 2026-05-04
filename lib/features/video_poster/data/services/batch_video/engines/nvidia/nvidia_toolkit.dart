@@ -64,20 +64,13 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
   }
 
   @override
-  String overlay({
-    String? x,
-    String? y,
-    String? enable,
-    bool shortest = false,
-  }) {
+  String overlay({String? x, String? y, String? enable, bool shortest = true}) {
     final List<String> parts = [];
-    if (x != null) parts.add('x=$x');
-    if (y != null) parts.add('y=$y');
+    if (x != null) parts.add("x='$x'");
+    if (y != null) parts.add("y='$y'");
     if (enable != null) parts.add('enable=\'$enable\'');
     if (shortest) parts.add('shortest=1');
-
-    final filterName = gpuInfo.hasCudaFilters ? 'overlay_cuda' : 'overlay';
-    return '$filterName=${parts.join(':')}';
+    return 'overlay=${parts.join(':')}';
   }
 
   @override
@@ -88,7 +81,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
 
     String lastLabel = inputLabel;
     int overlayIdx = 0;
-    
+
     int currentInputCounter = 1;
     if (plan.hasCustomAudio) currentInputCounter++;
     if (plan.hasAmbientAudio) currentInputCounter++;
@@ -107,8 +100,10 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
       int finalH = targetH;
       if (imgConfig.rotation != 0) {
         final double angle = imgConfig.rotation * pi / 180;
-        finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs()).round();
-        finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs()).round();
+        finalW = (targetW * cos(angle).abs() + targetH * sin(angle).abs())
+            .round();
+        finalH = (targetW * sin(angle).abs() + targetH * cos(angle).abs())
+            .round();
       }
 
       final double oScale = 0.90 + (random.nextDouble() * 0.20);
@@ -118,16 +113,21 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
       final int jX = random.nextInt(61) - 30;
       final int jY = random.nextInt(61) - 30;
 
-      final int fTargetW = (targetW * oScale).round();
-      final int fTargetH = (targetH * oScale).round();
+      int fTargetW = (targetW * oScale).round();
+      int fTargetH = (targetH * oScale).round();
+
+      // Đảm bảo kích thước chẵn cho yuva420p
+      if (fTargetW % 2 != 0) fTargetW++;
+      if (fTargetH % 2 != 0) fTargetH++;
 
       final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
       final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
 
       String scaleLabel = '[scaled$overlayIdx]';
-      
-      String softwareFilters = 'scale=$fTargetW:$fTargetH,format=rgba,${eq(brightness: oBright, saturation: oSat)}';
-      
+
+      String softwareFilters =
+          'scale=$fTargetW:$fTargetH,format=yuva420p,${eq(brightness: oBright, saturation: oSat)}';
+
       if (imgConfig.rotation != 0 || oRotate != 0) {
         final double totalRot = imgConfig.rotation + oRotate;
         softwareFilters += ',${rotate(totalRot, ow: finalW, oh: finalH)}';
@@ -135,16 +135,19 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
 
       if (imgConfig.borderWidth > 0) {
         final String borderH = colorToHex(imgConfig.borderColor ?? 'white');
-        softwareFilters += ',${drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
+        softwareFilters +=
+            ',${drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
       }
 
-      String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
-      sb.write('[$currentInputIdx:v]$softwareFilters,$uploadChain$scaleLabel;');
+      // Overlay chạy CPU — [colored] đã ở CPU sau color grading
+      sb.write(
+        '[$currentInputIdx:v]$softwareFilters,format=yuva420p$scaleLabel;',
+      );
 
       final String nextLabel = '[v_ov${overlayIdx++}]';
       sb.write(
         '$lastLabel$scaleLabel'
-        '${overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})', shortest: imgConfig.isGif)}$nextLabel;',
+        '${overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})')}$nextLabel;',
       );
       lastLabel = nextLabel;
     }
@@ -155,17 +158,24 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
       final int textInputIdx = currentInputCounter++;
 
       if (!overlayCfg.isAnimated) {
-        final int tJX = random.nextInt(51) - 25;
-        final int tJY = random.nextInt(51) - 25;
+        final int centerX = (overlayCfg.x * 1080).round();
+        final int centerY = (overlayCfg.y * 1920).round();
+        // Tính toán fW, fH dự kiến để canh giữa
+        final int tW = (overlayCfg.width * 1.5).round();
+        final int tH = (overlayCfg.height * 1.5).round();
+        final int tX = centerX - (tW ~/ 2);
+        final int tY = centerY - (tH ~/ 2);
+
+        final int tJX = tX + random.nextInt(51) - 25;
+        final int tJY = tY + random.nextInt(51) - 25;
         final double tOpacity = 0.90 + (random.nextDouble() * 0.10);
         final double tRotate = (random.nextDouble() * 3.0) - 1.5;
         final double tScale = 0.97 + (random.nextDouble() * 0.06);
 
         String label = '[static_txt$i]';
-        String softwareFilters = 'scale=iw*$tScale:-1,format=rgba,${rotate(tRotate, ow: -1)},colorchannelmixer=aa=$tOpacity';
-        String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
-        
-        sb.write('[$textInputIdx:v]$softwareFilters,$uploadChain$label;');
+        String softwareFilters =
+            'scale=iw*$tScale:-1,format=rgba,${rotate(tRotate)},colorchannelmixer=aa=$tOpacity';
+        sb.write('[$textInputIdx:v]$softwareFilters$label;');
 
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
@@ -204,7 +214,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         if (overlayCfg.animationInType != 'none') {
           final dIn = totalDur * overlayCfg.animationInDuration;
           if (overlayCfg.animationInType == 'fade')
-            softwareFilters += ',${fade(type: 'in', start: start, duration: dIn)}';
+            softwareFilters +=
+                ',${fade(type: 'in', start: start, duration: dIn)}';
           else if (overlayCfg.animationInType == 'slideUp')
             yE = 'if(lt(t,${start + dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
           else if (overlayCfg.animationInType == 'slideDown')
@@ -215,7 +226,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
             xE = 'if(lt(t,${start + dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
           else if (overlayCfg.animationInType == 'zoom') {
             sE = 'if(lt(t,${start + dIn}),(t-$start)/$dIn,$sE)';
-            softwareFilters += ',${fade(type: 'in', start: start, duration: dIn)}';
+            softwareFilters +=
+                ',${fade(type: 'in', start: start, duration: dIn)}';
           }
         }
 
@@ -223,7 +235,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
           final dOut = totalDur * overlayCfg.animationOutDuration;
           final stOut = end - dOut;
           if (overlayCfg.animationOutType == 'fade')
-            softwareFilters += ',${fade(type: 'out', start: stOut, duration: dOut)}';
+            softwareFilters +=
+                ',${fade(type: 'out', start: stOut, duration: dOut)}';
           else if (overlayCfg.animationOutType == 'slideUp')
             yE = 'if(gt(t,$stOut),$tY-75*(t-$stOut)/$dOut,$yE)';
           else if (overlayCfg.animationOutType == 'slideDown')
@@ -234,7 +247,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
             xE = 'if(gt(t,$stOut),$tX+75*(t-$stOut)/$dOut,$xE)';
           else if (overlayCfg.animationOutType == 'zoom') {
             sE = 'if(gt(t,$stOut),1.0-(t-$stOut)/$dOut,$sE)';
-            softwareFilters += ',${fade(type: 'out', start: stOut, duration: dOut)}';
+            softwareFilters +=
+                ',${fade(type: 'out', start: stOut, duration: dOut)}';
           }
         }
 
@@ -246,8 +260,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         }
 
         String label = '[anim_txt$i]';
-        String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
-        sb.write('[$textInputIdx:v]$softwareFilters,$uploadChain$label;');
+        sb.write('[$textInputIdx:v]$softwareFilters$label;');
 
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
@@ -273,11 +286,15 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
 
     // Audio gốc luôn là [0:a] (Concat Demuxer)
     final double origVolume = plan.hasCustomAudio ? 0.25 : 0.05;
-    sb.write('[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: origVolume, pts: params.pts)}[orig_a];');
+    sb.write(
+      '[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: origVolume, pts: params.pts)}[orig_a];',
+    );
 
     // Custom Audio: [1:a]
     if (plan.hasCustomAudio) {
-      sb.write('[1:a]${params.audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: params.pts)}[music_a];');
+      sb.write(
+        '[1:a]${params.audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: params.pts)}[music_a];',
+      );
     }
 
     String mixLabels = '[orig_a]';
@@ -291,12 +308,16 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
     if (plan.hasAmbientAudio) {
       mixInputs++;
       final int ambientIdx = plan.hasCustomAudio ? 2 : 1;
-      sb.write('[$ambientIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];');
+      sb.write(
+        '[$ambientIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];',
+      );
       mixLabels += '[ambient_a]';
     }
 
     if (mixInputs > 1) {
-      sb.write('${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0[mixed_a]');
+      sb.write(
+        '${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0[mixed_a]',
+      );
     } else {
       sb.write('[orig_a]aresample=async=1:first_pts=0[mixed_a]');
     }
@@ -309,7 +330,8 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
     final params = plan.params;
 
     // 1. Micro Crop Jitter
-    final jitterCrop = 'crop=iw*(1-${params.cropJitterX}):ih*(1-${params.cropJitterY}):0:0';
+    final jitterCrop =
+        'crop=iw*(1-${params.cropJitterX}):ih*(1-${params.cropJitterY}):0:0';
 
     // 2. Dynamic Pan (Ken Burns Effect)
     final cropW = (1080 / params.zoomVal).round();
@@ -327,7 +349,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
     final dynamicPan = 'crop=$cropW:$cropH:$xExpr:$yExpr';
 
     // Luôn dùng [0:v] — input là Concat Demuxer
-    return '[0:v]$jitterCrop,$dynamicPan,${scale(1080, 1920)},${adjustSpeed(params.pts)}';
+    return '[0:v]$dynamicPan,$jitterCrop,${scale(1080, 1920)},${adjustSpeed(params.pts)}';
   }
 
   @override

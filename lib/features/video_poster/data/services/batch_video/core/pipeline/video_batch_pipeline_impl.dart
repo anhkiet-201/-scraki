@@ -21,13 +21,12 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   final VideoHardwareCapabilityResolver _hardwareResolver;
   final VideoMetadataAnalyzer _metadataAnalyzer;
   final AmbientAudioProvider _ambientAudioProvider;
-  
+
   late PipelineContext _context;
   bool _isContextInitialized = false;
   bool _isProcessing = false;
 
   final _eventController = StreamController<String>.broadcast();
-
 
   VideoBatchPipelineImpl(
     this._hardwareResolver,
@@ -45,31 +44,35 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   }) async {
     if (_isProcessing) return;
     _isProcessing = true;
-    
+
     _context = PipelineContext(config: config);
     _isContextInitialized = true;
     _eventController.add('📋 Đang khởi tạo pipeline...');
 
-
-
     final ctx = _context;
     // 1. Hardware Discovery
     await _hardwareResolver.resolve();
-    ctx.engine = VideoBatchEngineFactory.createEngine(_hardwareResolver, _metadataAnalyzer);
+    ctx.engine = VideoBatchEngineFactory.createEngine(
+      _hardwareResolver,
+      _metadataAnalyzer,
+    );
     await ctx.engine.initialize();
 
     ctx.gpuInfo = _hardwareResolver.gpuInfo!;
-    _eventController.add('🚀 Phần cứng: ${ctx.gpuInfo.name} | Encoder: ${ctx.gpuInfo.encoder} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}');
+    _eventController.add(
+      '🚀 Phần cứng: ${ctx.gpuInfo.name} | Encoder: ${ctx.gpuInfo.encoder} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}',
+    );
     if (ctx.gpuInfo.hwaccel != null) {
-      _eventController.add('  💡 Tăng tốc: ${ctx.gpuInfo.hwaccel} | PixFmt: ${ctx.gpuInfo.preferredPixFmt}');
+      _eventController.add(
+        '  💡 Tăng tốc: ${ctx.gpuInfo.hwaccel} | PixFmt: ${ctx.gpuInfo.preferredPixFmt}',
+      );
     }
-
-
-
 
     // 2. Metadata Analysis
     _eventController.add('📋 Kiểm tra video nguồn...');
-    final probeResults = await Future.wait(sourceVideoPaths.map((path) => _metadataAnalyzer.probeSourceVideo(path)));
+    final probeResults = await Future.wait(
+      sourceVideoPaths.map((path) => _metadataAnalyzer.probeSourceVideo(path)),
+    );
 
     for (int i = 0; i < sourceVideoPaths.length; i++) {
       if (_context.cancelled) return;
@@ -83,22 +86,24 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
 
     if (_context.validSourceVideos.isEmpty) {
-      _eventController.add('❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!');
+      _eventController.add(
+        '❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!',
+      );
       _isProcessing = false;
       return;
     }
-    _eventController.add('✅ Tìm thấy ${_context.validSourceVideos.length} video hợp lệ.');
-
-
+    _eventController.add(
+      '✅ Tìm thấy ${_context.validSourceVideos.length} video hợp lệ.',
+    );
 
     // 3. Ambient Sourcing
     if (config.generateAmbientAudio) {
       _eventController.add('[0/3] Đang tải âm thanh nền...');
       try {
         final paths = await _ambientAudioProvider.fetchRandomAmbientAudios(
-          config.outputCount, 
-          config.ambientTags, 
-          onLog: (msg) => _eventController.add(msg)
+          config.outputCount,
+          config.ambientTags,
+          onLog: (msg) => _eventController.add(msg),
         );
         _context.tempAmbientAudioPaths.addAll(paths);
       } catch (e) {
@@ -115,12 +120,16 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   Future<void> executeCutSegments() async {
     if (!_isContextInitialized || _context.cancelled) return;
     final ctx = _context;
-    
-    _eventController.add('[2/3] Đang xử lý ${ctx.allUniqueSegments.length} segments...');
-    
+
+    _eventController.add(
+      '[2/3] Đang xử lý ${ctx.allUniqueSegments.length} segments...',
+    );
+
     // Create temp dir
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    ctx.tempDir = Directory(p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'));
+    ctx.tempDir = Directory(
+      p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'),
+    );
     await ctx.tempDir.create(recursive: true);
 
     final activeTasks = <Future<void>>{};
@@ -130,29 +139,40 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     for (final req in ctx.allUniqueSegments) {
       if (ctx.cancelled) break;
       while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
-      
+
       final outputPath = p.join(ctx.tempDir.path, '${req.id}.mp4');
       ctx.segmentFileMap[req] = outputPath;
 
       late Future<void> task;
-      task = ctx.engine.cutSegment(
-        request: req, 
-        outputPath: outputPath, 
-        context: ctx.executionContext,
-      ).then((_) {
-        if (_context != ctx) return; // Bỏ qua nếu đã bắt đầu session mới
-        activeTasks.remove(task);
-        completed++;
-        final pct = (completed / ctx.allUniqueSegments.length * 100).toStringAsFixed(0);
-        _eventController.add('_PROGRESS_LAZY: ⏳ Đang cắt ghép: $pct% ($completed/${ctx.allUniqueSegments.length})');
-      });
-      
+      task = ctx.engine
+          .cutSegment(
+            request: req,
+            outputPath: outputPath,
+            context: ctx.executionContext,
+          )
+          .then((result) {
+            if (_context != ctx) return;
+            activeTasks.remove(task);
+            if (result.success) {
+              completed++;
+              final pct = (completed / ctx.allUniqueSegments.length * 100).toStringAsFixed(0);
+              _eventController.add('_PROGRESS_LAZY: ⏳ Đang cắt: $pct% ($completed/${ctx.allUniqueSegments.length})');
+            } else {
+              _eventController.add('❌ Lỗi cắt segment ${req.id}: ${result.logs}');
+              cancel();
+            }
+          }).catchError((Object error) {
+            if (_context != ctx) return;
+            activeTasks.remove(task);
+            _eventController.add('❌ Exception cắt segment ${req.id}: $error');
+            cancel();
+          });
+
       activeTasks.add(task);
     }
-    
+
     if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
   }
-
 
   @override
   Future<void> executeRender() async {
@@ -161,11 +181,16 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       return;
     }
     final ctx = _context;
-    
+
     _eventController.add('[3/3] Đang ghép ${ctx.config.outputCount} videos...');
-    
+
     // Prepare output dir
-    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '').replaceAll('-', '').replaceAll('T', '_').substring(0, 15);
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '')
+        .replaceAll('-', '')
+        .replaceAll('T', '_')
+        .substring(0, 15);
     String baseOutputDir;
     if (ctx.config.outputDir != null) {
       baseOutputDir = ctx.config.outputDir!;
@@ -174,13 +199,16 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         final documentsDir = await getApplicationDocumentsDirectory();
         if (Platform.isWindows) {
           final userProfile = Platform.environment['USERPROFILE'];
-          baseOutputDir = (userProfile != null && await Directory(p.join(userProfile, 'Desktop')).exists())
+          baseOutputDir =
+              (userProfile != null &&
+                  await Directory(p.join(userProfile, 'Desktop')).exists())
               ? p.join(userProfile, 'Desktop')
               : p.join(documentsDir.parent.path, 'Desktop');
         } else {
           baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
         }
-        if (!await Directory(baseOutputDir).exists()) baseOutputDir = Directory.current.path;
+        if (!await Directory(baseOutputDir).exists())
+          baseOutputDir = Directory.current.path;
       } catch (_) {
         baseOutputDir = Directory.current.path;
       }
@@ -196,27 +224,31 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       if (ctx.cancelled) break;
       while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
       final plan = await _generateCompositionPlan(ctx, i);
-      
+
       late Future<void> task;
-      task = ctx.engine.renderVideo(
-        plan: plan, 
-        context: ctx.executionContext,
-        onProgress: (pct) {
-          if (_context != ctx) return;
-          final progress = (pct * 100).toStringAsFixed(0);
-          _eventController.add('_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: $progress%');
-        },
-      ).then((result) {
-        if (_context != ctx) return;
-        activeTasks.remove(task);
-        if (result.success) {
-          _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
-        } else {
-          logger.e('❌ Thất bại video $i: ${result.logs}');
-          _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
-        }
-      });
-      
+      task = ctx.engine
+          .renderVideo(
+            plan: plan,
+            context: ctx.executionContext,
+            onProgress: (pct) {
+              if (_context != ctx) return;
+              final progress = (pct * 100).toStringAsFixed(0);
+              _eventController.add(
+                '_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: $progress%',
+              );
+            },
+          )
+          .then((result) {
+            if (_context != ctx) return;
+            activeTasks.remove(task);
+            if (result.success) {
+              _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
+            } else {
+              logger.e('❌ Thất bại video $i: ${result.logs}');
+              _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
+            }
+          });
+
       activeTasks.add(task);
     }
 
@@ -224,7 +256,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     _eventController.add('✅ Hoàn thành pipeline.');
     _isProcessing = false;
   }
-
 
   @override
   void cancel() {
@@ -237,48 +268,65 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     _eventController.add('🛑 Đã dừng pipeline.');
   }
 
-
-
   void _generatePlanning(BatchVideoConfig config) {
     final random = Random();
     _context.validSourceVideos.shuffle(random); // Shuffle sources first
-    
+
     List<SegmentRequest> globalSegmentPool = _generateSegmentPool(
-      _context.validSourceVideos, 
-      _context.videoDurations, 
-      _context.videoHasAudio, 
-      config, 
-      random
+      _context.validSourceVideos,
+      _context.videoDurations,
+      _context.videoHasAudio,
+      config,
+      random,
     );
 
     if (globalSegmentPool.isEmpty) return;
 
     int poolIndex = 0;
     for (int i = 1; i <= config.outputCount; i++) {
-      final targetDuration = config.minFinalDuration + random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
+      final targetDuration =
+          config.minFinalDuration +
+          random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
       final selected = <SegmentRequest>[];
       double totalDuration = 0.0;
       String lastVideoPath = '';
 
       while (totalDuration < targetDuration && !_context.cancelled) {
         if (poolIndex >= globalSegmentPool.length) {
-          globalSegmentPool = _generateSegmentPool(_context.validSourceVideos, _context.videoDurations, _context.videoHasAudio, config, random, isRetry: true);
+          globalSegmentPool = _generateSegmentPool(
+            _context.validSourceVideos,
+            _context.videoDurations,
+            _context.videoHasAudio,
+            config,
+            random,
+            isRetry: true,
+          );
           poolIndex = 0;
         }
-        
+
         int foundIndex = -1;
         // Simple shifting logic kept from original
-        for (int checked = 0; checked < min(15, globalSegmentPool.length - poolIndex); checked++) {
-           final candidate = globalSegmentPool[poolIndex + checked];
-           if ((_context.validSourceVideos.length <= 1 || candidate.sourcePath != lastVideoPath) && !selected.any((s) => s.sourcePath == candidate.sourcePath && s.startTime == candidate.startTime)) {
-              foundIndex = poolIndex + checked;
-              break;
-           }
+        for (
+          int checked = 0;
+          checked < min(15, globalSegmentPool.length - poolIndex);
+          checked++
+        ) {
+          final candidate = globalSegmentPool[poolIndex + checked];
+          if ((_context.validSourceVideos.length <= 1 ||
+                  candidate.sourcePath != lastVideoPath) &&
+              !selected.any(
+                (s) =>
+                    s.sourcePath == candidate.sourcePath &&
+                    s.startTime == candidate.startTime,
+              )) {
+            foundIndex = poolIndex + checked;
+            break;
+          }
         }
         if (foundIndex != -1 && foundIndex != poolIndex) {
-            final temp = globalSegmentPool[poolIndex];
-            globalSegmentPool[poolIndex] = globalSegmentPool[foundIndex];
-            globalSegmentPool[foundIndex] = temp;
+          final temp = globalSegmentPool[poolIndex];
+          globalSegmentPool[poolIndex] = globalSegmentPool[foundIndex];
+          globalSegmentPool[foundIndex] = temp;
         }
         final request = globalSegmentPool[poolIndex++];
         selected.add(request);
@@ -290,34 +338,62 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
   }
 
-  List<SegmentRequest> _generateSegmentPool(List<String> validVideos, Map<String, int> videoDurations, Map<String, bool> videoHasAudio, BatchVideoConfig config, Random random, {bool isRetry = false}) {
+  List<SegmentRequest> _generateSegmentPool(
+    List<String> validVideos,
+    Map<String, int> videoDurations,
+    Map<String, bool> videoHasAudio,
+    BatchVideoConfig config,
+    Random random, {
+    bool isRetry = false,
+  }) {
     final pool = <SegmentRequest>[];
     for (final src in List<String>.from(validVideos)..shuffle(random)) {
       final srcDur = videoDurations[src]!.toDouble();
-      double currentTime = (srcDur > config.minSegmentDuration + 2) ? random.nextDouble() * 2.0 : 0.0;
+      double currentTime = (srcDur > config.minSegmentDuration + 2)
+          ? random.nextDouble() * 2.0
+          : 0.0;
       while (currentTime + config.minSegmentDuration <= srcDur) {
-        double maxPossible = min(config.maxSegmentDuration.toDouble(), srcDur - currentTime);
+        double maxPossible = min(
+          config.maxSegmentDuration.toDouble(),
+          srcDur - currentTime,
+        );
         if (maxPossible < config.minSegmentDuration) break;
-        final segDur = config.minSegmentDuration + (random.nextDouble() * (maxPossible - config.minSegmentDuration));
-        pool.add(SegmentRequest(sourcePath: src, startTime: currentTime, duration: segDur, hflip: random.nextDouble() < (isRetry ? 0.7 : 0.3), hasAudio: videoHasAudio[src] ?? false));
+        final segDur =
+            config.minSegmentDuration +
+            (random.nextDouble() * (maxPossible - config.minSegmentDuration));
+        pool.add(
+          SegmentRequest(
+            sourcePath: src,
+            startTime: currentTime,
+            duration: segDur,
+            hflip: random.nextDouble() < (isRetry ? 0.7 : 0.3),
+            hasAudio: videoHasAudio[src] ?? false,
+          ),
+        );
         currentTime += segDur;
       }
     }
     return pool..shuffle(random);
   }
 
-  Future<CompositionPlan> _generateCompositionPlan(PipelineContext ctx, int index) async {
+  Future<CompositionPlan> _generateCompositionPlan(
+    PipelineContext ctx,
+    int index,
+  ) async {
     final random = Random();
     final config = ctx.config;
-    
+
     final params = CompositionParams(
-      targetDuration: config.minFinalDuration + random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1),
+      targetDuration:
+          config.minFinalDuration +
+          random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1),
       pts: 0.99 + random.nextDouble() * 0.02,
       brightness: _gaussian(random) * 0.015,
       contrast: 1.0 + _gaussian(random) * 0.02,
       gopSize: 48 + random.nextInt(144), // Mở rộng range 48-192
       bFrames: [0, 2, 3][random.nextInt(3)],
-      creationTime: '${DateTime.now().toUtc().toIso8601String().split('.').first}.000000Z',
+      creationTime:
+          '${DateTime.now().toUtc().toIso8601String().split('.').first}.000000Z',
       audioProfile: AudioSpoofProfile.random(random),
       hueShift: _gaussian(random) * 2.0,
       satFactor: 1.0 + _gaussian(random) * 0.03,
@@ -330,10 +406,18 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       panEndX: random.nextDouble(),
       panEndY: random.nextDouble(),
       transitionDuration: 0.05 + random.nextDouble() * 0.05, // 0.05 - 0.10s
-      lutFilePath: config.generateColorFilter ? await LutAssetProvider.extractRandom(random, ctx.tempDir.path) : null,
-      gammaR: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
-      gammaG: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
-      gammaB: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
+      lutFilePath: config.generateColorFilter
+          ? await LutAssetProvider.extractRandom(random, ctx.tempDir.path)
+          : null,
+      gammaR: !config.generateColorFilter
+          ? 0.98 + random.nextDouble() * 0.04
+          : null,
+      gammaG: !config.generateColorFilter
+          ? 0.98 + random.nextDouble() * 0.04
+          : null,
+      gammaB: !config.generateColorFilter
+          ? 0.98 + random.nextDouble() * 0.04
+          : null,
     );
 
     final plan = ctx.videoPlans[index]!;
@@ -347,10 +431,17 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       }
     }
 
-    final ambientPath = (ctx.tempAmbientAudioPaths.isNotEmpty && index - 1 < ctx.tempAmbientAudioPaths.length) ? ctx.tempAmbientAudioPaths[index - 1] : null;
+    final ambientPath =
+        (ctx.tempAmbientAudioPaths.isNotEmpty &&
+            index - 1 < ctx.tempAmbientAudioPaths.length)
+        ? ctx.tempAmbientAudioPaths[index - 1]
+        : null;
 
-    final hasCustomAudio = config.customAudioPath != null && config.customAudioPath!.isNotEmpty && File(config.customAudioPath!).existsSync();
-    
+    final hasCustomAudio =
+        config.customAudioPath != null &&
+        config.customAudioPath!.isNotEmpty &&
+        File(config.customAudioPath!).existsSync();
+
     // Prepare text overlays
     final textPaths = <String>[];
     for (var i = 0; i < config.textOverlays.length; i++) {
@@ -375,6 +466,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   }
 
   double _gaussian(Random r) {
-    return ((r.nextDouble() + r.nextDouble() + r.nextDouble()) / 3.0 - 0.5) * 2.0;
+    return ((r.nextDouble() + r.nextDouble() + r.nextDouble()) / 3.0 - 0.5) *
+        2.0;
   }
 }

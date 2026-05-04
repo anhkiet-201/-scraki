@@ -23,7 +23,11 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   }
 
   @override
-  String fade({required String type, required double start, required double duration}) {
+  String fade({
+    required String type,
+    required double start,
+    required double duration,
+  }) {
     return 'fade=t=$type:st=$start:d=$duration:alpha=1';
   }
 
@@ -35,7 +39,7 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   @override
   String colorToHex(dynamic color) {
     if (color is String) return color;
-    
+
     // Giả định color là một đối tượng Color từ Flutter (0xXXRRGGBB)
     // FFmpeg drawbox/color dùng định dạng 0xRRGGBB hoặc tên màu
     try {
@@ -50,7 +54,12 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   }
 
   @override
-  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String tempDir, int index) {
+  void buildConcatInput(
+    FfmpegInputArgs inputs,
+    List<String> paths,
+    String tempDir,
+    int index,
+  ) {
     final concatFile = File('$tempDir/concat_$index.txt');
     concatFile.writeAsStringSync(paths.map((p) => "file '$p'").join('\n'));
     inputs.addConcatInput(concatFile.absolute.path);
@@ -71,7 +80,7 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
     void Function(double)? onProgress,
     int? targetDuration,
   }) async {
-    final List<String> finalArgs = List.from(args);
+    final List<String> finalArgs = ['-nostdin', ...args];
     File? filterFile;
 
     try {
@@ -79,40 +88,65 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
       if (filterIdx != -1 && finalArgs[filterIdx + 1].length > 1000) {
         final filterContent = finalArgs[filterIdx + 1];
         final tempDir = Directory.systemTemp;
-        filterFile = File(p.join(tempDir.path, 'ffmpeg_filter_${DateTime.now().millisecondsSinceEpoch}.txt'));
+        filterFile = File(
+          p.join(
+            tempDir.path,
+            'ffmpeg_filter_${DateTime.now().millisecondsSinceEpoch}.txt',
+          ),
+        );
         await filterFile.writeAsString(filterContent);
-        
+
         finalArgs[filterIdx] = '-filter_complex_script';
         finalArgs[filterIdx + 1] = filterFile.path;
       }
 
-      final process = await Process.start(hardwareResolver.ffmpegBin, finalArgs);
-    context.addProcess(process);
-    
-    final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-    process.stderr.listen((data) {
-      final out = String.fromCharCodes(data);
-      if (onLog != null) onLog(out);
-      
-      if (onProgress != null && targetDuration != null && !context.cancelled) {
-        final match = regex.firstMatch(out);
-        if (match != null) {
-          final currentSeconds = int.parse(match.group(1)!) * 3600 + 
-                                int.parse(match.group(2)!) * 60 + 
-                                double.parse(match.group(3)!);
-          onProgress((currentSeconds / targetDuration).clamp(0.0, 1.0));
-        }
-      }
-    });
+      final process = await Process.start(
+        hardwareResolver.ffmpegBin,
+        finalArgs,
+      );
+      context.addProcess(process);
 
-    final exitCode = await process.exitCode;
-    context.removeProcess(process);
-    
-    if (exitCode == 0) {
-      return ExecutionResult.success(args.last);
-    } else {
-      return ExecutionResult.failure('FFmpeg failed with exit code $exitCode');
-    }
+      // DEBUG LOGGING START
+      final debugLogFile = File(
+        'C:/Users/iggan/.gemini/antigravity/brain/60566d8b-dc9b-4809-a062-1ce09394c351/scratch/ffmpeg_debug_log.txt',
+      );
+      await debugLogFile.writeAsString(
+        'FFMPEG COMMAND:\n${hardwareResolver.ffmpegBin} ${finalArgs.join(' ')}\n\nSTDERR OUTPUT:\n',
+        mode: FileMode.append,
+      );
+      // DEBUG LOGGING END
+
+      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+      process.stdout.listen((_) {}); // Xả buffer stdout để tránh deadlock
+      process.stderr.listen((data) {
+        final out = String.fromCharCodes(data);
+        debugLogFile.writeAsStringSync(out, mode: FileMode.append);
+        if (onLog != null) onLog(out);
+
+        if (onProgress != null &&
+            targetDuration != null &&
+            !context.cancelled) {
+          final match = regex.firstMatch(out);
+          if (match != null) {
+            final currentSeconds =
+                int.parse(match.group(1)!) * 3600 +
+                int.parse(match.group(2)!) * 60 +
+                double.parse(match.group(3)!);
+            onProgress((currentSeconds / targetDuration).clamp(0.0, 1.0));
+          }
+        }
+      });
+
+      final exitCode = await process.exitCode;
+      context.removeProcess(process);
+
+      if (exitCode == 0) {
+        return ExecutionResult.success(args.last);
+      } else {
+        return ExecutionResult.failure(
+          'FFmpeg failed with exit code $exitCode',
+        );
+      }
     } finally {
       try {
         if (filterFile != null && await filterFile.exists()) {

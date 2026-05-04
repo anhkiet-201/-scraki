@@ -46,7 +46,7 @@ abstract class VideoToolkit {
   String lut3d(String lutFilePath);
 
   /// Chồng lớp (Overlay) - Tự động chọn filter phù hợp phần cứng
-  String overlay({String? x, String? y, String? enable, bool shortest = false});
+  String overlay({String? x, String? y, String? enable, bool shortest = true});
 
   /// Xây dựng toàn bộ chuỗi Overlay từ CompositionPlan
   String buildOverlayChain(CompositionPlan plan, String inputLabel);

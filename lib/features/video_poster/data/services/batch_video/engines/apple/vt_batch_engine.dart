@@ -46,14 +46,14 @@ class VtBatchEngine extends BaseVideoBatchEngine {
       if (img.localPath != null) {
         inputs.addInput(
           img.localPath!, 
-          extraArgs: img.isGif ? ['-ignore_loop', '0'] : null,
+          extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
         );
       }
     }
 
     // 5. Text Overlays (PNGs)
     for (final path in plan.textOverlayPaths) {
-      inputs.addInput(path);
+      inputs.addInput(path, extraArgs: ['-loop', '1']);
     }
 
     return inputs;

@@ -103,6 +103,7 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
 
   void _appendOutputSettings(List<String> args, SegmentRequest request) {
     args.addAll([
+      '-r', '30',
       '-pix_fmt', toolkit.getPreferredPixelFormat(),
       '-colorspace', 'bt709',
       '-color_trc', 'bt709',
@@ -145,6 +146,7 @@ abstract class BaseVideoBatchEngine implements VideoBatchEngine {
       '-filter_complex', filterComplex.toString(),
       '-map', '[video_out]',
       '-map', '[mixed_a]',
+      '-r', '30', // Đảm bảo output cuối cùng là 30fps
       ...getEncoderArgs(plan).toArgs(),
       plan.finalOutputPath,
     ]);
