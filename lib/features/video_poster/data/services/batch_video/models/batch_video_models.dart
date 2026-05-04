@@ -93,7 +93,7 @@ class AudioSpoofProfile {
       midGain: (random.nextDouble() * 3.0) - 1.5,
       trebleGain: (random.nextDouble() * 3.0) - 1.5,
       audioBitrate: [96, 112, 128, 160][random.nextInt(4)],
-      delayMs: 1 + random.nextInt(5),
+      delayMs: 10 + random.nextInt(31), // 10–40ms
     );
   }
 

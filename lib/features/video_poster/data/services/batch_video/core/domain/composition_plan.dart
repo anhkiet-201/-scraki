@@ -4,6 +4,7 @@ import 'package:scraki/features/video_poster/domain/entities/batch_video_config.
 class CompositionPlan {
   final int outputIndex;
   final List<String> segmentPaths;
+  final List<double> segmentDurations;
   final String outputDir;
   final String tempDir;
   final BatchVideoConfig config;
@@ -20,6 +21,7 @@ class CompositionPlan {
   CompositionPlan({
     required this.outputIndex,
     required this.segmentPaths,
+    required this.segmentDurations,
     required this.outputDir,
     required this.tempDir,
     required this.config,
@@ -40,14 +42,20 @@ class CompositionParams {
   final double brightness;
   final double contrast;
   final int gopSize;
+  final int bFrames;
   final String creationTime;
   final AudioSpoofProfile audioProfile;
   final double hueShift;
   final double satFactor;
   final double vignetteAngle;
   final double zoomVal;
-  final double randX;
-  final double randY;
+  final double cropJitterX;
+  final double cropJitterY;
+  final double panStartX;
+  final double panStartY;
+  final double panEndX;
+  final double panEndY;
+  final double transitionDuration;
   final String? lutFilePath;
   final double? gammaR;
   final double? gammaG;
@@ -59,14 +67,20 @@ class CompositionParams {
     required this.brightness,
     required this.contrast,
     required this.gopSize,
+    required this.bFrames,
     required this.creationTime,
     required this.audioProfile,
     required this.hueShift,
     required this.satFactor,
     required this.vignetteAngle,
     required this.zoomVal,
-    required this.randX,
-    required this.randY,
+    required this.cropJitterX,
+    required this.cropJitterY,
+    required this.panStartX,
+    required this.panStartY,
+    required this.panEndX,
+    required this.panEndY,
+    required this.transitionDuration,
     this.lutFilePath,
     this.gammaR,
     this.gammaG,

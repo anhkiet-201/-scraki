@@ -28,7 +28,7 @@ class VtToolkit extends BaseFfmpegToolkit {
   String hflip() => 'hflip';
 
   @override
-  String adjustSpeed(double pts) => 'setpts=${pts.toStringAsFixed(6)}*N/30/TB';
+  String adjustSpeed(double pts) => 'setpts=${pts.toStringAsFixed(6)}*PTS';
 
   @override
   String eq({double brightness = 0.0, double contrast = 1.0, double saturation = 1.0, double gamma = 1.0}) {
@@ -75,7 +75,9 @@ class VtToolkit extends BaseFfmpegToolkit {
     int overlayIdx = 0;
 
     // Biến đếm số lượng input thực tế đã sử dụng
-    int currentInputCounter = 1 + (plan.hasCustomAudio ? 1 : 0) + (plan.hasAmbientAudio ? 1 : 0);
+    int currentInputCounter = 1;
+    if (plan.hasCustomAudio) currentInputCounter++;
+    if (plan.hasAmbientAudio) currentInputCounter++;
 
     // 1. Image Overlays
     for (var i = 0; i < config.imageOverlays.length; i++) {
@@ -220,37 +222,64 @@ class VtToolkit extends BaseFfmpegToolkit {
     final params = plan.params;
     final config = plan.config;
     final sb = StringBuffer();
-    
+
+    // Audio gốc luôn là [0:a] (Concat Demuxer)
+    final double origVolume = plan.hasCustomAudio ? 0.25 : 0.05;
+    sb.write('[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: origVolume, pts: params.pts)}[orig_a];');
+
+    // Custom Audio: [1:a]
     if (plan.hasCustomAudio) {
-      sb.write('[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: 0.25, pts: params.pts)}[orig_a];');
       sb.write('[1:a]${params.audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: params.pts)}[music_a];');
-    } else {
-      sb.write('[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: 0.05, pts: params.pts)}[orig_a];');
     }
-    
+
     String mixLabels = '[orig_a]';
     int mixInputs = 1;
-    if (plan.hasCustomAudio) { mixInputs++; mixLabels += '[music_a]'; }
+    if (plan.hasCustomAudio) {
+      mixInputs++;
+      mixLabels += '[music_a]';
+    }
+
+    // Ambient Audio: [2:a] nếu có custom, [1:a] nếu không
     if (plan.hasAmbientAudio) {
       mixInputs++;
-      final ambientInputIdx = plan.hasCustomAudio ? 2 : 1;
-      sb.write('[$ambientInputIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];');
+      final int ambientIdx = plan.hasCustomAudio ? 2 : 1;
+      sb.write('[$ambientIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];');
       mixLabels += '[ambient_a]';
     }
-    
+
     if (mixInputs > 1) {
       sb.write('${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0[mixed_a]');
     } else {
       sb.write('[orig_a]aresample=async=1:first_pts=0[mixed_a]');
     }
-    
+
     return sb.toString();
   }
 
   @override
   String buildBaseFilter(CompositionPlan plan) {
     final params = plan.params;
-    return '[0:v]${scale(1080, 1920)},${adjustSpeed(params.pts)}';
+
+    // 1. Micro Crop Jitter
+    final jitterCrop = 'crop=iw*(1-${params.cropJitterX}):ih*(1-${params.cropJitterY}):0:0';
+
+    // 2. Dynamic Pan (Ken Burns Effect)
+    final cropW = (1080 / params.zoomVal).round();
+    final cropH = (1920 / params.zoomVal).round();
+    final maxOffX = 1080 - cropW;
+    final maxOffY = 1920 - cropH;
+
+    final sx = (params.panStartX * maxOffX).round();
+    final ex = (params.panEndX * maxOffX).round();
+    final sy = (params.panStartY * maxOffY).round();
+    final ey = (params.panEndY * maxOffY).round();
+
+    final xExpr = '$sx+($ex-$sx)*t/${params.targetDuration}';
+    final yExpr = '$sy+($ey-$sy)*t/${params.targetDuration}';
+    final dynamicPan = 'crop=$cropW:$cropH:$xExpr:$yExpr';
+
+    // Luôn dùng [0:v] — input là Concat Demuxer
+    return '[0:v]$jitterCrop,$dynamicPan,${scale(1080, 1920)},${adjustSpeed(params.pts)}';
   }
 
   @override

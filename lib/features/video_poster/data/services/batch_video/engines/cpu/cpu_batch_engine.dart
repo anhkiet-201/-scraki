@@ -14,8 +14,6 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
-
-
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
@@ -32,7 +30,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
     
-    // 1. Video Segments (Concat file)
+    // 1. Video Segments (Concat Demuxer)
     toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
@@ -65,6 +63,10 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
-    return CpuLibx264Options(preset: 'medium', crf: '21');
+    return CpuLibx264Options(
+      preset: 'medium',
+      crf: '21',
+      bFrames: plan.params.bFrames,
+    );
   }
 }

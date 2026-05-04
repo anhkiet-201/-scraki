@@ -8,12 +8,14 @@ class VideoToolboxOptions extends EncoderOptions {
   final String bitrate;
   final bool realtime;
   final int? profile;
+  final int? bFrames;
 
   VideoToolboxOptions({
     this.codec = 'h264_videotoolbox',
     required this.bitrate,
     this.realtime = true,
     this.profile,
+    this.bFrames,
   });
 
   @override
@@ -23,6 +25,7 @@ class VideoToolboxOptions extends EncoderOptions {
       if (realtime) ...['-realtime', '1'],
       '-b:v', bitrate,
       if (profile != null) ...['-profile:v', profile.toString()],
+      if (bFrames != null) ...['-bf', bFrames.toString()],
       '-c:a', 'aac',
       '-b:a', '128k',
     ];
@@ -36,6 +39,7 @@ class NvidiaNvencOptions extends EncoderOptions {
   final String preset;
   final String rc;
   final String cq;
+  final int bFrames;
 
   NvidiaNvencOptions({
     this.codec = 'h264_nvenc',
@@ -43,6 +47,7 @@ class NvidiaNvencOptions extends EncoderOptions {
     this.preset = 'p4',
     this.rc = 'vbr',
     this.cq = '24',
+    this.bFrames = 2,
   });
 
   @override
@@ -53,6 +58,7 @@ class NvidiaNvencOptions extends EncoderOptions {
       '-rc', rc,
       '-cq', cq,
       '-b:v', bitrate,
+      '-bf', bFrames.toString(),
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
@@ -64,10 +70,12 @@ class NvidiaNvencOptions extends EncoderOptions {
 class CpuLibx264Options extends EncoderOptions {
   final String preset;
   final String crf;
+  final int bFrames;
 
   CpuLibx264Options({
     this.preset = 'veryfast',
     this.crf = '23',
+    this.bFrames = 2,
   });
 
   @override
@@ -76,6 +84,7 @@ class CpuLibx264Options extends EncoderOptions {
       '-c:v', 'libx264',
       '-preset', preset,
       '-crf', crf,
+      '-bf', bFrames.toString(),
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',

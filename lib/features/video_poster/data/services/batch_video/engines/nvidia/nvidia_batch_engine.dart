@@ -14,8 +14,6 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
-
-
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
@@ -31,10 +29,14 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
   @override
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
-    if (gpuInfo.hwaccel != null) inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
-    if (gpuInfo.outputFormat != null) inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
+    if (gpuInfo.hwaccel != null) {
+      inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
+      if (gpuInfo.outputFormat != null) {
+        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
+      }
+    }
     
-    // 1. Video Segments (Concat file)
+    // 1. Video Segments (Dùng Concat Demuxer để đạt độ ổn định 100%)
     toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
@@ -67,6 +69,11 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
-    return NvidiaNvencOptions(bitrate: '12M', preset: 'p4', cq: '24');
+    return NvidiaNvencOptions(
+      bitrate: '12M',
+      preset: 'p4',
+      cq: '24',
+      bFrames: plan.params.bFrames,
+    );
   }
 }

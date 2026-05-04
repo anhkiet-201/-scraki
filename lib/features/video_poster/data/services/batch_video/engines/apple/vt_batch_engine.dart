@@ -12,8 +12,6 @@ class VtBatchEngine extends BaseVideoBatchEngine {
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
-
-
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
@@ -30,7 +28,7 @@ class VtBatchEngine extends BaseVideoBatchEngine {
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
     
-    // 1. Video Segments (Concat file)
+    // 1. Video Segments (Concat Demuxer)
     toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
@@ -63,6 +61,9 @@ class VtBatchEngine extends BaseVideoBatchEngine {
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
-    return VideoToolboxOptions(bitrate: '12M');
+    return VideoToolboxOptions(
+      bitrate: '12M',
+      bFrames: plan.params.bFrames,
+    );
   }
 }

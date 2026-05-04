@@ -313,17 +313,23 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     final params = CompositionParams(
       targetDuration: config.minFinalDuration + random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1),
       pts: 0.99 + random.nextDouble() * 0.02,
-      brightness: (random.nextDouble() * 0.04) - 0.02,
-      contrast: 1.0 + (random.nextDouble() * 0.04) - 0.02,
-      gopSize: 60 + random.nextInt(60),
+      brightness: _gaussian(random) * 0.015,
+      contrast: 1.0 + _gaussian(random) * 0.02,
+      gopSize: 48 + random.nextInt(144), // Mở rộng range 48-192
+      bFrames: [0, 2, 3][random.nextInt(3)],
       creationTime: '${DateTime.now().toUtc().toIso8601String().split('.').first}.000000Z',
       audioProfile: AudioSpoofProfile.random(random),
-      hueShift: (random.nextDouble() * 6.0) - 3.0,
-      satFactor: 0.97 + random.nextDouble() * 0.06,
-      vignetteAngle: pi / 100 + random.nextDouble() * (pi / 100),
+      hueShift: _gaussian(random) * 2.0,
+      satFactor: 1.0 + _gaussian(random) * 0.03,
+      vignetteAngle: pi / 120 + (_gaussian(random) + 1.0) / 2.0 * (pi / 80),
       zoomVal: 1.02 + (random.nextDouble() * 0.02),
-      randX: random.nextDouble(),
-      randY: random.nextDouble(),
+      cropJitterX: 0.01 + random.nextDouble() * 0.02,
+      cropJitterY: 0.01 + random.nextDouble() * 0.02,
+      panStartX: random.nextDouble(),
+      panStartY: random.nextDouble(),
+      panEndX: random.nextDouble(),
+      panEndY: random.nextDouble(),
+      transitionDuration: 0.05 + random.nextDouble() * 0.05, // 0.05 - 0.10s
       lutFilePath: config.generateColorFilter ? await LutAssetProvider.extractRandom(random, ctx.tempDir.path) : null,
       gammaR: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
       gammaG: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
@@ -332,10 +338,12 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     final plan = ctx.videoPlans[index]!;
     final segmentsToMerge = <String>[];
+    final segmentDurations = <double>[];
     for (final r in plan) {
       final path = ctx.segmentFileMap[r];
       if (path != null) {
         segmentsToMerge.add(path);
+        segmentDurations.add(r.duration);
       }
     }
 
@@ -354,6 +362,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     return CompositionPlan(
       outputIndex: index,
       segmentPaths: segmentsToMerge,
+      segmentDurations: segmentDurations,
       outputDir: ctx.outputDir,
       tempDir: ctx.tempDir.path,
       config: config,
@@ -363,5 +372,9 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       hasCustomAudio: hasCustomAudio,
       hasAmbientAudio: ambientPath != null,
     );
+  }
+
+  double _gaussian(Random r) {
+    return ((r.nextDouble() + r.nextDouble() + r.nextDouble()) / 3.0 - 0.5) * 2.0;
   }
 }
