@@ -1,15 +1,23 @@
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/ffmpeg_options.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/engine/base_video_batch_engine.dart';
-import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/cpu/cpu_composition.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/cpu/cpu_toolkit.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 
-class CpuBatchEngine extends BaseVideoBatchEngine {
+/// Software-based batch video engine (CPU only).
+/// 
+/// Uses libx264 for encoding and standard FFmpeg filters for processing. 
+/// Used as a fallback when no compatible GPU is detected.
+class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
   CpuBatchEngine({
     required super.hardwareResolver,
     required super.metadataAnalyzer,
   }) : super(
-          toolkit: CpuToolkit(hardwareResolver),
+          composition: CpuComposition(
+            hardwareResolver: hardwareResolver,
+            toolkit: CpuToolkit(),
+          ),
         );
 
   @override
@@ -17,7 +25,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
+    pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;
   }
 
@@ -31,7 +39,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
     final inputs = FfmpegInputArgs();
     
     // 1. Video Segments (Concat Demuxer)
-    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
+    composition.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {

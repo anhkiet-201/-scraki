@@ -1,30 +1,44 @@
 import 'dart:math';
 
+/// Hardware capability information for video encoding and filtering.
+/// 
+/// This record contains platform-specific encoder names, hardware acceleration 
+/// flags, and optimal settings (like pixel formats) for a given GPU.
 typedef GpuInfo = ({
+  /// Human-readable name of the hardware (e.g., "NVIDIA GeForce RTX 3060")
   String name,
+  /// FFmpeg encoder name (e.g., "h264_nvenc", "h264_videotoolbox")
   String encoder,
+  /// Hardware acceleration type (e.g., "cuda", "videotoolbox", or null for CPU)
   String? hwaccel,
+  /// Hardware-specific scale filter name (e.g., "scale_cuda")
   String? scaleFilter,
+  /// Hardware-specific output format (e.g., "cuda")
   String? outputFormat,
+  /// Whether zscale filter is available for HDR to SDR conversion
   bool hasZscale,
+  /// Whether CUDA-specific filters like hflip_cuda are available
   bool hasCudaFilters,
-  // Pixel format tối ưu cho encoder: 'nv12' với NVENC/VT, 'yuv420p' với libx264/QSV
+  /// Optimal pixel format for the encoder: 'nv12' for HW, 'yuv420p' for CPU
   String preferredPixFmt,
-  // Số lượng encode song song tối đa dựa trên hardware
+  /// Maximum number of concurrent encode sessions allowed by hardware
   int maxConcurrentEncodes,
 });
 
-
-
-// ============================================================================
-// SegmentRequest — planning data for a single video slice
-// ============================================================================
-
+/// Planning data for a single video segment/slice before final composition.
+/// 
+/// Defines the source, timing, and basic manipulations (like flipping) for 
+/// a portion of video that will be rendered into a temporary segment.
 class SegmentRequest {
+  /// Path to the source video file.
   final String sourcePath;
+  /// Start time in seconds within the source video.
   final double startTime;
+  /// Duration in seconds for this segment.
   final double duration;
+  /// Whether to flip the segment horizontally.
   final bool hflip;
+  /// Whether this segment should retain its original audio.
   final bool hasAudio;
 
   SegmentRequest({
@@ -35,6 +49,7 @@ class SegmentRequest {
     required this.hasAudio,
   });
 
+  /// Unique identifier for this segment request, used for caching and file naming.
   String get id {
     final fullName = sourcePath.split(RegExp(r'[/\\]')).last;
     final name = fullName.contains('.') 
@@ -65,16 +80,22 @@ class SegmentRequest {
       hasAudio.hashCode;
 }
 
-// ============================================================================
-// AudioSpoofProfile — per-video randomized audio transform params
-// ============================================================================
-
+/// Parameters for randomized audio transformations to avoid platform detection.
+/// 
+/// Contains subtle adjustments to pitch, equalizer bands, and delay to 
+/// "spoof" or uniquely identify the audio stream.
 class AudioSpoofProfile {
+  /// Pitch adjustment factor (typically near 1.0).
   final double pitchFactor;
+  /// Bass gain in dB.
   final double bassGain;
+  /// Mid-range gain in dB.
   final double midGain;
+  /// Treble gain in dB.
   final double trebleGain;
+  /// Targeted audio bitrate in kbps.
   final int audioBitrate;
+  /// Small delay in milliseconds to shift the audio phase.
   final int delayMs;
 
   const AudioSpoofProfile({
@@ -86,6 +107,7 @@ class AudioSpoofProfile {
     required this.delayMs,
   });
 
+  /// Creates a profile with random variations within safe ranges.
   factory AudioSpoofProfile.random(Random random) {
     return AudioSpoofProfile(
       pitchFactor: 0.985 + random.nextDouble() * 0.03,
@@ -97,6 +119,7 @@ class AudioSpoofProfile {
     );
   }
 
+  /// Builds an FFmpeg audio filter chain for background/custom music.
   String toCustomAudioFilterChain({required double volume, required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
@@ -114,6 +137,7 @@ class AudioSpoofProfile {
         'aresample=44100,aformat=channel_layouts=stereo';
   }
 
+  /// Builds an FFmpeg audio filter chain for the original video audio.
   String toOriginalAudioFilterChain({required double volume, required double pts}) {
     final pitchStr = pitchFactor.toStringAsFixed(6);
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);

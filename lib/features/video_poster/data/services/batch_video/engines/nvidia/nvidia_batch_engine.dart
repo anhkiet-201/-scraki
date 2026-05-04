@@ -1,15 +1,20 @@
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/ffmpeg_options.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/engine/base_video_batch_engine.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/nvidia/nvidia_composition.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/nvidia/nvidia_toolkit.dart';
 
-class NvidiaBatchEngine extends BaseVideoBatchEngine {
+/// NVIDIA-optimized batch video engine.
+/// 
+/// Uses NVENC for hardware-accelerated encoding and CUDA for high-performance 
+/// video filtering (scaling, flipping, and overlays).
+class NvidiaBatchEngine extends BaseVideoBatchEngine<NvidiaComposition, NvidiaToolkit> {
   NvidiaBatchEngine({
     required super.hardwareResolver,
     required super.metadataAnalyzer,
   }) : super(
-          toolkit: NvidiaToolkit(hardwareResolver),
+          composition: NvidiaComposition(hardwareResolver: hardwareResolver, toolkit: NvidiaToolkit()),
         );
 
   @override
@@ -17,7 +22,7 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
+    pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;
   }
 
@@ -36,8 +41,8 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
       }
     }
     
-    // 1. Video Segments (Dùng Concat Demuxer để đạt độ ổn định 100%)
-    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
+    // 1. Video Segments (Using Concat Demuxer for 100% stability)
+    composition.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {

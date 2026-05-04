@@ -1,21 +1,30 @@
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/ffmpeg_options.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/engine/base_video_batch_engine.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/apple/apple_composition.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/apple/apple_toolkit.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
-import 'package:scraki/features/video_poster/data/services/batch_video/engines/apple/vt_toolkit.dart';
 
-class VtBatchEngine extends BaseVideoBatchEngine {
-  VtBatchEngine({
+/// Apple-optimized batch video engine.
+/// 
+/// Uses VideoToolbox for hardware-accelerated encoding on macOS/iOS devices.
+class AppleBatchEngine extends BaseVideoBatchEngine<AppleComposition, AppleToolkit> {
+  AppleBatchEngine({
     required super.hardwareResolver,
     required super.metadataAnalyzer,
-  }) : super(toolkit: VtToolkit(hardwareResolver));
+  }) : super(
+          composition: AppleComposition(
+            hardwareResolver: hardwareResolver,
+            toolkit: AppleToolkit(),
+          ),
+        );
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
     final pipe = FilterPipe();
     pipe.add(toolkit.scale(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
-    pipe.add('format=${toolkit.getPreferredPixelFormat()}');
+    pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;
   }
 
@@ -29,7 +38,7 @@ class VtBatchEngine extends BaseVideoBatchEngine {
     final inputs = FfmpegInputArgs();
     
     // 1. Video Segments (Concat Demuxer)
-    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
+    composition.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {
