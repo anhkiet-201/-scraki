@@ -106,21 +106,9 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
       );
       context.addProcess(process);
 
-      // DEBUG LOGGING START
-      final debugLogFile = File(
-        'C:/Users/iggan/.gemini/antigravity/brain/60566d8b-dc9b-4809-a062-1ce09394c351/scratch/ffmpeg_debug_log.txt',
-      );
-      await debugLogFile.writeAsString(
-        'FFMPEG COMMAND:\n${hardwareResolver.ffmpegBin} ${finalArgs.join(' ')}\n\nSTDERR OUTPUT:\n',
-        mode: FileMode.append,
-      );
-      // DEBUG LOGGING END
-
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-      process.stdout.listen((_) {}); // Xả buffer stdout để tránh deadlock
       process.stderr.listen((data) {
         final out = String.fromCharCodes(data);
-        debugLogFile.writeAsStringSync(out, mode: FileMode.append);
         if (onLog != null) onLog(out);
 
         if (onProgress != null &&
