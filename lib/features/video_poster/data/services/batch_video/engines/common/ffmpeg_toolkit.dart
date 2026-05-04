@@ -49,8 +49,8 @@ abstract class BaseFfmpegToolkit implements VideoToolkit {
   }
 
   @override
-  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String outputDir, int index) {
-    final concatFile = File('$outputDir/concat_$index.txt');
+  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String tempDir, int index) {
+    final concatFile = File('$tempDir/concat_$index.txt');
     concatFile.writeAsStringSync(paths.map((p) => "file '$p'").join('\n'));
     inputs.addConcatInput(concatFile.absolute.path);
   }

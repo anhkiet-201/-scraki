@@ -5,6 +5,7 @@ class CompositionPlan {
   final int outputIndex;
   final List<String> segmentPaths;
   final String outputDir;
+  final String tempDir;
   final BatchVideoConfig config;
   final String? ambientAudioPath;
   
@@ -20,6 +21,7 @@ class CompositionPlan {
     required this.outputIndex,
     required this.segmentPaths,
     required this.outputDir,
+    required this.tempDir,
     required this.config,
     required this.params,
     this.ambientAudioPath,

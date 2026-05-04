@@ -26,7 +26,7 @@ abstract class VideoToolkit {
   String hflip();
 
   /// Chuẩn bị đầu vào để ghép nối nhiều video (Dùng Demuxer Concat)
-  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String outputDir, int index);
+  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String tempDir, int index);
 
   /// Thao tác điều chỉnh tốc độ
   String adjustSpeed(double pts);

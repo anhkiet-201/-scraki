@@ -35,7 +35,7 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine {
     if (gpuInfo.outputFormat != null) inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
     
     // 1. Video Segments (Concat file)
-    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.outputDir, plan.outputIndex);
+    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {

@@ -355,6 +355,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       outputIndex: index,
       segmentPaths: segmentsToMerge,
       outputDir: ctx.outputDir,
+      tempDir: ctx.tempDir.path,
       config: config,
       params: params,
       ambientAudioPath: ambientPath,

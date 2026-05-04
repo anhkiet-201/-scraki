@@ -33,7 +33,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine {
     final inputs = FfmpegInputArgs();
     
     // 1. Video Segments (Concat file)
-    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.outputDir, plan.outputIndex);
+    toolkit.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {
