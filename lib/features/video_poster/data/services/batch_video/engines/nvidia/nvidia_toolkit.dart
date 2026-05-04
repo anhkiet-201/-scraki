@@ -58,13 +58,10 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
   String vignette(double angle) => 'vignette=angle=$angle';
 
   @override
-  String curves(String config) => 'curves=$config';
-
-  @override
-  String colorBalance(String config) => 'colorbalance=$config';
-
-  @override
-  String colorChannelMixer(String config) => 'colorchannelmixer=$config';
+  String lut3d(String lutFilePath) {
+    final escaped = lutFilePath.replaceAll(r'\', '/').replaceAll(':', r'\:');
+    return "lut3d=file='$escaped'";
+  }
 
   @override
   String overlay({
@@ -163,7 +160,7 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         final double tScale = 0.97 + (random.nextDouble() * 0.06);
 
         String label = '[static_txt$i]';
-        String softwareFilters = 'scale=iw*$tScale:-1,format=rgba,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}';
+        String softwareFilters = 'scale=iw*$tScale:-1,format=rgba,${rotate(tRotate, ow: -1)},colorchannelmixer=aa=$tOpacity';
         String uploadChain = gpuInfo.hasCudaFilters ? 'format=nv12,hwupload_cuda' : 'format=rgba';
         
         sb.write('[$textInputIdx:v]$softwareFilters,$uploadChain$label;');
@@ -327,19 +324,15 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
         brightness: params.brightness,
         contrast: params.contrast,
         saturation: params.satFactor,
-        gamma: params.gamma ?? 1.0,
       ),
     );
 
     filters.add(hue(hueShift: params.hueShift));
     filters.add(vignette(params.vignetteAngle));
 
-    if (params.curvesProfile != null)
-      filters.add(curves(params.curvesProfile!.ffmpegString));
-    if (params.balanceProfile != null)
-      filters.add(colorBalance(params.balanceProfile!.ffmpegString));
-    if (params.colorProfile != null)
-      filters.add(colorChannelMixer(params.colorProfile!.ffmpegString));
+    if (params.lutFilePath != null) {
+      filters.add(lut3d(params.lutFilePath!));
+    }
 
     return filters.join(',');
   }

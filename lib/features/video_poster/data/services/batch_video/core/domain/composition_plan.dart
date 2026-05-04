@@ -46,10 +46,7 @@ class CompositionParams {
   final double zoomVal;
   final double randX;
   final double randY;
-  final ColorFilterProfile? colorProfile;
-  final CurvesProfile? curvesProfile;
-  final ColorBalanceProfile? balanceProfile;
-  final double? gamma;
+  final String? lutFilePath;
   final double? gammaR;
   final double? gammaG;
   final double? gammaB;
@@ -68,10 +65,7 @@ class CompositionParams {
     required this.zoomVal,
     required this.randX,
     required this.randY,
-    this.colorProfile,
-    this.curvesProfile,
-    this.balanceProfile,
-    this.gamma,
+    this.lutFilePath,
     this.gammaR,
     this.gammaG,
     this.gammaB,

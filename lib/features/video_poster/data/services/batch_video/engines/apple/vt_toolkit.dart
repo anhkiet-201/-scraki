@@ -47,13 +47,13 @@ class VtToolkit extends BaseFfmpegToolkit {
   String vignette(double angle) => 'vignette=angle=$angle';
 
   @override
-  String curves(String config) => 'curves=$config';
-
-  @override
-  String colorBalance(String config) => 'colorbalance=$config';
-
-  @override
-  String colorChannelMixer(String config) => 'colorchannelmixer=$config';
+  String lut3d(String lutFilePath) {
+    // 1. Chuyển backslash sang forward slash
+    // 2. Escape dấu : cho driver letter (C: -> C\:)
+    // 3. Bao quanh bởi dấu ' để xử lý khoảng trắng
+    final escaped = lutFilePath.replaceAll(r'\', '/').replaceAll(':', r'\:');
+    return "lut3d=file='$escaped'";
+  }
 
   @override
   String overlay({String? x, String? y, String? enable, bool shortest = false}) {
@@ -141,7 +141,7 @@ class VtToolkit extends BaseFfmpegToolkit {
         final double tScale = 0.97 + (random.nextDouble() * 0.06);
         
         String label = '[static_txt$i]';
-        sb.write('[$textInputIdx:v]${scale(0, 0, iwScale: tScale)},format=rgba,${rotate(tRotate, ow: -1)},${colorChannelMixer('aa=$tOpacity')}$label;');
+        sb.write('[$textInputIdx:v]${scale(0, 0, iwScale: tScale)},format=rgba,${rotate(tRotate, ow: -1)},colorchannelmixer=aa=$tOpacity$label;');
         
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write('$lastLabel$label' '${overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/20)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})')}$nextLabel;');
@@ -262,15 +262,14 @@ class VtToolkit extends BaseFfmpegToolkit {
       brightness: params.brightness,
       contrast: params.contrast,
       saturation: params.satFactor,
-      gamma: params.gamma ?? 1.0,
     ));
     
     filters.add(hue(hueShift: params.hueShift));
     filters.add(vignette(params.vignetteAngle));
     
-    if (params.curvesProfile != null) filters.add(curves(params.curvesProfile!.ffmpegString));
-    if (params.balanceProfile != null) filters.add(colorBalance(params.balanceProfile!.ffmpegString));
-    if (params.colorProfile != null) filters.add(colorChannelMixer(params.colorProfile!.ffmpegString));
+    if (params.lutFilePath != null) {
+      filters.add(lut3d(params.lutFilePath!));
+    }
     
     return filters.join(',');
   }

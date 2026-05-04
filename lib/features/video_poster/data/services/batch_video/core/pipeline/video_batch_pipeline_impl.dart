@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:injectable/injectable.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/pipeline/pipeline_context.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/pipeline/video_batch_pipeline.dart';
@@ -11,6 +12,7 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/a
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/metadata/video_metadata_analyzer.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/engines/common/lut_asset_provider.dart';
 import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
 import '../../factory/video_batch_engine_factory.dart';
 
@@ -210,6 +212,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         if (result.success) {
           _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
         } else {
+          logger.e('❌ Thất bại video $i: ${result.logs}');
           _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
         }
       });
@@ -321,10 +324,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       zoomVal: 1.02 + (random.nextDouble() * 0.02),
       randX: random.nextDouble(),
       randY: random.nextDouble(),
-      colorProfile: config.generateColorFilter ? ColorFilterProfile.random(random) : null,
-      curvesProfile: config.generateColorFilter ? CurvesProfile.random(random) : null,
-      balanceProfile: config.generateColorFilter ? ColorBalanceProfile.random(random) : null,
-      gamma: config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
+      lutFilePath: config.generateColorFilter ? await LutAssetProvider.extractRandom(random, ctx.tempDir.path) : null,
       gammaR: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
       gammaG: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,
       gammaB: !config.generateColorFilter ? 0.98 + random.nextDouble() * 0.04 : null,

@@ -40,14 +40,8 @@ abstract class VideoToolkit {
   /// Hiệu ứng tối góc (Vignette)
   String vignette(double angle);
 
-  /// Áp dụng đường cong màu (Curves)
-  String curves(String config);
-
-  /// Cân bằng màu sắc (Color Balance)
-  String colorBalance(String config);
-
-  /// Trộn kênh màu (Color Channel Mixer)
-  String colorChannelMixer(String config);
+  /// Áp dụng LUT 3D từ file
+  String lut3d(String lutFilePath);
 
   /// Chồng lớp (Overlay) - Tự động chọn filter phù hợp phần cứng
   String overlay({String? x, String? y, String? enable, bool shortest = false});
