@@ -42,6 +42,10 @@ class TextWithLineBackgrounds extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (backgroundStyle == TextBackgroundStyle.highlight) {
+      return _buildHighlightRichText(context);
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final lineTexts = _computeLineTexts(constraints.maxWidth);
@@ -180,6 +184,93 @@ class TextWithLineBackgrounds extends StatelessWidget {
     );
   }
 
+  (String, List<HighlightRange>) _extractHighlights(String rawText) {
+    final regex = RegExp(r'\*{1,2}([^\*]+)\*{1,2}');
+    final ranges = <HighlightRange>[];
+    final buffer = StringBuffer();
+    int lastMatchEnd = 0;
+    
+    for (final match in regex.allMatches(rawText)) {
+      if (match.start > lastMatchEnd) {
+        buffer.write(rawText.substring(lastMatchEnd, match.start));
+      }
+      final highlightStart = buffer.length;
+      final highlightText = match.group(1)!;
+      buffer.write(highlightText);
+      final highlightEnd = buffer.length;
+      ranges.add(HighlightRange(highlightStart, highlightEnd));
+      
+      lastMatchEnd = match.end;
+    }
+    
+    if (lastMatchEnd < rawText.length) {
+      buffer.write(rawText.substring(lastMatchEnd));
+    }
+    
+    return (buffer.toString(), ranges);
+  }
+
+  Widget _buildHighlightRichText(BuildContext context) {
+    final bgColor = backgroundColor.withValues(alpha: backgroundOpacity);
+    final normalizedStyle = style.copyWith(height: style.height ?? 1.1);
+
+    final (cleanText, ranges) = _extractHighlights(text);
+    
+    final baseSpan = TextSpan(text: cleanText, style: normalizedStyle);
+    final strokeSpan = (strokeColor != null && strokeWidth > 0) 
+        ? TextSpan(
+            text: cleanText,
+            style: normalizedStyle.copyWith(
+              color: null,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeJoin = StrokeJoin.round
+                ..strokeCap = StrokeCap.round
+                ..strokeWidth = strokeWidth
+                ..color = strokeColor!,
+            ),
+          )
+        : null;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: backgroundPadding, vertical: 4),
+      child: CustomPaint(
+        painter: HighlightInlinePainter(
+          textSpan: baseSpan,
+          textAlign: textAlign,
+          ranges: ranges,
+          color: bgColor,
+          padding: backgroundPadding,
+          radius: backgroundRadius,
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (strokeSpan != null)
+              Text.rich(
+                strokeSpan,
+                textAlign: textAlign,
+                softWrap: true,
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: true,
+                  applyHeightToLastDescent: true,
+                ),
+              ),
+            Text.rich(
+              baseSpan,
+              textAlign: textAlign,
+              softWrap: true,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: true,
+                applyHeightToLastDescent: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Tách text thành danh sách text từng dòng dựa trên cách TextPainter wrap.
   List<String> _computeLineTexts(double maxWidth) {
     if (text.isEmpty) return [];
@@ -225,3 +316,78 @@ class TextWithLineBackgrounds extends StatelessWidget {
     return result.isEmpty ? [text] : result;
   }
 }
+
+class HighlightRange {
+  final int start;
+  final int end;
+  HighlightRange(this.start, this.end);
+}
+
+class HighlightInlinePainter extends CustomPainter {
+  final TextSpan textSpan;
+  final TextAlign textAlign;
+  final List<HighlightRange> ranges;
+  final Color color;
+  final double padding;
+  final double radius;
+
+  HighlightInlinePainter({
+    required this.textSpan,
+    required this.textAlign,
+    required this.ranges,
+    required this.color,
+    required this.padding,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (color.a == 0 || ranges.isEmpty) return;
+
+    final textPainter = TextPainter(
+      text: textSpan,
+      textAlign: textAlign,
+      textDirection: TextDirection.ltr,
+      textHeightBehavior: const TextHeightBehavior(
+        applyHeightToFirstAscent: true,
+        applyHeightToLastDescent: true,
+      ),
+    );
+
+    textPainter.layout(maxWidth: size.width);
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+
+    for (final range in ranges) {
+      final boxes = textPainter.getBoxesForSelection(
+        TextSelection(baseOffset: range.start, extentOffset: range.end),
+      );
+
+      for (final box in boxes) {
+        final rect = Rect.fromLTRB(
+          box.left - padding,
+          box.top - 2.0, 
+          box.right + padding,
+          box.bottom + 2.0,
+        );
+        path.addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)));
+      }
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant HighlightInlinePainter oldDelegate) {
+    return oldDelegate.textSpan != textSpan ||
+           oldDelegate.textAlign != textAlign ||
+           oldDelegate.color != color ||
+           oldDelegate.padding != padding ||
+           oldDelegate.radius != radius;
+  }
+}
+

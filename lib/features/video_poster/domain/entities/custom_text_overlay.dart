@@ -14,6 +14,9 @@ enum TextBackgroundStyle {
   rectangle,
   brush,
   paper,
+  bracket,
+  highlight,
+  quote,
 }
 
 /// Represents a free-form text overlay on the video canvas.

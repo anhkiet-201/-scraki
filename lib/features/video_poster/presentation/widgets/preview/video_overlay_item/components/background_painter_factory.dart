@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay.dart';
 import 'painters/paper_painter.dart';
+import 'painters/bracket_painter.dart';
+import 'painters/quote_painter.dart';
 import 'brush_background_painter.dart';
-
 class BackgroundPainterFactory {
   static CustomPainter? create({
     required TextBackgroundStyle style,
@@ -33,6 +34,23 @@ class BackgroundPainterFactory {
         return OrganicPaperPainter(
           color: bgColor,
           roughness: (params['paper_roughness'] as num?)?.toDouble() ?? 1.5,
+        );
+
+      case TextBackgroundStyle.bracket:
+        return BracketBackgroundPainter(
+          color: bgColor,
+          thickness: (params['bracket_thickness'] as num?)?.toDouble() ?? 2.0,
+          length: (params['bracket_length'] as num?)?.toDouble() ?? 12.0,
+        );
+
+      case TextBackgroundStyle.highlight:
+        return null;
+
+      case TextBackgroundStyle.quote:
+        return QuoteBackgroundPainter(
+          color: bgColor,
+          barWidth: (params['quote_bar_width'] as num?)?.toDouble() ?? 4.0,
+          bgOpacityFactor: (params['quote_bg_opacity'] as num?)?.toDouble() ?? 0.2,
         );
     }
   }

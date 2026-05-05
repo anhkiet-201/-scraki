@@ -4,6 +4,9 @@ import 'package:scraki/features/video_poster/presentation/stores/video_poster_st
 import 'text_background_controls.dart';
 import 'rectangle_background_controls.dart';
 import 'brush_background_controls.dart';
+import 'bracket_controls.dart';
+import 'highlight_controls.dart';
+import 'quote_controls.dart';
 import 'paper_controls.dart';
 
 /// Registry quản lý việc khởi tạo các bộ điều khiển hình nền.
@@ -13,6 +16,9 @@ class BackgroundControlsRegistry {
     TextBackgroundStyle.rectangle: RectangleBackgroundControls(),
     TextBackgroundStyle.brush: BrushBackgroundControls(),
     TextBackgroundStyle.paper: PaperBackgroundControls(),
+    TextBackgroundStyle.bracket: BracketBackgroundControls(),
+    TextBackgroundStyle.highlight: HighlightBackgroundControls(),
+    TextBackgroundStyle.quote: QuoteBackgroundControls(),
   };
 
   /// Trả về danh sách widgets điều khiển tương ứng với style.
