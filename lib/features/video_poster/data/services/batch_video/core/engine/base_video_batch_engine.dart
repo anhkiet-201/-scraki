@@ -47,6 +47,7 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
     required String outputPath,
     required VideoBatchExecutionContext context,
     void Function(String)? onLog,
+    Duration? timeout,
   }) async {
     if (!await File(request.sourcePath).exists()) {
       onLog?.call('  ❌ Error: Source file not found ${request.sourcePath}');
@@ -77,7 +78,7 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
     _appendOutputSettings(args, request);
     args.add(outputPath);
 
-    return composition.execute(args, context, onLog: onLog);
+    return composition.execute(args, context, onLog: onLog, timeout: timeout);
   }
 
   /// Appends hardware acceleration flags to the input arguments.
@@ -136,6 +137,7 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
     required VideoBatchExecutionContext context,
     void Function(double)? onProgress,
     void Function(String)? onLog,
+    Duration? timeout,
   }) async {
     final List<String> args = [
       '-hide_banner', '-y',
@@ -171,6 +173,7 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
       onLog: onLog, 
       onProgress: onProgress,
       targetDuration: plan.params.targetDuration,
+      timeout: timeout,
     );
   }
 

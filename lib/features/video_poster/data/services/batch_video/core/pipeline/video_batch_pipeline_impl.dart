@@ -154,6 +154,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             request: req,
             outputPath: outputPath,
             context: ctx.executionContext,
+            timeout: const Duration(minutes: 5),
           )
           .then((result) {
             if (_context != ctx) return;
@@ -245,6 +246,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
           .renderVideo(
             plan: plan,
             context: ctx.executionContext,
+            timeout: const Duration(minutes: 15),
             onProgress: (pct) {
               if (_context != ctx) return;
               final progress = (pct * 100).toStringAsFixed(0);

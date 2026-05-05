@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/composition_plan.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/execution_result.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/domain/ffmpeg_options.dart';
@@ -79,9 +81,12 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     void Function(String)? onLog,
     void Function(double)? onProgress,
     int? targetDuration,
+    Duration? timeout,
   }) async {
     final List<String> finalArgs = ['-nostdin', ...args];
     File? filterFile;
+    Timer? watchdog;
+    final Duration effectiveTimeout = timeout ?? const Duration(minutes: 10);
 
     try {
       final filterIdx = finalArgs.indexOf('-filter_complex');
@@ -106,8 +111,28 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       );
       context.addProcess(process);
 
+      // Watchdog logic: Kill process if no log received for 60 seconds
+      void resetWatchdog() {
+        watchdog?.cancel();
+        watchdog = Timer(const Duration(seconds: 60), () {
+          onLog?.call('  ⚠️ Watchdog: No activity detected for 60s. Killing process...');
+          process.kill();
+        });
+      }
+
+      resetWatchdog();
+
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-      process.stderr.listen((data) {
+      
+      final stdoutSub = process.stdout.listen((data) {
+        final out = String.fromCharCodes(data);
+        if (out.trim().isNotEmpty) {
+          debugPrint('  [FFMPEG STDOUT] $out');
+        }
+      });
+
+      final stderrSub = process.stderr.listen((data) {
+        resetWatchdog();
         final out = String.fromCharCodes(data);
         if (onLog != null) onLog(out);
 
@@ -125,17 +150,28 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         }
       });
 
-      final exitCode = await process.exitCode;
+      final exitCode = await process.exitCode.timeout(
+        effectiveTimeout,
+        onTimeout: () {
+          onLog?.call('  ❌ Timeout: FFmpeg execution exceeded ${effectiveTimeout.inMinutes} minutes.');
+          process.kill();
+          return -999;
+        },
+      );
+
+      await stderrSub.cancel();
+      await stdoutSub.cancel();
+      watchdog?.cancel();
       context.removeProcess(process);
 
       if (exitCode == 0) {
         return ExecutionResult.success(args.last);
       } else {
-        return ExecutionResult.failure(
-          'FFmpeg failed with exit code $exitCode',
-        );
+        final reason = exitCode == -999 ? 'Timeout' : 'Exit code $exitCode';
+        return ExecutionResult.failure('FFmpeg failed: $reason');
       }
     } finally {
+      watchdog?.cancel();
       try {
         if (filterFile != null && await filterFile.exists()) {
           await filterFile.delete();

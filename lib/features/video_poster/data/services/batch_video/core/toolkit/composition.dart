@@ -72,5 +72,6 @@ abstract interface class Composition<T extends VideoToolkit> {
     void Function(String)? onLog,
     void Function(double)? onProgress,
     int? targetDuration,
+    Duration? timeout,
   });
 }

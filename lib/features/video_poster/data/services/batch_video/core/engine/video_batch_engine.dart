@@ -22,6 +22,7 @@ abstract class VideoBatchEngine {
     required String outputPath,
     required VideoBatchExecutionContext context,
     void Function(String)? onLog,
+    Duration? timeout,
   });
 
   /// Composes the final video based on a comprehensive [CompositionPlan].
@@ -33,6 +34,7 @@ abstract class VideoBatchEngine {
     required VideoBatchExecutionContext context,
     void Function(double)? onProgress,
     void Function(String)? onLog,
+    Duration? timeout,
   });
 
   /// Builds the base video filter chain (scaling, padding, speed).
