@@ -1,10 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
+/// Custom log filter to control output based on environment and level.
+class ScrakiLogFilter extends LogFilter {
+  @override
+  bool shouldLog(LogEvent event) {
+    if (kDebugMode) {
+      return true;
+    }
+    // In release/profile mode, only log warnings and errors
+    return event.level.index >= Level.warning.index;
+  }
+}
+
 /// Centralized logger instance for the Scraki project.
-///
-/// Use [logger.d], [logger.i], [logger.w], [logger.e] for different log levels.
 final logger = Logger(
-  filter: ProductionFilter(),
+  filter: ScrakiLogFilter(),
   printer: PrettyPrinter(
     methodCount: 0,
     errorMethodCount: 8,
