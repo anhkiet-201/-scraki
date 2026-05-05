@@ -857,6 +857,8 @@ abstract class _VideoPosterStore with Store {
         runInAction(() => _handleLogUpdate(line));
       });
 
+      if (_batchService == null) return;
+
       await _batchService!.plan(
         sourceVideoPaths: List<String>.from(sourceVideoPaths),
         config: config,
