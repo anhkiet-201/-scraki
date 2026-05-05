@@ -109,10 +109,16 @@ class VideoWorkerManager {
   }
 
   void _handleClipboardUpdate(String sessionId, String text) {
-    logger.i(
-      '[VideoWorkerManager] Clipboard update from session $sessionId: $text',
-    );
-    Clipboard.setData(ClipboardData(text: text));
+    if (sessionId.endsWith('_floating')) {
+      logger.i(
+        '[VideoWorkerManager] Clipboard update from session $sessionId: $text',
+      );
+      Clipboard.setData(ClipboardData(text: text));
+    } else {
+      logger.d(
+        '[VideoWorkerManager] Ignoring clipboard update from non-floating session: $sessionId',
+      );
+    }
   }
 
   final Map<String, Completer<dynamic>> _pendingSessions = {};

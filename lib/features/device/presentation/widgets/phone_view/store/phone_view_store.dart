@@ -451,6 +451,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> handlePaste(String serial) async {
+    if (!sessionId.endsWith('_floating')) return;
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text;
     if (text != null && text.isNotEmpty) setClipboard(serial, text, paste: true);
