@@ -100,6 +100,10 @@ class TextWithLineBackgrounds extends StatelessWidget {
       brushIntensity: brushIntensity,
       brushThickness: brushThickness,
       brushComplexity: brushComplexity,
+      text: lineText,
+      textStyle: style,
+      textAlign: textAlign,
+      backgroundPadding: backgroundPadding,
     );
 
     final decoration = backgroundStyle == TextBackgroundStyle.rectangle 

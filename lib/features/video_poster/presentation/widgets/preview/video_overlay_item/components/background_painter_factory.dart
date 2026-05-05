@@ -3,6 +3,7 @@ import 'package:scraki/features/video_poster/domain/entities/custom_text_overlay
 import 'painters/paper_painter.dart';
 import 'painters/bracket_painter.dart';
 import 'painters/quote_painter.dart';
+import 'painters/sticker_pop_painter.dart';
 import 'brush_background_painter.dart';
 class BackgroundPainterFactory {
   static CustomPainter? create({
@@ -15,6 +16,10 @@ class BackgroundPainterFactory {
     double brushIntensity = 2.0,
     double brushThickness = 1.0,
     double brushComplexity = 12.0,
+    String text = '',
+    TextStyle? textStyle,
+    TextAlign textAlign = TextAlign.center,
+    double backgroundPadding = 20.0,
   }) {
     final bgColor = color.withValues(alpha: color.a * opacity);
 
@@ -51,6 +56,19 @@ class BackgroundPainterFactory {
           color: bgColor,
           barWidth: (params['quote_bar_width'] as num?)?.toDouble() ?? 4.0,
           bgOpacityFactor: (params['quote_bg_opacity'] as num?)?.toDouble() ?? 0.2,
+        );
+
+      case TextBackgroundStyle.stickerPop:
+        return StickerPopBackgroundPainter(
+          text: text,
+          textStyle: textStyle ?? const TextStyle(),
+          textAlign: textAlign,
+          backingColor: bgColor,
+          accentColor: Color((params['sticker_3d_color'] as int?) ?? 0xFFFFC107), // Amber
+          shadowColor: Color((params['sticker_shadow_color'] as int?) ?? 0xFF000000), // Black
+          offset: (params['sticker_offset'] as num?)?.toDouble() ?? 6.0,
+          padding: backgroundPadding,
+          radius: radius,
         );
     }
   }

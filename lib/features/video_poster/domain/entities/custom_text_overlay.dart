@@ -17,6 +17,7 @@ enum TextBackgroundStyle {
   bracket,
   highlight,
   quote,
+  stickerPop,
 }
 
 /// Represents a free-form text overlay on the video canvas.

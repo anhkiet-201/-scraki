@@ -8,6 +8,7 @@ import 'bracket_controls.dart';
 import 'highlight_controls.dart';
 import 'quote_controls.dart';
 import 'paper_controls.dart';
+import 'sticker_pop_controls.dart';
 
 /// Registry quản lý việc khởi tạo các bộ điều khiển hình nền.
 /// Khi thêm Style mới, chỉ cần thêm Mapping vào đây.
@@ -19,6 +20,7 @@ class BackgroundControlsRegistry {
     TextBackgroundStyle.bracket: BracketBackgroundControls(),
     TextBackgroundStyle.highlight: HighlightBackgroundControls(),
     TextBackgroundStyle.quote: QuoteBackgroundControls(),
+    TextBackgroundStyle.stickerPop: StickerPopBackgroundControls(),
   };
 
   /// Trả về danh sách widgets điều khiển tương ứng với style.
