@@ -132,13 +132,18 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     );
     await ctx.tempDir.create(recursive: true);
 
-    final activeTasks = <Future<void>>{};
+    final activeTasks = <Future<void>>[];
     int completed = 0;
+    int failed = 0;
     final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
 
     for (final req in ctx.allUniqueSegments) {
       if (ctx.cancelled) break;
-      while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
+      
+      // Sử dụng List.from để tạo snapshot, tránh ConcurrentModificationError
+      while (activeTasks.length >= maxConcurrent) {
+        await Future.any(List.from(activeTasks));
+      }
 
       final outputPath = p.join(ctx.tempDir.path, '${req.id}.mp4');
       ctx.segmentFileMap[req] = outputPath;
@@ -152,26 +157,32 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
           )
           .then((result) {
             if (_context != ctx) return;
-            activeTasks.remove(task);
             if (result.success) {
               completed++;
               final pct = (completed / ctx.allUniqueSegments.length * 100).toStringAsFixed(0);
               _eventController.add('_PROGRESS_LAZY: ⏳ Đang cắt: $pct% ($completed/${ctx.allUniqueSegments.length})');
             } else {
-              _eventController.add('❌ Lỗi cắt segment ${req.id}: ${result.logs}');
-              cancel();
+              failed++;
+              _eventController.add('⚠️ Lỗi cắt segment ${req.id}: ${result.logs}');
+              // Chỉ cancel nếu lỗi quá nhiều (ví dụ > 20% và ít nhất 5 segment)
+              if (failed > 5 && failed > ctx.allUniqueSegments.length * 0.2) {
+                _eventController.add('❌ Quá nhiều lỗi cắt segment. Đang dừng...');
+                cancel();
+              }
             }
           }).catchError((Object error) {
             if (_context != ctx) return;
-            activeTasks.remove(task);
+            failed++;
             _eventController.add('❌ Exception cắt segment ${req.id}: $error');
-            cancel();
+            if (failed > 5) cancel();
+          }).whenComplete(() {
+            activeTasks.remove(task);
           });
 
       activeTasks.add(task);
     }
 
-    if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
+    if (activeTasks.isNotEmpty) await Future.wait(List.from(activeTasks));
   }
 
   @override
@@ -217,12 +228,16 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     ctx.outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
     await Directory(ctx.outputDir).create(recursive: true);
 
-    final activeTasks = <Future<void>>{};
+    final activeTasks = <Future<void>>[];
     final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
 
     for (int i = 1; i <= ctx.config.outputCount; i++) {
       if (ctx.cancelled) break;
-      while (activeTasks.length >= maxConcurrent) await Future.any(activeTasks);
+      
+      while (activeTasks.length >= maxConcurrent) {
+        await Future.any(List.from(activeTasks));
+      }
+      
       final plan = await _generateCompositionPlan(ctx, i);
 
       late Future<void> task;
@@ -240,19 +255,23 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
           )
           .then((result) {
             if (_context != ctx) return;
-            activeTasks.remove(task);
             if (result.success) {
               _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
             } else {
               logger.e('❌ Thất bại video $i: ${result.logs}');
               _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
             }
+          }).catchError((Object error) {
+            if (_context != ctx) return;
+            _eventController.add('❌ Exception render video $i: $error');
+          }).whenComplete(() {
+            activeTasks.remove(task);
           });
 
       activeTasks.add(task);
     }
 
-    if (activeTasks.isNotEmpty) await Future.wait(activeTasks);
+    if (activeTasks.isNotEmpty) await Future.wait(List.from(activeTasks));
     _eventController.add('✅ Hoàn thành pipeline.');
     _isProcessing = false;
   }
