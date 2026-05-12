@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
@@ -124,6 +125,25 @@ class _GroupHorizontalSelectorState extends State<GroupHorizontalSelector> {
                                   store,
                                   group,
                                 ),
+                                onSecondaryTap: () {
+                                  if (group.deviceSerials.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Nhóm này không có thiết bị nào'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  final serials = group.deviceSerials.join('\n');
+                                  Clipboard.setData(ClipboardData(text: serials));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Đã copy ${group.deviceSerials.length} serial của nhóm "${group.name}"'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -257,6 +277,7 @@ class _GroupChip extends StatelessWidget {
   final int? count;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onSecondaryTap;
 
   const _GroupChip({
     required this.label,
@@ -265,6 +286,7 @@ class _GroupChip extends StatelessWidget {
     this.count,
     required this.onTap,
     this.onDelete,
+    this.onSecondaryTap,
   });
 
   @override
@@ -275,6 +297,7 @@ class _GroupChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onSecondaryTap: onSecondaryTap,
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
