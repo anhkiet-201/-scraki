@@ -396,19 +396,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i151.SettingsStore>(),
       ),
     );
-    gh.singleton<_i391.DeviceNicknameStore>(
-      () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
-    );
     gh.singleton<_i921.ScriptStore>(
       () => _i921.ScriptStore(
         gh<_i55.ScriptRepository>(),
         gh<_i69.RunScriptUseCase>(),
-        gh<_i275.ExecuteCommandUseCase>(),
         gh<_i240.SaveScriptUseCase>(),
         gh<_i205.DeleteScriptUseCase>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i246.DeviceGroupStore>(),
       ),
+    );
+    gh.singleton<_i391.DeviceNicknameStore>(
+      () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
     );
     return this;
   }

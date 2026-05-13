@@ -26,49 +26,28 @@ class ScriptScreen extends StatefulWidget {
 class _ScriptScreenState extends State<ScriptScreen> {
   late final ScriptStore _store;
   final TextEditingController _commandController = TextEditingController();
-  final ScrollController _terminalScrollController = ScrollController();
   final FocusNode _terminalFocusNode = FocusNode();
   ReactionDisposer? _scrollDisposer;
-  
+
   @override
   void initState() {
     super.initState();
     _store = inject<ScriptStore>();
     _store.init();
     _store.loadScripts();
-    
     _commandController.addListener(() {
       if (_commandController.text != _store.commandInput) {
         _store.setCommandInput(_commandController.text);
       }
     });
-
-    // Auto-scroll when new logs arrive
-    _scrollDisposer = reaction(
-      (_) => _store.terminalOutput.length,
-      (_) => _scrollToBottom(),
-    );
   }
 
   @override
   void dispose() {
     _commandController.dispose();
-    _terminalScrollController.dispose();
     _terminalFocusNode.dispose();
     _scrollDisposer?.call();
     super.dispose();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_terminalScrollController.hasClients) {
-        _terminalScrollController.animateTo(
-          _terminalScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   void _navigateHistory(bool up) {
@@ -103,8 +82,10 @@ class _ScriptScreenState extends State<ScriptScreen> {
       backgroundColor: const Color(0xFFF8FAFC), // Slate 50 - Very light grey
       body: Shortcuts(
         shortcuts: <ShortcutActivator, Intent>{
-          const SingleActivator(LogicalKeyboardKey.arrowUp): const _HistoryIntent(true),
-          const SingleActivator(LogicalKeyboardKey.arrowDown): const _HistoryIntent(false),
+          const SingleActivator(LogicalKeyboardKey.arrowUp):
+              const _HistoryIntent(true),
+          const SingleActivator(LogicalKeyboardKey.arrowDown):
+              const _HistoryIntent(false),
         },
         child: Actions(
           actions: <Type, Action<Intent>>{
@@ -129,9 +110,15 @@ class _ScriptScreenState extends State<ScriptScreen> {
                           width: 300,
                           child: Column(
                             children: [
-                              Expanded(flex: 2, child: _buildDeviceSidebar(theme)),
+                              Expanded(
+                                flex: 2,
+                                child: _buildDeviceSidebar(theme),
+                              ),
                               const SizedBox(height: 16),
-                              Expanded(flex: 3, child: _buildScriptSidebar(theme)),
+                              Expanded(
+                                flex: 3,
+                                child: _buildScriptSidebar(theme),
+                              ),
                             ],
                           ),
                         ),
@@ -143,8 +130,8 @@ class _ScriptScreenState extends State<ScriptScreen> {
                               if (_store.editingScript != null) {
                                 return ScriptEditorPanel(store: _store);
                               }
-                              
-                              return _store.isTiledView 
+
+                              return _store.isTiledView
                                   ? _buildTiledTerminalView(theme)
                                   : _buildTerminalView(theme);
                             },
@@ -174,9 +161,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
-              Icons.terminal_rounded, 
-              color: theme.colorScheme.primary, 
-              size: 26
+              Icons.terminal_rounded,
+              color: theme.colorScheme.primary,
+              size: 26,
             ),
           ),
           const SizedBox(width: 16),
@@ -230,11 +217,17 @@ class _ScriptScreenState extends State<ScriptScreen> {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: _store.isExecuting ? Colors.amber : const Color(0xFF10B981),
+                color: _store.isExecuting
+                    ? Colors.amber
+                    : const Color(0xFF10B981),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: (_store.isExecuting ? Colors.amber : const Color(0xFF10B981)).withValues(alpha: 0.3),
+                    color:
+                        (_store.isExecuting
+                                ? Colors.amber
+                                : const Color(0xFF10B981))
+                            .withValues(alpha: 0.3),
                     blurRadius: 6,
                     spreadRadius: 1,
                   ),
@@ -288,7 +281,10 @@ class _ScriptScreenState extends State<ScriptScreen> {
               ),
               Observer(
                 builder: (_) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -315,37 +311,58 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.devices_other_rounded, color: Colors.grey.shade300, size: 40),
+                        Icon(
+                          Icons.devices_other_rounded,
+                          color: Colors.grey.shade300,
+                          size: 40,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Không có thiết bị', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                        Text(
+                          'Không có thiết bị',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   );
                 }
                 return ListView.separated(
                   itemCount: _store.devices.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final device = _store.devices[index];
                     final color = _getDeviceColor(device.serial);
-                    
+
                     return Observer(
                       builder: (context) {
-                        final isSelected = _store.selectedSerials.contains(device.serial);
+                        final isSelected = _store.selectedSerials.contains(
+                          device.serial,
+                        );
                         return InkWell(
-                          onTap: () => _store.toggleDeviceSelection(device.serial),
+                          onTap: () =>
+                              _store.toggleDeviceSelection(device.serial),
                           borderRadius: BorderRadius.circular(12),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: isSelected 
-                                  ? theme.colorScheme.primary.withValues(alpha: 0.05) 
+                              color: isSelected
+                                  ? theme.colorScheme.primary.withValues(
+                                      alpha: 0.05,
+                                    )
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isSelected 
-                                    ? theme.colorScheme.primary.withValues(alpha: 0.5) 
+                                color: isSelected
+                                    ? theme.colorScheme.primary.withValues(
+                                        alpha: 0.5,
+                                      )
                                     : const Color(0xFFF1F5F9), // Slate 100
                                 width: 1.5,
                               ),
@@ -356,42 +373,58 @@ class _ScriptScreenState extends State<ScriptScreen> {
                                   width: 4,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: isSelected ? theme.colorScheme.primary : color.withValues(alpha: 0.3),
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : color.withValues(alpha: 0.3),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         device.modelName,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                          fontSize: 12,
-                                          color: isSelected ? theme.colorScheme.primary : const Color(0xFF1E293B),
-                                        ),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontWeight: isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.w500,
+                                              fontSize: 12,
+                                              color: isSelected
+                                                  ? theme.colorScheme.primary
+                                                  : const Color(0xFF1E293B),
+                                            ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       Text(
                                         device.serial,
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          fontSize: 10,
-                                          color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.7) : const Color(0xFF64748B),
-                                        ),
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              fontSize: 10,
+                                              color: isSelected
+                                                  ? theme.colorScheme.primary
+                                                        .withValues(alpha: 0.7)
+                                                  : const Color(0xFF64748B),
+                                            ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (isSelected) 
-                                  Icon(Icons.check_circle_rounded, size: 16, color: theme.colorScheme.primary),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 16,
+                                    color: theme.colorScheme.primary,
+                                  ),
                               ],
                             ),
                           ),
                         );
-                      }
+                      },
                     );
                   },
                 );
@@ -454,19 +487,23 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     child: Text(
                       'Chưa có script nào.\nNhấn + để tạo.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
                   );
                 }
                 return ListView.separated(
                   itemCount: _store.scripts.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     return Observer(
                       builder: (context) {
                         final script = _store.scripts[index];
                         return _buildScriptTile(theme, script);
-                      }
+                      },
                     );
                   },
                 );
@@ -496,7 +533,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
       child: Column(
         children: [
           _buildTerminalHeader(theme),
-          Expanded(child: TiledLogView(store: _store)),
+          Expanded(child: TiledLogView()),
           // Sticky Global Command Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -543,7 +580,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
                         ),
                         suffixIcon: _store.hasActiveExecution
                             ? IconButton(
-                                icon: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 24),
+                                icon: const Icon(
+                                  Icons.stop_circle_rounded,
+                                  color: Colors.redAccent,
+                                  size: 24,
+                                ),
                                 tooltip: 'Dừng tất cả',
                                 onPressed: () => _store.stopAll(),
                               )
@@ -559,7 +600,10 @@ class _ScriptScreenState extends State<ScriptScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -590,7 +634,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.terminal_rounded, size: 18, color: Color(0xFF64748B)), // Slate 500
+          const Icon(
+            Icons.terminal_rounded,
+            size: 18,
+            color: Color(0xFF64748B),
+          ), // Slate 500
           const SizedBox(width: 12),
           Text(
             'CONSOLE',
@@ -606,9 +654,13 @@ class _ScriptScreenState extends State<ScriptScreen> {
             child: IconButton(
               onPressed: _store.toggleTiledView,
               icon: Icon(
-                _store.isTiledView ? Icons.view_headline_rounded : Icons.grid_view_rounded,
+                _store.isTiledView
+                    ? Icons.view_headline_rounded
+                    : Icons.grid_view_rounded,
                 size: 18,
-                color: _store.isTiledView ? theme.colorScheme.primary : const Color(0xFF64748B),
+                color: _store.isTiledView
+                    ? theme.colorScheme.primary
+                    : const Color(0xFF64748B),
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -737,7 +789,10 @@ class _ScriptScreenState extends State<ScriptScreen> {
         title: const Text('Xác nhận xóa'),
         content: Text('Bạn có chắc muốn xóa script "${script.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
           TextButton(
             onPressed: () {
               _store.deleteScript(script.id);
@@ -771,43 +826,51 @@ class _ScriptScreenState extends State<ScriptScreen> {
           _buildTerminalHeader(theme),
           // Log Stream
           Expanded(
-            child: Scrollbar(
-              controller: _terminalScrollController,
-              child: SelectionArea(
-                child: Observer(
-                  builder: (_) {
-                    return ListView.builder(
-                      controller: _terminalScrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      itemCount: _store.terminalOutput.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index < _store.terminalOutput.length) {
-                          final log = _store.terminalOutput[index];
-                          final prevLog = index > 0 ? _store.terminalOutput[index - 1] : null;
-                          return _buildLogLine(theme, log, prevLog);
-                        } else {
-                          return _buildPromptLine(theme);
-                        }
-                      },
-                    );
-                  },
-                ),
+            child: SelectionArea(
+              child: Observer(
+                builder: (_) {
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: _store.terminalOutput.length,
+                    reverse: true,
+                    itemBuilder: (context, index) {
+                      final log = _store.terminalOutput.reversed
+                          .toList()[index];
+                      final prevLog = index > 0
+                          ? _store.terminalOutput[index - 1]
+                          : null;
+                      return _buildLogLine(theme, log, prevLog);
+                    },
+                  );
+                },
               ),
             ),
           ),
+          _buildPromptLine(theme),
         ],
       ),
     );
   }
 
-  Widget _buildLogLine(ThemeData theme, LogEntry log, [LogEntry? prevLog]) {
+  Widget _buildLable(LogEntry log) {
     final deviceColor = _getDeviceColor(log.serial);
-    
-    // Check if we should show the device label
-    final bool showLabel = prevLog == null || 
-                           prevLog.serial != log.serial || 
-                           prevLog.type != log.type;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 6),
+      child: Text(
+        '[${log.serial ?? "SYS"}] ${log.deviceModel ?? "System"}',
+        style: GoogleFonts.firaCode(
+          color: deviceColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
 
+  Widget _buildLogLine(ThemeData theme, LogEntry log, [LogEntry? prevLog]) {
     switch (log.type) {
       case LogType.command:
         return Container(
@@ -816,7 +879,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
           decoration: BoxDecoration(
             color: theme.colorScheme.primary.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -843,14 +908,17 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   ),
                   if (log.deviceCount != null && log.deviceCount! > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        log.deviceCount == 1 
-                            ? '[${log.serial ?? "???"}] ${log.deviceModel ?? "Device"}' 
+                        log.deviceCount == 1
+                            ? '[${log.serial}] ${log.deviceModel ?? "Device"}'
                             : '${log.deviceCount} DEVICCES',
                         style: TextStyle(
                           color: theme.colorScheme.primary,
@@ -881,70 +949,38 @@ class _ScriptScreenState extends State<ScriptScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (showLabel) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 6),
-                child: Text(
-                  '[${log.serial ?? "SYS"}] ${log.deviceModel ?? "System Error"}',
-                  style: GoogleFonts.firaCode(
-                    color: Colors.red.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ],
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 2),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
-              ),
-              child: Text(
-                log.message,
-                style: GoogleFonts.firaCode(
-                  color: Colors.red.shade700, 
-                  fontSize: 12, 
-                  height: 1.5
-                ),
+            _buildLable(log),
+            Text(
+              log.message,
+              style: GoogleFonts.firaCode(
+                color: Colors.red.shade700,
+                fontSize: 12,
+                height: 1.5,
               ),
             ),
           ],
         );
       case LogType.info:
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Text(
-            '// ${log.message}',
-            style: GoogleFonts.firaCode(
-              color: const Color(0xFF94A3B8), // Slate 400 
-              fontStyle: FontStyle.italic, 
-              fontSize: 12
-            ),
-          ),
-        );
-      case LogType.output:
-        final deviceName = log.deviceModel ?? "Device";
-        final serial = log.serial ?? "Unknown";
-        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (showLabel) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 6),
-                child: Text(
-                  '[$serial] $deviceName',
-                  style: GoogleFonts.firaCode(
-                    color: deviceColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
+            _buildLable(log),
+            Text(
+              '// ${log.message}',
+              style: GoogleFonts.firaCode(
+                color: const Color(0xFF94A3B8), // Slate 400
+                fontStyle: FontStyle.italic,
+                fontSize: 12,
               ),
-            ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        );
+      case LogType.output:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLable(log),
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 2),
               child: Text(
@@ -963,7 +999,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
 
   Widget _buildPromptLine(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 60),
+      padding: const EdgeInsets.only(top: 12, bottom: 60, left: 16, right: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -1006,7 +1042,11 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   ),
                   suffixIcon: _store.hasActiveExecution
                       ? IconButton(
-                          icon: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 24),
+                          icon: const Icon(
+                            Icons.stop_circle_rounded,
+                            color: Colors.redAccent,
+                            size: 24,
+                          ),
                           tooltip: 'Dừng tất cả',
                           onPressed: () => _store.stopAll(),
                         )
@@ -1024,25 +1064,31 @@ class _ScriptScreenState extends State<ScriptScreen> {
       ),
     );
   }
+
   Widget _buildSelectionControls(ThemeData theme) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton(
             onPressed: () {
-              final isAllSelected = _store.selectedSerials.length == _store.devices.length;
+              final isAllSelected =
+                  _store.selectedSerials.length == _store.devices.length;
               _store.selectAllDevices(!isAllSelected);
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 10),
               side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               foregroundColor: const Color(0xFF475569), // Slate 600
               backgroundColor: Colors.white,
             ),
             child: Observer(
               builder: (_) {
-                final isAllSelected = _store.devices.isNotEmpty && _store.selectedSerials.length == _store.devices.length;
+                final isAllSelected =
+                    _store.devices.isNotEmpty &&
+                    _store.selectedSerials.length == _store.devices.length;
                 return Text(
                   isAllSelected ? 'BỎ CHỌN' : 'CHỌN TẤT CẢ',
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -1061,7 +1107,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 10),
               side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               foregroundColor: const Color(0xFF475569), // Slate 600
               backgroundColor: Colors.white,
             ),
@@ -1081,7 +1129,9 @@ class _ScriptScreenState extends State<ScriptScreen> {
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 10),
               side: const BorderSide(color: Color(0xFFE2E8F0)), // Slate 200
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               foregroundColor: const Color(0xFF475569), // Slate 600
               backgroundColor: Colors.white,
             ),
@@ -1108,8 +1158,12 @@ class _ScriptScreenState extends State<ScriptScreen> {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Chọn thiết bị theo lô', 
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))
+          'Chọn thiết bị theo lô',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1E293B),
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1126,13 +1180,23 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   child: TextField(
                     controller: startController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'TỪ',
-                      labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      labelStyle: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF64748B),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
                       isDense: true,
                     ),
                   ),
@@ -1142,13 +1206,23 @@ class _ScriptScreenState extends State<ScriptScreen> {
                   child: TextField(
                     controller: endController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'ĐẾN',
-                      labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      labelStyle: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF64748B),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
                       isDense: true,
                     ),
                   ),
@@ -1161,7 +1235,14 @@ class _ScriptScreenState extends State<ScriptScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('HỦY', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+            child: const Text(
+              'HỦY',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1175,10 +1256,15 @@ class _ScriptScreenState extends State<ScriptScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               elevation: 0,
             ),
-            child: const Text('CHỌN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            child: const Text(
+              'CHỌN',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -1187,15 +1273,19 @@ class _ScriptScreenState extends State<ScriptScreen> {
 
   void _showGroupSelectDialog() {
     final groupStore = inject<DeviceGroupStore>();
-    
+
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Chọn thiết bị theo nhóm', 
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))
+          'Chọn thiết bị theo nhóm',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1E293B),
+          ),
         ),
         content: SizedBox(
           width: 400,
@@ -1204,14 +1294,18 @@ class _ScriptScreenState extends State<ScriptScreen> {
               if (groupStore.groups.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Text('Chưa có nhóm nào được định nghĩa.', textAlign: TextAlign.center),
+                  child: Text(
+                    'Chưa có nhóm nào được định nghĩa.',
+                    textAlign: TextAlign.center,
+                  ),
                 );
               }
-              
+
               return ListView.separated(
                 shrinkWrap: true,
                 itemCount: groupStore.groups.length,
-                separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                separatorBuilder: (context, index) =>
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 itemBuilder: (context, index) {
                   final group = groupStore.groups[index];
                   return ListTile(
@@ -1221,11 +1315,18 @@ class _ScriptScreenState extends State<ScriptScreen> {
                     ),
                     title: Text(
                       group.name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
+                      ),
                     ),
                     subtitle: Text(
                       '${group.deviceSerials.length} thiết bị',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     onTap: () {
                       _store.selectDevicesByGroup(group.id);
@@ -1240,7 +1341,14 @@ class _ScriptScreenState extends State<ScriptScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ĐÓNG', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+            child: const Text(
+              'ĐÓNG',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),

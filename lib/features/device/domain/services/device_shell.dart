@@ -25,7 +25,7 @@ class DeviceShell {
     _process!.stderr.transform(utf8.decoder).listen((data) {
       _resultController.add(DeviceShellResult(
         logs: data,
-        state: ShellState.running,
+        state: ShellState.error,
       ));
     });
 
@@ -68,7 +68,7 @@ enum ShellState {
   error;
 
   factory ShellState.fromCode(int code) => switch(code){
-    -1 => ShellState.canceled,
+    < 0 => ShellState.canceled,
     0 => ShellState.success,
     _ => ShellState.error,
   };

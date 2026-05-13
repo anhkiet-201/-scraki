@@ -12,7 +12,6 @@ import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/domain/repositories/script_repository.dart';
 import 'package:scraki/features/script/domain/usecases/run_script_use_case.dart';
-import 'package:scraki/features/script/domain/usecases/execute_command_use_case.dart';
 import 'package:scraki/features/script/domain/usecases/save_script_use_case.dart';
 import 'package:scraki/features/script/domain/usecases/delete_script_use_case.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
@@ -26,7 +25,6 @@ class ScriptStore = _ScriptStore with _$ScriptStore;
 abstract class _ScriptStore with Store, SessionManagerStoreMixin {
   final ScriptRepository _repository;
   final RunScriptUseCase _runScriptUseCase;
-  final ExecuteCommandUseCase _executeCommandUseCase;
   final SaveScriptUseCase _saveScriptUseCase;
   final DeleteScriptUseCase _deleteScriptUseCase;
   final DeviceManagerStore _deviceManagerStore;
@@ -36,7 +34,6 @@ abstract class _ScriptStore with Store, SessionManagerStoreMixin {
   _ScriptStore(
     this._repository,
     this._runScriptUseCase,
-    this._executeCommandUseCase,
     this._saveScriptUseCase,
     this._deleteScriptUseCase,
     this._deviceManagerStore,
@@ -282,7 +279,6 @@ abstract class _ScriptStore with Store, SessionManagerStoreMixin {
     final shell = sessionManagerStore.activeDeviceShells[serial];
     if (shell != null) {
       shell.stop();
-      _log('Đã dừng lệnh trên thiết bị', serial: serial, type: LogType.error);
     }
   }
 
@@ -294,7 +290,6 @@ abstract class _ScriptStore with Store, SessionManagerStoreMixin {
     }
 
     isExecuting = false;
-    _log('Đã dừng tất cả các lệnh đang thực thi', type: LogType.error);
   }
 
   @action
@@ -362,7 +357,7 @@ abstract class _ScriptStore with Store, SessionManagerStoreMixin {
       final processedCmd = _replacePlaceholders(cmd, serial);
       // Trước khi chạy batch, log một dòng thông báo chung
       if (serial == selectedSerialsList.first) {
-        _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount);
+        _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount, serial: serial, model: selectedSerialsList.length == 1 ? getDeviceBySerial(serial)?.modelName : null);
       }
       return executeCommandOnDevice(serial, processedCmd, logCommand: false);
     });
