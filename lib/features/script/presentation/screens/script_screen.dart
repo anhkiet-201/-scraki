@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' hide Action;
 import 'package:scraki/core/mixins/di_mixin.dart';
-import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
+import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 import 'package:scraki/features/script/presentation/widgets/script_editor_panel.dart';
 import 'package:scraki/features/script/presentation/widgets/script_header.dart';
 import 'package:scraki/features/script/presentation/widgets/device_sidebar.dart';
@@ -24,7 +26,10 @@ class ScriptScreen extends StatefulWidget {
 }
 
 class _ScriptScreenState extends State<ScriptScreen> {
-  late final ScriptStore _store;
+  late final ScriptManagementStore _scriptStore;
+  late final TerminalStore _terminalStore;
+  late final DeviceManagerStore _deviceManagerStore;
+  
   final TextEditingController _commandController = TextEditingController();
   final FocusNode _terminalFocusNode = FocusNode();
   ReactionDisposer? _scrollDisposer;
@@ -32,12 +37,15 @@ class _ScriptScreenState extends State<ScriptScreen> {
   @override
   void initState() {
     super.initState();
-    _store = inject<ScriptStore>();
-    _store.init();
-    _store.loadScripts();
+    _scriptStore = inject<ScriptManagementStore>();
+    _terminalStore = inject<TerminalStore>();
+    _deviceManagerStore = inject<DeviceManagerStore>();
+    
+    _scriptStore.loadScripts();
+    
     _commandController.addListener(() {
-      if (_commandController.text != _store.commandInput) {
-        _store.setCommandInput(_commandController.text);
+      if (_commandController.text != _terminalStore.commandInput) {
+        _terminalStore.setCommandInput(_commandController.text);
       }
     });
   }
@@ -47,13 +55,14 @@ class _ScriptScreenState extends State<ScriptScreen> {
     _commandController.dispose();
     _terminalFocusNode.dispose();
     _scrollDisposer?.call();
-    _store.dispose();
+    _scriptStore.dispose();
+    _terminalStore.dispose();
     super.dispose();
   }
 
   void _navigateHistory(bool up) {
-    _store.navigateHistory(up);
-    _commandController.text = _store.commandInput;
+    _terminalStore.navigateHistory(up);
+    _commandController.text = _terminalStore.commandInput;
     _commandController.selection = TextSelection.fromPosition(
       TextPosition(offset: _commandController.text.length),
     );
@@ -82,7 +91,7 @@ class _ScriptScreenState extends State<ScriptScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ScriptHeader(store: _store),
+                  ScriptHeader(store: _terminalStore),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Row(
@@ -95,12 +104,18 @@ class _ScriptScreenState extends State<ScriptScreen> {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: DeviceSidebar(store: _store),
+                                child: DeviceSidebar(
+                                  deviceManagerStore: _deviceManagerStore,
+                                  terminalStore: _terminalStore,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               Expanded(
                                 flex: 3,
-                                child: ScriptSidebar(store: _store),
+                                child: ScriptSidebar(
+                                  scriptStore: _scriptStore,
+                                  terminalStore: _terminalStore,
+                                ),
                               ),
                             ],
                           ),
@@ -110,18 +125,18 @@ class _ScriptScreenState extends State<ScriptScreen> {
                         Expanded(
                           child: Observer(
                             builder: (_) {
-                              if (_store.editingScript != null) {
-                                return ScriptEditorPanel(store: _store);
+                              if (_scriptStore.editingScript != null) {
+                                return ScriptEditorPanel(store: _scriptStore);
                               }
 
-                              return _store.isTiledView
+                              return _terminalStore.isTiledView
                                   ? TiledTerminalPanel(
-                                      store: _store,
+                                      store: _terminalStore,
                                       commandController: _commandController,
                                       terminalFocusNode: _terminalFocusNode,
                                     )
                                   : TerminalView(
-                                      store: _store,
+                                      store: _terminalStore,
                                       commandController: _commandController,
                                       terminalFocusNode: _terminalFocusNode,
                                     );

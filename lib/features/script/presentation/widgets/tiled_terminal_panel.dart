@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 import 'package:scraki/features/script/presentation/widgets/terminal_header.dart';
 import 'package:scraki/features/script/presentation/widgets/tiled_log_view.dart';
 
 class TiledTerminalPanel extends StatelessWidget {
-  final ScriptStore store;
+  final TerminalStore store;
   final TextEditingController commandController;
   final FocusNode terminalFocusNode;
 

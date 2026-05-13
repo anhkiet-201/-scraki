@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
-import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 
 class ScriptSidebar extends StatelessWidget {
-  final ScriptStore store;
+  final ScriptManagementStore scriptStore;
+  final TerminalStore terminalStore;
 
-  const ScriptSidebar({super.key, required this.store});
+  const ScriptSidebar({
+    super.key,
+    required this.scriptStore,
+    required this.terminalStore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +47,7 @@ class ScriptSidebar extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: () => store.updateEditingScript(
+                onPressed: () => scriptStore.updateEditingScript(
                   name: 'Script mới',
                   description: '',
                   commands: [],
@@ -57,7 +63,7 @@ class ScriptSidebar extends StatelessWidget {
           Expanded(
             child: Observer(
               builder: (_) {
-                if (store.scripts.isEmpty) {
+                if (scriptStore.scripts.isEmpty) {
                   return Center(
                     child: Text(
                       'Chưa có script nào.\nNhấn + để tạo.',
@@ -70,13 +76,13 @@ class ScriptSidebar extends StatelessWidget {
                   );
                 }
                 return ListView.separated(
-                  itemCount: store.scripts.length,
+                  itemCount: scriptStore.scripts.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     return Observer(
                       builder: (context) {
-                        final script = store.scripts[index];
+                        final script = scriptStore.scripts[index];
                         return _buildScriptTile(context, theme, script);
                       },
                     );
@@ -103,7 +109,7 @@ class ScriptSidebar extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => store.setEditingScript(script),
+          onTap: () => scriptStore.setEditingScript(script),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -150,14 +156,29 @@ class ScriptSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Play Button
-                IconButton(
-                  onPressed: () => store.runScript(script),
-                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  color: const Color(0xFF10B981), // Emerald
-                  tooltip: 'Chạy script',
+                // Play/Stop Button
+                Observer(
+                  builder: (_) => IconButton(
+                    onPressed: () {
+                      if (terminalStore.isExecuting) {
+                        terminalStore.stopAll();
+                      } else {
+                        terminalStore.runScript(script);
+                      }
+                    },
+                    icon: Icon(
+                      terminalStore.isExecuting
+                          ? Icons.stop_circle_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    color: terminalStore.isExecuting
+                        ? Colors.redAccent
+                        : const Color(0xFF10B981), // Emerald
+                    tooltip: terminalStore.isExecuting ? 'Dừng script' : 'Chạy script',
+                  ),
                 ),
                 const SizedBox(width: 8),
                 _buildScriptActions(context, theme, script),
@@ -174,7 +195,7 @@ class ScriptSidebar extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: () => store.setEditingScript(script),
+          onPressed: () => scriptStore.setEditingScript(script),
           icon: const Icon(Icons.edit_rounded, size: 14),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
@@ -205,7 +226,7 @@ class ScriptSidebar extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              store.deleteScript(script.id);
+              scriptStore.deleteScript(script.id);
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

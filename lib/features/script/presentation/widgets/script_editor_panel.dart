@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../stores/script_store.dart';
+import '../stores/script_management_store.dart';
 
 class ScriptEditorPanel extends StatefulWidget {
-  final ScriptStore store;
+  final ScriptManagementStore store;
 
   const ScriptEditorPanel({super.key, required this.store});
 

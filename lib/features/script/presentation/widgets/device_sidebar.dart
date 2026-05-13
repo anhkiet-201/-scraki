@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
-import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 import 'package:scraki/features/script/presentation/widgets/log_line_item.dart'; // For getDeviceColor
 
 class DeviceSidebar extends StatelessWidget {
-  final ScriptStore store;
+  final DeviceManagerStore deviceManagerStore;
+  final TerminalStore terminalStore;
 
-  const DeviceSidebar({super.key, required this.store});
+  const DeviceSidebar({
+    super.key,
+    required this.deviceManagerStore,
+    required this.terminalStore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +60,7 @@ class DeviceSidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${store.selectedSerials.length}/${store.devices.length}',
+                    '${deviceManagerStore.selectedSerials.length}/${deviceManagerStore.devices.length}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
@@ -70,7 +76,7 @@ class DeviceSidebar extends StatelessWidget {
           Expanded(
             child: Observer(
               builder: (_) {
-                if (store.devices.isEmpty) {
+                if (deviceManagerStore.devices.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -93,21 +99,21 @@ class DeviceSidebar extends StatelessWidget {
                   );
                 }
                 return ListView.separated(
-                  itemCount: store.devices.length,
+                  itemCount: deviceManagerStore.devices.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    final device = store.devices[index];
+                    final device = deviceManagerStore.devices[index];
                     final color = getDeviceColor(device.serial);
 
                     return Observer(
                       builder: (context) {
-                        final isSelected = store.selectedSerials.contains(
+                        final isSelected = deviceManagerStore.selectedSerials.contains(
                           device.serial,
                         );
                         return InkWell(
                           onTap: () =>
-                              store.toggleDeviceSelection(device.serial),
+                              deviceManagerStore.toggleDeviceSelection(device.serial),
                           borderRadius: BorderRadius.circular(12),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -207,8 +213,17 @@ class DeviceSidebar extends StatelessWidget {
           child: OutlinedButton(
             onPressed: () {
               final isAllSelected =
-                  store.selectedSerials.length == store.devices.length;
-              store.selectAllDevices(!isAllSelected);
+                  deviceManagerStore.devices.isNotEmpty &&
+                  deviceManagerStore.selectedSerials.length == deviceManagerStore.devices.length;
+              if (isAllSelected) {
+                deviceManagerStore.clearSelection();
+              } else {
+                for (final device in deviceManagerStore.devices) {
+                  if (!deviceManagerStore.selectedSerials.contains(device.serial)) {
+                    deviceManagerStore.toggleDeviceSelection(device.serial);
+                  }
+                }
+              }
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -222,8 +237,8 @@ class DeviceSidebar extends StatelessWidget {
             child: Observer(
               builder: (_) {
                 final isAllSelected =
-                    store.devices.isNotEmpty &&
-                    store.selectedSerials.length == store.devices.length;
+                    deviceManagerStore.devices.isNotEmpty &&
+                    deviceManagerStore.selectedSerials.length == deviceManagerStore.devices.length;
                 return Text(
                   isAllSelected ? 'BỎ CHỌN' : 'CHỌN TẤT CẢ',
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -384,7 +399,7 @@ class DeviceSidebar extends StatelessWidget {
               final start = int.tryParse(startController.text);
               final end = int.tryParse(endController.text);
               if (start != null && end != null) {
-                store.selectDevicesByRange(start, end);
+                terminalStore.selectDevicesByRange(start, end);
                 Navigator.pop(context);
               }
             },
@@ -407,86 +422,87 @@ class DeviceSidebar extends StatelessWidget {
   }
 
   void _showGroupSelectDialog(BuildContext context) {
-    final groupStore = inject<DeviceGroupStore>();
-
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Chọn thiết bị theo nhóm',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1E293B),
-          ),
-        ),
-        content: SizedBox(
-          width: 400,
-          child: Observer(
-            builder: (_) {
-              if (groupStore.groups.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Text(
-                    'Chưa có nhóm nào được định nghĩa.',
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }
-
-              return ListView.separated(
-                shrinkWrap: true,
-                itemCount: groupStore.groups.length,
-                separatorBuilder: (context, index) =>
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                itemBuilder: (context, index) {
-                  final group = groupStore.groups[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: Color(group.colorValue),
-                    ),
-                    title: Text(
-                      group.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${group.deviceSerials.length} thiết bị',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    onTap: () {
-                      store.selectDevicesByGroup(group.id);
-                      Navigator.pop(context);
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'ĐÓNG',
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+      builder: (context) {
+        final groupStore = inject<DeviceGroupStore>();
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Chọn thiết bị theo nhóm',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1E293B),
             ),
           ),
-        ],
-      ),
+          content: SizedBox(
+            width: 400,
+            child: Observer(
+              builder: (_) {
+                if (groupStore.groups.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text(
+                      'Chưa có nhóm nào được định nghĩa.',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: groupStore.groups.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final group = groupStore.groups[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Color(group.colorValue),
+                      ),
+                      title: Text(
+                        group.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${group.deviceSerials.length} thiết bị',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      onTap: () {
+                        terminalStore.selectDevicesByGroup(group.id);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'ĐÓNG',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

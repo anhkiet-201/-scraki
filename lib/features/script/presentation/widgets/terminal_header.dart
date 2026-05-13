@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:scraki/features/script/presentation/stores/script_store.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 
 class TerminalHeader extends StatelessWidget {
-  final ScriptStore store;
+  final TerminalStore store;
 
   const TerminalHeader({super.key, required this.store});
 

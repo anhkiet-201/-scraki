@@ -106,7 +106,9 @@ import '../../features/script/domain/usecases/execute_command_use_case.dart'
 import '../../features/script/domain/usecases/run_script_use_case.dart' as _i69;
 import '../../features/script/domain/usecases/save_script_use_case.dart'
     as _i240;
-import '../../features/script/presentation/stores/script_store.dart' as _i921;
+import '../../features/script/presentation/stores/script_management_store.dart'
+    as _i405;
+import '../../features/script/presentation/stores/terminal_store.dart' as _i137;
 import '../../features/settings/data/repositories/settings_repository_impl.dart'
     as _i955;
 import '../../features/settings/di/settings_module.dart' as _i273;
@@ -388,6 +390,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i730.SettingsConfigProvider>(
       () => _i730.SettingsConfigProvider(gh<_i1029.GetSettingsUseCase>()),
     );
+    gh.singleton<_i405.ScriptManagementStore>(
+      () => _i405.ScriptManagementStore(
+        gh<_i55.ScriptRepository>(),
+        gh<_i240.SaveScriptUseCase>(),
+        gh<_i205.DeleteScriptUseCase>(),
+      ),
+    );
     gh.lazySingleton<_i246.DeviceGroupStore>(
       () => _i246.DeviceGroupStore(
         gh<_i510.DeviceGroupRepository>(),
@@ -396,14 +405,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i151.SettingsStore>(),
       ),
     );
-    gh.singleton<_i921.ScriptStore>(
-      () => _i921.ScriptStore(
-        gh<_i55.ScriptRepository>(),
+    gh.singleton<_i137.TerminalStore>(
+      () => _i137.TerminalStore(
         gh<_i69.RunScriptUseCase>(),
-        gh<_i240.SaveScriptUseCase>(),
-        gh<_i205.DeleteScriptUseCase>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i246.DeviceGroupStore>(),
+        gh<_i405.ScriptManagementStore>(),
       ),
     );
     gh.singleton<_i391.DeviceNicknameStore>(

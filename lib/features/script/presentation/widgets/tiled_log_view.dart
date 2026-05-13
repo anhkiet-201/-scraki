@@ -5,10 +5,10 @@ import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 import '../../domain/entities/log_entry.dart';
-import '../stores/script_store.dart';
+import '../stores/terminal_store.dart';
 
 class TiledLogView extends StatelessWidget {
-  final ScriptStore store = inject<ScriptStore>();
+  final TerminalStore store = inject<TerminalStore>();
 
   TiledLogView({super.key});
 
@@ -63,7 +63,7 @@ class _DeviceLogTile extends StatefulWidget {
 class _DeviceLogTileState extends State<_DeviceLogTile> {
   final TextEditingController _inputController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final ScriptStore _store = inject<ScriptStore>();
+  final TerminalStore _store = inject<TerminalStore>();
 
   @override
   void dispose() {
