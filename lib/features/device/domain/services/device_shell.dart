@@ -45,6 +45,7 @@ class DeviceShell {
   }
 
   void dispose() {
+    stop();
     _resultController.close();
   }
 }

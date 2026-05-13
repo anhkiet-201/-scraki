@@ -337,6 +337,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       sub.cancel();
     }
     _shellLogSubscriptions.clear();
+    for (var shell in sessionManagerStore.activeDeviceShells.values) {
+      shell.dispose();
+    }
   }
 
   @computed
