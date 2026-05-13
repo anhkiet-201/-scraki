@@ -14,6 +14,8 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/m
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/common/lut_asset_provider.dart';
 import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
+import 'package:scraki/features/video_poster/data/services/batch_video/core/utils/lut_transformer.dart';
+
 import '../../factory/video_batch_engine_factory.dart';
 
 @LazySingleton(as: VideoBatchPipeline)
@@ -289,6 +291,20 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     _eventController.add('🛑 Đã dừng pipeline.');
   }
 
+  @override
+  Future<void> cleanup() async {
+    if (_isContextInitialized) {
+      try {
+        if (await _context.tempDir.exists()) {
+          await _context.tempDir.delete(recursive: true);
+          _eventController.add('🧹 Đã dọn dẹp thư mục tạm.');
+        }
+      } catch (e) {
+        _eventController.add('⚠️ Lỗi dọn dẹp thư mục tạm: $e');
+      }
+    }
+  }
+
   void _generatePlanning(BatchVideoConfig config) {
     final random = Random();
     _context.validSourceVideos.shuffle(random); // Shuffle sources first
@@ -404,6 +420,15 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     final random = Random();
     final config = ctx.config;
 
+    String? lutFilePath;
+    if (config.generateColorFilter) {
+      final extractedPath = await LutAssetProvider.extractRandom(random, ctx.tempDir.path);
+      final intensity = 0.2 + random.nextDouble() * 0.6; // Random 0.2 - 0.8
+      final transformedPath = p.join(ctx.tempDir.path, 'lut_transformed_${index}_${DateTime.now().millisecondsSinceEpoch}.cube');
+      await LutTransformer.transform(File(extractedPath), File(transformedPath), intensity);
+      lutFilePath = transformedPath;
+    }
+
     final params = CompositionParams(
       targetDuration:
           config.minFinalDuration +
@@ -427,9 +452,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       panEndX: random.nextDouble(),
       panEndY: random.nextDouble(),
       transitionDuration: 0.05 + random.nextDouble() * 0.05, // 0.05 - 0.10s
-      lutFilePath: config.generateColorFilter
-          ? await LutAssetProvider.extractRandom(random, ctx.tempDir.path)
-          : null,
+      lutFilePath: lutFilePath,
       gammaR: !config.generateColorFilter
           ? 0.98 + random.nextDouble() * 0.04
           : null,

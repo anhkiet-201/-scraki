@@ -18,4 +18,7 @@ abstract class VideoBatchPipeline {
 
   /// Hủy bỏ quá trình
   void cancel();
+
+  /// Dọn dẹp tài nguyên và file tạm
+  Future<void> cleanup();
 }

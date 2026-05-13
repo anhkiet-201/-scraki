@@ -871,6 +871,7 @@ abstract class _VideoPosterStore with Store {
       _batchService?.cancel();
       runInAction(() => batchLogs.add('❌ Lỗi: $e'));
     } finally {
+      await _batchService?.cleanup();
       runInAction(() => isBatchCreating = false);
     }
   }
