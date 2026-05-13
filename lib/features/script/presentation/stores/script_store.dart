@@ -2,9 +2,12 @@ import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/domain/repositories/script_repository.dart';
@@ -16,11 +19,11 @@ import 'package:scraki/features/device/presentation/stores/device_group_store.da
 
 part 'script_store.g.dart';
 
-@lazySingleton
+@singleton
 // ignore: library_private_types_in_public_api
 class ScriptStore = _ScriptStore with _$ScriptStore;
 
-abstract class _ScriptStore with Store {
+abstract class _ScriptStore with Store, SessionManagerStoreMixin {
   final ScriptRepository _repository;
   final RunScriptUseCase _runScriptUseCase;
   final ExecuteCommandUseCase _executeCommandUseCase;
@@ -28,6 +31,7 @@ abstract class _ScriptStore with Store {
   final DeleteScriptUseCase _deleteScriptUseCase;
   final DeviceManagerStore _deviceManagerStore;
   final DeviceGroupStore _deviceGroupStore;
+  MergeStream<DeviceShellResult>? logs;
 
   _ScriptStore(
     this._repository,
@@ -37,13 +41,64 @@ abstract class _ScriptStore with Store {
     this._deleteScriptUseCase,
     this._deviceManagerStore,
     this._deviceGroupStore,
-  );
+  ) {
+    initialized();
+  }
 
   @computed
   Set<String> get selectedSerials => _deviceManagerStore.selectedSerials;
 
   @computed
   ObservableList<DeviceEntity> get devices => _deviceManagerStore.devices;
+
+  @readonly
+  ObservableMap<String, ShellState> _shellStates = ObservableMap<String, ShellState>();
+
+  void initialized() {
+    reaction(
+      (_) => sessionManagerStore.activeSessions.keys.toSet(),
+      (Set<String> newKeys) {
+        // 1. Subscribe các session mới
+        for (final key in newKeys) {
+          final serial = _normalizeSerial(key);
+          if (!_shellLogSubscriptions.containsKey(serial)) {
+            final shell = sessionManagerStore.activeSessions[key]?.deviceShell;
+            if (shell == null) continue;
+            _shellLogSubscriptions[serial] = shell.results.listen((result) {
+              final device = getDeviceBySerial(serial);
+              final deviceName = device?.modelName;
+              _shellStates[serial] = result.state;
+              switch (result.state) {
+                case ShellState.error:
+                  _log(result.logs, serial: serial, model: deviceName, type: LogType.error);
+                  break;
+                case ShellState.success:
+                case ShellState.canceled:
+                  _log(result.logs, serial: serial, model: deviceName, type: LogType.info);
+                  break;
+                case ShellState.running:
+                  _log(result.logs, serial: serial, model: deviceName, type: LogType.output);
+                  break;
+              }
+            });
+          }
+        }
+
+        // 2. Cancel các subscription của session đã đóng
+        final normalizedNew = newKeys.map(_normalizeSerial).toSet();
+        final removed = _shellLogSubscriptions.keys
+            .where((s) => !normalizedNew.contains(s))
+            .toList();
+        for (final serial in removed) {
+          _shellLogSubscriptions[serial]?.cancel();
+          _shellLogSubscriptions.remove(serial);
+        }
+      },
+    );
+  }
+
+  String _normalizeSerial(String key) =>
+      key.replaceAll('_grid', '').replaceAll('_floating', '');
 
   @action
   void toggleDeviceSelection(String serial) => _deviceManagerStore.toggleDeviceSelection(serial);
@@ -185,8 +240,9 @@ abstract class _ScriptStore with Store {
     );
   }
 
-  // Quản lý các subscription đang chạy để có thể dừng lệnh
-  final Map<String, StreamSubscription<dynamic>> _activeSubscriptions = {};
+
+  // Quản lý subscription log của từng thiết bị
+  final Map<String, StreamSubscription<DeviceShellResult>> _shellLogSubscriptions = {};
   StreamSubscription<Either<Failure, List<ScriptEntity>>>? _scriptsSubscription;
 
   @action
@@ -211,32 +267,32 @@ abstract class _ScriptStore with Store {
   void dispose() {
     _scriptsSubscription?.cancel();
     stopAll();
+    // Hủy các subscription log
+    for (final sub in _shellLogSubscriptions.values) {
+      sub.cancel();
+    }
+    _shellLogSubscriptions.clear();
   }
 
-  bool hasActiveSubscription(String serial) => _activeSubscriptions.containsKey(serial);
-
   @computed
-  bool get hasActiveExecution => _activeSubscriptions.isNotEmpty || isExecuting;
+  bool get hasActiveExecution => isExecuting;
 
   @action
   void stopCommand(String serial) {
-    if (_activeSubscriptions.containsKey(serial)) {
-      _activeSubscriptions[serial]?.cancel();
-      _activeSubscriptions.remove(serial);
+    final shell = sessionManagerStore.activeDeviceShells[serial];
+    if (shell != null) {
+      shell.stop();
       _log('Đã dừng lệnh trên thiết bị', serial: serial, type: LogType.error);
-      
-      if (_activeSubscriptions.isEmpty) {
-        isExecuting = false;
-      }
     }
   }
 
   @action
   void stopAll() {
-    for (final sub in _activeSubscriptions.values) {
-      sub.cancel();
+    // Dừng tất cả các shell
+    for (final shell in sessionManagerStore.activeDeviceShells.values) {
+      shell.stop();
     }
-    _activeSubscriptions.clear();
+
     isExecuting = false;
     _log('Đã dừng tất cả các lệnh đang thực thi', type: LogType.error);
   }
@@ -352,28 +408,20 @@ abstract class _ScriptStore with Store {
       _log(command, serial: serial, model: deviceName, type: LogType.command, deviceCount: 1);
     }
 
-    await _activeSubscriptions[serial]?.cancel();
+    final shell = sessionManagerStore.activeDeviceShells[serial];
+    if (shell == null) {
+      _log('Lỗi: Không tìm thấy shell cho thiết bị với serial $serial', type: LogType.error);
+      return;
+    }
 
     final completer = Completer<void>();
-    final subscription = _executeCommandUseCase.executeStream(serial, command).listen(
-      (result) {
-        result.fold(
-          (f) => _log('Lỗi: ${f.message}', serial: serial, model: deviceName, type: LogType.error),
-          (msg) => _log(msg, serial: serial, model: deviceName, type: LogType.output),
-        );
-      },
-      onDone: () {
-        _activeSubscriptions.remove(serial);
-        if (!completer.isCompleted) completer.complete();
-      },
-      onError: (Object e) {
-        _log('Lỗi hệ thống: $e', serial: serial, model: deviceName, type: LogType.error);
-        _activeSubscriptions.remove(serial);
-        if (!completer.isCompleted) completer.completeError(e);
-      },
-    );
 
-    _activeSubscriptions[serial] = subscription;
+    shell.start("adb", arguments: ["-s", serial, "shell", command]).then((_) {
+      completer.complete();
+    });
+
+
+
     return completer.future;
   }
 

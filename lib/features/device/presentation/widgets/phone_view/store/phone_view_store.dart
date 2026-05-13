@@ -16,6 +16,7 @@ import 'package:scraki/features/device/data/datasources/video_worker_manager.dar
 import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
+import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
@@ -65,6 +66,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   late final String sessionId;
 
+  @observable
+  DeviceShellResult? deviceShellResult;
+
   /// True khi người dùng đang ở tab Devices.
   @computed
   bool get isOnDevicesTab =>
@@ -95,12 +99,16 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         error: e,
       );
     }
+    deviceShell.results.listen((result) {
+      deviceShellResult = result;
+    });
   }
 
   void dispose() {
     setVisibility(serial, false, isFloating: isFloatingView);
     _floatingDisposer?.call();
     stopMirroring();
+    deviceShell.dispose();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -109,6 +117,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @computed
   MirrorSession? get session => sessionManagerStore.activeSessions[sessionId];
+
+  late final DeviceShell _deviceShell = DeviceShell();
+  DeviceShell get deviceShell => _deviceShell;
 
   // ═══════════════════════════════════════════════════════════════
   // UI STATES
@@ -290,6 +301,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         port: adbPort,
         scid: scid,
         decoderService: _decoderService,
+        deviceShell: _deviceShell,
       );
 
       await mirrorSession.decoderService.start(url, sessionId);

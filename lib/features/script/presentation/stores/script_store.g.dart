@@ -34,6 +34,26 @@ mixin _$ScriptStore on _ScriptStore, Store {
         name: '_ScriptStore.hasActiveExecution',
       )).value;
 
+  late final _$_shellStatesAtom = Atom(
+    name: '_ScriptStore._shellStates',
+    context: context,
+  );
+
+  ObservableMap<String, ShellState> get shellStates {
+    _$_shellStatesAtom.reportRead();
+    return super._shellStates;
+  }
+
+  @override
+  ObservableMap<String, ShellState> get _shellStates => shellStates;
+
+  @override
+  set _shellStates(ObservableMap<String, ShellState> value) {
+    _$_shellStatesAtom.reportWrite(value, super._shellStates, () {
+      super._shellStates = value;
+    });
+  }
+
   late final _$scriptsAtom = Atom(
     name: '_ScriptStore.scripts',
     context: context,

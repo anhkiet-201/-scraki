@@ -399,7 +399,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i391.DeviceNicknameStore>(
       () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
     );
-    gh.lazySingleton<_i921.ScriptStore>(
+    gh.singleton<_i921.ScriptStore>(
       () => _i921.ScriptStore(
         gh<_i55.ScriptRepository>(),
         gh<_i69.RunScriptUseCase>(),

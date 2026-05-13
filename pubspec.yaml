@@ -89,6 +89,7 @@ dependencies:
   package_info_plus: ^8.0.0
   xterm: ^4.0.0
   archive: ^4.0.9
+  rxdart: ^0.28.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -82,6 +82,24 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
         name: '_PhoneViewStore.isBlockedByFloating',
       )).value;
 
+  late final _$deviceShellResultAtom = Atom(
+    name: '_PhoneViewStore.deviceShellResult',
+    context: context,
+  );
+
+  @override
+  DeviceShellResult? get deviceShellResult {
+    _$deviceShellResultAtom.reportRead();
+    return super.deviceShellResult;
+  }
+
+  @override
+  set deviceShellResult(DeviceShellResult? value) {
+    _$deviceShellResultAtom.reportWrite(value, super.deviceShellResult, () {
+      super.deviceShellResult = value;
+    });
+  }
+
   late final _$isLoadingAtom = Atom(
     name: '_PhoneViewStore.isLoading',
     context: context,
@@ -476,6 +494,7 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   @override
   String toString() {
     return '''
+deviceShellResult: ${deviceShellResult},
 isLoading: ${isLoading},
 isConnecting: ${isConnecting},
 isDraggingFile: ${isDraggingFile},

@@ -3,6 +3,7 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
+import 'package:scraki/features/device/domain/services/device_shell.dart';
 
 part 'session_manager_store.g.dart';
 
@@ -29,6 +30,11 @@ abstract class _SessionManagerStore with Store {
   @observable
   ObservableMap<String, MirrorSession> activeSessions =
       ObservableMap<String, MirrorSession>();
+
+
+  Map<String, DeviceShell> get activeDeviceShells {
+    return activeSessions.map((k,v) => MapEntry(k.replaceAll("_grid", "").replaceAll("_floating", ""),v.deviceShell));
+  }
 
   @computed
   double get deviceAspectRatio {
