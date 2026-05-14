@@ -33,21 +33,12 @@ class InputTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: () {
-            if (isExecuting) {
-              onRun?.call(script);
-            } else {
-              _showInputDialog(context, script);
-            }
-          },
-          icon: Icon(
-            isExecuting ? Icons.stop_circle_rounded : Icons.play_arrow_rounded,
-            size: 20,
-          ),
+          onPressed: () => _showInputDialog(context, script),
+          icon: const Icon(Icons.play_arrow_rounded, size: 20),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          color: isExecuting ? Colors.redAccent : const Color(0xFF10B981),
-          tooltip: isExecuting ? 'Dừng script' : 'Chạy script (cần nhập input)',
+          color: const Color(0xFF10B981),
+          tooltip: 'Chạy script (cần nhập input)',
         ),
         const SizedBox(width: 8),
         IconButton(

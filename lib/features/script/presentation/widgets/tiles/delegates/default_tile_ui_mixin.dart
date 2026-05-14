@@ -50,5 +50,13 @@ mixin DefaultTileUiMixin implements ScriptTileDelegate {
   }
 
   @override
-  Widget wrap(BuildContext context, Widget child, ScriptEntity script) => child;
+  Widget wrap(BuildContext context, Widget child, ScriptEntity script) {
+    if (isExecuting) {
+      return Opacity(
+        opacity: 0.6,
+        child: AbsorbPointer(child: child),
+      );
+    }
+    return child;
+  }
 }

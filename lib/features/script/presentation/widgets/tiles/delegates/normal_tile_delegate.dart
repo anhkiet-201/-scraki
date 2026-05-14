@@ -32,18 +32,11 @@ class NormalTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
       children: [
         IconButton(
           onPressed: () => onRun?.call(script),
-          icon: Icon(
-            isExecuting
-                ? Icons.stop_circle_rounded
-                : Icons.play_arrow_rounded,
-            size: 20,
-          ),
+          icon: const Icon(Icons.play_arrow_rounded, size: 20),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          color: isExecuting
-              ? Colors.redAccent
-              : const Color(0xFF10B981), // Emerald
-          tooltip: isExecuting ? 'Dừng script' : 'Chạy script',
+          color: const Color(0xFF10B981), // Emerald
+          tooltip: 'Chạy script',
         ),
         const SizedBox(width: 8),
         IconButton(

@@ -76,25 +76,12 @@ class _ScriptTileConfirmTrailingState extends State<ScriptTileConfirmTrailing> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: () {
-            if (widget.isExecuting) {
-              widget.onRun?.call();
-            } else {
-              setState(() => _confirmingRun = true);
-            }
-          },
-          icon: Icon(
-            widget.isExecuting
-                ? Icons.stop_circle_rounded
-                : Icons.play_arrow_rounded,
-            size: 20,
-          ),
+          onPressed: () => setState(() => _confirmingRun = true),
+          icon: const Icon(Icons.play_arrow_rounded, size: 20),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          color: widget.isExecuting
-              ? Colors.redAccent
-              : const Color(0xFF10B981),
-          tooltip: widget.isExecuting ? 'Dừng script' : 'Chạy script',
+          color: const Color(0xFF10B981),
+          tooltip: 'Chạy script',
         ),
         const SizedBox(width: 8),
         IconButton(

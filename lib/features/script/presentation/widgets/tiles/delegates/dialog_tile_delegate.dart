@@ -32,25 +32,18 @@ class DialogTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
       children: [
         IconButton(
           onPressed: () {
-            if (isExecuting) {
-              onRun?.call(script);
-            } else {
-              _showConfirmDialog(
-                context,
-                title: 'Chạy Script',
-                content: 'Bạn có muốn chạy script "${script.name}" không?',
-                onConfirm: () => onRun?.call(script),
-              );
-            }
+            _showConfirmDialog(
+              context,
+              title: 'Chạy Script',
+              content: 'Bạn có muốn chạy script "${script.name}" không?',
+              onConfirm: () => onRun?.call(script),
+            );
           },
-          icon: Icon(
-            isExecuting ? Icons.stop_circle_rounded : Icons.play_arrow_rounded,
-            size: 20,
-          ),
+          icon: const Icon(Icons.play_arrow_rounded, size: 20),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          color: isExecuting ? Colors.redAccent : const Color(0xFF10B981),
-          tooltip: isExecuting ? 'Dừng script' : 'Chạy script',
+          color: const Color(0xFF10B981),
+          tooltip: 'Chạy script',
         ),
         const SizedBox(width: 8),
         IconButton(
