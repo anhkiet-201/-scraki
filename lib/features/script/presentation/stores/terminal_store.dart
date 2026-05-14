@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
@@ -66,7 +67,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   String commandInput = '';
 
-  static const int _maxConcurrentDevices = 10;
+  static const int _maxConcurrentDevices = 30;
 
   @observable
   ObservableList<String> commandHistory = ObservableList<String>();
@@ -215,19 +216,35 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     }
 
     isExecuting = true;
-    try {
-      for (var i = 0; i < serialList.length; i += _maxConcurrentDevices) {
-        final end = (i + _maxConcurrentDevices < serialList.length)
-            ? i + _maxConcurrentDevices
-            : serialList.length;
-        final chunk = serialList.sublist(i, end);
+    final queue = Queue<String>.from(serialList);
 
-        await Future.wait(
-          chunk.asMap().entries.map((entry) async {
-            return task(entry.value);
-          }),
-        );
+    try {
+      final workers = <Future<void>>[];
+      final numWorkers = serialList.length < _maxConcurrentDevices
+          ? serialList.length
+          : _maxConcurrentDevices;
+
+      for (int i = 0; i < numWorkers; i++) {
+        // Staggered start: Khởi chạy các worker cách nhau một khoảng nhỏ
+        // giúp dàn trải tải trọng CPU/IO khi bắt đầu process adb
+        if (i > 0) await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        // Kiểm tra nếu đã bị dừng trong lúc chờ delay
+        if (!isExecuting) break;
+
+        workers.add(() async {
+          while (queue.isNotEmpty && isExecuting) {
+            final serial = queue.removeFirst();
+            try {
+              await task(serial);
+            } catch (e) {
+              _log('Lỗi thực thi trên $serial: $e', type: LogType.error);
+            }
+          }
+        }());
       }
+
+      await Future.wait(workers);
     } finally {
       isExecuting = false;
     }
@@ -321,6 +338,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   void clearTerminal() {
     terminalOutput.clear();
     deviceLogs.clear();
+    _shellStates.clear();
+    _shellLogSubscriptions.clear();
   }
 
   void _log(
