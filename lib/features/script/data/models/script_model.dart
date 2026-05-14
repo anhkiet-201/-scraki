@@ -24,6 +24,12 @@ class ScriptModel extends HiveObject {
   @HiveField(6)
   List<String> tags;
 
+  @HiveField(7)
+  String tileType;
+
+  @HiveField(8)
+  bool enableFileDrop;
+
   ScriptModel({
     required this.id,
     required this.name,
@@ -32,6 +38,8 @@ class ScriptModel extends HiveObject {
     required this.createdAt,
     required this.updatedAt,
     this.tags = const [],
+    this.tileType = 'normal',
+    this.enableFileDrop = false,
   });
 
   factory ScriptModel.fromEntity(ScriptEntity entity) {
@@ -43,6 +51,8 @@ class ScriptModel extends HiveObject {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       tags: entity.tags,
+      tileType: entity.tileType.name,
+      enableFileDrop: entity.enableFileDrop,
     );
   }
 
@@ -55,6 +65,11 @@ class ScriptModel extends HiveObject {
       createdAt: createdAt,
       updatedAt: updatedAt,
       tags: tags,
+      tileType: ScriptTileType.values.firstWhere(
+        (e) => e.name == tileType,
+        orElse: () => ScriptTileType.normal,
+      ),
+      enableFileDrop: enableFileDrop,
     );
   }
 
@@ -67,6 +82,8 @@ class ScriptModel extends HiveObject {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'tags': tags,
+      'tileType': tileType,
+      'enableFileDrop': enableFileDrop,
     };
   }
 
@@ -79,6 +96,8 @@ class ScriptModel extends HiveObject {
       createdAt: (json['createdAt'] as Timestamp).toDate(),
       updatedAt: (json['updatedAt'] as Timestamp).toDate(),
       tags: (json['tags'] as List?)?.cast<String>() ?? const [],
+      tileType: json['tileType'] as String? ?? 'normal',
+      enableFileDrop: json['enableFileDrop'] as bool? ?? false,
     );
   }
 
@@ -106,13 +125,15 @@ class ScriptModelAdapter extends TypeAdapter<ScriptModel> {
       createdAt: fields[4] as DateTime,
       updatedAt: fields[5] as DateTime,
       tags: (fields[6] as List).cast<String>(),
+      tileType: fields[7] as String? ?? 'normal',
+      enableFileDrop: fields[8] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, ScriptModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -126,7 +147,11 @@ class ScriptModelAdapter extends TypeAdapter<ScriptModel> {
       ..writeByte(5)
       ..write(obj.updatedAt)
       ..writeByte(6)
-      ..write(obj.tags);
+      ..write(obj.tags)
+      ..writeByte(7)
+      ..write(obj.tileType)
+      ..writeByte(8)
+      ..write(obj.enableFileDrop);
   }
 
   @override

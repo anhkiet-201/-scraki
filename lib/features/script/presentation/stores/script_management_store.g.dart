@@ -121,6 +121,8 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
     String? name,
     String? description,
     List<String>? commands,
+    ScriptTileType? tileType,
+    bool? enableFileDrop,
   }) {
     final _$actionInfo = _$_ScriptManagementStoreActionController.startAction(
       name: '_ScriptManagementStore.updateEditingScript',
@@ -130,6 +132,8 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
         name: name,
         description: description,
         commands: commands,
+        tileType: tileType,
+        enableFileDrop: enableFileDrop,
       );
     } finally {
       _$_ScriptManagementStoreActionController.endAction(_$actionInfo);

@@ -126,9 +126,8 @@ class _ScriptScreenState extends State<ScriptScreen> {
                           child: Observer(
                             builder: (_) {
                               if (_scriptStore.editingScript != null) {
-                                return ScriptEditorPanel(store: _scriptStore);
+                                return ScriptEditorPanel();
                               }
-
                               return _terminalStore.isTiledView
                                   ? TiledTerminalPanel(
                                       store: _terminalStore,

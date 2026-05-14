@@ -1,3 +1,5 @@
+enum ScriptTileType { normal, confirm, dialog }
+
 class ScriptEntity {
   final String id;
   final String name;
@@ -6,6 +8,8 @@ class ScriptEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> tags;
+  final ScriptTileType tileType;
+  final bool enableFileDrop;
 
   ScriptEntity({
     required this.id,
@@ -15,6 +19,8 @@ class ScriptEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.tags = const [],
+    this.tileType = ScriptTileType.normal,
+    this.enableFileDrop = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -26,6 +32,8 @@ class ScriptEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     List<String>? tags,
+    ScriptTileType? tileType,
+    bool? enableFileDrop,
   }) {
     return ScriptEntity(
       id: id ?? this.id,
@@ -35,6 +43,8 @@ class ScriptEntity {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
+      tileType: tileType ?? this.tileType,
+      enableFileDrop: enableFileDrop ?? this.enableFileDrop,
     );
   }
 }

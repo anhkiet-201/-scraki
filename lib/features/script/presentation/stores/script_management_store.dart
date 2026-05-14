@@ -78,19 +78,29 @@ abstract class _ScriptManagementStore with Store {
   }
 
   @action
-  void updateEditingScript({String? name, String? description, List<String>? commands}) {
+  void updateEditingScript({
+    String? name,
+    String? description,
+    List<String>? commands,
+    ScriptTileType? tileType,
+    bool? enableFileDrop,
+  }) {
     if (editingScript == null) {
       editingScript = ScriptEntity(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: name ?? 'New Script',
         description: description ?? '',
         commands: commands ?? [],
+        tileType: tileType ?? ScriptTileType.normal,
+        enableFileDrop: enableFileDrop ?? false,
       );
     } else {
       editingScript = editingScript!.copyWith(
         name: name,
         description: description,
         commands: commands,
+        tileType: tileType,
+        enableFileDrop: enableFileDrop,
         updatedAt: DateTime.now(),
       );
     }
