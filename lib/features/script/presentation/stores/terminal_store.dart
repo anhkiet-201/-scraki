@@ -52,8 +52,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   ObservableList<DeviceEntity> get devices => _deviceManagerStore.devices;
 
   @readonly
-  ObservableMap<String, ShellState> _shellStates =
-      ObservableMap<String, ShellState>();
+  ObservableMap<String, bool> _shellStates =
+      ObservableMap<String, bool>();
 
   @observable
   ObservableList<LogEntry> terminalOutput = ObservableList<LogEntry>();
@@ -95,10 +95,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
           _shellLogSubscriptions[serial] = shell.results.listen((result) {
             final device = getDeviceBySerial(serial);
             final deviceName = device?.modelName;
-            _shellStates[serial] =
-                result.state == ShellState.error && result.exitCode == null
-                ? ShellState.running
-                : result.state;
             switch (result.state) {
               case ShellState.error:
                 _log(
@@ -301,10 +297,12 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     } else {
       cmd.insertAll(0, ["adb", "-s", serial, "shell"]);
     }
-
+    _shellStates[serial] = true;
     shell.start(cmd.removeAt(0), arguments: cmd).then((_) {
+      _shellStates[serial] = false;
       completer.complete();
     }).catchError((Object error) {
+      _shellStates[serial] = false;
       completer.completeError(error);
     });
 
@@ -353,7 +351,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     terminalOutput.clear();
     deviceLogs.clear();
     _shellStates.clear();
-    _shellLogSubscriptions.clear();
   }
 
   void _log(

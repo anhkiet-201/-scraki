@@ -39,16 +39,16 @@ mixin _$TerminalStore on _TerminalStore, Store {
     context: context,
   );
 
-  ObservableMap<String, ShellState> get shellStates {
+  ObservableMap<String, bool> get shellStates {
     _$_shellStatesAtom.reportRead();
     return super._shellStates;
   }
 
   @override
-  ObservableMap<String, ShellState> get _shellStates => shellStates;
+  ObservableMap<String, bool> get _shellStates => shellStates;
 
   @override
-  set _shellStates(ObservableMap<String, ShellState> value) {
+  set _shellStates(ObservableMap<String, bool> value) {
     _$_shellStatesAtom.reportWrite(value, super._shellStates, () {
       super._shellStates = value;
     });

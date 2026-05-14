@@ -3,7 +3,6 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
-import 'package:scraki/features/device/domain/services/device_shell.dart';
 import '../../domain/entities/log_entry.dart';
 import '../stores/terminal_store.dart';
 
@@ -122,8 +121,7 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                 Observer(
                   builder: (_) {
                     final isActive =
-                        _store.shellStates[widget.device.serial] ==
-                        ShellState.running;
+                        _store.shellStates[widget.device.serial] ?? false;
                     if (!isActive) {
                       return Text(
                         '${_store.deviceLogs[widget.device.serial]?.length ?? 0} lines',
