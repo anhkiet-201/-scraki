@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:math';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
@@ -67,7 +68,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   String commandInput = '';
 
-  static const int _maxConcurrentDevices = 30;
+  static const int _maxConcurrentDevices = 50;
 
   @observable
   ObservableList<String> commandHistory = ObservableList<String>();
@@ -227,7 +228,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       for (int i = 0; i < numWorkers; i++) {
         // Staggered start: Khởi chạy các worker cách nhau một khoảng nhỏ
         // giúp dàn trải tải trọng CPU/IO khi bắt đầu process adb
-        if (i > 0) await Future<void>.delayed(const Duration(milliseconds: 50));
+        if (i > 0) await Future<void>.delayed(Duration(milliseconds: Random().nextInt(500) + 50));
 
         // Kiểm tra nếu đã bị dừng trong lúc chờ delay
         if (!isExecuting) break;
