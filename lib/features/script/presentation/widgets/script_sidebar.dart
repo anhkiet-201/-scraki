@@ -8,6 +8,7 @@ import 'package:scraki/features/script/presentation/widgets/tiles/delegates/file
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/confirm_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/normal_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/dialog_tile_delegate.dart';
+import 'package:scraki/features/script/presentation/widgets/tiles/delegates/input_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/script_tile_delegate.dart';
 
 class ScriptSidebar extends StatelessWidget {
@@ -120,6 +121,13 @@ class ScriptSidebar extends StatelessWidget {
                             );
                           case ScriptTileType.dialog:
                             coreDelegate = DialogTileDelegate(
+                              onRun: onRun,
+                              onDelete: onDelete,
+                              onEdit: onEdit,
+                              isExecuting: isExecuting,
+                            );
+                          case ScriptTileType.input:
+                            coreDelegate = InputTileDelegate(
                               onRun: onRun,
                               onDelete: onDelete,
                               onEdit: onEdit,
