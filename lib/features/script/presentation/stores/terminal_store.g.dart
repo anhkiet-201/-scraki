@@ -215,8 +215,10 @@ mixin _$TerminalStore on _TerminalStore, Store {
   );
 
   @override
-  Future<void> runScript(ScriptEntity script) {
-    return _$runScriptAsyncAction.run(() => super.runScript(script));
+  Future<void> runScript(ScriptEntity script, {Map<String, String>? args}) {
+    return _$runScriptAsyncAction.run(
+      () => super.runScript(script, args: args),
+    );
   }
 
   late final _$_TerminalStoreActionController = ActionController(

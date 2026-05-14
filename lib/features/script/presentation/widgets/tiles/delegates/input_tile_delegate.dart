@@ -218,12 +218,7 @@ class InputTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
 
   void _handleConfirm(BuildContext context, ScriptEntity script, String input) {
     Navigator.pop(context);
-    final modifiedCommands = script.commands.map((cmd) {
-      return cmd.replaceAll('{input}', input);
-    }).toList();
-    
-    final modifiedScript = script.copyWith(commands: modifiedCommands);
-    onRun?.call(modifiedScript);
+    onRun?.call(script, {'input': input});
   }
 
   void _showDeleteConfirm(BuildContext context, ScriptEntity script) {

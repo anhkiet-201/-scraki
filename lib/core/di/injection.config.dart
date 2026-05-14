@@ -97,6 +97,8 @@ import '../../features/script/data/datasources/remote_script_data_source.dart'
     as _i53;
 import '../../features/script/data/repositories/script_repository_impl.dart'
     as _i556;
+import '../../features/script/domain/interpolation/command_interpolator.dart'
+    as _i101;
 import '../../features/script/domain/repositories/script_repository.dart'
     as _i55;
 import '../../features/script/domain/usecases/delete_script_use_case.dart'
@@ -171,6 +173,7 @@ import '../config/settings_config_provider.dart' as _i730;
 import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
+import 'interpolation_module.dart' as _i1073;
 import 'register_module.dart' as _i291;
 
 const String _windows = 'windows';
@@ -183,6 +186,7 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    final interpolationModule = _$InterpolationModule();
     final registerModule = _$RegisterModule();
     final settingsUseCaseModule = _$SettingsUseCaseModule();
     gh.factory<_i429.PosterCreatorStore>(() => _i429.PosterCreatorStore());
@@ -191,6 +195,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i113.ImageDropService>(() => _i113.ImageDropService());
     gh.factory<_i618.VideoPosterStore>(() => _i618.VideoPosterStore());
+    gh.singleton<_i101.CommandInterpolator>(
+      () => interpolationModule.provideCommandInterpolator(),
+    );
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
@@ -405,20 +412,23 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i151.SettingsStore>(),
       ),
     );
+    gh.singleton<_i391.DeviceNicknameStore>(
+      () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
+    );
     gh.singleton<_i137.TerminalStore>(
       () => _i137.TerminalStore(
         gh<_i69.RunScriptUseCase>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i246.DeviceGroupStore>(),
         gh<_i405.ScriptManagementStore>(),
+        gh<_i101.CommandInterpolator>(),
       ),
-    );
-    gh.singleton<_i391.DeviceNicknameStore>(
-      () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
     );
     return this;
   }
 }
+
+class _$InterpolationModule extends _i1073.InterpolationModule {}
 
 class _$RegisterModule extends _i291.RegisterModule {}
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
 
-typedef ScriptTileDelegateCall = void Function(ScriptEntity script);
+typedef ScriptTileDelegateCall = void Function(ScriptEntity script, [Map<String, String>? args]);
 
 abstract interface class ScriptTileDelegate {
   ScriptTileDelegateCall? get onRun;

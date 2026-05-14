@@ -4,13 +4,12 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
-import 'package:scraki/core/error/failures.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
-import 'package:scraki/features/script/domain/usecases/run_script_use_case.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
+import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
 
 part 'terminal_store.g.dart';
 
@@ -18,18 +17,18 @@ part 'terminal_store.g.dart';
 class TerminalStore = _TerminalStore with _$TerminalStore;
 
 abstract class _TerminalStore with Store, SessionManagerStoreMixin {
-  final RunScriptUseCase _runScriptUseCase;
   final DeviceManagerStore _deviceManagerStore;
   final DeviceGroupStore _deviceGroupStore;
   final ScriptManagementStore _scriptManagementStore;
+  final CommandInterpolator _interpolator;
 
   StreamSubscription<LogEntry>? _scriptLogSubscription;
 
   _TerminalStore(
-    this._runScriptUseCase,
     this._deviceManagerStore,
     this._deviceGroupStore,
     this._scriptManagementStore,
+    this._interpolator,
   ) {
     initialized();
     _listenToScriptLogs();
@@ -51,13 +50,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   ObservableList<DeviceEntity> get devices => _deviceManagerStore.devices;
 
   @readonly
-  ObservableMap<String, ShellState> _shellStates = ObservableMap<String, ShellState>();
+  ObservableMap<String, ShellState> _shellStates =
+      ObservableMap<String, ShellState>();
 
   @observable
   ObservableList<LogEntry> terminalOutput = ObservableList<LogEntry>();
 
   @observable
-  ObservableMap<String, ObservableList<LogEntry>> deviceLogs = ObservableMap<String, ObservableList<LogEntry>>();
+  ObservableMap<String, ObservableList<LogEntry>> deviceLogs =
+      ObservableMap<String, ObservableList<LogEntry>>();
 
   @observable
   bool isExecuting = false;
@@ -76,49 +77,67 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   bool isTiledView = false;
 
-  final Map<String, StreamSubscription<DeviceShellResult>> _shellLogSubscriptions = {};
+  final Map<String, StreamSubscription<DeviceShellResult>>
+  _shellLogSubscriptions = {};
 
   void initialized() {
-    reaction(
-      (_) => sessionManagerStore.activeSessions.keys.toSet(),
-      (Set<String> newKeys) {
-        // 1. Subscribe các session mới
-        for (final key in newKeys) {
-          final serial = _normalizeSerial(key);
-          if (!_shellLogSubscriptions.containsKey(serial)) {
-            final shell = sessionManagerStore.activeSessions[key]?.deviceShell;
-            if (shell == null) continue;
-            _shellLogSubscriptions[serial] = shell.results.listen((result) {
-              final device = getDeviceBySerial(serial);
-              final deviceName = device?.modelName;
-              _shellStates[serial] = result.state == ShellState.error && result.exitCode == null ? ShellState.running : result.state;
-              switch (result.state) {
-                case ShellState.error:
-                  _log(result.logs, serial: serial, model: deviceName, type: LogType.error);
-                  break;
-                case ShellState.success:
-                case ShellState.canceled:
-                  _log(result.logs, serial: serial, model: deviceName, type: LogType.info);
-                  break;
-                case ShellState.running:
-                  _log(result.logs, serial: serial, model: deviceName, type: LogType.output);
-                  break;
-              }
-            });
-          }
+    reaction((_) => sessionManagerStore.activeSessions.keys.toSet(), (
+      Set<String> newKeys,
+    ) {
+      // 1. Subscribe các session mới
+      for (final key in newKeys) {
+        final serial = _normalizeSerial(key);
+        if (!_shellLogSubscriptions.containsKey(serial)) {
+          final shell = sessionManagerStore.activeSessions[key]?.deviceShell;
+          if (shell == null) continue;
+          _shellLogSubscriptions[serial] = shell.results.listen((result) {
+            final device = getDeviceBySerial(serial);
+            final deviceName = device?.modelName;
+            _shellStates[serial] =
+                result.state == ShellState.error && result.exitCode == null
+                ? ShellState.running
+                : result.state;
+            switch (result.state) {
+              case ShellState.error:
+                _log(
+                  result.logs,
+                  serial: serial,
+                  model: deviceName,
+                  type: LogType.error,
+                );
+                break;
+              case ShellState.success:
+              case ShellState.canceled:
+                _log(
+                  result.logs,
+                  serial: serial,
+                  model: deviceName,
+                  type: LogType.info,
+                );
+                break;
+              case ShellState.running:
+                _log(
+                  result.logs,
+                  serial: serial,
+                  model: deviceName,
+                  type: LogType.output,
+                );
+                break;
+            }
+          });
         }
+      }
 
-        // 2. Cancel các subscription của session đã đóng
-        final normalizedNew = newKeys.map(_normalizeSerial).toSet();
-        final removed = _shellLogSubscriptions.keys
-            .where((s) => !normalizedNew.contains(s))
-            .toList();
-        for (final serial in removed) {
-          _shellLogSubscriptions[serial]?.cancel();
-          _shellLogSubscriptions.remove(serial);
-        }
-      },
-    );
+      // 2. Cancel các subscription của session đã đóng
+      final normalizedNew = newKeys.map(_normalizeSerial).toSet();
+      final removed = _shellLogSubscriptions.keys
+          .where((s) => !normalizedNew.contains(s))
+          .toList();
+      for (final serial in removed) {
+        _shellLogSubscriptions[serial]?.cancel();
+        _shellLogSubscriptions.remove(serial);
+      }
+    });
   }
 
   String _normalizeSerial(String key) =>
@@ -172,9 +191,17 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final deviceCount = selectedSerialsList.length;
 
     await _executeBatch((serial) async {
-      final processedCmd = _replacePlaceholders(cmd, serial);
+      final processedCmd = _interpolator.interpolate(cmd, {'serial': serial});
       if (serial == selectedSerialsList.first) {
-        _log('Chạy lệnh trên $deviceCount thiết bị: $cmd', type: LogType.command, deviceCount: deviceCount, serial: serial, model: selectedSerialsList.length == 1 ? getDeviceBySerial(serial)?.modelName : null);
+        _log(
+          'Chạy lệnh trên $deviceCount thiết bị: $cmd',
+          type: LogType.command,
+          deviceCount: deviceCount,
+          serial: serial,
+          model: selectedSerialsList.length == 1
+              ? getDeviceBySerial(serial)?.modelName
+              : null,
+        );
       }
       return executeCommandOnDevice(serial, processedCmd, logCommand: false);
     });
@@ -190,12 +217,16 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     isExecuting = true;
     try {
       for (var i = 0; i < serialList.length; i += _maxConcurrentDevices) {
-        final end = (i + _maxConcurrentDevices < serialList.length) ? i + _maxConcurrentDevices : serialList.length;
+        final end = (i + _maxConcurrentDevices < serialList.length)
+            ? i + _maxConcurrentDevices
+            : serialList.length;
         final chunk = serialList.sublist(i, end);
 
-        await Future.wait(chunk.asMap().entries.map((entry) async {
-          return task(entry.value);
-        }));
+        await Future.wait(
+          chunk.asMap().entries.map((entry) async {
+            return task(entry.value);
+          }),
+        );
       }
     } finally {
       isExecuting = false;
@@ -203,24 +234,40 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   }
 
   @action
-  Future<void> executeCommandOnDevice(String serial, String command, {bool logCommand = true}) async {
+  Future<void> executeCommandOnDevice(
+    String serial,
+    String command, {
+    bool logCommand = true,
+  }) async {
     if (command.trim().isEmpty) return;
 
     final device = getDeviceBySerial(serial);
 
     if (device == null) {
-      _log('Lỗi: Không tìm thấy thiết bị với serial $serial', type: LogType.error);
+      _log(
+        'Lỗi: Không tìm thấy thiết bị với serial $serial',
+        type: LogType.error,
+      );
       return;
     }
 
     final deviceName = device.modelName;
     if (logCommand) {
-      _log(command, serial: serial, model: deviceName, type: LogType.command, deviceCount: 1);
+      _log(
+        command,
+        serial: serial,
+        model: deviceName,
+        type: LogType.command,
+        deviceCount: 1,
+      );
     }
 
     final shell = sessionManagerStore.activeDeviceShells[serial];
     if (shell == null) {
-      _log('Lỗi: Không tìm thấy shell cho thiết bị với serial $serial', type: LogType.error);
+      _log(
+        'Lỗi: Không tìm thấy shell cho thiết bị với serial $serial',
+        type: LogType.error,
+      );
       return;
     }
 
@@ -234,41 +281,40 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   }
 
   @action
-  Future<void> runScript(ScriptEntity script) async {
-    _log('Running script: ${script.name} on ${selectedSerials.length} devices', type: LogType.command);
+  Future<void> runScript(
+    ScriptEntity script, {
+    Map<String, String>? args,
+  }) async {
+    _log(
+      'Running script: ${script.name} on ${selectedSerials.length} devices',
+      type: LogType.command,
+    );
 
     await _executeBatch((serial) async {
       final device = getDeviceBySerial(serial);
-      if (device == null) return;
-      final deviceName = device.modelName;
-
-      final processedCommands = script.commands.map((cmd) => _replacePlaceholders(cmd, serial)).toList();
-      final processedScript = script.copyWith(commands: processedCommands);
-
-      await _runScriptUseCase(serial, processedScript).forEach((result) {
-        result.fold(
-          (Failure failure) => _log(failure.message, serial: serial, model: deviceName, type: LogType.error),
-          (String line) => _log(line, serial: serial, model: deviceName, type: LogType.output),
+      try {
+        if (device == null) return;
+        final processedCommands = script.commands
+            .map((cmd) => _interpolator.interpolate(cmd, {
+                  'serial': serial,
+                  ...?args,
+                }))
+            .toList();
+        for (final command in processedCommands) {
+          await executeCommandOnDevice(serial, command, logCommand: true);
+        }
+      } catch (e) {
+        _log(
+          e.toString(),
+          type: LogType.error,
+          serial: serial,
+          model: device?.modelName,
         );
-      });
+      }
     });
   }
 
-  String _replacePlaceholders(String command, String serial) {
-    String processed = command;
-    processed = processed.replaceAll('{SERIAL}', serial);
-    final ipOnly = serial.split(':').first;
-    final segments = ipOnly.split('.');
-    String octet3 = '0';
-    if (segments.length == 4) {
-      octet3 = segments[2];
-    } else {
-      final match = RegExp(r'(\d+)[^\d]*$').firstMatch(serial);
-      octet3 = match?.group(1) ?? '0';
-    }
-    processed = processed.replaceAll('{I}', octet3);
-    return processed;
-  }
+
 
   @action
   void clearTerminal() {
@@ -276,9 +322,16 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     deviceLogs.clear();
   }
 
-  void _log(String message, {String? serial, String? model, required LogType type, int? deviceCount}) {
-    final displaySerial = serial ?? (deviceCount != null && deviceCount > 1 ? 'ALL' : null);
-    
+  void _log(
+    String message, {
+    String? serial,
+    String? model,
+    required LogType type,
+    int? deviceCount,
+  }) {
+    final displaySerial =
+        serial ?? (deviceCount != null && deviceCount > 1 ? 'ALL' : null);
+
     final entry = LogEntry(
       message: message,
       serial: displaySerial,
@@ -306,9 +359,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   DeviceEntity? getDeviceBySerial(String serial) {
     try {
-      return devices.firstWhere(
-        (d) => d.serial == serial
-      );
+      return devices.firstWhere((d) => d.serial == serial);
     } catch (_) {
       return null;
     }
@@ -347,11 +398,14 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   @action
   void selectDevicesByRange(int start, int end) {
-    _log('Chọn thiết bị theo dải Octet thứ 3: $start -> $end', type: LogType.info);
+    _log(
+      'Chọn thiết bị theo dải Octet thứ 3: $start -> $end',
+      type: LogType.info,
+    );
     for (final device in devices) {
       final serial = device.serial.split(':').first;
       final ipSegments = serial.split('.');
-      
+
       int? targetNumber;
       if (ipSegments.length == 4) {
         targetNumber = int.tryParse(ipSegments[2]);
@@ -360,7 +414,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         targetNumber = int.tryParse(match?.group(1) ?? '');
       }
 
-      if (targetNumber != null && targetNumber >= start && targetNumber <= end) {
+      if (targetNumber != null &&
+          targetNumber >= start &&
+          targetNumber <= end) {
         if (!selectedSerials.contains(device.serial)) {
           _deviceManagerStore.toggleDeviceSelection(device.serial);
         }
@@ -372,13 +428,14 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   void selectDevicesByGroup(String groupId) {
     final group = _deviceGroupStore.groups.firstWhere((g) => g.id == groupId);
     _log('Chọn thiết bị theo nhóm: ${group.name}', type: LogType.info);
-    
+
     final groupIps = group.deviceSerials.map((s) => s.split(':').first).toSet();
-    
+
     for (final device in devices) {
       final deviceIp = device.serial.split(':').first;
-      
-      if (groupIps.contains(deviceIp) || group.deviceSerials.contains(device.serial)) {
+
+      if (groupIps.contains(deviceIp) ||
+          group.deviceSerials.contains(device.serial)) {
         if (!selectedSerials.contains(device.serial)) {
           _deviceManagerStore.toggleDeviceSelection(device.serial);
         }

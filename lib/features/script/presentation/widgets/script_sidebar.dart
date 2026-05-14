@@ -93,15 +93,15 @@ class ScriptSidebar extends StatelessWidget {
                         
                         // 1. Tạo core delegate dựa trên tileType
                         ScriptTileDelegate coreDelegate;
-                        void onRun(ScriptEntity s) {
+                        void onRun(ScriptEntity s, [Map<String, String>? args]) {
                           if (terminalStore.isExecuting) {
                             terminalStore.stopAll();
                           } else {
-                            terminalStore.runScript(s);
+                            terminalStore.runScript(s, args: args);
                           }
                         }
-                        void onDelete(ScriptEntity s) => scriptStore.deleteScript(s.id);
-                        void onEdit(ScriptEntity s) => scriptStore.setEditingScript(s);
+                        void onDelete(ScriptEntity s, [Map<String, dynamic>? args]) => scriptStore.deleteScript(s.id);
+                        void onEdit(ScriptEntity s, [Map<String, dynamic>? args]) => scriptStore.setEditingScript(s);
                         final isExecuting = terminalStore.isExecuting;
 
                         switch (script.tileType) {
