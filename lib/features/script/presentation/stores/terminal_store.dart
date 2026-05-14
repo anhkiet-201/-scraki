@@ -290,8 +290,21 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
     final completer = Completer<void>();
 
-    shell.start("adb", arguments: ["-s", serial, "shell", command]).then((_) {
+    final cmd = command.split(" ");
+
+    if(cmd[0] == ">") {
+      cmd.removeAt(0);
+      cmd.insertAll(0, ["adb", "-s", serial]);
+    } else if(cmd[0] == "\$") {
+      cmd.removeAt(0);
+    } else {
+      cmd.insertAll(0, ["adb", "-s", serial, "shell"]);
+    }
+
+    shell.start(cmd.removeAt(0), arguments: cmd).then((_) {
       completer.complete();
+    }).catchError((Object error) {
+      completer.completeError(error);
     });
 
     return completer.future;
