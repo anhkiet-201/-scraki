@@ -13,16 +13,22 @@ class SplitStringVariable implements ScriptVariable {
       final content = match.group(1) ?? '';
       final indexStr = match.group(2);
 
-      if (indexStr != null) {
-        try {
-          final index = int.parse(indexStr);
-          final lines = content.split(RegExp(r'\r?\n'));
-          if (index >= 0 && index < lines.length) {
-            return CommandInterpolator.wrap(lines[index]);
-          }
-        } catch (_) {}
+      if (indexStr == null) {
+        throw ScriptInterpolationException('Thiếu chỉ mục truy xuất chuỗi');
       }
-      return CommandInterpolator.wrap('');
+
+      final index = int.tryParse(indexStr);
+      if (index == null) {
+        throw ScriptInterpolationException('Chỉ mục không hợp lệ: $indexStr');
+      }
+
+      final lines = content.split(RegExp(r'\r?\n'));
+      if (index < 0 || index >= lines.length) {
+        throw ScriptInterpolationException(
+            'Chỉ mục [$index] vượt quá số lượng dòng có sẵn (${lines.length})');
+      }
+
+      return CommandInterpolator.wrap(lines[index]);
     });
   }
 }

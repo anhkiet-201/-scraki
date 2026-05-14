@@ -8,7 +8,11 @@ class InputVariable implements ScriptVariable {
   @override
   String resolve(String cmd, [Map<String, String>? args]) {
     return cmd.replaceAllMapped(regex, (match) {
-      final content = args?['input'] ?? '';
+      final content = args?['input'];
+      if (content == null || content.isEmpty) {
+        throw ScriptInterpolationException(
+            'Dữ liệu đầu vào {input} không được để trống');
+      }
       return CommandInterpolator.wrap(content);
     });
   }

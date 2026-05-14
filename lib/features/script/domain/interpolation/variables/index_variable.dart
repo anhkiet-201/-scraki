@@ -8,7 +8,10 @@ class IndexVariable implements ScriptVariable {
   @override
   String resolve(String cmd, [Map<String, String>? args]) {
     return cmd.replaceAllMapped(regex, (match) {
-      final content = args?['index'] ?? '';
+      final content = args?['index'];
+      if (content == null || content.isEmpty) {
+        throw ScriptInterpolationException('Thiếu thông tin Index thiết bị');
+      }
       return CommandInterpolator.wrap(content);
     });
   }

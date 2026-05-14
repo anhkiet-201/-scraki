@@ -9,18 +9,23 @@ class OctetVariable implements ScriptVariable {
   String resolve(String cmd, [Map<String, String>? args]) {
     final serial = args?['serial'];
     if (serial == null || serial.isEmpty) {
-      return cmd.replaceAll(regex, CommandInterpolator.wrap('0'));
+      throw ScriptInterpolationException('Thiếu thông tin Serial để lấy Octet');
     }
 
     final ipOnly = serial.split(':').first;
     final segments = ipOnly.split('.');
-    
-    String octet = '0';
+
+    String? octet;
     if (segments.length == 4) {
       octet = segments[2];
     } else {
       final match = RegExp(r'(\d+)[^\d]*$').firstMatch(serial);
-      octet = match?.group(1) ?? '0';
+      octet = match?.group(1);
+    }
+
+    if (octet == null) {
+      throw ScriptInterpolationException(
+          'Không thể xác định octet từ serial: $serial');
     }
 
     return cmd.replaceAll(regex, CommandInterpolator.wrap(octet));

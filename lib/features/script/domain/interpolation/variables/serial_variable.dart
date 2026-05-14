@@ -7,7 +7,10 @@ class SerialVariable implements ScriptVariable {
 
   @override
   String resolve(String cmd, [Map<String, String>? args]) {
-    final value = args?['serial'] ?? '';
+    final value = args?['serial'];
+    if (value == null || value.isEmpty) {
+      throw ScriptInterpolationException('Thiếu thông tin Serial thiết bị');
+    }
     return cmd.replaceAll(regex, CommandInterpolator.wrap(value));
   }
 }
