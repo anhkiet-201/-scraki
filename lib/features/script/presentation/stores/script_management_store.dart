@@ -113,7 +113,7 @@ abstract class _ScriptManagementStore with Store {
     result.fold(
       (failure) => _log('Lỗi lưu script: ${failure.message}', type: LogType.error),
       (_) {
-        _log('Đã lưu script: ${editingScript!.name}', type: LogType.info);
+        _log('Đã lưu script: ${editingScript?.name ?? ''}', type: LogType.info);
         loadScripts();
       },
     );

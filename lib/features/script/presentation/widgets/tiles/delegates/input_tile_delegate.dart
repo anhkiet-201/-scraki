@@ -154,7 +154,7 @@ class InputTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
                     TextField(
                       controller: controller,
                       autofocus: true,
-                      maxLines: null,
+                      maxLines: 10,
                       minLines: 5,
                       style: GoogleFonts.outfit(fontSize: 16, color: const Color(0xFF1E293B)),
                       decoration: InputDecoration(

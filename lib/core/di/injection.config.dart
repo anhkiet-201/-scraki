@@ -417,7 +417,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i137.TerminalStore>(
       () => _i137.TerminalStore(
-        gh<_i69.RunScriptUseCase>(),
         gh<_i563.DeviceManagerStore>(),
         gh<_i246.DeviceGroupStore>(),
         gh<_i405.ScriptManagementStore>(),

@@ -297,6 +297,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         final processedCommands = script.commands
             .map((cmd) => _interpolator.interpolate(cmd, {
                   'serial': serial,
+                  'index': selectedSerials.toList().indexOf(serial).toString(),
                   ...?args,
                 }))
             .toList();

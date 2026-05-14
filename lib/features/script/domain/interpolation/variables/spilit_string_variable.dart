@@ -15,7 +15,7 @@ class SplitStringVariable implements ScriptVariable {
 
       if (indexStr != null) {
         try {
-          final index = int.parse(indexStr) - 1;
+          final index = int.parse(indexStr);
           final lines = content.split(RegExp(r'\r?\n'));
           if (index >= 0 && index < lines.length) {
             return CommandInterpolator.wrap(lines[index]);
