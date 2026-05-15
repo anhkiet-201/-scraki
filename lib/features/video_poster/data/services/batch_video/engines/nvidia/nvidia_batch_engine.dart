@@ -20,7 +20,8 @@ class NvidiaBatchEngine extends BaseVideoBatchEngine<NvidiaComposition, NvidiaTo
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
     final pipe = FilterPipe();
-    pipe.add(toolkit.scale(1080, 1920));
+    pipe.add(toolkit.scale(1080, 1920, expression: '1080:1920:force_original_aspect_ratio=decrease'));
+    pipe.add(toolkit.pad(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
     pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;

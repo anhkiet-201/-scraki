@@ -15,8 +15,11 @@ abstract interface class VideoToolkit {
   /// Helper chuyển đổi màu sang Hex string (FFmpeg format)
   String colorToHex(dynamic color);
 
-  /// Thao tác cắt khung hình
-  String crop(int width, int height, int x, int y);
+  /// Thao tác cắt khung hình. x và y có thể là int hoặc expression (mặc định căn giữa).
+  String crop(int width, int height, {dynamic x, dynamic y});
+
+  /// Thao tác chèn viền (Padding) để vừa khung hình
+  String pad(int width, int height, {dynamic x, dynamic y, String color = 'black'});
 
   /// Thao tác lật ngang
   String hflip();

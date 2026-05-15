@@ -17,8 +17,17 @@ class NvidiaToolkit extends BaseFfmpegToolkit {
   }
 
   @override
-  String crop(int width, int height, int x, int y) {
-    return 'crop=$width:$height:$x:$y';
+  String crop(int width, int height, {dynamic x, dynamic y}) {
+    final xStr = x?.toString() ?? '(in_w-$width)/2';
+    final yStr = y?.toString() ?? '(in_h-$height)/2';
+    return 'crop=$width:$height:$xStr:$yStr';
+  }
+
+  @override
+  String pad(int width, int height, {dynamic x, dynamic y, String color = 'black'}) {
+    final xStr = x?.toString() ?? 'trunc((ow-iw)/4)*2';
+    final yStr = y?.toString() ?? 'trunc((oh-ih)/4)*2';
+    return 'pad=$width:$height:$xStr:$yStr:color=$color';
   }
 
   @override
