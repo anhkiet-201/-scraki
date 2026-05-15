@@ -6,25 +6,34 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/a
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 
 /// Apple-optimized batch video engine.
-/// 
+///
 /// Uses VideoToolbox for hardware-accelerated encoding on macOS/iOS devices.
-class AppleBatchEngine extends BaseVideoBatchEngine<AppleComposition, AppleToolkit> {
+class AppleBatchEngine
+    extends BaseVideoBatchEngine<AppleComposition, AppleToolkit> {
   AppleBatchEngine({
     required super.hardwareResolver,
     required super.metadataAnalyzer,
   }) : super(
-          composition: AppleComposition(
-            hardwareResolver: hardwareResolver,
-            toolkit: AppleToolkit(),
-          ),
-        );
+         composition: AppleComposition(
+           hardwareResolver: hardwareResolver,
+           toolkit: AppleToolkit(),
+         ),
+       );
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
     final pipe = FilterPipe();
-    pipe.add(toolkit.scale(1080, 1920, expression: '1080:1920:force_original_aspect_ratio=decrease'));
+    pipe.add(
+      toolkit.scale(
+        1080,
+        1920,
+        expression: '1080:1920:force_original_aspect_ratio=decrease',
+      ),
+    );
     pipe.add(toolkit.pad(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
+    pipe.add('fps=30');
+    pipe.add('setpts=PTS-STARTPTS');
     pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;
   }
@@ -37,9 +46,11 @@ class AppleBatchEngine extends BaseVideoBatchEngine<AppleComposition, AppleToolk
   @override
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
-    
-    // 1. Video Segments (Concat Demuxer)
-    composition.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
+
+    // 1. Video Segments (Individual inputs for Concat Filter)
+    for (final path in plan.segmentPaths) {
+      inputs.addInput(path);
+    }
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {
@@ -55,7 +66,7 @@ class AppleBatchEngine extends BaseVideoBatchEngine<AppleComposition, AppleToolk
     for (final img in plan.config.imageOverlays) {
       if (img.localPath != null) {
         inputs.addInput(
-          img.localPath!, 
+          img.localPath!,
           extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
         );
       }
@@ -71,9 +82,6 @@ class AppleBatchEngine extends BaseVideoBatchEngine<AppleComposition, AppleToolk
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
-    return VideoToolboxOptions(
-      bitrate: '12M',
-      bFrames: plan.params.bFrames,
-    );
+    return VideoToolboxOptions(bitrate: '12M', bFrames: plan.params.bFrames);
   }
 }

@@ -12,18 +12,24 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/m
 import 'dart:io';
 
 /// Base implementation of [VideoBatchEngine] providing common orchestration logic.
-/// 
-/// This class handles the standard FFmpeg command structure while delegating 
+///
+/// This class handles the standard FFmpeg command structure while delegating
 /// platform-specific filter generation to a [Composition] engine.
-/// 
+///
 /// [C] specifies the [Composition] type.
 /// [T] specifies the [VideoToolkit] type.
-abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToolkit> implements VideoBatchEngine {
+abstract class BaseVideoBatchEngine<
+  C extends Composition<T>,
+  T extends VideoToolkit
+>
+    implements VideoBatchEngine {
   /// The resolver used to identify hardware capabilities.
   final VideoHardwareCapabilityResolver hardwareResolver;
+
   /// The composition orchestrator that builds filter chains.
   final C composition;
   final VideoMetadataAnalyzer _metadataAnalyzer;
+
   /// Cached hardware information.
   late GpuInfo gpuInfo;
 
@@ -56,8 +62,8 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
 
     final probe = await _metadataAnalyzer.probeSourceVideo(request.sourcePath);
     final isHdr = _metadataAnalyzer.isHdr(
-      transfer: probe.colorInfo.transfer, 
-      pixFmt: probe.colorInfo.pixFmt
+      transfer: probe.colorInfo.transfer,
+      pixFmt: probe.colorInfo.pixFmt,
     );
 
     final FfmpegInputArgs inputs = FfmpegInputArgs();
@@ -68,10 +74,13 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
     final FilterPipe vf = buildSegmentFilter(request, isHdr: isHdr);
 
     final List<String> args = [
-      '-hide_banner', '-y',
+      '-hide_banner',
+      '-y',
       ...inputs.toArgs(),
-      '-t', request.duration.toStringAsFixed(3),
-      '-vf', vf.toString(),
+      '-t',
+      request.duration.toStringAsFixed(3),
+      '-vf',
+      vf.toString(),
     ];
 
     _appendMappingAndAudio(args, request);
@@ -94,9 +103,10 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
   /// Appends seeking and primary input path to the arguments.
   void _appendSeekAndInput(FfmpegInputArgs inputs, SegmentRequest request) {
     inputs.addAll([
-      '-ss', request.startTime.toStringAsFixed(3),
-      '-fflags', '+genpts+igndts',
-      '-i', request.sourcePath,
+      '-i',
+      request.sourcePath,
+      '-ss',
+      request.startTime.toStringAsFixed(3),
     ]);
   }
 
@@ -110,24 +120,50 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
   /// Configures mapping and audio encoding based on audio presence.
   void _appendMappingAndAudio(List<String> args, SegmentRequest request) {
     if (!request.hasAudio) {
-      args.addAll(['-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-shortest']);
+      args.addAll([
+        '-map',
+        '0:v:0',
+        '-map',
+        '1:a:0',
+        '-c:a',
+        'aac',
+        '-shortest',
+      ]);
     } else {
-      args.addAll(['-af', 'aresample=44100', '-c:a', 'aac']);
+      args.addAll([
+        '-af',
+        'aresample=44100,apad,asetpts=PTS-STARTPTS',
+        '-c:a',
+        'aac',
+        '-shortest',
+      ]);
     }
   }
 
   /// Appends final output parameters (FPS, pixel format, encoder).
   void _appendOutputSettings(List<String> args, SegmentRequest request) {
     args.addAll([
-      '-r', '30',
-      '-pix_fmt', composition.getPreferredPixelFormat(),
-      '-colorspace', 'bt709',
-      '-color_trc', 'bt709',
-      '-color_primaries', 'bt709',
+      '-r',
+      '30',
+      '-pix_fmt',
+      composition.getPreferredPixelFormat(),
+      '-colorspace',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-color_primaries',
+      'bt709',
       ...getSegmentEncoderArgs(request).toArgs(),
-      '-movflags', '+faststart',
-      '-avoid_negative_ts', 'make_zero',
-      '-map_metadata', '-1',
+      '-movflags',
+      '+faststart',
+      '-video_track_timescale',
+      '30000',
+      '-g',
+      '30',
+      '-avoid_negative_ts',
+      'make_zero',
+      '-map_metadata',
+      '-1',
     ]);
   }
 
@@ -140,37 +176,54 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
     Duration? timeout,
   }) async {
     final List<String> args = [
-      '-hide_banner', '-y',
+      '-hide_banner',
+      '-y',
+      '-fflags',
+      '+genpts+igndts',
       ...getCompositionInputArgs(plan).toArgs(),
     ];
 
     // Build filter complex using high-level composition methods
     final filterComplex = StringBuffer();
+
+    // 0. Stitch segments internally if needed (Stitch Architecture)
+    filterComplex.write(composition.buildConcatFilter(plan.segmentPaths.length));
+
+    // 1. Base Filter (Pan/Crop/Scale)
     filterComplex.write('${composition.buildBaseFilter(plan)}[bg];');
-    
-    // Add color grading
-    filterComplex.write('[bg]${composition.buildColorGradingChain(plan)}[colored];');
-    
-    // Add Overlays
-    filterComplex.write(composition.buildOverlayChain(plan, '[colored]'));
+
+    // 2. Add color grading
+    filterComplex.write(
+      '[bg]${composition.buildColorGradingChain(plan)}[colored];',
+    );
+
+    final int inputOffset = plan.segmentPaths.length;
+
+    // 3. Add Overlays
+    filterComplex.write(
+      composition.buildOverlayChain(plan, '[colored]', inputOffset: inputOffset),
+    );
     filterComplex.write('[video_out];'); // Target output label for video
-    
-    // Add Audio
-    filterComplex.write(composition.buildAudioMixChain(plan));
+
+    // 4. Add Audio
+    filterComplex.write(
+      composition.buildAudioMixChain(plan, inputOffset: inputOffset),
+    );
 
     args.addAll([
       '-filter_complex', filterComplex.toString(),
       '-map', '[video_out]',
       '-map', '[mixed_a]',
+      '-shortest',
       '-r', '30', // Force 30fps final output
       ...getEncoderArgs(plan).toArgs(),
       plan.finalOutputPath,
     ]);
 
     return composition.execute(
-      args, 
-      context, 
-      onLog: onLog, 
+      args,
+      context,
+      onLog: onLog,
       onProgress: onProgress,
       targetDuration: plan.params.targetDuration,
       timeout: timeout,
@@ -178,25 +231,30 @@ abstract class BaseVideoBatchEngine<C extends Composition<T>, T extends VideoToo
   }
 
   @override
-  String buildOverlayFilter(CompositionPlan plan) => composition.buildOverlayChain(plan, '[colored]');
+  String buildOverlayFilter(CompositionPlan plan) =>
+      composition.buildOverlayChain(plan, '[colored]');
 
   @override
-  String buildAudioFilter(CompositionPlan plan) => composition.buildAudioMixChain(plan);
+  String buildAudioFilter(CompositionPlan plan) =>
+      composition.buildAudioMixChain(plan);
 
   @override
-  String buildBaseVideoFilter(CompositionPlan plan) => composition.buildBaseFilter(plan);
+  String buildBaseVideoFilter(CompositionPlan plan) =>
+      composition.buildBaseFilter(plan);
 
   @override
-  String buildColorFilter(CompositionPlan plan) => composition.buildColorGradingChain(plan);
+  String buildColorFilter(CompositionPlan plan) =>
+      composition.buildColorGradingChain(plan);
 
   /// Implementers must provide the platform-specific segment filter chain.
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr});
+
   /// Implementers must provide encoder arguments for segments.
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request);
 
   /// Implementers must provide input arguments for the final composition.
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan);
-  
+
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan);
 

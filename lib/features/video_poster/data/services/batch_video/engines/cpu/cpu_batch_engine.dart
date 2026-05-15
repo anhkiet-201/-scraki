@@ -6,26 +6,34 @@ import 'package:scraki/features/video_poster/data/services/batch_video/engines/c
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 
 /// Software-based batch video engine (CPU only).
-/// 
-/// Uses libx264 for encoding and standard FFmpeg filters for processing. 
+///
+/// Uses libx264 for encoding and standard FFmpeg filters for processing.
 /// Used as a fallback when no compatible GPU is detected.
 class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
   CpuBatchEngine({
     required super.hardwareResolver,
     required super.metadataAnalyzer,
   }) : super(
-          composition: CpuComposition(
-            hardwareResolver: hardwareResolver,
-            toolkit: CpuToolkit(),
-          ),
-        );
+         composition: CpuComposition(
+           hardwareResolver: hardwareResolver,
+           toolkit: CpuToolkit(),
+         ),
+       );
 
   @override
   FilterPipe buildSegmentFilter(SegmentRequest request, {required bool isHdr}) {
     final pipe = FilterPipe();
-    pipe.add(toolkit.scale(1080, 1920, expression: '1080:1920:force_original_aspect_ratio=decrease'));
+    pipe.add(
+      toolkit.scale(
+        1080,
+        1920,
+        expression: '1080:1920:force_original_aspect_ratio=decrease',
+      ),
+    );
     pipe.add(toolkit.pad(1080, 1920));
     if (request.hflip) pipe.add(toolkit.hflip());
+    pipe.add('fps=30');
+    pipe.add('setpts=PTS-STARTPTS');
     pipe.add('format=${composition.getPreferredPixelFormat()}');
     return pipe;
   }
@@ -38,9 +46,11 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
   @override
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
-    
-    // 1. Video Segments (Concat Demuxer)
-    composition.buildConcatInput(inputs, plan.segmentPaths, plan.tempDir, plan.outputIndex);
+
+    // 1. Video Segments (Individual inputs for Concat Filter)
+    for (final path in plan.segmentPaths) {
+      inputs.addInput(path);
+    }
 
     // 2. Custom Audio
     if (plan.hasCustomAudio) {
@@ -56,7 +66,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
     for (final img in plan.config.imageOverlays) {
       if (img.localPath != null) {
         inputs.addInput(
-          img.localPath!, 
+          img.localPath!,
           extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
         );
       }

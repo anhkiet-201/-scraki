@@ -20,7 +20,13 @@ abstract interface class Composition<T extends VideoToolkit> {
   /// [paths] List of file paths to the video segments.
   /// [tempDir] Temporary directory for intermediate files if needed.
   /// [index] Current batch or segment index for unique identification.
-  void buildConcatInput(FfmpegInputArgs inputs, List<String> paths, String tempDir, int index);
+  void buildConcatInput(
+    FfmpegInputArgs inputs,
+    List<String> paths,
+    List<double>? durations,
+    String tempDir,
+    int index,
+  );
 
   /// Builds input arguments for individual video segments.
   ///
@@ -31,20 +37,29 @@ abstract interface class Composition<T extends VideoToolkit> {
   ///
   /// [plan] The composition plan containing overlay details.
   /// [inputLabel] The label of the input stream to apply overlays onto.
+  /// [inputOffset] The starting index for overlay inputs.
   /// Returns a string representing the filter chain segment.
-  String buildOverlayChain(CompositionPlan plan, String inputLabel);
+  String buildOverlayChain(CompositionPlan plan, String inputLabel, {int inputOffset = 1});
 
   /// Constructs the FFmpeg filter chain for audio mixing and processing.
   ///
   /// [plan] The composition plan containing audio configuration.
+  /// [inputOffset] The starting index for audio inputs.
   /// Returns a string representing the audio filter chain.
-  String buildAudioMixChain(CompositionPlan plan);
+  String buildAudioMixChain(CompositionPlan plan, {int inputOffset = 1});
+
+  /// Constructs the concat filter string for multiple inputs.
+  /// 
+  /// [count] Number of segments to concatenate.
+  /// Returns a filter string like "[0:v][0:a][1:v][1:a]concat=n=count:v=1:a=1[v_concat][a_concat];"
+  String buildConcatFilter(int count);
 
   /// Constructs the base video filter chain (scaling, padding, framerate conversion).
   ///
   /// [plan] The composition plan containing target dimensions and format.
+  /// [inputLabel] The label of the video stream to process (e.g., "[v_concat]").
   /// Returns a string representing the base filter chain.
-  String buildBaseFilter(CompositionPlan plan);
+  String buildBaseFilter(CompositionPlan plan, {String inputLabel = '[0:v]'});
 
   /// Constructs the filter chain for color grading (LUTs, brightness, contrast).
   ///

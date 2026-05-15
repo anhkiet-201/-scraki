@@ -27,18 +27,17 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   final T toolkit;
 
   /// Returns information about the current GPU or a fallback CPU-based profile.
-  GpuInfo get gpuInfo =>
-      (
-        name: 'cpu',
-        encoder: 'libx264',
-        hwaccel: null,
-        scaleFilter: 'scale',
-        outputFormat: null,
-        hasZscale: false,
-        hasCudaFilters: false,
-        preferredPixFmt: 'yuv420p',
-        maxConcurrentEncodes: 1,
-      );
+  GpuInfo get gpuInfo => (
+    name: 'cpu',
+    encoder: 'libx264',
+    hwaccel: null,
+    scaleFilter: 'scale',
+    outputFormat: null,
+    hasZscale: false,
+    hasCudaFilters: false,
+    preferredPixFmt: 'yuv420p',
+    maxConcurrentEncodes: 1,
+  );
 
   BaseFfmpegComposition({
     required this.hardwareResolver,
@@ -53,11 +52,21 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   void buildConcatInput(
     FfmpegInputArgs inputs,
     List<String> paths,
+    List<double>? durations,
     String tempDir,
     int index,
   ) {
     final concatFile = File('$tempDir/concat_$index.txt');
-    concatFile.writeAsStringSync(paths.map((p) => "file '$p'").join('\n'));
+    final sb = StringBuffer();
+    for (int i = 0; i < paths.length; i++) {
+      // Escape single quotes in file paths
+      final escapedPath = paths[i].replaceAll("'", "'\\''");
+      sb.writeln("file '$escapedPath'");
+      if (durations != null && i < durations.length) {
+        sb.writeln("duration ${durations[i].toStringAsFixed(6)}");
+      }
+    }
+    concatFile.writeAsStringSync(sb.toString());
     inputs.addConcatInput(concatFile.absolute.path);
   }
 
@@ -115,7 +124,9 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       void resetWatchdog() {
         watchdog?.cancel();
         watchdog = Timer(const Duration(seconds: 60), () {
-          onLog?.call('  ⚠️ Watchdog: No activity detected for 60s. Killing process...');
+          onLog?.call(
+            '  ⚠️ Watchdog: No activity detected for 60s. Killing process...',
+          );
           process.kill();
         });
       }
@@ -123,7 +134,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       resetWatchdog();
 
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-      
+
       final stdoutSub = process.stdout.listen((data) {
         final out = String.fromCharCodes(data);
         if (out.trim().isNotEmpty) {
@@ -153,7 +164,9 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       final exitCode = await process.exitCode.timeout(
         effectiveTimeout,
         onTimeout: () {
-          onLog?.call('  ❌ Timeout: FFmpeg execution exceeded ${effectiveTimeout.inMinutes} minutes.');
+          onLog?.call(
+            '  ❌ Timeout: FFmpeg execution exceeded ${effectiveTimeout.inMinutes} minutes.',
+          );
           process.kill();
           return -999;
         },
@@ -185,22 +198,25 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   /// Combines original audio, custom background music, and ambient sounds
   /// according to the [plan].
   @override
-  String buildAudioMixChain(CompositionPlan plan) {
+  String buildAudioMixChain(CompositionPlan plan, {int inputOffset = 1}) {
     final params = plan.params;
     final config = plan.config;
     final sb = StringBuffer();
 
-    // Audio gốc luôn là [0:a] (Concat Demuxer)
+    // Reconstruction: [0:a] -> [orig_a]
+    final String sourceLabel = plan.segmentPaths.length > 1 ? '[a_concat]' : '[0:a]';
     final double origVolume = plan.hasCustomAudio ? 0.25 : 0.05;
     sb.write(
-      '[0:a]${params.audioProfile.toOriginalAudioFilterChain(volume: origVolume, pts: params.pts)}[orig_a];',
+      '$sourceLabel asetpts=N/SR/TB,${params.audioProfile.toOriginalAudioFilterChain(volume: origVolume, pts: params.pts)}[orig_a];',
     );
 
-    // Custom Audio: [1:a]
+    // Custom Audio index
+    int currentIdx = inputOffset;
     if (plan.hasCustomAudio) {
       sb.write(
-        '[1:a]${params.audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: params.pts)}[music_a];',
+        '[$currentIdx:a]${params.audioProfile.toCustomAudioFilterChain(volume: config.customAudioVolume.clamp(0.0, 1.0), pts: params.pts)}[music_a];',
       );
+      currentIdx++;
     }
 
     String mixLabels = '[orig_a]';
@@ -210,22 +226,22 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       mixLabels += '[music_a]';
     }
 
-    // Ambient Audio: [2:a] nếu có custom, [1:a] nếu không
+    // Ambient Audio
     if (plan.hasAmbientAudio) {
       mixInputs++;
-      final int ambientIdx = plan.hasCustomAudio ? 2 : 1;
       sb.write(
-        '[$ambientIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];',
+        '[$currentIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];',
       );
+      currentIdx++;
       mixLabels += '[ambient_a]';
     }
 
     if (mixInputs > 1) {
       sb.write(
-        '${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0[mixed_a]',
+        '${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0,apad[mixed_a]',
       );
     } else {
-      sb.write('[orig_a]aresample=async=1:first_pts=0[mixed_a]');
+      sb.write('[orig_a]aresample=async=1:first_pts=0,apad[mixed_a]');
     }
 
     return sb.toString();
@@ -235,7 +251,18 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   ///
   /// Includes jitter crop and dynamic panning (Ken Burns effect) if configured.
   @override
-  String buildBaseFilter(CompositionPlan plan) {
+  String buildConcatFilter(int count) {
+    if (count <= 1) return '';
+    final sb = StringBuffer();
+    for (int i = 0; i < count; i++) {
+      sb.write('[$i:v][$i:a]');
+    }
+    sb.write('concat=n=$count:v=1:a=1[v_concat][a_concat];');
+    return sb.toString();
+  }
+
+  @override
+  String buildBaseFilter(CompositionPlan plan, {String inputLabel = '[0:v]'}) {
     final params = plan.params;
 
     // 1. Micro Crop Jitter
@@ -257,8 +284,11 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     final yExpr = '$sy+($ey-$sy)*t/${params.targetDuration}';
     final dynamicPan = 'crop=$cropW:$cropH:$xExpr:$yExpr';
 
-    // Luôn dùng [0:v] — input là Concat Demuxer
-    return '[0:v]$dynamicPan,$jitterCrop,${toolkit.scale(1080, 1920)},${toolkit.adjustSpeed(params.pts)}';
+    final String sourceLabel =
+        plan.segmentPaths.length > 1 ? '[v_concat]' : inputLabel;
+
+    // Reconstruction: sourceLabel -> [v_clean]
+    return '$sourceLabel setpts=N/30/TB,fps=30[v_clean];[v_clean]$dynamicPan,$jitterCrop,${toolkit.scale(1080, 1920)},${toolkit.adjustSpeed(params.pts)}';
   }
 
   /// Builds the color grading filter chain.
@@ -292,7 +322,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   /// Iterates through all configured overlays in the [plan] and generates
   /// the necessary filter labels and overlay commands.
   @override
-  String buildOverlayChain(CompositionPlan plan, String inputLabel) {
+  String buildOverlayChain(CompositionPlan plan, String inputLabel,
+      {int inputOffset = 1}) {
     final sb = StringBuffer();
     final random = Random(plan.outputIndex);
     final config = plan.config;
@@ -300,9 +331,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     String lastLabel = inputLabel;
     int overlayIdx = 0;
 
-    int currentInputCounter = 1;
-    if (plan.hasCustomAudio) currentInputCounter++;
-    if (plan.hasAmbientAudio) currentInputCounter++;
+    int currentInputCounter = inputOffset;
 
     // 1. Image Overlays
     for (var i = 0; i < config.imageOverlays.length; i++) {
@@ -351,8 +380,9 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       }
 
       if (imgConfig.borderWidth > 0) {
-        final String borderH =
-            toolkit.colorToHex(imgConfig.borderColor ?? 'white');
+        final String borderH = toolkit.colorToHex(
+          imgConfig.borderColor ?? 'white',
+        );
         scaleF +=
             ',${toolkit.drawbox(c: borderH, t: (imgConfig.borderWidth * 1.5).round())}';
       }
@@ -428,7 +458,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         if (overlayCfg.animationInType != 'none') {
           final dIn = totalDur * overlayCfg.animationInDuration;
           if (overlayCfg.animationInType == 'fade')
-            fBlock += ',${toolkit.fade(type: 'in', start: start, duration: dIn)}';
+            fBlock +=
+                ',${toolkit.fade(type: 'in', start: start, duration: dIn)}';
           else if (overlayCfg.animationInType == 'slideUp')
             yE = 'if(lt(t,${start + dIn}),$tY+75-75*(t-$start)/$dIn,$yE)';
           else if (overlayCfg.animationInType == 'slideDown')
@@ -439,7 +470,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
             xE = 'if(lt(t,${start + dIn}),$tX-75+75*(t-$start)/$dIn,$xE)';
           else if (overlayCfg.animationInType == 'zoom') {
             sE = 'if(lt(t,${start + dIn}),(t-$start)/$dIn,$sE)';
-            fBlock += ',${toolkit.fade(type: 'in', start: start, duration: dIn)}';
+            fBlock +=
+                ',${toolkit.fade(type: 'in', start: start, duration: dIn)}';
           }
         }
 
