@@ -464,6 +464,9 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
           : null,
     );
 
+    if (!ctx.videoPlans.containsKey(index)) {
+      throw Exception('Video plan for index $index not found (Pipeline may have been cancelled)');
+    }
     final plan = ctx.videoPlans[index]!;
     final segmentsToMerge = <String>[];
     final segmentDurations = <double>[];

@@ -20,7 +20,8 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
 
   @override
   Future<GpuInfo> resolve() async {
-    if (_cachedGpuInfo != null) return _cachedGpuInfo!;
+    final cached = _cachedGpuInfo;
+    if (cached != null) return cached;
     
     final filters = await _getAvailableFilters();
     final encoders = await _getAvailableEncoders();
@@ -80,7 +81,22 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
     }
 
     
-    return _cachedGpuInfo!;
+    final info = _cachedGpuInfo;
+    if (info == null) {
+       // Fallback logic if somehow nullified
+       return (
+        name: 'CPU (Software)',
+        encoder: 'libx264',
+        hwaccel: null,
+        scaleFilter: null,
+        outputFormat: null,
+        hasZscale: false,
+        hasCudaFilters: false,
+        preferredPixFmt: 'yuv420p',
+        maxConcurrentEncodes: 2,
+      );
+    }
+    return info;
   }
 
   @override
@@ -110,7 +126,8 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
           .where((l) => l.contains('V....D'))
           .map((l) => l.split(' ').where((s) => s.isNotEmpty).skip(1).first)
           .toList();
-      return _availableEncoders!;
+      final encoders = _availableEncoders;
+      return encoders ?? [];
     } catch (_) {
       return [];
     }
@@ -134,7 +151,8 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
           .whereType<String>()
           .toList();
 
-      return _availableFilters!;
+      final filters = _availableFilters;
+      return filters ?? [];
     } catch (_) {
       return [];
     }

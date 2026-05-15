@@ -12,7 +12,8 @@ class VideoMetadataAnalyzerImpl implements VideoMetadataAnalyzer {
 
   @override
   Future<ProbeResult> probeSourceVideo(String path) async {
-    if (_probeCache.containsKey(path)) return _probeCache[path]!;
+    final cached = _probeCache[path];
+    if (cached != null) return cached;
 
     try {
       final result = await Process.run(_hardwareResolver.ffprobeBin, [

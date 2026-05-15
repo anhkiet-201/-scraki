@@ -44,7 +44,10 @@ abstract class BaseVideoBatchEngine<
 
   @override
   Future<void> initialize() async {
-    gpuInfo = hardwareResolver.gpuInfo!;
+    final info = hardwareResolver.gpuInfo;
+    if (info != null) {
+      gpuInfo = info;
+    }
   }
 
   @override
@@ -93,9 +96,9 @@ abstract class BaseVideoBatchEngine<
   /// Appends hardware acceleration flags to the input arguments.
   void _appendInputFlags(FfmpegInputArgs inputs) {
     if (gpuInfo.hwaccel != null) {
-      inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
+      inputs.addFlag('-hwaccel', gpuInfo.hwaccel ?? 'auto');
       if (gpuInfo.outputFormat != null) {
-        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
+        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat ?? 'nv12');
       }
     }
   }

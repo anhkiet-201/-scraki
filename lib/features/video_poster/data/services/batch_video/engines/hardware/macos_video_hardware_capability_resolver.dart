@@ -19,7 +19,8 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
 
   @override
   Future<GpuInfo> resolve() async {
-    if (_cachedGpuInfo != null) return _cachedGpuInfo!;
+    final cached = _cachedGpuInfo;
+    if (cached != null) return cached;
     
     final filters = await _getAvailableFilters();
     final hasZscale = filters.contains('zscale');
@@ -38,7 +39,21 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
     );
 
     
-    return _cachedGpuInfo!;
+    final info = _cachedGpuInfo;
+    if (info == null) {
+      return (
+        name: 'Apple VideoToolbox (Fallback)',
+        encoder: 'h264_videotoolbox',
+        hwaccel: 'videotoolbox',
+        scaleFilter: 'scale',
+        outputFormat: null,
+        hasZscale: false,
+        hasCudaFilters: false,
+        preferredPixFmt: 'yuv420p',
+        maxConcurrentEncodes: 2,
+      );
+    }
+    return info;
   }
 
   @override
@@ -75,7 +90,8 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
           .whereType<String>()
           .toList();
 
-      return _availableFilters!;
+      final filters = _availableFilters;
+      return filters ?? [];
     } catch (_) {
       return [];
     }

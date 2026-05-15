@@ -48,9 +48,9 @@ class NvidiaBatchEngine
   FfmpegInputArgs getCompositionInputArgs(CompositionPlan plan) {
     final inputs = FfmpegInputArgs();
     if (gpuInfo.hwaccel != null) {
-      inputs.addFlag('-hwaccel', gpuInfo.hwaccel!);
+      inputs.addFlag('-hwaccel', gpuInfo.hwaccel ?? 'auto');
       if (gpuInfo.outputFormat != null) {
-        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat!);
+        inputs.addFlag('-hwaccel_output_format', gpuInfo.outputFormat ?? 'nv12');
       }
     }
 
@@ -60,20 +60,23 @@ class NvidiaBatchEngine
     }
 
     // 2. Custom Audio
-    if (plan.hasCustomAudio) {
-      inputs.addInput(plan.config.customAudioPath!);
+    final customPath = plan.config.customAudioPath;
+    if (plan.hasCustomAudio && customPath != null) {
+      inputs.addInput(customPath);
     }
 
     // 3. Ambient Audio
-    if (plan.hasAmbientAudio) {
-      inputs.addInput(plan.ambientAudioPath!);
+    final ambientPath = plan.ambientAudioPath;
+    if (plan.hasAmbientAudio && ambientPath != null) {
+      inputs.addInput(ambientPath);
     }
 
     // 4. Image Overlays
     for (final img in plan.config.imageOverlays) {
-      if (img.localPath != null) {
+      final localPath = img.localPath;
+      if (localPath != null) {
         inputs.addInput(
-          img.localPath!,
+          localPath,
           extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
         );
       }

@@ -13,8 +13,8 @@ class VideoBatchEngineFactory {
   /// 
   /// Detects NVIDIA (NVENC), Apple (VideoToolbox), or falls back to CPU (libx264).
   static VideoBatchEngine createEngine(VideoHardwareCapabilityResolver resolver, VideoMetadataAnalyzer metadataAnalyzer) {
-    final gpuInfo = resolver.gpuInfo!;
-    final encoder = gpuInfo.encoder;
+    final gpuInfo = resolver.gpuInfo;
+    final encoder = gpuInfo?.encoder;
     
     if (encoder == 'h264_nvenc') {
       return NvidiaBatchEngine(hardwareResolver: resolver, metadataAnalyzer: metadataAnalyzer);
