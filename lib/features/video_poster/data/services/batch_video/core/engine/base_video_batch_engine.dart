@@ -200,17 +200,20 @@ abstract class BaseVideoBatchEngine<
       '[bg]${composition.buildColorGradingChain(plan)}[colored];',
     );
 
-    final int inputOffset = plan.segmentPaths.length;
+    final int audioInputOffset = plan.segmentPaths.length;
+    final int overlayInputOffset = plan.segmentPaths.length +
+        (plan.hasCustomAudio ? 1 : 0) +
+        (plan.hasAmbientAudio ? 1 : 0);
 
     // 3. Add Overlays
     filterComplex.write(
-      composition.buildOverlayChain(plan, '[colored]', inputOffset: inputOffset),
+      composition.buildOverlayChain(plan, '[colored]', inputOffset: overlayInputOffset),
     );
     filterComplex.write('[video_out];'); // Target output label for video
 
     // 4. Add Audio
     filterComplex.write(
-      composition.buildAudioMixChain(plan, inputOffset: inputOffset),
+      composition.buildAudioMixChain(plan, inputOffset: audioInputOffset),
     );
 
     args.addAll([
@@ -234,12 +237,16 @@ abstract class BaseVideoBatchEngine<
   }
 
   @override
-  String buildOverlayFilter(CompositionPlan plan) =>
-      composition.buildOverlayChain(plan, '[colored]');
+  String buildOverlayFilter(CompositionPlan plan) {
+    final int overlayInputOffset = plan.segmentPaths.length +
+        (plan.hasCustomAudio ? 1 : 0) +
+        (plan.hasAmbientAudio ? 1 : 0);
+    return composition.buildOverlayChain(plan, '[colored]', inputOffset: overlayInputOffset);
+  }
 
   @override
   String buildAudioFilter(CompositionPlan plan) =>
-      composition.buildAudioMixChain(plan);
+      composition.buildAudioMixChain(plan, inputOffset: plan.segmentPaths.length);
 
   @override
   String buildBaseVideoFilter(CompositionPlan plan) =>
