@@ -40,7 +40,7 @@ class PerformanceProfiles {
     bitRate: 500000, // 5 Mbps
     maxFps: 10,
     control: true,
-    maxSize: 360,
+    maxSize: 720,
   );
 
   static const floating = ScrcpyOptions(
@@ -255,6 +255,14 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       final isOnline = await _scrcpyService.isDeviceConnected(serial);
       if (!isOnline) {
         throw 'Device $serial is not connected or unauthorized.';
+      }
+
+      // [Buộc hướng đứng] Tắt tự động xoay màn hình và khóa hướng dọc (0 độ) ở tầng hệ thống Android
+      try {
+        await _adbDataSource.runShellCommand(serial, 'settings put system accelerometer_rotation 0');
+        await _adbDataSource.runShellCommand(serial, 'settings put system user_rotation 0');
+      } catch (e) {
+        logger.w('[PhoneViewStore] Failed to lock screen orientation physically', error: e);
       }
 
       if (session != null) return session!;

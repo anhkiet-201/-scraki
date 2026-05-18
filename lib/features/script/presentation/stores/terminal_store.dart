@@ -7,11 +7,11 @@ import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
-import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_log_worker.dart';
 
 part 'terminal_store.g.dart';
 
@@ -23,6 +23,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   final DeviceGroupStore _deviceGroupStore;
   final ScriptManagementStore _scriptManagementStore;
   final CommandInterpolator _interpolator;
+
+  final TerminalLogWorker _logWorker = TerminalLogWorker();
 
   StreamSubscription<LogEntry>? _scriptLogSubscription;
 
@@ -79,67 +81,35 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   bool isTiledView = false;
 
-  final Map<String, StreamSubscription<DeviceShellResult>>
-  _shellLogSubscriptions = {};
-
   void initialized() {
-    reaction((_) => sessionManagerStore.activeSessions.keys.toSet(), (
-      Set<String> newKeys,
-    ) {
-      // 1. Subscribe các session mới
-      for (final key in newKeys) {
-        final serial = _normalizeSerial(key);
-        if (!_shellLogSubscriptions.containsKey(serial)) {
-          final shell = sessionManagerStore.activeSessions[key]?.deviceShell;
-          if (shell == null) continue;
-          _shellLogSubscriptions[serial] = shell.results.listen((result) {
-            final device = getDeviceBySerial(serial);
-            final deviceName = device?.modelName;
-            switch (result.state) {
-              case ShellState.error:
-                _log(
-                  result.logs,
-                  serial: serial,
-                  model: deviceName,
-                  type: LogType.error,
-                );
-                break;
-              case ShellState.success:
-              case ShellState.canceled:
-                _log(
-                  result.logs,
-                  serial: serial,
-                  model: deviceName,
-                  type: LogType.info,
-                );
-                break;
-              case ShellState.running:
-                _log(
-                  result.logs,
-                  serial: serial,
-                  model: deviceName,
-                  type: LogType.output,
-                );
-                break;
+    _logWorker.init().then((_) {
+      _logWorker.onLogsReceived = (globalLogs, deviceLogsBatch) {
+        runInAction(() {
+          terminalOutput.addAll(globalLogs);
+          if (terminalOutput.length > 5000) {
+            terminalOutput.removeRange(0, terminalOutput.length - 5000);
+          }
+
+          deviceLogsBatch.forEach((serial, logs) {
+            if (!deviceLogs.containsKey(serial)) {
+              deviceLogs[serial] = ObservableList<LogEntry>();
+            }
+            final list = deviceLogs[serial]!;
+            list.addAll(logs);
+            if (list.length > 500) {
+              list.removeRange(0, list.length - 500);
             }
           });
-        }
-      }
+        });
+      };
 
-      // 2. Cancel các subscription của session đã đóng
-      final normalizedNew = newKeys.map(_normalizeSerial).toSet();
-      final removed = _shellLogSubscriptions.keys
-          .where((s) => !normalizedNew.contains(s))
-          .toList();
-      for (final serial in removed) {
-        _shellLogSubscriptions[serial]?.cancel();
-        _shellLogSubscriptions.remove(serial);
-      }
+      _logWorker.onShellStateChanged = (serial, isRunning) {
+        runInAction(() {
+          _shellStates[serial] = isRunning;
+        });
+      };
     });
   }
-
-  String _normalizeSerial(String key) =>
-      key.replaceAll('_grid', '').replaceAll('_floating', '');
 
   @action
   void setCommandInput(String value) {
@@ -285,28 +255,27 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       return;
     }
 
-    final completer = Completer<void>();
-
     final cmd = command.split(" ");
 
-    if(cmd[0] == ">") {
+    if (cmd[0] == ">") {
       cmd.removeAt(0);
       cmd.insertAll(0, ["adb", "-s", serial]);
-    } else if(cmd[0] == "\$") {
+    } else if (cmd[0] == "\$") {
       cmd.removeAt(0);
     } else {
       cmd.insertAll(0, ["adb", "-s", serial, "shell"]);
     }
-    _shellStates[serial] = true;
-    shell.start(cmd.removeAt(0), arguments: cmd).then((_) {
-      _shellStates[serial] = false;
-      completer.complete();
-    }).catchError((Object error) {
-      _shellStates[serial] = false;
-      completer.completeError(error);
-    });
 
-    return completer.future;
+    final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
+    final executable = cmd.removeAt(0);
+
+    return _logWorker.executeCommand(
+      commandId: commandId,
+      serial: serial,
+      executable: executable,
+      arguments: cmd,
+      modelName: deviceName,
+    );
   }
 
   @action
@@ -398,30 +367,18 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   @action
   void stopCommand(String serial) {
-    final shell = sessionManagerStore.activeDeviceShells[serial];
-    if (shell != null) {
-      shell.stop();
-    }
+    _logWorker.stopCommand(serial);
   }
 
   @action
   void stopAll() {
-    for (final shell in sessionManagerStore.activeDeviceShells.values) {
-      shell.stop();
-    }
+    _logWorker.stopAll();
     isExecuting = false;
   }
 
   void dispose() {
-    stopAll();
+    _logWorker.dispose();
     _scriptLogSubscription?.cancel();
-    for (final sub in _shellLogSubscriptions.values) {
-      sub.cancel();
-    }
-    _shellLogSubscriptions.clear();
-    for (var shell in sessionManagerStore.activeDeviceShells.values) {
-      shell.dispose();
-    }
   }
 
   @computed
