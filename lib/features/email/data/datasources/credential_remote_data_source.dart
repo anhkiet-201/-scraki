@@ -111,14 +111,17 @@ class CredentialRemoteDataSourceFirebaseImpl
     String? searchQuery,
   }) async {
     try {
-      Query query = _accountsRef.orderBy('updated_at', descending: true);
+      Query query = _accountsRef;
+      final bool isSearching = searchQuery != null && searchQuery.isNotEmpty;
 
-      if (searchQuery != null && searchQuery.isNotEmpty) {
+      if (isSearching) {
         final search = searchQuery.trim().toLowerCase();
         query = query.where('email', isGreaterThanOrEqualTo: search).where(
           'email',
           isLessThanOrEqualTo: '$search\uf8ff',
-        );
+        ).orderBy('email');
+      } else {
+        query = query.orderBy('updated_at', descending: true);
       }
 
       if (lastUpdate != null) {
@@ -134,7 +137,11 @@ class CredentialRemoteDataSourceFirebaseImpl
       String? nextCursor;
       if (snapshot.docs.isNotEmpty) {
         final lastDocData = snapshot.docs.last.data() as Map<String, dynamic>;
-        nextCursor = lastDocData['updated_at'] as String?;
+        if (isSearching) {
+          nextCursor = lastDocData['email'] as String?;
+        } else {
+          nextCursor = lastDocData['updated_at'] as String?;
+        }
       }
 
       return Right(PaginatedEmailResult(
