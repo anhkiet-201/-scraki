@@ -39,6 +39,7 @@ class _SettingsEmailCredentialCardState
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
+    _store.dispose();
     super.dispose();
   }
 
@@ -46,14 +47,19 @@ class _SettingsEmailCredentialCardState
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final indigo = const Color(0xFF6366F1);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isMobile = screenWidth < 1024;
+    // Tính toán chiều cao linh hoạt, tối thiểu 650 và tối đa 950 tùy theo chiều cao màn hình
+    final cardHeight = (screenHeight * 0.72).clamp(650.0, 950.0);
 
     return Container(
       width: double.infinity,
-      height: 650,
-      padding: const EdgeInsets.all(32),
+      height: cardHeight,
+      padding: EdgeInsets.all(isMobile ? 20 : 32),
       decoration: BoxDecoration(
         color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
         border: Border.all(
           color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10,
           width: 1,
@@ -62,10 +68,10 @@ class _SettingsEmailCredentialCardState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context, isLight, indigo),
-          const SizedBox(height: 24),
+          _buildHeader(context, isLight, indigo, isMobile),
+          SizedBox(height: isMobile ? 16 : 24),
           _buildToolBar(isLight, indigo),
-          const SizedBox(height: 24),
+          SizedBox(height: isMobile ? 16 : 24),
           Expanded(
             child: Observer(
               builder: (_) {
@@ -95,7 +101,7 @@ class _SettingsEmailCredentialCardState
                           }
 
                           final account = _store.accounts[index];
-                          return _buildAccountItem(account, isLight, indigo);
+                          return _buildAccountItem(account, isLight, indigo, isMobile);
                         },
                       ),
                     ),
@@ -112,42 +118,42 @@ class _SettingsEmailCredentialCardState
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: isMobile ? 12 : 16),
           _buildFormatGuide(isLight),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isLight, Color indigo) {
+  Widget _buildHeader(BuildContext context, bool isLight, Color indigo, bool isMobile) {
     return Wrap(
-      spacing: 24,
-      runSpacing: 16,
+      spacing: isMobile ? 12 : 24,
+      runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(isMobile ? 10 : 14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [indigo, indigo.withValues(alpha: 0.7)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isMobile ? 12 : 16),
               ),
-              child: const Icon(Icons.mark_email_read_rounded, size: 24, color: Colors.white),
+              child: Icon(Icons.mark_email_read_rounded, size: isMobile ? 20 : 24, color: Colors.white),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isMobile ? 10 : 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'EMAIL ACCOUNTS',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: isMobile ? 12 : 14,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2.0,
                     color: isLight ? const Color(0xFF1E293B) : Colors.white,
@@ -157,7 +163,7 @@ class _SettingsEmailCredentialCardState
                 Text(
                   'Quản lý danh sách tài khoản',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: isMobile ? 10 : 12,
                     color: isLight ? const Color(0xFF64748B) : Colors.white38,
                     fontWeight: FontWeight.w500,
                   ),
@@ -166,7 +172,7 @@ class _SettingsEmailCredentialCardState
             ),
           ],
         ),
-        const SizedBox(width: 8),
+        if (!isMobile) const SizedBox(width: 8),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -183,8 +189,9 @@ class _SettingsEmailCredentialCardState
                   ),
                 );
               },
+              isMobile: isMobile,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: isMobile ? 8 : 12),
             _buildActionButton(
               label: 'THÊM MỚI',
               icon: Icons.add_rounded,
@@ -197,6 +204,7 @@ class _SettingsEmailCredentialCardState
                   ),
                 );
               },
+              isMobile: isMobile,
             ),
           ],
         ),
@@ -240,9 +248,147 @@ class _SettingsEmailCredentialCardState
     );
   }
 
-  Widget _buildAccountItem(EmailAccount account, bool isLight, Color indigo) {
+  Widget _buildAccountItem(EmailAccount account, bool isLight, Color indigo, bool isMobile) {
     const slate = Color(0xFF1E293B);
     const slateLight = Color(0xFF64748B);
+
+    if (isMobile) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: isLight ? Colors.white : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border(
+            left: BorderSide(color: indigo, width: 6),
+            top: BorderSide(color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10),
+            right: BorderSide(color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10),
+            bottom: BorderSide(color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white10),
+          ),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: indigo.withValues(alpha: 0.1),
+                        child: Icon(Icons.alternate_email_rounded, color: indigo, size: 14),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          account.email,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: isLight ? slate : Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _buildCopyButton(context, account.email, 'Email', isLight),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(Icons.password_rounded, size: 12, color: slateLight.withValues(alpha: 0.6)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Pass: ${account.password}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isLight ? slateLight : Colors.white38,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _buildCopyButton(context, account.password, 'Password', isLight),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 12, color: slateLight.withValues(alpha: 0.6)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          account.username.isEmpty ? 'Username: —' : 'Username: ${account.username}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isLight ? slateLight : Colors.white38,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (account.username.isNotEmpty)
+                        _buildCopyButton(context, account.username, 'Username', isLight),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: isLight ? Colors.grey[50] : Colors.black.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.only(
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => EmailAccountFormDialog(
+                          account: account,
+                          onSave: (acc) => _store.updateAccount(acc),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.edit_note_rounded, color: indigo, size: 18),
+                    label: Text(
+                      'CHỈNH SỬA',
+                      style: TextStyle(color: indigo, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: () => _confirmDelete(account.email),
+                    icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 18),
+                    label: const Text(
+                      'XÓA',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -504,16 +650,17 @@ class _SettingsEmailCredentialCardState
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
+    bool isMobile = false,
   }) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+      icon: Icon(icon, size: isMobile ? 14 : 16),
+      label: Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 9 : 10)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: isMobile ? 12 : 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isMobile ? 10 : 12)),
         elevation: 0,
       ),
     );

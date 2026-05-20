@@ -359,6 +359,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildEmailSettings(bool isLight) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 1024;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -367,27 +370,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'EMAIL AUTOMATION',
         ),
         const SizedBox(height: 32),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Email Data Card
-            const Expanded(
-              flex: 3,
-              child: SettingsEmailCredentialCard(),
-            ),
-            const SizedBox(width: 32),
-            // Help Panel
-            const Expanded(
-              flex: 1,
-              child: SettingsHelpPanel(
-                title: 'Hướng dẫn định dạng',
-                description: 'Nhập dữ liệu theo định dạng:\nEmail|Mật khẩu|Mã Token|Tên nhóm\n\nMỗi tài khoản trên một dòng. Hệ thống sẽ tự động tô màu và đánh số để bạn dễ quản lý.',
-                accentColor: Color(0xFF6366F1),
-                icon: Icons.auto_awesome_rounded,
+        if (isMobile) ...[
+          const SettingsEmailCredentialCard(),
+          const SizedBox(height: 24),
+          const SettingsHelpPanel(
+            title: 'Hướng dẫn định dạng',
+            description: 'Nhập dữ liệu theo định dạng:\nEmail|Mật khẩu|Mã Token|Tên nhóm\n\nMỗi tài khoản trên một dòng. Hệ thống sẽ tự động tô màu và đánh số để bạn dễ quản lý.',
+            accentColor: Color(0xFF6366F1),
+            icon: Icons.auto_awesome_rounded,
+          ),
+        ] else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Expanded(
+                flex: 3,
+                child: SettingsEmailCredentialCard(),
               ),
-            ),
-          ],
-        ),
+              SizedBox(width: 32),
+              Expanded(
+                flex: 1,
+                child: SettingsHelpPanel(
+                  title: 'Hướng dẫn định dạng',
+                  description: 'Nhập dữ liệu theo định dạng:\nEmail|Mật khẩu|Mã Token|Tên nhóm\n\nMỗi tài khoản trên một dòng. Hệ thống sẽ tự động tô màu và đánh số để bạn dễ quản lý.',
+                  accentColor: Color(0xFF6366F1),
+                  icon: Icons.auto_awesome_rounded,
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
