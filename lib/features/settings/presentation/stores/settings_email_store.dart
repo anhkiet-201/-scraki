@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/features/email/domain/entities/email_account.dart';
@@ -32,6 +33,7 @@ abstract class _SettingsEmailStore with Store {
   bool hasMore = true;
 
   String? _lastUpdate;
+  Timer? _debounceTimer;
   static const int _pageSize = 50;
 
   @action
@@ -62,7 +64,14 @@ abstract class _SettingsEmailStore with Store {
   @action
   Future<void> setSearchQuery(String query) async {
     searchQuery = query;
-    await loadInitialAccounts();
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      loadInitialAccounts();
+    });
+  }
+
+  void dispose() {
+    _debounceTimer?.cancel();
   }
 
   Future<void> _fetchPage() async {
