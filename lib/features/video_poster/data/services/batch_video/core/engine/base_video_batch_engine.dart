@@ -105,11 +105,13 @@ abstract class BaseVideoBatchEngine<
 
   /// Appends seeking and primary input path to the arguments.
   void _appendSeekAndInput(FfmpegInputArgs inputs, SegmentRequest request) {
+    // Fast seek: -ss BEFORE -i để FFmpeg nhảy đến keyframe gần nhất.
+    // Slow seek (-ss sau -i) phải decode từ đầu, dễ gây OOM/exit -1 với video VBR.
     inputs.addAll([
-      '-i',
-      request.sourcePath,
       '-ss',
       request.startTime.toStringAsFixed(3),
+      '-i',
+      request.sourcePath,
     ]);
   }
 
@@ -201,9 +203,11 @@ abstract class BaseVideoBatchEngine<
     );
 
     final int audioInputOffset = plan.segmentPaths.length;
-    final int overlayInputOffset = plan.segmentPaths.length +
-        (plan.hasCustomAudio ? 1 : 0) +
-        (plan.hasAmbientAudio ? 1 : 0);
+    // Guard phải khớp với getCompositionInputArgs: chỉ cộng offset khi path != null,
+    // tránh lệch index khiến overlay image không hiển thị.
+    final int overlayInputOffset = plan.segmentPaths.length
+        + (plan.hasCustomAudio && plan.config.customAudioPath != null ? 1 : 0)
+        + (plan.hasAmbientAudio && plan.ambientAudioPath != null ? 1 : 0);
 
     // 3. Add Overlays
     filterComplex.write(
@@ -216,6 +220,7 @@ abstract class BaseVideoBatchEngine<
       composition.buildAudioMixChain(plan, inputOffset: audioInputOffset),
     );
 
+    onLog?.call('  🔧 FilterComplex:\n${filterComplex.toString()}');
     args.addAll([
       '-filter_complex', filterComplex.toString(),
       '-map', '[video_out]',

@@ -120,18 +120,20 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       );
       context.addProcess(process);
 
-      // Watchdog logic: Kill process if no log received for 60 seconds
+      // Watchdog logic: Không start ngay vì fast seek trên network drive (Google Drive)
+      // cần thời gian đọc moov atom trước khi output stderr đầu tiên.
+      // Watchdog chỉ kích hoạt SAU khi nhận được stderr đầu tiên (FFmpeg đã mở file).
+      // Sau đó 180s không có activity mới kill (đủ thời gian cho file chậm / seek lớn).
       void resetWatchdog() {
         watchdog?.cancel();
-        watchdog = Timer(const Duration(seconds: 60), () {
+        watchdog = Timer(const Duration(seconds: 180), () {
           onLog?.call(
-            '  ⚠️ Watchdog: No activity detected for 60s. Killing process...',
+            '  ⚠️ Watchdog: No activity detected for 180s. Killing process...',
           );
           process.kill();
         });
       }
 
-      resetWatchdog();
 
       final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
 
@@ -143,7 +145,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       });
 
       final stderrSub = process.stderr.listen((data) {
-        resetWatchdog();
+        resetWatchdog(); // Start / reset watchdog khi nhận stderr đầu tiên
         final out = String.fromCharCodes(data);
         if (onLog != null) onLog(out);
 
