@@ -180,6 +180,24 @@ mixin _$TerminalStore on _TerminalStore, Store {
     });
   }
 
+  late final _$lastExecutionsAtom = Atom(
+    name: '_TerminalStore.lastExecutions',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, LastExecution> get lastExecutions {
+    _$lastExecutionsAtom.reportRead();
+    return super.lastExecutions;
+  }
+
+  @override
+  set lastExecutions(ObservableMap<String, LastExecution> value) {
+    _$lastExecutionsAtom.reportWrite(value, super.lastExecutions, () {
+      super.lastExecutions = value;
+    });
+  }
+
   late final _$executeCurrentCommandAsyncAction = AsyncAction(
     '_TerminalStore.executeCurrentCommand',
     context: context,
@@ -218,6 +236,18 @@ mixin _$TerminalStore on _TerminalStore, Store {
   Future<void> runScript(ScriptEntity script, {Map<String, String>? args}) {
     return _$runScriptAsyncAction.run(
       () => super.runScript(script, args: args),
+    );
+  }
+
+  late final _$rerunLastExecutionAsyncAction = AsyncAction(
+    '_TerminalStore.rerunLastExecution',
+    context: context,
+  );
+
+  @override
+  Future<void> rerunLastExecution(String serial) {
+    return _$rerunLastExecutionAsyncAction.run(
+      () => super.rerunLastExecution(serial),
     );
   }
 
@@ -332,6 +362,7 @@ commandInput: ${commandInput},
 commandHistory: ${commandHistory},
 historyIndex: ${historyIndex},
 isTiledView: ${isTiledView},
+lastExecutions: ${lastExecutions},
 selectedSerials: ${selectedSerials},
 devices: ${devices},
 hasActiveExecution: ${hasActiveExecution}

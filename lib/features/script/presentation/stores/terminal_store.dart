@@ -81,6 +81,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   bool isTiledView = false;
 
+  @observable
+  ObservableMap<String, LastExecution> lastExecutions = ObservableMap<String, LastExecution>();
+
   void initialized() {
     _logWorker.init().then((_) {
       _logWorker.onLogsReceived = (globalLogs, deviceLogsBatch) {
@@ -236,6 +239,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     }
 
     final deviceName = device.modelName;
+    lastExecutions[serial] = CommandExecution(command);
     if (logCommand) {
       _log(
         command,
@@ -292,6 +296,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       final device = getDeviceBySerial(serial);
       try {
         if (device == null) return;
+        lastExecutions[serial] = ScriptExecution(script, args);
         final processedCommands = script.commands
             .map((cmd) => _interpolator.interpolate(cmd, {
                   'serial': serial,
@@ -430,4 +435,60 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       }
     }
   }
+
+  @action
+  Future<void> rerunLastExecution(String serial) async {
+    final exec = lastExecutions[serial];
+    if (exec == null) return;
+    if (exec is CommandExecution) {
+      await executeCommandOnDevice(serial, exec.command);
+    } else if (exec is ScriptExecution) {
+      final script = exec.script;
+      final args = exec.args;
+      final device = getDeviceBySerial(serial);
+      if (device == null) return;
+      
+      _log(
+        'Rerunning script: ${script.name}',
+        serial: serial,
+        model: device.modelName,
+        type: LogType.command,
+      );
+
+      try {
+        final processedCommands = script.commands
+            .map((cmd) => _interpolator.interpolate(cmd, {
+                  'serial': serial,
+                  'index': selectedSerials.toList().indexOf(serial).toString(),
+                  ...?args,
+                }))
+            .toList();
+        for (final command in processedCommands) {
+          await executeCommandOnDevice(serial, command, logCommand: true);
+        }
+      } catch (e) {
+        _log(
+          e.toString(),
+          type: LogType.error,
+          serial: serial,
+          model: device.modelName,
+        );
+      }
+    }
+  }
+}
+
+abstract class LastExecution {
+  const LastExecution();
+}
+
+class CommandExecution extends LastExecution {
+  final String command;
+  const CommandExecution(this.command);
+}
+
+class ScriptExecution extends LastExecution {
+  final ScriptEntity script;
+  final Map<String, String>? args;
+  const ScriptExecution(this.script, this.args);
 }

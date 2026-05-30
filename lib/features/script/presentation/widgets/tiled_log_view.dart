@@ -123,13 +123,34 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                     final isActive =
                         _store.shellStates[widget.device.serial] ?? false;
                     if (!isActive) {
-                      return Text(
-                        '${_store.deviceLogs[widget.device.serial]?.length ?? 0} lines',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 8,
-                          color: const Color(0xFF94A3B8), // Slate 400
-                          fontWeight: FontWeight.bold,
-                        ),
+                      final hasLastExec =
+                          _store.lastExecutions.containsKey(widget.device.serial);
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasLastExec) ...[
+                            IconButton(
+                              icon: const Icon(
+                                Icons.replay_rounded,
+                                size: 14,
+                                color: Color(0xFF64748B), // Slate 500
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Chạy lại lệnh/script gần nhất',
+                              onPressed: () => _store.rerunLastExecution(widget.device.serial),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            '${_store.deviceLogs[widget.device.serial]?.length ?? 0} lines',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 8,
+                              color: const Color(0xFF94A3B8), // Slate 400
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       );
                     }
                     return Row(
