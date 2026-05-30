@@ -23,6 +23,7 @@ import 'package:scraki/features/device/data/datasources/adb_remote_data_source.d
 import 'package:path/path.dart' as p;
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
 
 part 'phone_view_store.g.dart';
 
@@ -608,6 +609,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   Future<void> uploadFiles(String serial, List<String> paths) async {
     if (paths.isEmpty) return;
 
+    bool isCanceled() => sessionManagerStore.activeTasks[serial]?.status == 'Đã hủy!';
+
     final isVideo = paths.every((p) {
       final ext = p.toLowerCase().split('.').last;
       return const {'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'ts', 'm4v', 'flv', 'wmv'}.contains(ext);
@@ -629,16 +632,19 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         // Giao toàn bộ việc push thư mục và mở intent cho Service xử lý
         await _tikTokService.openTikTokPostImages(serial, paths.first);
         
+        if (isCanceled()) return;
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
         await Future<void>.delayed(const Duration(seconds: 2));
       } else if (isVideo) {
         if (fileName.startsWith('tik_final_')) {
           sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Đang đẩy $fileName...');
           await _tikTokService.openTikTokCreate(serial, paths.first);
+          if (isCanceled()) return;
           sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
         } else {
           sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đang đẩy $fileName...');
           await _scrcpyService.pushFiles(serial, paths);
+          if (isCanceled()) return;
           sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
         }
         await Future<void>.delayed(const Duration(seconds: 2));
@@ -648,21 +654,28 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
            await _adbDataSource.installXapk(
              serial, 
              paths.first, 
-             onStatus: (status) => sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: status),
+             onStatus: (status) {
+               if (!isCanceled()) {
+                 sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: status);
+               }
+             },
            );
         } else {
            await _adbDataSource.installPackage(serial, paths.first);
         }
+        if (isCanceled()) return;
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đã cài đặt xong!', phase: DeviceTaskPhase.success);
         await Future<void>.delayed(const Duration(seconds: 2));
       } else {
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đang đẩy ${paths.length} file...');
         await _scrcpyService.pushFiles(serial, paths);
+        if (isCanceled()) return;
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
         await Future<void>.delayed(const Duration(seconds: 2));
       }
     } catch (e) {
       logger.e('[PhoneViewStore] Task failed', error: e);
+      if (isCanceled()) return;
       sessionManagerStore.updateDeviceTask(
         serial,
         type: (isApk || isXapk) ? DeviceTaskType.install : (isVideo ? DeviceTaskType.videoGen : DeviceTaskType.push),
@@ -671,13 +684,36 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       );
       await Future<void>.delayed(const Duration(seconds: 3));
     } finally {
-      sessionManagerStore.clearDeviceTask(serial);
+      if (!isCanceled()) {
+        sessionManagerStore.clearDeviceTask(serial);
+      }
     }
   }
 
   @action
   void cancelActiveTask() {
-    sessionManagerStore.clearDeviceTask(serial);
+    final task = activeTask;
+    if (task != null) {
+      if (task.type == DeviceTaskType.script || task.type == DeviceTaskType.command) {
+        getIt<TerminalStore>().stopCommand(serial);
+      } else {
+        // Cập nhật trạng thái thành Đã hủy
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: task.type,
+          status: 'Đã hủy!',
+          phase: DeviceTaskPhase.failed,
+        );
+        Future.delayed(const Duration(seconds: 2), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed && currentTask.status == 'Đã hủy!') {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
+      }
+    } else {
+      sessionManagerStore.clearDeviceTask(serial);
+    }
   }
 
   @action

@@ -299,8 +299,20 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       }
     } catch (e) {
       if (updateTaskOverlay) {
-        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.command, status: 'Lỗi', phase: DeviceTaskPhase.failed);
-        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
+        final errorMsg = e.toString();
+        final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.command,
+          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          phase: DeviceTaskPhase.failed,
+        );
+        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
       }
       rethrow;
     }
@@ -344,8 +356,20 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
           }
         });
       } catch (e) {
-        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Lỗi', phase: DeviceTaskPhase.failed);
-        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
+        final errorMsg = e.toString();
+        final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.script,
+          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          phase: DeviceTaskPhase.failed,
+        );
+        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
         _log(
           e.toString(),
           type: LogType.error,
@@ -515,8 +539,20 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
           }
         });
       } catch (e) {
-        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Lỗi', phase: DeviceTaskPhase.failed);
-        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
+        final errorMsg = e.toString();
+        final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.script,
+          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          phase: DeviceTaskPhase.failed,
+        );
+        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
         _log(
           e.toString(),
           type: LogType.error,

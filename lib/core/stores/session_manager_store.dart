@@ -139,7 +139,11 @@ class DeviceTaskState {
     );
   }
 
-  bool get autoMinimize => type == DeviceTaskType.script || type == DeviceTaskType.command;
+  bool get autoMinimize =>
+      type == DeviceTaskType.script ||
+      type == DeviceTaskType.command ||
+      type == DeviceTaskType.push ||
+      type == DeviceTaskType.install;
 
   String get label {
     switch (type) {

@@ -239,6 +239,7 @@ void _isolateEntryPoint(SendPort sendPort) {
           sendPort.send({
             'type': 'command_exit',
             'commandId': commandId,
+            if (exitCode != 0) 'error': logs,
           });
         } catch (e) {
           activeProcesses.remove(serial);
