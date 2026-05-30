@@ -37,6 +37,27 @@ abstract class _ScriptManagementStore with Store {
   @observable
   ScriptEntity? editingScript;
 
+  @observable
+  String searchQuery = '';
+
+  @action
+  void setSearchQuery(String query) {
+    searchQuery = query;
+  }
+
+  @computed
+  List<ScriptEntity> get filteredScripts {
+    if (searchQuery.trim().isEmpty) {
+      return scripts;
+    }
+    final query = searchQuery.trim().toLowerCase();
+    return scripts.where((script) {
+      final nameMatch = script.name.toLowerCase().contains(query);
+      final descMatch = script.description.toLowerCase().contains(query);
+      return nameMatch || descMatch;
+    }).toList();
+  }
+
   StreamSubscription<Either<Failure, List<ScriptEntity>>>? _scriptsSubscription;
 
   @action

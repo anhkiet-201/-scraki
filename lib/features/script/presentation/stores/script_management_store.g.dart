@@ -9,6 +9,15 @@ part of 'script_management_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
+  Computed<List<ScriptEntity>>? _$filteredScriptsComputed;
+
+  @override
+  List<ScriptEntity> get filteredScripts =>
+      (_$filteredScriptsComputed ??= Computed<List<ScriptEntity>>(
+        () => super.filteredScripts,
+        name: '_ScriptManagementStore.filteredScripts',
+      )).value;
+
   late final _$scriptsAtom = Atom(
     name: '_ScriptManagementStore.scripts',
     context: context,
@@ -42,6 +51,24 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
   set editingScript(ScriptEntity? value) {
     _$editingScriptAtom.reportWrite(value, super.editingScript, () {
       super.editingScript = value;
+    });
+  }
+
+  late final _$searchQueryAtom = Atom(
+    name: '_ScriptManagementStore.searchQuery',
+    context: context,
+  );
+
+  @override
+  String get searchQuery {
+    _$searchQueryAtom.reportRead();
+    return super.searchQuery;
+  }
+
+  @override
+  set searchQuery(String value) {
+    _$searchQueryAtom.reportWrite(value, super.searchQuery, () {
+      super.searchQuery = value;
     });
   }
 
@@ -79,6 +106,18 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
     name: '_ScriptManagementStore',
     context: context,
   );
+
+  @override
+  void setSearchQuery(String query) {
+    final _$actionInfo = _$_ScriptManagementStoreActionController.startAction(
+      name: '_ScriptManagementStore.setSearchQuery',
+    );
+    try {
+      return super.setSearchQuery(query);
+    } finally {
+      _$_ScriptManagementStoreActionController.endAction(_$actionInfo);
+    }
+  }
 
   @override
   void init() {
@@ -144,7 +183,9 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
   String toString() {
     return '''
 scripts: ${scripts},
-editingScript: ${editingScript}
+editingScript: ${editingScript},
+searchQuery: ${searchQuery},
+filteredScripts: ${filteredScripts}
     ''';
   }
 }
