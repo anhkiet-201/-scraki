@@ -220,10 +220,15 @@ mixin _$TerminalStore on _TerminalStore, Store {
     String serial,
     String command, {
     bool logCommand = true,
+    bool updateTaskOverlay = true,
   }) {
     return _$executeCommandOnDeviceAsyncAction.run(
-      () =>
-          super.executeCommandOnDevice(serial, command, logCommand: logCommand),
+      () => super.executeCommandOnDevice(
+        serial,
+        command,
+        logCommand: logCommand,
+        updateTaskOverlay: updateTaskOverlay,
+      ),
     );
   }
 

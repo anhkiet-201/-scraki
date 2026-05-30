@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
+import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
@@ -225,6 +226,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     String serial,
     String command, {
     bool logCommand = true,
+    bool updateTaskOverlay = true,
   }) async {
     if (command.trim().isEmpty) return;
 
@@ -273,13 +275,35 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
     final executable = cmd.removeAt(0);
 
-    return _logWorker.executeCommand(
-      commandId: commandId,
-      serial: serial,
-      executable: executable,
-      arguments: cmd,
-      modelName: deviceName,
-    );
+    if (updateTaskOverlay) {
+      sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.command, status: command);
+    }
+
+    try {
+      await _logWorker.executeCommand(
+        commandId: commandId,
+        serial: serial,
+        executable: executable,
+        arguments: cmd,
+        modelName: deviceName,
+      );
+
+      if (updateTaskOverlay) {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.command, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
+        Future.delayed(const Duration(seconds: 2), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.success) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
+      }
+    } catch (e) {
+      if (updateTaskOverlay) {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.command, status: 'Lỗi', phase: DeviceTaskPhase.failed);
+        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
+      }
+      rethrow;
+    }
   }
 
   @action
@@ -297,6 +321,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       try {
         if (device == null) return;
         lastExecutions[serial] = ScriptExecution(script, args);
+        
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Đang chạy: ${script.name}');
+
         final processedCommands = script.commands
             .map((cmd) => _interpolator.interpolate(cmd, {
                   'serial': serial,
@@ -304,10 +331,21 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
                   ...?args,
                 }))
             .toList();
+            
         for (final command in processedCommands) {
-          await executeCommandOnDevice(serial, command, logCommand: true);
+          await executeCommandOnDevice(serial, command, logCommand: true, updateTaskOverlay: false);
         }
+        
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
+        Future.delayed(const Duration(seconds: 2), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.success) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
       } catch (e) {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Lỗi', phase: DeviceTaskPhase.failed);
+        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
         _log(
           e.toString(),
           type: LogType.error,
@@ -456,6 +494,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       );
 
       try {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Đang chạy: ${script.name}');
+
         final processedCommands = script.commands
             .map((cmd) => _interpolator.interpolate(cmd, {
                   'serial': serial,
@@ -464,9 +504,19 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
                 }))
             .toList();
         for (final command in processedCommands) {
-          await executeCommandOnDevice(serial, command, logCommand: true);
+          await executeCommandOnDevice(serial, command, logCommand: true, updateTaskOverlay: false);
         }
+
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
+        Future.delayed(const Duration(seconds: 2), () {
+          final currentTask = sessionManagerStore.activeTasks[serial];
+          if (currentTask != null && currentTask.phase == DeviceTaskPhase.success) {
+            sessionManagerStore.clearDeviceTask(serial);
+          }
+        });
       } catch (e) {
+        sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Lỗi', phase: DeviceTaskPhase.failed);
+        Future.delayed(const Duration(seconds: 3), () => sessionManagerStore.clearDeviceTask(serial));
         _log(
           e.toString(),
           type: LogType.error,

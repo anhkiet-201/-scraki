@@ -113,7 +113,7 @@ abstract class _SessionManagerStore with Store {
   }
 }
 
-enum DeviceTaskType { push, install, videoGen, imagePost }
+enum DeviceTaskType { push, install, videoGen, imagePost, script, command }
 
 enum DeviceTaskPhase { running, success, failed }
 
@@ -139,6 +139,8 @@ class DeviceTaskState {
     );
   }
 
+  bool get autoMinimize => type == DeviceTaskType.script || type == DeviceTaskType.command;
+
   String get label {
     switch (type) {
       case DeviceTaskType.push:
@@ -149,6 +151,10 @@ class DeviceTaskState {
         return 'TikTok Video';
       case DeviceTaskType.imagePost:
         return 'TikTok Bộ ảnh';
+      case DeviceTaskType.script:
+        return 'Thực thi Script';
+      case DeviceTaskType.command:
+        return 'Thực thi Lệnh';
     }
   }
 }
