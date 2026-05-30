@@ -158,30 +158,37 @@ class _DeviceTaskOverlayState extends State<DeviceTaskOverlay> {
       top: 12,
       left: 12,
       right: 12,
-      child: AnimatedAlign(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOutCubic,
-        alignment: _isMinimized ? Alignment.topLeft : Alignment.topCenter,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: animation,
-                child: child,
-              ),
-            );
-          },
-          child: (_displayTask == null || _isExiting)
-              ? const SizedBox.shrink(key: ValueKey('empty'))
-              : _buildMorphingContainer(_displayTask!),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          final cardWidth = availableWidth < 320.0 ? availableWidth : 320.0;
+
+          return AnimatedAlign(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            alignment: _isMinimized ? Alignment.topLeft : Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: animation,
+                    child: child,
+                  ),
+                );
+              },
+              child: (_displayTask == null || _isExiting)
+                  ? const SizedBox.shrink(key: ValueKey('empty'))
+                  : _buildMorphingContainer(_displayTask!, cardWidth),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMorphingContainer(DeviceTaskState task) {
+  Widget _buildMorphingContainer(DeviceTaskState task, double cardWidth) {
     return AnimatedContainer(
       key: const ValueKey('content'),
       duration: const Duration(milliseconds: 350),
@@ -237,6 +244,7 @@ class _DeviceTaskOverlayState extends State<DeviceTaskOverlay> {
                 : _TaskCard(
                     key: ValueKey('${task.type}_${task.phase}'),
                     task: task,
+                    cardWidth: cardWidth,
                     onCancel: () => widget.store.cancelActiveTask(),
                   ),
           ),
@@ -283,30 +291,38 @@ class _MinimizedTaskIcon extends StatelessWidget {
 class _TaskCard extends StatelessWidget {
   final DeviceTaskState task;
   final VoidCallback onCancel;
+  final double cardWidth;
 
   const _TaskCard({
     super.key,
     required this.task,
     required this.onCancel,
+    required this.cardWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     final isRunning = task.phase == DeviceTaskPhase.running;
 
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _HeaderRow(task: task, onCancel: onCancel),
-          if (isRunning) ...[
-            const SizedBox(height: 10),
-            const _ProgressBar(),
-          ],
-        ],
+    return UnconstrainedBox(
+      alignment: Alignment.center,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: cardWidth,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _HeaderRow(task: task, onCancel: onCancel),
+              if (isRunning) ...[
+                const SizedBox(height: 10),
+                const _ProgressBar(),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
