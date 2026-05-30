@@ -183,10 +183,13 @@ class _PhoneViewState extends State<PhoneView> {
     return FittedBox(
       fit: widget.fit,
       alignment: Alignment.center,
-      child: KeyboardListener(
+      child: Focus(
         focusNode: _focusNode,
         onKeyEvent: widget.isFloating
-            ? (event) => _store.handleKeyboardEvent(widget.serial, event)
+            ? (node, event) {
+                _store.handleKeyboardEvent(widget.serial, event);
+                return KeyEventResult.handled;
+              }
             : null,
         child: SizedBox(
           width: session.width.toDouble(),

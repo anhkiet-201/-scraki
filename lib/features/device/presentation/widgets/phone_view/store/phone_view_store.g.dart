@@ -355,59 +355,6 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   }
 
   @override
-  void handlePointerEvent(
-    String serial,
-    PointerEvent event,
-    int action,
-    int nativeWidth,
-    int nativeHeight,
-  ) {
-    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
-      name: '_PhoneViewStore.handlePointerEvent',
-    );
-    try {
-      return super.handlePointerEvent(
-        serial,
-        event,
-        action,
-        nativeWidth,
-        nativeHeight,
-      );
-    } finally {
-      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void handleScrollEvent(
-    String serial,
-    PointerScrollEvent event,
-    int nativeWidth,
-    int nativeHeight,
-  ) {
-    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
-      name: '_PhoneViewStore.handleScrollEvent',
-    );
-    try {
-      return super.handleScrollEvent(serial, event, nativeWidth, nativeHeight);
-    } finally {
-      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void handleKeyboardEvent(String serial, KeyEvent event) {
-    final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
-      name: '_PhoneViewStore.handleKeyboardEvent',
-    );
-    try {
-      return super.handleKeyboardEvent(serial, event);
-    } finally {
-      _$_PhoneViewStoreActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
   void setDragging(String serial, bool isDragging, {bool isApk = false}) {
     final _$actionInfo = _$_PhoneViewStoreActionController.startAction(
       name: '_PhoneViewStore.setDragging',

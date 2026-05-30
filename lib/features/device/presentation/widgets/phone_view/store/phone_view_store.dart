@@ -384,7 +384,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // INPUT HANDLING
   // ═══════════════════════════════════════════════════════════════
 
-  @action
   void handlePointerEvent(String serial, PointerEvent event, int action, int nativeWidth, int nativeHeight) {
     final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
     final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
@@ -397,7 +396,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _workerManager.sendControl(sessionId, message.serialize());
   }
 
-  @action
   void handleScrollEvent(String serial, PointerScrollEvent event, int nativeWidth, int nativeHeight) {
     const double sensitivity = 15.0;
     _scrollAccumulatorX -= event.scrollDelta.dx * sensitivity;
@@ -425,7 +423,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _workerManager.sendControl(sessionId, message.serialize());
   }
 
-  @action
   void handleKeyboardEvent(String serial, KeyEvent event) {
     int action = -1;
     int repeat = 0;
@@ -437,13 +434,21 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
     if (action == -1) return;
 
+    // Chặn phím Window (Meta) và các tổ hợp của nó
+    if (event.logicalKey == LogicalKeyboardKey.meta ||
+        event.logicalKey == LogicalKeyboardKey.metaLeft ||
+        event.logicalKey == LogicalKeyboardKey.metaRight ||
+        HardwareKeyboard.instance.isMetaPressed) {
+      return;
+    }
+
     final isModified = HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed;
     if (isModified && action == 0 && repeat == 0 && event.logicalKey == LogicalKeyboardKey.keyV) {
       handlePaste(serial);
       return;
     }
 
-    final androidCode = AndroidKeyCodes.getKeyCode(event.logicalKey);
+    final androidCode = AndroidKeyCodes.getKeyCodeFromPhysical(event.physicalKey);
     if (androidCode != AndroidKeyCodes.kUnknown) {
       sendKey(serial, androidCode, action, repeat: repeat, metaState: _getAndroidMetaState());
     }

@@ -177,4 +177,60 @@ class AndroidKeyCodes {
 
     return kUnknown;
   }
+
+  static int getKeyCodeFromPhysical(PhysicalKeyboardKey key) {
+    // Map basic alphanumerics
+    if (key.usbHidUsage >= PhysicalKeyboardKey.keyA.usbHidUsage &&
+        key.usbHidUsage <= PhysicalKeyboardKey.keyZ.usbHidUsage) {
+      return kA + (key.usbHidUsage - PhysicalKeyboardKey.keyA.usbHidUsage);
+    }
+    if (key.usbHidUsage >= PhysicalKeyboardKey.digit1.usbHidUsage &&
+        key.usbHidUsage <= PhysicalKeyboardKey.digit9.usbHidUsage) {
+      return k1 + (key.usbHidUsage - PhysicalKeyboardKey.digit1.usbHidUsage);
+    }
+    if (key == PhysicalKeyboardKey.digit0) return k0;
+
+    // Map special keys
+    if (key == PhysicalKeyboardKey.enter) return kEnter;
+    if (key == PhysicalKeyboardKey.space) return kSpace;
+    if (key == PhysicalKeyboardKey.backspace) return kDel;
+    if (key == PhysicalKeyboardKey.delete) return kForwardDel;
+    if (key == PhysicalKeyboardKey.escape) return kEscape;
+    if (key == PhysicalKeyboardKey.tab) return kTab;
+
+    // Navigation
+    if (key == PhysicalKeyboardKey.arrowUp) return kDpadUp;
+    if (key == PhysicalKeyboardKey.arrowDown) return kDpadDown;
+    if (key == PhysicalKeyboardKey.arrowLeft) return kDpadLeft;
+    if (key == PhysicalKeyboardKey.arrowRight) return kDpadRight;
+    if (key == PhysicalKeyboardKey.home) return kMoveHome;
+    if (key == PhysicalKeyboardKey.end) return kMoveEnd;
+    if (key == PhysicalKeyboardKey.pageUp) return kPageUp;
+    if (key == PhysicalKeyboardKey.pageDown) return kPageDown;
+
+    // Modifiers
+    if (key == PhysicalKeyboardKey.shiftLeft) return kShiftLeft;
+    if (key == PhysicalKeyboardKey.shiftRight) return kShiftRight;
+    if (key == PhysicalKeyboardKey.controlLeft) return kCtrlLeft;
+    if (key == PhysicalKeyboardKey.controlRight) return kCtrlRight;
+    if (key == PhysicalKeyboardKey.altLeft) return kAltLeft;
+    if (key == PhysicalKeyboardKey.altRight) return kAltRight;
+    if (key == PhysicalKeyboardKey.metaLeft) return kMetaLeft;
+    if (key == PhysicalKeyboardKey.metaRight) return kMetaRight;
+
+    // Symbols
+    if (key == PhysicalKeyboardKey.minus) return kMinus;
+    if (key == PhysicalKeyboardKey.equal) return kEquals;
+    if (key == PhysicalKeyboardKey.bracketLeft) return kLeftBracket;
+    if (key == PhysicalKeyboardKey.bracketRight) return kRightBracket;
+    if (key == PhysicalKeyboardKey.backslash) return kBackslash;
+    if (key == PhysicalKeyboardKey.semicolon) return kSemicolon;
+    if (key == PhysicalKeyboardKey.quote) return kApostrophe;
+    if (key == PhysicalKeyboardKey.comma) return kComma;
+    if (key == PhysicalKeyboardKey.period) return kPeriod;
+    if (key == PhysicalKeyboardKey.slash) return kSlash;
+    if (key == PhysicalKeyboardKey.backquote) return kGrave;
+
+    return kUnknown;
+  }
 }
