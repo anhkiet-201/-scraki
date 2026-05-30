@@ -158,8 +158,10 @@ class _DeviceTaskOverlayState extends State<DeviceTaskOverlay> {
       top: 12,
       left: 12,
       right: 12,
-      child: Align(
-        alignment: Alignment.topCenter,
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        alignment: _isMinimized ? Alignment.topLeft : Alignment.topCenter,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           transitionBuilder: (child, animation) {
@@ -186,18 +188,18 @@ class _DeviceTaskOverlayState extends State<DeviceTaskOverlay> {
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(_isMinimized ? 22 : 16),
+        borderRadius: BorderRadius.circular(_isMinimized ? 18 : 16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: _isMinimized ? 10 : 20,
-            offset: Offset(0, _isMinimized ? 4 : 8),
+            blurRadius: _isMinimized ? 8 : 20,
+            offset: Offset(0, _isMinimized ? 3 : 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(_isMinimized ? 22 : 16),
+        borderRadius: BorderRadius.circular(_isMinimized ? 18 : 16),
         child: AnimatedSize(
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOutCubic,
@@ -222,7 +224,7 @@ class _DeviceTaskOverlayState extends State<DeviceTaskOverlay> {
                         top: 0,
                         child: child,
                       )),
-                  if (currentChild != null) currentChild,
+                  ?currentChild,
                 ],
               );
             },
@@ -255,22 +257,22 @@ class _MinimizedTaskIcon extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: 36,
+        height: 36,
         color: Colors.transparent, // To catch taps
         child: Stack(
           alignment: Alignment.center,
           children: [
             if (task.phase == DeviceTaskPhase.running)
               SizedBox(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.3)),
                 ),
               ),
-            _LeadingIcon(task: task),
+            _LeadingIcon(task: task, size: 24),
           ],
         ),
       ),
@@ -390,21 +392,24 @@ class _CancelButton extends StatelessWidget {
 
 class _LeadingIcon extends StatelessWidget {
   final DeviceTaskState task;
+  final double size;
 
-  const _LeadingIcon({required this.task});
+  const _LeadingIcon({required this.task, this.size = 28});
 
   @override
   Widget build(BuildContext context) {
     if (task.phase == DeviceTaskPhase.success) {
-      return const _StatusIcon(
+      return _StatusIcon(
         icon: Icons.check_rounded,
-        color: Color(0xFF32D74B),
+        color: const Color(0xFF32D74B),
+        size: size,
       );
     }
     if (task.phase == DeviceTaskPhase.failed) {
-      return const _StatusIcon(
+      return _StatusIcon(
         icon: Icons.close_rounded,
-        color: Color(0xFFFF453A),
+        color: const Color(0xFFFF453A),
+        size: size,
       );
     }
 
@@ -420,6 +425,7 @@ class _LeadingIcon extends StatelessWidget {
     return _StatusIcon(
       icon: icon,
       color: Colors.white.withValues(alpha: 0.8),
+      size: size,
     );
   }
 }
@@ -445,19 +451,28 @@ class _ProgressBar extends StatelessWidget {
 class _StatusIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final double size;
 
-  const _StatusIcon({required this.icon, required this.color});
+  const _StatusIcon({
+    required this.icon,
+    required this.color,
+    this.size = 28,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28,
-      height: 28,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(size * 0.28),
       ),
-      child: Icon(icon, color: color, size: 16),
+      child: Icon(
+        icon,
+        color: color,
+        size: size * 0.57,
+      ),
     );
   }
 }
