@@ -175,6 +175,7 @@ import '../auth/domain/usecases/sign_in_anonymously_usecase.dart' as _i222;
 import '../auth/presentation/stores/app_auth_store.dart' as _i27;
 import '../config/settings_config_provider.dart' as _i730;
 import '../network/dio_client.dart' as _i667;
+import '../services/kill_switch_service.dart' as _i1048;
 import '../stores/device_manager_store.dart' as _i563;
 import '../stores/session_manager_store.dart' as _i773;
 import 'interpolation_module.dart' as _i1073;
@@ -203,6 +204,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => interpolationModule.provideCommandInterpolator(),
     );
     gh.lazySingleton<_i361.Dio>(() => registerModule.dio);
+    gh.lazySingleton<_i1048.KillSwitchService>(
+      () => _i1048.KillSwitchService(),
+    );
     gh.lazySingleton<_i773.SessionManagerStore>(
       () => _i773.SessionManagerStore(),
     );
@@ -357,6 +361,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i298.GiphyService>(
       () => _i298.GiphyService(gh<_i667.DioClient>()),
     );
+    gh.lazySingleton<_i27.AppAuthStore>(
+      () => _i27.AppAuthStore(
+        gh<_i222.SignInAnonymouslyUseCase>(),
+        gh<_i1048.KillSwitchService>(),
+      ),
+    );
     gh.lazySingleton<_i833.FetchJobDetailUseCase>(
       () => _i833.FetchJobDetailUseCase(gh<_i481.RecruitmentRepository>()),
     );
@@ -371,9 +381,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i801.ITikTokSeedingService>(
       () => _i1032.TikTokSeedingService(gh<_i229.ITikTokPostService>()),
-    );
-    gh.lazySingleton<_i27.AppAuthStore>(
-      () => _i27.AppAuthStore(gh<_i222.SignInAnonymouslyUseCase>()),
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),

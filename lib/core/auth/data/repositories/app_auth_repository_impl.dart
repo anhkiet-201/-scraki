@@ -14,6 +14,9 @@ class AppAuthRepositoryImpl implements IAppAuthRepository {
   @override
   Future<Either<Failure, Unit>> signInAnonymously() async {
     try {
+      // Đăng xuất session cũ (nếu có) để xóa cache, đảm bảo Firebase luôn tạo account mới 
+      // (hoặc đăng nhập lại bằng thông tin mới) thay vì sử dụng token đã bị xóa trên Console.
+      await _firebaseAuth.signOut();
       await _firebaseAuth.signInAnonymously();
       return const Right(unit);
     } catch (e, stackTrace) {
