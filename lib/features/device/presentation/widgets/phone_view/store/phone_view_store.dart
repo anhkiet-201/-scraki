@@ -24,6 +24,7 @@ import 'package:path/path.dart' as p;
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
+import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 
 part 'phone_view_store.g.dart';
 
@@ -538,6 +539,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   Future<void> handlePerformDrop(PerformDropEvent event) async {
     setDragging(serial, false);
 
+    // Guard: Bắt buộc phải được xác thực
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      logger.w('[PhoneViewStore] Unauthorized drop attempt blocked.');
+      return;
+    }
+
     // Guard 1: Không cho phép drop khi đang ở tab khác
     if (!isFloatingView && !isOnDevicesTab) return;
 
@@ -597,6 +604,13 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     PosterDropHandler? onPosterDropped,
   ) async {
     setDragging(serial, false);
+
+    // Guard: Bắt buộc phải được xác thực
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      logger.w('[PhoneViewStore] Unauthorized internal drop attempt blocked.');
+      return;
+    }
+
     if (onPosterDropped != null) {
       final file = await onPosterDropped(data);
       if (file != null) {

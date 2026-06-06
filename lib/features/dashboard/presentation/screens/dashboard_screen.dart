@@ -5,7 +5,9 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/device_manager_store_mixin.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
+import 'package:scraki/core/mixins/app_auth_store_mixin.dart';
 import 'package:scraki/core/widgets/mesh_background.dart';
+import 'package:scraki/core/widgets/no_permission_overlay.dart';
 import 'package:scraki/features/dashboard/presentation/screens/widgets/device_search_bar.dart';
 import 'package:scraki/features/dashboard/presentation/screens/widgets/group_horizontal_selector.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
@@ -26,7 +28,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
-    with DeviceManagerStoreMixin, SessionManagerStoreMixin {
+    with DeviceManagerStoreMixin, SessionManagerStoreMixin, AppAuthStoreMixin {
   late final PageController _pageController;
   late final DashboardStore _dashboardStore;
   ReactionDisposer? _selectionDisposer;
@@ -99,19 +101,39 @@ class _DashboardScreenState extends State<DashboardScreen>
                       borderRadius: BorderRadius.circular(24),
                       border: null,
                     ),
-                    child: PageView(
-                      controller: _pageController,
-                      scrollDirection: Axis.vertical,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        KeepAlivePage(
-                          child: _buildDevicesContent(context, _dashboardStore),
-                        ),
-                        const KeepAlivePage(child: PosterCreatorScreen()),
-                        KeepAlivePage(child: VideoPosterPlaygroundPage()),
-                        const KeepAlivePage(child: ScriptScreen()),
-                        SettingsScreen(),
-                      ],
+                    child: Observer(
+                      builder: (_) {
+                        final hasPermission = appAuthStore.isAuthenticated;
+                        return PageView(
+                          controller: _pageController,
+                          scrollDirection: Axis.vertical,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            KeepAlivePage(
+                              child: _buildDevicesContent(context, _dashboardStore),
+                            ),
+                            KeepAlivePage(
+                              child: NoPermissionOverlay(
+                                hasPermission: hasPermission,
+                                child: const PosterCreatorScreen(),
+                              ),
+                            ),
+                            KeepAlivePage(
+                              child: NoPermissionOverlay(
+                                hasPermission: hasPermission,
+                                child: const VideoPosterPlaygroundPage(),
+                              ),
+                            ),
+                            KeepAlivePage(
+                              child: NoPermissionOverlay(
+                                hasPermission: hasPermission,
+                                child: const ScriptScreen(),
+                              ),
+                            ),
+                            SettingsScreen(),
+                          ],
+                        );
+                      }
                     ),
                   ),
                 ),

@@ -169,6 +169,10 @@ import '../../features/video_poster/presentation/stores/image_drop_store.dart'
     as _i348;
 import '../../features/video_poster/presentation/stores/video_poster_store.dart'
     as _i618;
+import '../auth/data/repositories/app_auth_repository_impl.dart' as _i133;
+import '../auth/domain/repositories/i_app_auth_repository.dart' as _i239;
+import '../auth/domain/usecases/sign_in_anonymously_usecase.dart' as _i222;
+import '../auth/presentation/stores/app_auth_store.dart' as _i27;
 import '../config/settings_config_provider.dart' as _i730;
 import '../network/dio_client.dart' as _i667;
 import '../stores/device_manager_store.dart' as _i563;
@@ -215,6 +219,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i154.AntiReupService>(() => _i154.AntiReupService());
     gh.lazySingleton<_i107.IAuthRemoteDataSource>(
       () => _i107.AuthRemoteDataSourceFirebaseImpl(),
+    );
+    gh.lazySingleton<_i239.IAppAuthRepository>(
+      () => _i133.AppAuthRepositoryImpl(),
     );
     gh.lazySingleton<_i589.IAuthRepository>(
       () => _i153.AuthRepositoryImpl(gh<_i107.IAuthRemoteDataSource>()),
@@ -328,6 +335,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i706.SavePosterUseCase>(
       () => _i706.SavePosterUseCase(gh<_i391.IPosterRepository>()),
     );
+    gh.lazySingleton<_i222.SignInAnonymouslyUseCase>(
+      () => _i222.SignInAnonymouslyUseCase(gh<_i239.IAppAuthRepository>()),
+    );
     gh.factory<_i1056.SettingsEmailStore>(
       () => _i1056.SettingsEmailStore(gh<_i482.IEmailRepository>()),
     );
@@ -361,6 +371,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i801.ITikTokSeedingService>(
       () => _i1032.TikTokSeedingService(gh<_i229.ITikTokPostService>()),
+    );
+    gh.lazySingleton<_i27.AppAuthStore>(
+      () => _i27.AppAuthStore(gh<_i222.SignInAnonymouslyUseCase>()),
     );
     gh.singleton<_i151.SettingsStore>(
       () => _i151.SettingsStore(gh<_i657.ISettingsRepository>()),

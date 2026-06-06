@@ -9,6 +9,8 @@ import 'package:scraki/features/script/domain/entities/log_entry.dart'; // Thêm
 import 'package:scraki/features/script/domain/repositories/script_repository.dart';
 import 'package:scraki/features/script/domain/usecases/save_script_use_case.dart';
 import 'package:scraki/features/script/domain/usecases/delete_script_use_case.dart';
+import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
+import 'package:scraki/core/di/injection.dart';
 
 part 'script_management_store.g.dart';
 
@@ -129,6 +131,10 @@ abstract class _ScriptManagementStore with Store {
 
   @action
   Future<void> saveCurrentScript() async {
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      _log('Lỗi: Cần xác thực (Anonymous Auth) để lưu script!', type: LogType.error);
+      return;
+    }
     if (editingScript == null) return;
     final result = await _saveScriptUseCase(editingScript!);
     result.fold(
@@ -142,6 +148,10 @@ abstract class _ScriptManagementStore with Store {
 
   @action
   Future<void> deleteScript(String id) async {
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      _log('Lỗi: Cần xác thực (Anonymous Auth) để xóa script!', type: LogType.error);
+      return;
+    }
     final result = await _deleteScriptUseCase(id);
     result.fold(
       (failure) => _log('Lỗi xóa script: ${failure.message}', type: LogType.error),

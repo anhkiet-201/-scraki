@@ -13,6 +13,8 @@ import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
 import 'package:scraki/features/script/presentation/stores/terminal_log_worker.dart';
+import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
+import 'package:scraki/core/di/injection.dart';
 
 part 'terminal_store.g.dart';
 
@@ -148,6 +150,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> executeCurrentCommand() async {
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      _log('Lỗi: Cần xác thực (Anonymous Auth) để chạy lệnh!', type: LogType.error);
+      return;
+    }
     if (commandInput.trim().isEmpty) return;
     final cmd = commandInput;
     if (cmd.trim().isNotEmpty) {
@@ -323,6 +329,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     ScriptEntity script, {
     Map<String, String>? args,
   }) async {
+    if (!getIt<AppAuthStore>().isAuthenticated) {
+      _log('Lỗi: Cần xác thực (Anonymous Auth) để chạy script!', type: LogType.error);
+      return;
+    }
     _log(
       'Running script: ${script.name} on ${selectedSerials.length} devices',
       type: LogType.command,

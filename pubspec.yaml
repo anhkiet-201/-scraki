@@ -90,6 +90,7 @@ dependencies:
   xterm: ^4.0.0
   archive: ^4.0.9
   rxdart: ^0.28.0
+  firebase_auth: ^6.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

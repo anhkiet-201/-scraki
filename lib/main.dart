@@ -10,6 +10,7 @@ import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'features/settings/presentation/stores/settings_store.dart';
+import 'core/auth/presentation/stores/app_auth_store.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -28,6 +29,10 @@ void main() async {
   // Load settings khi khởi động
   final settingsStore = getIt<SettingsStore>();
   await settingsStore.loadSettings();
+
+  // Đăng nhập ẩn danh
+  final appAuthStore = getIt<AppAuthStore>();
+  await appAuthStore.signInAnonymously();
 
   // Initialize config provider với settings đã load
   final configProvider = getIt<SettingsConfigProvider>();
