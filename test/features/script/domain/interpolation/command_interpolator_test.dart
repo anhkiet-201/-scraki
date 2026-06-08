@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
-import 'package:scraki/features/script/domain/interpolation/script_variable.dart';
 import 'package:scraki/features/script/domain/interpolation/variables/random_variable.dart';
 
 class FakeRandom implements Random {

@@ -176,12 +176,10 @@ void _isolateEntryPoint(SendPort sendPort) {
     }
 
     // Cơ chế Batching log sau mỗi 100ms
-    if (batchTimer == null) {
-      batchTimer = Timer(const Duration(milliseconds: 100), () {
-        batchTimer = null;
-        flushLogs();
-      });
-    }
+    batchTimer ??= Timer(const Duration(milliseconds: 100), () {
+      batchTimer = null;
+      flushLogs();
+    });
   }
 
   toMainPort.listen((message) async {

@@ -56,3 +56,8 @@ firebase_app_id_file.json
 
 # Scripts & Build Artifacts
 scripts/
+
+# Firebase C++ SDK
+.firebase_sdk/
+firebase_cpp_sdk_windows_13.5.0.zip
+
