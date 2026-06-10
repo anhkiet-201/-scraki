@@ -37,6 +37,9 @@ abstract class _ScriptManagementStore with Store {
   ObservableList<ScriptEntity> scripts = ObservableList<ScriptEntity>();
 
   @observable
+  ObservableMap<String, String> stagedFiles = ObservableMap<String, String>();
+
+  @observable
   ScriptEntity? editingScript;
 
   @observable
@@ -45,6 +48,16 @@ abstract class _ScriptManagementStore with Store {
   @action
   void setSearchQuery(String query) {
     searchQuery = query;
+  }
+
+  @action
+  void stageFile(String scriptId, String paths) {
+    stagedFiles[scriptId] = paths;
+  }
+
+  @action
+  void clearStagedFile(String scriptId) {
+    stagedFiles.remove(scriptId);
   }
 
   @computed

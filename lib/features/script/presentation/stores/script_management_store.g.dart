@@ -36,6 +36,24 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
     });
   }
 
+  late final _$stagedFilesAtom = Atom(
+    name: '_ScriptManagementStore.stagedFiles',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, String> get stagedFiles {
+    _$stagedFilesAtom.reportRead();
+    return super.stagedFiles;
+  }
+
+  @override
+  set stagedFiles(ObservableMap<String, String> value) {
+    _$stagedFilesAtom.reportWrite(value, super.stagedFiles, () {
+      super.stagedFiles = value;
+    });
+  }
+
   late final _$editingScriptAtom = Atom(
     name: '_ScriptManagementStore.editingScript',
     context: context,
@@ -120,6 +138,30 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
   }
 
   @override
+  void stageFile(String scriptId, String paths) {
+    final _$actionInfo = _$_ScriptManagementStoreActionController.startAction(
+      name: '_ScriptManagementStore.stageFile',
+    );
+    try {
+      return super.stageFile(scriptId, paths);
+    } finally {
+      _$_ScriptManagementStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void clearStagedFile(String scriptId) {
+    final _$actionInfo = _$_ScriptManagementStoreActionController.startAction(
+      name: '_ScriptManagementStore.clearStagedFile',
+    );
+    try {
+      return super.clearStagedFile(scriptId);
+    } finally {
+      _$_ScriptManagementStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void init() {
     final _$actionInfo = _$_ScriptManagementStoreActionController.startAction(
       name: '_ScriptManagementStore.init',
@@ -183,6 +225,7 @@ mixin _$ScriptManagementStore on _ScriptManagementStore, Store {
   String toString() {
     return '''
 scripts: ${scripts},
+stagedFiles: ${stagedFiles},
 editingScript: ${editingScript},
 searchQuery: ${searchQuery},
 filteredScripts: ${filteredScripts}

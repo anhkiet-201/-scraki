@@ -239,12 +239,8 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                         final delegate = script.enableFileDrop
                             ? FileDropTileDelegate(
                                 child: coreDelegate,
-                                onFileDropped: (path) async {
-                                  widget.scriptStore.setEditingScript(script);
-                                  widget.scriptStore.updateEditingScript(
-                                    commands: [...script.commands, 'echo "$path"'],
-                                  );
-                                  await widget.scriptStore.saveCurrentScript();
+                                onFileDropped: (paths) {
+                                  widget.scriptStore.stageFile(script.id, paths);
                                 },
                               )
                             : coreDelegate;

@@ -7,7 +7,7 @@ import '../script_tile_delegate.dart';
 /// Delegate hỗ trợ kéo thả file/thư mục vào Tile (Sử dụng Decorator Pattern).
 class FileDropTileDelegate implements ScriptTileDelegate {
   final ScriptTileDelegate child;
-  final void Function(String path)? onFileDropped;
+  final void Function(String paths)? onFileDropped;
 
   FileDropTileDelegate({
     required this.child,
@@ -53,7 +53,7 @@ class FileDropTileDelegate implements ScriptTileDelegate {
 
 class _DropHighlightWrapper extends StatefulWidget {
   final Widget child;
-  final void Function(String path)? onFileDropped;
+  final void Function(String paths)? onFileDropped;
 
   const _DropHighlightWrapper({
     required this.child,
@@ -69,8 +69,6 @@ class _DropHighlightWrapperState extends State<_DropHighlightWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return DropRegion(
       formats: const [Formats.fileUri],
       onDropEnter: (event) {
@@ -87,6 +85,7 @@ class _DropHighlightWrapperState extends State<_DropHighlightWrapper> {
       },
       onPerformDrop: (event) async {
         setState(() => _isDraggingOver = false);
+        final paths = <String>[];
         for (final item in event.session.items) {
           final reader = item.dataReader;
           if (reader != null && reader.canProvide(Formats.fileUri)) {
@@ -102,26 +101,64 @@ class _DropHighlightWrapperState extends State<_DropHighlightWrapper> {
             final uri = await completer.future;
             if (uri != null && uri.isScheme('file')) {
               final path = Uri.decodeComponent(uri.toFilePath());
-              widget.onFileDropped?.call(path);
+              paths.add(path);
             }
           }
         }
+        if (paths.isNotEmpty) {
+          widget.onFileDropped?.call(paths.join('\n'));
+        }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _isDraggingOver
-                ? theme.colorScheme.primary
-                : Colors.transparent,
-            width: 2,
-          ),
-          color: _isDraggingOver
-              ? theme.colorScheme.primary.withValues(alpha: 0.05)
-              : Colors.transparent,
-        ),
-        child: widget.child,
+      child: Stack(
+        children: [
+          widget.child,
+          if (_isDraggingOver)
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: _isDraggingOver ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 150),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF4F46E5),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.upload_file_rounded,
+                            color: Color(0xFF4F46E5),
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Thả file để nạp đường dẫn {file}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4F46E5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
