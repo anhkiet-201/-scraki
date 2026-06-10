@@ -73,7 +73,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   String commandInput = '';
 
-  static const int _maxConcurrentDevices = 50;
+  static const int _maxConcurrentDevices = 100;
 
   @observable
   ObservableList<String> commandHistory = ObservableList<String>();
@@ -204,14 +204,20 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
           : _maxConcurrentDevices;
 
       for (int i = 0; i < numWorkers; i++) {
-        // Staggered start: Khởi chạy các worker cách nhau một khoảng nhỏ
-        // giúp dàn trải tải trọng CPU/IO khi bắt đầu process adb
-        if (i > 0) await Future<void>.delayed(Duration(milliseconds: Random().nextInt(500) + 50));
-
-        // Kiểm tra nếu đã bị dừng trong lúc chờ delay
-        if (!isExecuting) break;
-
+        final workerIndex = i;
         workers.add(() async {
+          if (workerIndex > 0) {
+            final delayMs = Random().nextInt(500) + 50;
+            const stepMs = 50;
+            int remaining = delayMs;
+            while (remaining > 0) {
+              if (queue.isEmpty || !isExecuting) return;
+              final sleepTime = remaining > stepMs ? stepMs : remaining;
+              await Future<void>.delayed(Duration(milliseconds: sleepTime));
+              remaining -= stepMs;
+            }
+          }
+
           while (queue.isNotEmpty && isExecuting) {
             final serial = queue.removeFirst();
             try {
