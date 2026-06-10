@@ -113,7 +113,7 @@ abstract class _SessionManagerStore with Store {
   }
 }
 
-enum DeviceTaskType { push, install, videoGen, imagePost, script, command }
+enum DeviceTaskType { push, install, videoGen, imagePost, script, command, facebookVideo, facebookImage }
 
 enum DeviceTaskPhase { running, success, failed }
 
@@ -155,6 +155,10 @@ class DeviceTaskState {
         return 'TikTok Video';
       case DeviceTaskType.imagePost:
         return 'TikTok Bộ ảnh';
+      case DeviceTaskType.facebookVideo:
+        return 'Facebook Video';
+      case DeviceTaskType.facebookImage:
+        return 'Facebook Bộ ảnh';
       case DeviceTaskType.script:
         return 'Thực thi Script';
       case DeviceTaskType.command:

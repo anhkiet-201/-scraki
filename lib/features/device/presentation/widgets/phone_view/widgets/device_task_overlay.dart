@@ -436,6 +436,8 @@ class _LeadingIcon extends StatelessWidget {
       DeviceTaskType.imagePost => Icons.photo_library_rounded,
       DeviceTaskType.script => Icons.terminal_rounded,
       DeviceTaskType.command => Icons.code_rounded,
+      DeviceTaskType.facebookVideo => Icons.ondemand_video_rounded,
+      DeviceTaskType.facebookImage => Icons.photo_library_rounded,
     };
 
     return _StatusIcon(

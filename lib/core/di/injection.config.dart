@@ -28,6 +28,8 @@ import '../../features/device/data/datasources/aki_remote_service.dart'
     as _i109;
 import '../../features/device/data/datasources/device_group_remote_data_source.dart'
     as _i521;
+import '../../features/device/data/datasources/facebook_post_service.dart'
+    as _i180;
 import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
 import '../../features/device/data/datasources/scrcpy_socket_client.dart'
@@ -52,6 +54,8 @@ import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
 import '../../features/device/domain/services/i_device_task_service.dart'
     as _i558;
+import '../../features/device/domain/services/i_facebook_post_service.dart'
+    as _i350;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
     as _i229;
 import '../../features/device/domain/services/i_video_decoder_service.dart'
@@ -307,6 +311,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i229.ITikTokPostService>(
       () => _i727.TikTokPostService(gh<_i972.ScrcpyService>()),
     );
+    gh.lazySingleton<_i350.IFacebookPostService>(
+      () => _i180.FacebookPostService(gh<_i972.ScrcpyService>()),
+    );
     gh.lazySingleton<_i606.VideoMetadataAnalyzer>(
       () => _i1051.VideoMetadataAnalyzerImpl(
         gh<_i9.VideoHardwareCapabilityResolver>(),
@@ -314,14 +321,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
-    );
-    gh.lazySingleton<_i558.IDeviceTaskService>(
-      () => _i229.DeviceTaskServiceImpl(
-        gh<_i773.SessionManagerStore>(),
-        gh<_i229.ITikTokPostService>(),
-        gh<_i165.IAdbRemoteDataSource>(),
-        gh<_i972.ScrcpyService>(),
-      ),
     );
     gh.lazySingleton<_i147.FavoriteImageRepository>(
       () => _i650.FavoriteImageRepositoryImpl(
@@ -359,6 +358,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i275.ExecuteCommandUseCase>(
       () => _i275.ExecuteCommandUseCase(gh<_i55.ScriptRepository>()),
+    );
+    gh.lazySingleton<_i558.IDeviceTaskService>(
+      () => _i229.DeviceTaskServiceImpl(
+        gh<_i773.SessionManagerStore>(),
+        gh<_i229.ITikTokPostService>(),
+        gh<_i350.IFacebookPostService>(),
+        gh<_i165.IAdbRemoteDataSource>(),
+        gh<_i972.ScrcpyService>(),
+      ),
     );
     gh.factory<_i498.EmailStore>(
       () => _i498.EmailStore(
