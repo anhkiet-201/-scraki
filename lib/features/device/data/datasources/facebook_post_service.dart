@@ -85,8 +85,16 @@ class FacebookPostService implements IFacebookPostService {
           break;
       }
 
+      final ext = fileName.toLowerCase().split('.').last;
+      final String mimeType;
+      if (const {'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'ts', 'm4v', 'flv', 'wmv'}.contains(ext)) {
+        mimeType = 'video/mp4';
+      } else {
+        mimeType = 'image/*';
+      }
+
       final shellCmd =
-          "am start -n $_packageName/$activityName -a android.intent.action.SEND -t video/mp4 --eu android.intent.extra.STREAM $uri";
+          "am start -n $_packageName/$activityName -a android.intent.action.SEND -t $mimeType --eu android.intent.extra.STREAM $uri";
 
       logger.i('[FacebookPostService] Running Intent: $shellCmd');
 
