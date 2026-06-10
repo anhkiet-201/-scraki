@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobx/mobx.dart';
+import 'package:re_editor/re_editor.dart';
+import 'package:re_highlight/styles/vs2015.dart';
+import '../utils/scraki_bash_lang.dart';
+import '../utils/shell_autocomplete_builder.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import '../stores/script_management_store.dart';
 
 class ScriptEditorPanel extends StatefulWidget {
-
   const ScriptEditorPanel({super.key});
 
   @override
@@ -17,9 +20,9 @@ class ScriptEditorPanel extends StatefulWidget {
 class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
   late TextEditingController _nameController;
   late TextEditingController _descController;
-  late TextEditingController _commandsController;
+  late CodeLineEditingController _commandsController;
   final ScriptManagementStore _store = inject<ScriptManagementStore>();
-  
+
   String? _loadedScriptId;
   ScriptTileType _selectedTileType = ScriptTileType.normal;
   bool _enableFileDrop = false;
@@ -59,26 +62,56 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
     final script = _store.editingScript;
     _nameController = TextEditingController(text: script?.name ?? '');
     _descController = TextEditingController(text: script?.description ?? '');
-    _commandsController = TextEditingController(text: script?.commands.join('\n') ?? '');
+    _commandsController = CodeLineEditingController.fromText(
+      script?.commands.join('\n') ?? '',
+    );
     _loadedScriptId = script?.id;
     _selectedTileType = script?.tileType ?? ScriptTileType.normal;
     _enableFileDrop = script?.enableFileDrop ?? false;
+
+    _commandsController.addListener(_onCodeChanged);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descController.dispose();
+    _commandsController.removeListener(_onCodeChanged);
     _commandsController.dispose();
     _disposer?.call();
     super.dispose();
+  }
+
+  void _onCodeChanged() {
+    final text = _commandsController.text;
+    final commands =
+        text.split('\n').where((s) => s.trim().isNotEmpty).toList();
+
+    if (_store.editingScript != null) {
+      final currentCommands = _store.editingScript!.commands;
+      bool isSame = currentCommands.length == commands.length;
+      if (isSame) {
+        for (int i = 0; i < commands.length; i++) {
+          if (commands[i] != currentCommands[i]) {
+            isSame = false;
+            break;
+          }
+        }
+      }
+      if (!isSame) {
+        _onChanged();
+      }
+    }
   }
 
   void _onChanged() {
     _store.updateEditingScript(
       name: _nameController.text,
       description: _descController.text,
-      commands: _commandsController.text.split('\n').where((s) => s.trim().isNotEmpty).toList(),
+      commands: _commandsController.text
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .toList(),
       tileType: _selectedTileType,
       enableFileDrop: _enableFileDrop,
     );
@@ -127,19 +160,21 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                         maxLines: 2,
                         onChanged: (_) => _onChanged(),
                       ),
-                      
+
                       const SizedBox(height: 32),
                       _buildSectionTitle('Cấu hình hiển thị (Tile)'),
                       const SizedBox(height: 16),
                       _buildTileSettings(),
-        
+
                       const SizedBox(height: 32),
                       _buildSectionTitle('Danh sách lệnh ADB Shell'),
                       const SizedBox(height: 16),
                       _buildCommandEditor(),
-                      
+
                       const SizedBox(height: 12),
-                      _buildHint('Dùng {input} cho ô nhập đơn lẻ hoặc {input:tên_biến} để tạo nhiều ô nhập dữ liệu.'),
+                      _buildHint(
+                        'Dùng {input} cho ô nhập đơn lẻ hoặc {input:tên_biến} để tạo nhiều ô nhập dữ liệu.',
+                      ),
                     ],
                   ),
                 ),
@@ -147,7 +182,7 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
             ],
           ),
         );
-      }
+      },
     );
   }
 
@@ -246,13 +281,22 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
           controller: controller,
           maxLines: maxLines,
           onChanged: onChanged,
-          style: GoogleFonts.outfit(fontSize: 15, color: const Color(0xFF1E293B)),
+          style: GoogleFonts.outfit(
+            fontSize: 15,
+            color: const Color(0xFF1E293B),
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.outfit(color: const Color(0xFF94A3B8), fontSize: 14),
+            hintStyle: GoogleFonts.outfit(
+              color: const Color(0xFF94A3B8),
+              fontSize: 14,
+            ),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -279,7 +323,11 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
         children: [
           Row(
             children: [
-              const Icon(Icons.security_rounded, size: 20, color: Color(0xFF64748B)),
+              const Icon(
+                Icons.security_rounded,
+                size: 20,
+                color: Color(0xFF64748B),
+              ),
               const SizedBox(width: 12),
               Text(
                 'Chế độ xác nhận',
@@ -305,7 +353,11 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
           ),
           Row(
             children: [
-              const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF64748B)),
+              const Icon(
+                Icons.file_download_outlined,
+                size: 20,
+                color: Color(0xFF64748B),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -331,7 +383,8 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
               ),
               Switch.adaptive(
                 value: _enableFileDrop,
-                activeColor: const Color(0xFF4F46E5),
+                activeTrackColor: const Color(0xFF4F46E5).withValues(alpha: 0.5),
+                activeThumbColor: const Color(0xFF4F46E5),
                 onChanged: (val) {
                   setState(() => _enableFileDrop = val);
                   _onChanged();
@@ -358,7 +411,8 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
           color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+            color:
+                isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
           ),
         ),
         child: Text(
@@ -393,7 +447,11 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.code_rounded, size: 18, color: Color(0xFF818CF8)),
+                const Icon(
+                  Icons.code_rounded,
+                  size: 18,
+                  color: Color(0xFF818CF8),
+                ),
                 const SizedBox(width: 12),
                 Text(
                   'adb_shell.sh',
@@ -415,32 +473,207 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const Divider(height: 1, color: Color(0xFF1E293B)),
-          TextField(
-            controller: _commandsController,
-            maxLines: null,
-            minLines: 12,
-            onChanged: (_) => _onChanged(),
-            style: GoogleFonts.firaCode(
-              fontSize: 13,
-              color: const Color(0xFFE2E8F0),
-              height: 1.6,
-            ),
-            cursorColor: const Color(0xFF818CF8),
-            decoration: InputDecoration(
-              hintText: '# Nhập các lệnh adb...\npm list packages\nam start -n com.example/.MainActivity',
-              hintStyle: GoogleFonts.firaCode(
-                fontSize: 13,
-                color: const Color(0xFF475569),
+
+          // CodeEditor with Autocomplete
+          SizedBox(
+            height: 350,
+            child: CodeAutocomplete(
+              viewBuilder: (context, notifier, onSelected) {
+                return PreferredSize(
+                  preferredSize: const Size(250, 200),
+                  child: ValueListenableBuilder<CodeAutocompleteEditingValue>(
+                    valueListenable: notifier,
+                    builder: (context, value, child) {
+                      final prompts = value.prompts;
+                      if (prompts.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF1E293B,
+                          ), // Dark slate matching dark editor
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF334155)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            shrinkWrap: true,
+                            itemCount: prompts.length,
+                            itemBuilder: (context, index) {
+                              final prompt = prompts[index];
+                              return InkWell(
+                                onTap: () {
+                                  onSelected(
+                                    CodeAutocompleteResult.fromWord(
+                                      prompt.word,
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.code_rounded,
+                                        size: 14,
+                                        color: Color(0xFF818CF8),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          prompt.word,
+                                          style: GoogleFonts.firaCode(
+                                            fontSize: 12,
+                                            color: const Color(0xFFF1F5F9),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+              promptsBuilder: ShellAutocompletePromptsBuilder([
+                const CodeKeywordPrompt(word: 'adb'),
+                const CodeKeywordPrompt(word: 'shell'),
+                const CodeKeywordPrompt(word: 'am'),
+                const CodeKeywordPrompt(word: 'pm'),
+                const CodeKeywordPrompt(word: 'monkey'),
+                const CodeKeywordPrompt(word: 'screencap'),
+                const CodeKeywordPrompt(word: 'screenrecord'),
+                const CodeKeywordPrompt(word: 'input'),
+                const CodeKeywordPrompt(word: 'tap'),
+                const CodeKeywordPrompt(word: 'swipe'),
+                const CodeKeywordPrompt(word: 'keyevent'),
+                const CodeKeywordPrompt(word: 'text'),
+                const CodeKeywordPrompt(word: 'install'),
+                const CodeKeywordPrompt(word: 'uninstall'),
+                const CodeKeywordPrompt(word: 'clear'),
+                const CodeKeywordPrompt(word: 'force-stop'),
+                const CodeKeywordPrompt(word: 'start'),
+                const CodeKeywordPrompt(word: 'sleep'),
+                const CodeKeywordPrompt(word: 'echo'),
+                const CodeKeywordPrompt(word: 'grep'),
+                const CodeKeywordPrompt(word: 'logcat'),
+                const CodeKeywordPrompt(word: 'bugreport'),
+                const CodeKeywordPrompt(word: 'reboot'),
+
+                // Placeholder variables
+                const PlaceholderPrompt(
+                  word: '{input}',
+                  displayName: '{input}',
+                  insertText: '{input}',
+                  baseSelectOffset: 7,
+                  extentSelectOffset: 7,
+                ),
+                const PlaceholderPrompt(
+                  word: '{input:tên_biến}',
+                  displayName: '{input:tên_biến}',
+                  insertText: '{input:tên_biến}',
+                  baseSelectOffset: 7,
+                  extentSelectOffset: 15,
+                ),
+                const PlaceholderPrompt(
+                  word: '{SERIAL}',
+                  displayName: '{SERIAL}',
+                  insertText: '{SERIAL}',
+                  baseSelectOffset: 8,
+                  extentSelectOffset: 8,
+                ),
+                const PlaceholderPrompt(
+                  word: '{I}',
+                  displayName: '{I} (IP octet 4)',
+                  insertText: '{I}',
+                  baseSelectOffset: 3,
+                  extentSelectOffset: 3,
+                ),
+                const PlaceholderPrompt(
+                  word: '{index}',
+                  displayName: '{index}',
+                  insertText: '{index}',
+                  baseSelectOffset: 7,
+                  extentSelectOffset: 7,
+                ),
+                const PlaceholderPrompt(
+                  word: '{file}',
+                  displayName: '{file}',
+                  insertText: '{file}',
+                  baseSelectOffset: 6,
+                  extentSelectOffset: 6,
+                ),
+                const PlaceholderPrompt(
+                  word: '{random(max)}',
+                  displayName: '{random(max)}',
+                  insertText: '{random(max)}',
+                  baseSelectOffset: 8,
+                  extentSelectOffset: 11,
+                ),
+              ]),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: CodeEditor(
+                  controller: _commandsController,
+                  wordWrap: true,
+                  indicatorBuilder: (
+                    context,
+                    editingController,
+                    chunkController,
+                    notifier,
+                  ) {
+                    return Row(
+                      children: [
+                        DefaultCodeLineNumber(
+                          controller: editingController,
+                          notifier: notifier,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    );
+                  },
+                  style: CodeEditorStyle(
+                    fontSize: 13,
+                    textColor: const Color(0xFFE2E8F0),
+                    fontFamily: GoogleFonts.firaCode().fontFamily,
+                    backgroundColor: const Color(0xFF0F172A),
+                    codeTheme: CodeHighlightTheme(
+                      languages: {
+                        'bash': CodeHighlightThemeMode(mode: scrakiBashLang),
+                      },
+                      theme: vs2015Theme,
+                    ),
+                  ),
+                ),
               ),
-              contentPadding: const EdgeInsets.all(20),
-              border: InputBorder.none,
             ),
           ),
         ],
@@ -451,7 +684,11 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
   Widget _buildHint(String text) {
     return Row(
       children: [
-        const Icon(Icons.lightbulb_outline_rounded, size: 16, color: Color(0xFF818CF8)),
+        const Icon(
+          Icons.lightbulb_outline_rounded,
+          size: 16,
+          color: Color(0xFF818CF8),
+        ),
         const SizedBox(width: 8),
         Text(
           text,

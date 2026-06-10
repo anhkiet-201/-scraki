@@ -59,6 +59,8 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   visibility_detector: ^0.4.0+2
   flutter_colorpicker: ^1.1.0
+  re_editor: ^0.9.0
+  re_highlight: ^0.0.3
 
   # Data/Features
   process_run: ^1.1.0
