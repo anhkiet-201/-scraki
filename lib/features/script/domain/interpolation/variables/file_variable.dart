@@ -12,7 +12,9 @@ class FileVariable implements ScriptVariable {
       if (content == null || content.isEmpty) {
         throw ScriptInterpolationException('Đường dẫn file {file} chưa được cung cấp');
       }
-      return CommandInterpolator.wrap(content);
+      // Escape backslashes to protect against shell escape sequences (like \f, \n)
+      final escaped = content.replaceAll('\\', '\\\\');
+      return CommandInterpolator.wrap(escaped);
     });
   }
 }
