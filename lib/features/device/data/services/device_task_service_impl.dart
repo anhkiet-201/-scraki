@@ -53,71 +53,42 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
   Future<void> executeFileUploadTask(String serial, List<String> paths) async {
     if (paths.isEmpty) return;
 
-    final isVideo = paths.every((p) {
+    final fileName = p.basename(paths.first);
+    final isSetDir = paths.length == 1 && Directory(paths.first).existsSync() && fileName.startsWith('Set_');
+    final isVideo = !isSetDir && paths.every((p) {
       final ext = p.toLowerCase().split('.').last;
       return const {'mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'ts', 'm4v', 'flv', 'wmv'}.contains(ext);
     });
-    final isApk = paths.every((path) => path.toLowerCase().endsWith('.apk'));
-    final isXapk = paths.every((path) => path.toLowerCase().endsWith('.xapk'));
+    final isApk = !isSetDir && !isVideo && paths.every((path) => path.toLowerCase().endsWith('.apk'));
+    final isXapk = !isSetDir && !isVideo && paths.every((path) => path.toLowerCase().endsWith('.xapk'));
+
+    final DeviceTaskType taskType;
+    if (isSetDir) {
+      taskType = DeviceTaskType.imagePost;
+    } else if (isVideo) {
+      taskType = fileName.startsWith('tik_final_') ? DeviceTaskType.videoGen : DeviceTaskType.push;
+    } else if (isApk || isXapk) {
+      taskType = DeviceTaskType.install;
+    } else {
+      taskType = DeviceTaskType.push;
+    }
 
     try {
-      final fileName = p.basename(paths.first);
-      
-      // Check if it's a "Set_" directory drop (Image Poster Set)
-      final isSetDir = paths.length == 1 && Directory(paths.first).existsSync() && fileName.startsWith('Set_');
-
       if (isSetDir) {
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Đang đẩy bộ ảnh $fileName...');
-        
-        await _tikTokService.openTikTokPostImages(serial, paths.first);
-        
-        if (_isCanceled(serial)) return;
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.imagePost, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
-        await Future<void>.delayed(const Duration(seconds: 2));
+        await _handleSetDir(serial, paths.first, fileName);
       } else if (isVideo) {
-        if (fileName.startsWith('tik_final_')) {
-          _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Đang đẩy $fileName...');
-          await _tikTokService.openTikTokCreate(serial, paths.first);
-          if (_isCanceled(serial)) return;
-          _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.videoGen, status: 'Sẵn sàng!', phase: DeviceTaskPhase.success);
-        } else {
-          _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đang đẩy $fileName...');
-          await _scrcpyService.pushFiles(serial, paths);
-          if (_isCanceled(serial)) return;
-          _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
-        }
-        await Future<void>.delayed(const Duration(seconds: 2));
+        await _handleVideo(serial, paths, fileName);
       } else if (isApk || isXapk) {
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đang cài $fileName...');
-        if (isXapk) {
-           await _adbDataSource.installXapk(
-             serial, 
-             paths.first, 
-             onStatus: (status) {
-               if (!_isCanceled(serial)) {
-                 _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: status);
-               }
-             },
-           );
-        } else {
-           await _adbDataSource.installPackage(serial, paths.first);
-        }
-        if (_isCanceled(serial)) return;
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.install, status: 'Đã cài đặt xong!', phase: DeviceTaskPhase.success);
-        await Future<void>.delayed(const Duration(seconds: 2));
+        await _handleInstall(serial, paths.first, fileName, isXapk: isXapk);
       } else {
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đang đẩy ${paths.length} file...');
-        await _scrcpyService.pushFiles(serial, paths);
-        if (_isCanceled(serial)) return;
-        _sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.push, status: 'Đã gửi thành công!', phase: DeviceTaskPhase.success);
-        await Future<void>.delayed(const Duration(seconds: 2));
+        await _handleDefaultPush(serial, paths);
       }
     } catch (e) {
       logger.e('[DeviceTaskService] Task failed', error: e);
       if (_isCanceled(serial)) return;
       _sessionManagerStore.updateDeviceTask(
         serial,
-        type: (isApk || isXapk) ? DeviceTaskType.install : (isVideo ? DeviceTaskType.videoGen : DeviceTaskType.push),
+        type: taskType,
         status: 'Lỗi: $e',
         phase: DeviceTaskPhase.failed,
       );
@@ -127,5 +98,104 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
         _sessionManagerStore.clearDeviceTask(serial);
       }
     }
+  }
+
+  Future<void> _handleSetDir(String serial, String path, String fileName) async {
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.imagePost,
+      status: 'Đang đẩy bộ ảnh $fileName...',
+    );
+    await _tikTokService.openTikTokPostImages(serial, path);
+    if (_isCanceled(serial)) return;
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.imagePost,
+      status: 'Sẵn sàng!',
+      phase: DeviceTaskPhase.success,
+    );
+    await Future<void>.delayed(const Duration(seconds: 2));
+  }
+
+  Future<void> _handleVideo(String serial, List<String> paths, String fileName) async {
+    final isTikTokFinal = fileName.startsWith('tik_final_');
+    final taskType = isTikTokFinal ? DeviceTaskType.videoGen : DeviceTaskType.push;
+    final startStatus = 'Đang đẩy $fileName...';
+    final successStatus = isTikTokFinal ? 'Sẵn sàng!' : 'Đã gửi thành công!';
+
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: taskType,
+      status: startStatus,
+    );
+
+    if (isTikTokFinal) {
+      await _tikTokService.openTikTokCreate(serial, paths.first);
+    } else {
+      await _scrcpyService.pushFiles(serial, paths);
+    }
+
+    if (_isCanceled(serial)) return;
+
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: taskType,
+      status: successStatus,
+      phase: DeviceTaskPhase.success,
+    );
+    await Future<void>.delayed(const Duration(seconds: 2));
+  }
+
+  Future<void> _handleInstall(String serial, String path, String fileName, {required bool isXapk}) async {
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.install,
+      status: 'Đang cài $fileName...',
+    );
+
+    if (isXapk) {
+      await _adbDataSource.installXapk(
+        serial,
+        path,
+        onStatus: (status) {
+          if (!_isCanceled(serial)) {
+            _sessionManagerStore.updateDeviceTask(
+              serial,
+              type: DeviceTaskType.install,
+              status: status,
+            );
+          }
+        },
+      );
+    } else {
+      await _adbDataSource.installPackage(serial, path);
+    }
+
+    if (_isCanceled(serial)) return;
+
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.install,
+      status: 'Đã cài đặt xong!',
+      phase: DeviceTaskPhase.success,
+    );
+    await Future<void>.delayed(const Duration(seconds: 2));
+  }
+
+  Future<void> _handleDefaultPush(String serial, List<String> paths) async {
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.push,
+      status: 'Đang đẩy ${paths.length} file...',
+    );
+    await _scrcpyService.pushFiles(serial, paths);
+    if (_isCanceled(serial)) return;
+    _sessionManagerStore.updateDeviceTask(
+      serial,
+      type: DeviceTaskType.push,
+      status: 'Đã gửi thành công!',
+      phase: DeviceTaskPhase.success,
+    );
+    await Future<void>.delayed(const Duration(seconds: 2));
   }
 }
