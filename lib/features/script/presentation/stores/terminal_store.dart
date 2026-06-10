@@ -192,7 +192,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       return;
     }
 
-    isExecuting = true;
+    runInAction(() {
+      isExecuting = true;
+    });
     final queue = Queue<String>.from(serialList);
 
     try {
@@ -223,7 +225,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
       await Future.wait(workers);
     } finally {
-      isExecuting = false;
+      runInAction(() {
+        isExecuting = false;
+      });
     }
   }
 
