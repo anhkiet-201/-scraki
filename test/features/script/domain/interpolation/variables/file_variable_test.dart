@@ -17,8 +17,8 @@ void main() {
         },
       );
 
-      // Backslash đã được double escape
-      expect(result, 'cat C:\\\\path\\\\to\\\\my_file.txt');
+      // Backslash đã được chuyển thành forward slash
+      expect(result, 'cat C:/path/to/my_file.txt');
     });
 
     test('nên giữ nguyên đường dẫn chứa khoảng trắng không tự bọc nháy kép', () {
@@ -33,7 +33,7 @@ void main() {
         },
       );
 
-      expect(result, 'cat C:\\\\My Documents\\\\file name.txt');
+      expect(result, 'cat C:/My Documents/file name.txt');
     });
 
     test('nên ném lỗi nếu thiếu giá trị cho biến {file}', () {
