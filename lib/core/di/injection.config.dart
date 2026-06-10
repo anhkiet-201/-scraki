@@ -40,6 +40,8 @@ import '../../features/device/data/repositories/device_group_repository_firebase
     as _i936;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
+import '../../features/device/data/services/device_task_service_impl.dart'
+    as _i229;
 import '../../features/device/data/services/native_video_decoder_service_impl.dart'
     as _i892;
 import '../../features/device/domain/repositories/device_group_repository.dart'
@@ -48,6 +50,8 @@ import '../../features/device/domain/repositories/device_repository.dart'
     as _i985;
 import '../../features/device/domain/services/i_aki_remote_service.dart'
     as _i260;
+import '../../features/device/domain/services/i_device_task_service.dart'
+    as _i558;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
     as _i229;
 import '../../features/device/domain/services/i_video_decoder_service.dart'
@@ -310,6 +314,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i985.DeviceRepository>(
       () => _i740.DeviceRepositoryImpl(gh<_i165.IAdbRemoteDataSource>()),
+    );
+    gh.lazySingleton<_i558.IDeviceTaskService>(
+      () => _i229.DeviceTaskServiceImpl(
+        gh<_i773.SessionManagerStore>(),
+        gh<_i229.ITikTokPostService>(),
+        gh<_i165.IAdbRemoteDataSource>(),
+        gh<_i972.ScrcpyService>(),
+      ),
     );
     gh.lazySingleton<_i147.FavoriteImageRepository>(
       () => _i650.FavoriteImageRepositoryImpl(
