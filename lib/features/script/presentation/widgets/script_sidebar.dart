@@ -197,7 +197,12 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                           if (widget.terminalStore.isExecuting) {
                             widget.terminalStore.stopAll();
                           } else {
-                            widget.terminalStore.runScript(s, args: args);
+                            final staged = widget.scriptStore.stagedFiles[s.id];
+                            final finalArgs = <String, String>{
+                              if (staged != null && staged.trim().isNotEmpty) 'file': staged,
+                              ...?args,
+                            };
+                            widget.terminalStore.runScript(s, args: finalArgs);
                           }
                         }
                         void onDelete(ScriptEntity s, [Map<String, dynamic>? args]) => widget.scriptStore.deleteScript(s.id);
