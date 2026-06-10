@@ -139,7 +139,7 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                       _buildCommandEditor(),
                       
                       const SizedBox(height: 12),
-                      _buildHint('Dùng {{input}} để yêu cầu nhập dữ liệu khi chạy'),
+                      _buildHint('Dùng {input} cho ô nhập đơn lẻ hoặc {input:tên_biến} để tạo nhiều ô nhập dữ liệu.'),
                     ],
                   ),
                 ),
@@ -289,14 +289,21 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                   color: const Color(0xFF334155),
                 ),
               ),
-              const Spacer(),
-              _buildTypeChip('Normal', ScriptTileType.normal),
-              const SizedBox(width: 8),
-              _buildTypeChip('Inline', ScriptTileType.confirm),
-              const SizedBox(width: 8),
-              _buildTypeChip('Dialog', ScriptTileType.dialog),
-              const SizedBox(width: 8),
-              _buildTypeChip('Input', ScriptTileType.input),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    _buildTypeChip('Normal', ScriptTileType.normal),
+                    _buildTypeChip('Inline', ScriptTileType.confirm),
+                    _buildTypeChip('Dialog', ScriptTileType.dialog),
+                    _buildTypeChip('Input', ScriptTileType.input),
+                    _buildTypeChip('Multi Input', ScriptTileType.multiInput),
+                  ],
+                ),
+              ),
             ],
           ),
           const Padding(

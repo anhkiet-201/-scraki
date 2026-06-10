@@ -1,4 +1,4 @@
-enum ScriptTileType { normal, confirm, dialog, input }
+enum ScriptTileType { normal, confirm, dialog, input, multiInput }
 
 class ScriptEntity {
   final String id;

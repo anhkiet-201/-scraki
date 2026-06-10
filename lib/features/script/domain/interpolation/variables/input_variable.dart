@@ -3,7 +3,7 @@ import '../script_variable.dart';
 
 class InputVariable implements ScriptVariable {
   @override
-  RegExp get regex => RegExp(r'\{input\}');
+  RegExp get regex => RegExp(r'\{input(?!:)\}');
 
   @override
   String resolve(String cmd, [Map<String, String>? args]) {
