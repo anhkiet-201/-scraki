@@ -355,7 +355,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
             .toList();
             
         for (final command in processedCommands) {
-          await executeCommandOnDevice(serial, command, logCommand: true, updateTaskOverlay: false);
+          await executeCommandOnDevice(serial, command, logCommand: false, updateTaskOverlay: false);
         }
         
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
