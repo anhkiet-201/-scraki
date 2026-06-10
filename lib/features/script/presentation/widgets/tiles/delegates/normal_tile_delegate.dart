@@ -49,7 +49,7 @@ class NormalTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
         ),
         const SizedBox(width: 4),
         IconButton(
-          onPressed: () => onDelete?.call(script),
+          onPressed: () => _showDeleteConfirm(context, script),
           icon: const Icon(Icons.delete_outline_rounded, size: 14),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
@@ -57,6 +57,30 @@ class NormalTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
           tooltip: 'Xóa script',
         ),
       ],
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context, ScriptEntity script) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa Script'),
+        content: Text('Bạn có chắc chắn muốn xóa script "${script.name}" không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onDelete?.call(script);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
     );
   }
 
