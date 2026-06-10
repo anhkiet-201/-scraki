@@ -396,6 +396,8 @@ class _UnifiedInputDialogState extends State<_UnifiedInputDialog> {
                                 ),
                                 const SizedBox(height: 6),
                                 TextFormField(
+                                  maxLines: null,
+                                  minLines: 3,
                                   controller: _multiControllers[key],
                                   autofocus: !showWarning &&
                                       !widget.hasSingleInput &&
