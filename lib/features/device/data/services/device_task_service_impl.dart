@@ -214,7 +214,7 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
     final FacebookPostTarget target;
     if (fileName.startsWith('fb_groups_')) {
       target = FacebookPostTarget.group;
-    } else if (fileName.startsWith('fb_reels_') || fileName.startsWith('fb_reel_')) {
+    } else if (fileName.startsWith('fb_reels_')) {
       target = FacebookPostTarget.reels;
     } else {
       target = FacebookPostTarget.feed;
