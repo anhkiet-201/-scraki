@@ -227,7 +227,6 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                               isExecuting: isExecuting,
                             );
                           case ScriptTileType.input:
-                          case ScriptTileType.multiInput:
                             coreDelegate = InputTileDelegate(
                               onRun: onRun,
                               onDelete: onDelete,

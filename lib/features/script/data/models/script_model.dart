@@ -67,7 +67,7 @@ class ScriptModel extends HiveObject {
       tags: tags,
       tileType: ScriptTileType.values.firstWhere(
         (e) => e.name == tileType,
-        orElse: () => ScriptTileType.normal,
+        orElse: () => tileType == 'multiInput' ? ScriptTileType.input : ScriptTileType.normal,
       ),
       enableFileDrop: enableFileDrop,
     );
