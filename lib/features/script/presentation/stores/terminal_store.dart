@@ -6,6 +6,7 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/core/stores/session_manager_store.dart';
+import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
@@ -253,7 +254,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
             try {
               await task(serial);
             } catch (e) {
-              _log('Lỗi thực thi trên $serial: $e', type: LogType.error);
+              logger.i('Lỗi thực thi trên $serial: $e');
             }
           }
         }());

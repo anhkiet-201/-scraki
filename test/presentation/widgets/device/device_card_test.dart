@@ -20,7 +20,6 @@ import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 import 'package:scraki/features/device/domain/entities/device_group_entity.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/core/widgets/status_badge.dart';
-import 'package:scraki/core/widgets/protocol_icon.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class MockPhoneViewStore extends Mock implements PhoneViewStore {}
