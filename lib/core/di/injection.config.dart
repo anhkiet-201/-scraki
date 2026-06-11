@@ -118,6 +118,8 @@ import '../../features/script/domain/usecases/save_script_use_case.dart'
     as _i240;
 import '../../features/script/presentation/stores/script_management_store.dart'
     as _i405;
+import '../../features/script/presentation/stores/terminal_log_worker.dart'
+    as _i255;
 import '../../features/script/presentation/stores/terminal_store.dart' as _i137;
 import '../../features/settings/data/repositories/settings_repository_impl.dart'
     as _i955;
@@ -225,6 +227,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i607.ScrcpySocketClient(),
     );
     gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
+    gh.lazySingleton<_i255.TerminalLogWorker>(() => _i255.TerminalLogWorker());
     gh.lazySingleton<_i763.RecentColorRepository>(
       () => _i763.RecentColorRepository(),
     );
@@ -461,6 +464,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i246.DeviceGroupStore>(),
         gh<_i405.ScriptManagementStore>(),
         gh<_i101.CommandInterpolator>(),
+        gh<_i255.TerminalLogWorker>(),
       ),
     );
     return this;

@@ -28,7 +28,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   final ScriptManagementStore _scriptManagementStore;
   final CommandInterpolator _interpolator;
 
-  final TerminalLogWorker _logWorker = TerminalLogWorker();
+  final TerminalLogWorker _logWorker;
 
   StreamSubscription<LogEntry>? _scriptLogSubscription;
 
@@ -37,6 +37,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     this._deviceGroupStore,
     this._scriptManagementStore,
     this._interpolator,
+    this._logWorker,
   ) {
     initialized();
     _listenToScriptLogs();
@@ -44,10 +45,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   void _listenToScriptLogs() {
     _scriptLogSubscription = _scriptManagementStore.logStream.listen((log) {
-      terminalOutput.add(log);
-      if (terminalOutput.length > 5000) {
-        terminalOutput.removeAt(0);
-      }
+      _logWorker.addLog(
+        message: log.message,
+        type: log.type,
+        serial: log.serial,
+        model: log.deviceModel,
+        deviceCount: log.deviceCount,
+      );
     });
   }
 
@@ -437,12 +441,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
             sessionManagerStore.clearDeviceTask(serial);
           }
         });
-        _log(
-          e.toString(),
-          type: LogType.error,
-          serial: serial,
-          model: device?.modelName,
-        );
       }
     });
   }
@@ -463,32 +461,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     required LogType type,
     int? deviceCount,
   }) {
-    final displaySerial =
-        serial ?? (deviceCount != null && deviceCount > 1 ? 'ALL' : null);
-
-    final entry = LogEntry(
+    _logWorker.addLog(
       message: message,
-      serial: displaySerial,
-      deviceModel: model,
       type: type,
+      serial: serial,
+      model: model,
       deviceCount: deviceCount,
     );
-
-    terminalOutput.add(entry);
-    if (terminalOutput.length > 5000) {
-      terminalOutput.removeAt(0);
-    }
-
-    if (serial != null) {
-      if (!deviceLogs.containsKey(serial)) {
-        deviceLogs[serial] = ObservableList<LogEntry>();
-      }
-      final logs = deviceLogs[serial]!;
-      logs.add(entry);
-      if (logs.length > 500) {
-        logs.removeAt(0);
-      }
-    }
   }
 
   DeviceEntity? getDeviceBySerial(String serial) {

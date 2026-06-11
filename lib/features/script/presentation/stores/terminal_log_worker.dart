@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'package:injectable/injectable.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 
 /// Worker sử dụng Background Isolate để quản lý việc khởi chạy tiến trình Shell (Process.start),
 /// lắng nghe luồng log, xử lý gom lô (batching) và phản hồi lại Main Thread.
+@lazySingleton
 class TerminalLogWorker {
   Isolate? _isolate;
   SendPort? _toIsolatePort;
@@ -124,6 +126,24 @@ class TerminalLogWorker {
   void stopAll() {
     _toIsolatePort?.send({
       'type': 'stop_all',
+    });
+  }
+
+  /// Gửi log nghiệp vụ từ Main Thread sang Isolate để gom lô (batch) đồng bộ.
+  void addLog({
+    required String message,
+    required LogType type,
+    String? serial,
+    String? model,
+    int? deviceCount,
+  }) {
+    _toIsolatePort?.send({
+      'type': 'add_log',
+      'message': message,
+      'serial': serial,
+      'model': model,
+      'logType': type.index,
+      'deviceCount': deviceCount,
     });
   }
 
@@ -301,6 +321,19 @@ void _isolateEntryPoint(SendPort sendPort) {
             'error': e.toString(),
           });
         }
+      } else if (type == 'add_log') {
+        final messageText = message['message'] as String;
+        final serial = message['serial'] as String?;
+        final model = message['model'] as String?;
+        final logTypeIndex = message['logType'] as int;
+        final deviceCount = message['deviceCount'] as int?;
+        addLog(
+          messageText,
+          serial,
+          model,
+          LogType.values[logTypeIndex],
+          deviceCount,
+        );
       } else if (type == 'stop') {
         final serial = message['serial'] as String;
         if (activeProcesses.containsKey(serial)) {
@@ -327,6 +360,7 @@ void _handleProcessStream({
   String? executionId,
 }) {
   String buffer = '';
+  bool overwrite = false;
   stream.listen((chunk) {
     buffer += chunk;
     while (true) {
@@ -339,6 +373,10 @@ void _handleProcessStream({
       }
       if (pos == -1) break;
 
+      if (buffer[pos] == '\r' && pos == buffer.length - 1) {
+        break;
+      }
+
       final char = buffer[pos];
       final line = buffer.substring(0, pos);
       
@@ -348,13 +386,19 @@ void _handleProcessStream({
       }
       
       buffer = buffer.substring(pos + skip);
-      final overwrite = (char == '\r');
+      overwrite = (char == '\r' && skip == 1);
       onLog(line, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
     }
   }, onDone: () {
     if (buffer.isNotEmpty) {
-      onLog(buffer, serial, modelName, type, null, overwriteLast: false, executionId: executionId);
+      if (buffer.endsWith('\r')) {
+        final cleanBuffer = buffer.substring(0, buffer.length - 1);
+        onLog(cleanBuffer, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+      } else {
+        onLog(buffer, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+      }
     }
+    overwrite = false;
     onDone?.call();
   });
 }
