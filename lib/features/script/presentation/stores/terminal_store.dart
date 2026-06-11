@@ -15,6 +15,7 @@ import 'package:scraki/features/script/domain/interpolation/command_interpolator
 import 'package:scraki/features/script/presentation/stores/terminal_log_worker.dart';
 import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 import 'package:scraki/core/di/injection.dart';
+import '../utils/script_execution_parser.dart';
 
 part 'terminal_store.g.dart';
 
@@ -91,7 +92,27 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     _logWorker.init().then((_) {
       _logWorker.onLogsReceived = (globalLogs, deviceLogsBatch) {
         runInAction(() {
-          terminalOutput.addAll(globalLogs);
+          for (final entry in globalLogs) {
+            if (entry.overwriteLast) {
+              // Tìm dòng log output/error MỚI NHẤT thuộc về process hiện tại.
+              // Phải tìm dòng mới nhất, KHÔNG lọc theo cờ overwriteLast ở đây, để tránh nhảy cóc.
+              final index = terminalOutput.lastIndexWhere((e) {
+                if (e.type != LogType.output && e.type != LogType.error) return false;
+                if (entry.executionId != null) return e.executionId == entry.executionId;
+                return e.serial == entry.serial;
+              });
+
+              // CHỈ ghi đè NẾU dòng MỚI NHẤT vừa tìm được CŨNG mang cờ overwriteLast (tức là \r).
+              // Nếu nó là dòng output bình thường (có \n), ta phải xuống dòng mới.
+              if (index != -1 && terminalOutput[index].overwriteLast) {
+                terminalOutput[index] = entry;
+              } else {
+                terminalOutput.add(entry);
+              }
+            } else {
+              terminalOutput.add(entry);
+            }
+          }
           if (terminalOutput.length > 5000) {
             terminalOutput.removeRange(0, terminalOutput.length - 5000);
           }
@@ -101,7 +122,23 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
               deviceLogs[serial] = ObservableList<LogEntry>();
             }
             final list = deviceLogs[serial]!;
-            list.addAll(logs);
+            for (final entry in logs) {
+              if (entry.overwriteLast) {
+                final index = list.lastIndexWhere((e) {
+                  if (e.type != LogType.output && e.type != LogType.error) return false;
+                  if (entry.executionId != null) return e.executionId == entry.executionId;
+                  return e.serial == entry.serial;
+                });
+                
+                if (index != -1 && list[index].overwriteLast) {
+                  list[index] = entry;
+                } else {
+                  list.add(entry);
+                }
+              } else {
+                list.add(entry);
+              }
+            }
             if (list.length > 500) {
               list.removeRange(0, list.length - 500);
             }
@@ -317,13 +354,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       if (updateTaskOverlay) {
         final errorMsg = e.toString();
         final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        final isTimeout = errorMsg.contains('Timeout') || errorMsg.contains('code: -2');
+        final statusMsg = isCanceled ? 'Đã dừng!' : (isTimeout ? 'Timeout!' : 'Lỗi');
         sessionManagerStore.updateDeviceTask(
           serial,
           type: DeviceTaskType.command,
-          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          status: statusMsg,
           phase: DeviceTaskPhase.failed,
         );
-        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+        Future.delayed(Duration(seconds: (isCanceled || isTimeout) ? 2 : 3), () {
           final currentTask = sessionManagerStore.activeTasks[serial];
           if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
             sessionManagerStore.clearDeviceTask(serial);
@@ -363,9 +402,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
                   ...?args,
                 }))
             .toList();
+
+        final blocks = ScriptExecutionParser.parse(processedCommands);
             
-        for (final command in processedCommands) {
-          await executeCommandOnDevice(serial, command, logCommand: false, updateTaskOverlay: false);
+        for (final block in blocks) {
+          if (block is SingleCommandBlock) {
+            await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
+          } else if (block is BashScriptBlock) {
+            await _executeBashBlockOnDevice(serial, block.commands, deviceModel: device.modelName);
+          }
         }
         
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
@@ -378,13 +423,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       } catch (e) {
         final errorMsg = e.toString();
         final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        final isTimeout = errorMsg.contains('Timeout') || errorMsg.contains('code: -2');
+        final statusMsg = isCanceled ? 'Đã dừng!' : (isTimeout ? 'Timeout!' : 'Lỗi');
         sessionManagerStore.updateDeviceTask(
           serial,
           type: DeviceTaskType.script,
-          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          status: statusMsg,
           phase: DeviceTaskPhase.failed,
         );
-        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+        Future.delayed(Duration(seconds: (isCanceled || isTimeout) ? 2 : 3), () {
           final currentTask = sessionManagerStore.activeTasks[serial];
           if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
             sessionManagerStore.clearDeviceTask(serial);
@@ -547,8 +594,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
                   ...?args,
                 }))
             .toList();
-        for (final command in processedCommands) {
-          await executeCommandOnDevice(serial, command, logCommand: true, updateTaskOverlay: false);
+
+        final blocks = ScriptExecutionParser.parse(processedCommands);
+
+        for (final block in blocks) {
+          if (block is SingleCommandBlock) {
+            await executeCommandOnDevice(serial, block.command, logCommand: true, updateTaskOverlay: false);
+          } else if (block is BashScriptBlock) {
+            await _executeBashBlockOnDevice(serial, block.commands, deviceModel: device.modelName);
+          }
         }
 
         sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
@@ -561,26 +615,55 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       } catch (e) {
         final errorMsg = e.toString();
         final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
+        final isTimeout = errorMsg.contains('Timeout') || errorMsg.contains('code: -2');
+        final statusMsg = isCanceled ? 'Đã dừng!' : (isTimeout ? 'Timeout!' : 'Lỗi');
         sessionManagerStore.updateDeviceTask(
           serial,
           type: DeviceTaskType.script,
-          status: isCanceled ? 'Đã dừng!' : 'Lỗi',
+          status: statusMsg,
           phase: DeviceTaskPhase.failed,
         );
-        Future.delayed(Duration(seconds: isCanceled ? 2 : 3), () {
+        Future.delayed(Duration(seconds: (isCanceled || isTimeout) ? 2 : 3), () {
           final currentTask = sessionManagerStore.activeTasks[serial];
           if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
             sessionManagerStore.clearDeviceTask(serial);
           }
         });
-        _log(
-          e.toString(),
-          type: LogType.error,
-          serial: serial,
-          model: device.modelName,
-        );
+        // Lỗi từ tiến trình đã được Isolate log qua addLog(), không log lại để tránh trùng lặp.
+        if (!errorMsg.contains('Process exited with code')) {
+          _log(
+            e.toString(),
+            type: LogType.error,
+            serial: serial,
+            model: device.modelName,
+          );
+        }
       }
     }
+  }
+
+  Future<void> _executeBashBlockOnDevice(
+    String serial,
+    List<String> bashCommands, {
+    required String deviceModel,
+  }) async {
+    final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
+    if (cleanCommands.isEmpty) return;
+
+    // Nối thêm lệnh exit và đảm bảo kết thúc bằng newline để tránh treo EOF
+    final scriptText = '${['#!/system/bin/sh', ...cleanCommands, 'exit'].join('\n')}\n';
+    final arguments = ['-s', serial, 'shell', 'sh'];
+    final executable = 'adb';
+    final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
+
+    await _logWorker.executeCommand(
+      commandId: commandId,
+      serial: serial,
+      executable: executable,
+      arguments: arguments,
+      modelName: deviceModel,
+      stdin: scriptText,
+    );
   }
 }
 

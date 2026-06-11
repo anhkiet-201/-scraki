@@ -42,6 +42,8 @@ class TerminalLogWorker {
               message: map['message'] as String,
               type: LogType.values[map['type'] as int],
               deviceCount: map['deviceCount'] as int?,
+              overwriteLast: map['overwriteLast'] as bool? ?? false,
+              executionId: map['executionId'] as String?,
             );
           }).toList();
 
@@ -55,6 +57,8 @@ class TerminalLogWorker {
                 message: map['message'] as String,
                 type: LogType.values[map['type'] as int],
                 deviceCount: map['deviceCount'] as int?,
+                overwriteLast: map['overwriteLast'] as bool? ?? false,
+                executionId: map['executionId'] as String?,
               );
             }).toList();
             return MapEntry(k as String, list);
@@ -90,6 +94,7 @@ class TerminalLogWorker {
     required String executable,
     required List<String> arguments,
     String? modelName,
+    String? stdin,
   }) async {
     final completer = Completer<void>();
     _pendingCommands[commandId] = completer;
@@ -101,6 +106,7 @@ class TerminalLogWorker {
       'executable': executable,
       'arguments': arguments,
       'modelName': modelName,
+      'stdin': stdin,
     });
 
     return completer.future;
@@ -157,7 +163,7 @@ void _isolateEntryPoint(SendPort sendPort) {
     deviceLogBuffer.clear();
   }
 
-  void addLog(String message, String? serial, String? model, LogType type, int? deviceCount) {
+  void addLog(String message, String? serial, String? model, LogType type, int? deviceCount, {bool overwriteLast = false, String? executionId}) {
     final cleanMsg = message.trim();
     if (cleanMsg.isEmpty) return;
 
@@ -168,6 +174,8 @@ void _isolateEntryPoint(SendPort sendPort) {
       'message': cleanMsg,
       'type': type.index,
       'deviceCount': deviceCount,
+      'overwriteLast': overwriteLast,
+      'executionId': executionId,
     };
 
     globalLogBuffer.add(entryMap);
@@ -191,6 +199,7 @@ void _isolateEntryPoint(SendPort sendPort) {
         final serial = message['serial'] as String;
         final executable = message['executable'] as String;
         final arguments = (message['arguments'] as List).cast<String>();
+        final stdinPayload = message['stdin'] as String?;
         final modelName = message['modelName'] as String?;
 
         // Dừng tiến trình cũ nếu đang chạy trên serial này
@@ -210,23 +219,57 @@ void _isolateEntryPoint(SendPort sendPort) {
           final process = await Process.start(executable, arguments);
           activeProcesses[serial] = process;
 
-          // Lắng nghe stdout
-          process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-            addLog(line, serial, modelName, LogType.output, null);
-          });
+          // Dùng Completer để track khi nào stdout/stderr drain xong,
+          // tránh deadlock do backpressure khi buffer đầy.
+          final stdoutDone = Completer<void>();
+          final stderrDone = Completer<void>();
 
-          // Lắng nghe stderr
-          process.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-            addLog(line, serial, modelName, LogType.error, null);
-          });
+          _handleProcessStream(
+            stream: process.stdout.transform(utf8.decoder),
+            serial: serial,
+            modelName: modelName,
+            type: LogType.output,
+            onLog: addLog,
+            onDone: stdoutDone.complete,
+            executionId: commandId,
+          );
 
-          // Chờ tiến trình kết thúc
-          final exitCode = await process.exitCode;
+          _handleProcessStream(
+            stream: process.stderr.transform(utf8.decoder),
+            serial: serial,
+            modelName: modelName,
+            type: LogType.error,
+            onLog: addLog,
+            onDone: stderrDone.complete,
+            executionId: commandId,
+          );
+
+          if (stdinPayload != null) {
+            process.stdin.write(stdinPayload);
+            await process.stdin.flush();
+            await process.stdin.close();
+          }
+
+          // Chờ đồng thời process exit + drain cả hai stream để tránh deadlock.
+          final results = await Future.wait<dynamic>([
+            process.exitCode,
+            stdoutDone.future,
+            stderrDone.future,
+          ]);
+          final int exitCode = results[0] as int;
+
           activeProcesses.remove(serial);
 
           final state = ShellState.fromCode(exitCode);
-          final logs = 'Process exited with code: $exitCode - ${state.message}';
+          final String logs = 'Process exited with code: $exitCode - ${state.message}';
           addLog(logs, serial, modelName, exitCode == 0 ? LogType.info : LogType.error, null);
+
+          // Flush toàn bộ log buffer TRƯỚC khi gửi command_exit để đảm bảo
+          // thứ tự log đúng: output của lệnh này phải đến main trước khi
+          // lệnh tiếp theo bắt đầu.
+          batchTimer?.cancel();
+          batchTimer = null;
+          flushLogs();
 
           sendPort.send({
             'type': 'shell_state',
@@ -241,6 +284,10 @@ void _isolateEntryPoint(SendPort sendPort) {
           });
         } catch (e) {
           activeProcesses.remove(serial);
+
+          batchTimer?.cancel();
+          batchTimer = null;
+          flushLogs();
 
           sendPort.send({
             'type': 'shell_state',
@@ -267,5 +314,47 @@ void _isolateEntryPoint(SendPort sendPort) {
         activeProcesses.clear();
       }
     }
+  });
+}
+
+void _handleProcessStream({
+  required Stream<String> stream,
+  required String serial,
+  required String? modelName,
+  required LogType type,
+  required void Function(String message, String? serial, String? model, LogType type, int? deviceCount, {bool overwriteLast, String? executionId}) onLog,
+  void Function()? onDone,
+  String? executionId,
+}) {
+  String buffer = '';
+  stream.listen((chunk) {
+    buffer += chunk;
+    while (true) {
+      int pos = -1;
+      for (int i = 0; i < buffer.length; i++) {
+        if (buffer[i] == '\n' || buffer[i] == '\r') {
+          pos = i;
+          break;
+        }
+      }
+      if (pos == -1) break;
+
+      final char = buffer[pos];
+      final line = buffer.substring(0, pos);
+      
+      int skip = 1;
+      if (char == '\r' && pos + 1 < buffer.length && buffer[pos + 1] == '\n') {
+        skip = 2;
+      }
+      
+      buffer = buffer.substring(pos + skip);
+      final overwrite = (char == '\r');
+      onLog(line, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+    }
+  }, onDone: () {
+    if (buffer.isNotEmpty) {
+      onLog(buffer, serial, modelName, type, null, overwriteLast: false, executionId: executionId);
+    }
+    onDone?.call();
   });
 }
