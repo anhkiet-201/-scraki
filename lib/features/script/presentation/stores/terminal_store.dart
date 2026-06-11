@@ -13,6 +13,7 @@ import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
 import 'package:scraki/features/script/presentation/stores/terminal_log_worker.dart';
+import 'package:scraki/features/script/presentation/stores/terminal_process_worker.dart';
 import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 import 'package:scraki/core/di/injection.dart';
 import '../utils/script_execution_parser.dart';
@@ -29,6 +30,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   final CommandInterpolator _interpolator;
 
   final TerminalLogWorker _logWorker;
+  final TerminalProcessWorker _processWorker;
 
   StreamSubscription<LogEntry>? _scriptLogSubscription;
 
@@ -38,6 +40,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     this._scriptManagementStore,
     this._interpolator,
     this._logWorker,
+    this._processWorker,
   ) {
     initialized();
     _listenToScriptLogs();
@@ -45,13 +48,29 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   void _listenToScriptLogs() {
     _scriptLogSubscription = _scriptManagementStore.logStream.listen((log) {
-      _logWorker.addLog(
+      final entry = _logWorker.parseSingleLog(
         message: log.message,
         type: log.type,
         serial: log.serial,
         model: log.deviceModel,
         deviceCount: log.deviceCount,
       );
+      runInAction(() {
+        terminalOutput.add(entry);
+        if (terminalOutput.length > 5000) {
+          terminalOutput.removeRange(0, terminalOutput.length - 5000);
+        }
+        if (log.serial != null) {
+          if (!deviceLogs.containsKey(log.serial)) {
+            deviceLogs[log.serial!] = ObservableList<LogEntry>();
+          }
+          final list = deviceLogs[log.serial]!;
+          list.add(entry);
+          if (list.length > 500) {
+            list.removeRange(0, list.length - 500);
+          }
+        }
+      });
     });
   }
 
@@ -93,64 +112,47 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   ObservableMap<String, LastExecution> lastExecutions = ObservableMap<String, LastExecution>();
 
   void initialized() {
-    _logWorker.init().then((_) {
-      _logWorker.onLogsReceived = (globalLogs, deviceLogsBatch) {
+    _processWorker.init().then((_) {
+      _processWorker.onRawLogsReceived = (globalRaw, deviceRaw) {
         runInAction(() {
-          for (final entry in globalLogs) {
-            if (entry.overwriteLast) {
-              // Tìm dòng log output/error MỚI NHẤT thuộc về process hiện tại.
-              // Phải tìm dòng mới nhất, KHÔNG lọc theo cờ overwriteLast ở đây, để tránh nhảy cóc.
-              final index = terminalOutput.lastIndexWhere((e) {
-                if (e.type != LogType.output && e.type != LogType.error) return false;
-                if (entry.executionId != null) return e.executionId == entry.executionId;
-                return e.serial == entry.serial;
-              });
-
-              // CHỈ ghi đè NẾU dòng MỚI NHẤT vừa tìm được CŨNG mang cờ overwriteLast (tức là \r).
-              // Nếu nó là dòng output bình thường (có \n), ta phải xuống dòng mới.
-              if (index != -1 && terminalOutput[index].overwriteLast) {
-                terminalOutput[index] = entry;
+          _logWorker.processGlobalLogs(
+            globalRaw: globalRaw,
+            currentGlobalLogs: terminalOutput,
+            onLogProcessed: (entry, indexToReplace) {
+              if (indexToReplace != null) {
+                terminalOutput[indexToReplace] = entry;
               } else {
                 terminalOutput.add(entry);
               }
-            } else {
-              terminalOutput.add(entry);
-            }
-          }
+            },
+          );
+
           if (terminalOutput.length > 5000) {
             terminalOutput.removeRange(0, terminalOutput.length - 5000);
           }
 
-          deviceLogsBatch.forEach((serial, logs) {
-            if (!deviceLogs.containsKey(serial)) {
-              deviceLogs[serial] = ObservableList<LogEntry>();
-            }
-            final list = deviceLogs[serial]!;
-            for (final entry in logs) {
-              if (entry.overwriteLast) {
-                final index = list.lastIndexWhere((e) {
-                  if (e.type != LogType.output && e.type != LogType.error) return false;
-                  if (entry.executionId != null) return e.executionId == entry.executionId;
-                  return e.serial == entry.serial;
-                });
-                
-                if (index != -1 && list[index].overwriteLast) {
-                  list[index] = entry;
-                } else {
-                  list.add(entry);
-                }
+          _logWorker.processDeviceLogs(
+            deviceRaw: deviceRaw,
+            currentDeviceLogs: deviceLogs,
+            onLogProcessed: (serial, entry, indexToReplace) {
+              if (!deviceLogs.containsKey(serial)) {
+                deviceLogs[serial] = ObservableList<LogEntry>();
+              }
+              final list = deviceLogs[serial]!;
+              if (indexToReplace != null) {
+                list[indexToReplace] = entry;
               } else {
                 list.add(entry);
               }
-            }
-            if (list.length > 500) {
-              list.removeRange(0, list.length - 500);
-            }
-          });
+              if (list.length > 500) {
+                list.removeRange(0, list.length - 500);
+              }
+            },
+          );
         });
       };
 
-      _logWorker.onShellStateChanged = (serial, isRunning) {
+      _processWorker.onShellStateChanged = (serial, isRunning) {
         runInAction(() {
           _shellStates[serial] = isRunning;
         });
@@ -337,7 +339,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     }
 
     try {
-      await _logWorker.executeCommand(
+      await _processWorker.executeCommand(
         commandId: commandId,
         serial: serial,
         executable: executable,
@@ -461,13 +463,29 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     required LogType type,
     int? deviceCount,
   }) {
-    _logWorker.addLog(
+    final entry = _logWorker.parseSingleLog(
       message: message,
       type: type,
       serial: serial,
       model: model,
       deviceCount: deviceCount,
     );
+    runInAction(() {
+      terminalOutput.add(entry);
+      if (terminalOutput.length > 5000) {
+        terminalOutput.removeRange(0, terminalOutput.length - 5000);
+      }
+      if (serial != null) {
+        if (!deviceLogs.containsKey(serial)) {
+          deviceLogs[serial] = ObservableList<LogEntry>();
+        }
+        final list = deviceLogs[serial]!;
+        list.add(entry);
+        if (list.length > 500) {
+          list.removeRange(0, list.length - 500);
+        }
+      }
+    });
   }
 
   DeviceEntity? getDeviceBySerial(String serial) {
@@ -480,17 +498,17 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   @action
   void stopCommand(String serial) {
-    _logWorker.stopCommand(serial);
+    _processWorker.stopCommand(serial);
   }
 
   @action
   void stopAll() {
-    _logWorker.stopAll();
+    _processWorker.stopAll();
     isExecuting = false;
   }
 
   void dispose() {
-    _logWorker.dispose();
+    _processWorker.dispose();
     _scriptLogSubscription?.cancel();
   }
 
@@ -578,7 +596,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
         for (final block in blocks) {
           if (block is SingleCommandBlock) {
-            await executeCommandOnDevice(serial, block.command, logCommand: true, updateTaskOverlay: false);
+            await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
           } else if (block is BashScriptBlock) {
             await _executeBashBlockOnDevice(serial, block.commands, deviceModel: device.modelName);
           }
@@ -635,7 +653,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final executable = 'adb';
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    await _logWorker.executeCommand(
+    await _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
       executable: executable,
