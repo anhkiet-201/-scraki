@@ -132,6 +132,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
               if (list.length > 500) {
                 list.removeRange(0, list.length - 500);
               }
+              _updateTaskStatusFromLog(serial, entry);
             },
           );
         });
@@ -140,6 +141,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       _processWorker.onShellStateChanged = (serial, isRunning) {
         runInAction(() {
           _shellStates[serial] = isRunning;
+          _handleShellStateChanged(serial, isRunning);
         });
       };
     });
@@ -308,27 +310,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final parsed = _parseCommand(command, serial);
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    if (updateTaskOverlay) {
-      sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.command, status: command);
-    }
-
-    try {
-      await _processWorker.executeCommand(
-        commandId: commandId,
-        serial: serial,
-        executable: parsed.executable,
-        arguments: parsed.arguments,
-        modelName: deviceName,
-      );
-
-      if (updateTaskOverlay) {
-        _setTaskSuccess(serial, DeviceTaskType.command);
-      }
-    } catch (e) {
-      if (updateTaskOverlay) {
-        _setTaskFailed(serial, DeviceTaskType.command, e);
-      }
-    }
+    await _processWorker.executeCommand(
+      commandId: commandId,
+      serial: serial,
+      executable: parsed.executable,
+      arguments: parsed.arguments,
+      modelName: deviceName,
+    );
   }
 
   @action
@@ -347,13 +335,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
     await _executeBatch((serial) async {
       final device = getDeviceBySerial(serial);
-      try {
-        if (device == null) return;
-        await _executeScriptOnDevice(serial, script, args, device.modelName);
-        _setTaskSuccess(serial, DeviceTaskType.script);
-      } catch (e) {
-        _setTaskFailed(serial, DeviceTaskType.script, e);
-      }
+      if (device == null) return;
+      await _executeScriptOnDevice(serial, script, args, device.modelName);
     });
   }
 
@@ -478,9 +461,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
       try {
         await _executeScriptOnDevice(serial, script, args, device.modelName);
-        _setTaskSuccess(serial, DeviceTaskType.script);
       } catch (e) {
-        _setTaskFailed(serial, DeviceTaskType.script, e);
         final errorMsg = e.toString();
         // Lỗi từ tiến trình đã được Isolate log qua addLog(), không log lại để tránh trùng lặp.
         if (!errorMsg.contains('Process exited with code')) {
@@ -552,35 +533,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     return _CommandArgs(executable, cmd);
   }
 
-  void _setTaskSuccess(String serial, DeviceTaskType type) {
-    sessionManagerStore.updateDeviceTask(serial, type: type, status: 'Hoàn thành!', phase: DeviceTaskPhase.success);
-    Future.delayed(const Duration(seconds: 2), () {
-      final currentTask = sessionManagerStore.activeTasks[serial];
-      if (currentTask != null && currentTask.phase == DeviceTaskPhase.success) {
-        sessionManagerStore.clearDeviceTask(serial);
-      }
-    });
-  }
-
-  void _setTaskFailed(String serial, DeviceTaskType type, Object error) {
-    final errorMsg = error.toString();
-    final isCanceled = errorMsg.contains('Canceled') || errorMsg.contains('code: -1');
-    final isTimeout = errorMsg.contains('Timeout') || errorMsg.contains('code: -2');
-    final statusMsg = isCanceled ? 'Đã dừng!' : (isTimeout ? 'Timeout!' : 'Lỗi');
-    sessionManagerStore.updateDeviceTask(
-      serial,
-      type: type,
-      status: statusMsg,
-      phase: DeviceTaskPhase.failed,
-    );
-    Future.delayed(Duration(seconds: (isCanceled || isTimeout) ? 2 : 3), () {
-      final currentTask = sessionManagerStore.activeTasks[serial];
-      if (currentTask != null && currentTask.phase == DeviceTaskPhase.failed) {
-        sessionManagerStore.clearDeviceTask(serial);
-      }
-    });
-  }
-
   Future<void> _executeScriptOnDevice(
     String serial,
     ScriptEntity script,
@@ -588,7 +540,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     String deviceModel,
   ) async {
     lastExecutions[serial] = ScriptExecution(script, args);
-    sessionManagerStore.updateDeviceTask(serial, type: DeviceTaskType.script, status: 'Đang chạy: ${script.name}');
 
     final processedCommands = script.commands
         .map((cmd) => _interpolator.interpolate(cmd, {
@@ -607,6 +558,80 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         await _executeBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
       }
     }
+  }
+
+  void _handleShellStateChanged(String serial, bool isRunning) {
+    if (isRunning) {
+      final exec = lastExecutions[serial];
+      if (exec == null) return;
+
+      DeviceTaskType type;
+      String label;
+      if (exec is ScriptExecution) {
+        type = DeviceTaskType.script;
+        label = exec.script.name;
+      } else {
+        type = DeviceTaskType.command;
+        label = (exec as CommandExecution).command;
+      }
+
+      sessionManagerStore.updateDeviceTask(
+        serial,
+        type: type,
+        label: label,
+        status: 'Khởi chạy...',
+        phase: DeviceTaskPhase.running,
+      );
+    } else {
+      final currentTask = sessionManagerStore.activeTasks[serial];
+      if (currentTask == null) return;
+
+      final logs = deviceLogs[serial];
+      bool isFailed = false;
+      String statusMsg = 'Hoàn thành!';
+
+      if (logs != null && logs.isNotEmpty) {
+        final lastLog = logs.last;
+        final lowerMsg = lastLog.message.toLowerCase();
+        if (lastLog.type == LogType.error || 
+            lowerMsg.contains('failed') ||
+            lowerMsg.contains('error') ||
+            lowerMsg.contains('timeout') ||
+            lowerMsg.contains('canceled')) {
+          isFailed = true;
+          statusMsg = lastLog.message;
+        }
+      }
+
+      sessionManagerStore.updateDeviceTask(
+        serial,
+        type: currentTask.type,
+        label: currentTask.taskLabel,
+        status: statusMsg,
+        phase: isFailed ? DeviceTaskPhase.failed : DeviceTaskPhase.success,
+      );
+
+      Future.delayed(const Duration(seconds: 2), () {
+        final taskNow = sessionManagerStore.activeTasks[serial];
+        if (taskNow != null && taskNow.phase != DeviceTaskPhase.running) {
+          sessionManagerStore.clearDeviceTask(serial);
+        }
+      });
+    }
+  }
+
+  void _updateTaskStatusFromLog(String serial, LogEntry entry) {
+    final currentTask = sessionManagerStore.activeTasks[serial];
+    if (currentTask == null || currentTask.phase != DeviceTaskPhase.running) return;
+    if (entry.message.trim().isEmpty) return;
+
+    sessionManagerStore.updateDeviceTask(
+      serial,
+      type: currentTask.type,
+      label: currentTask.taskLabel,
+      status: entry.message,
+      phase: DeviceTaskPhase.running,
+    );
   }
 }
 

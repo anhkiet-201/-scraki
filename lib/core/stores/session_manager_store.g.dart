@@ -101,6 +101,7 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
     String serial, {
     required DeviceTaskType type,
     String? status,
+    String? label,
     DeviceTaskPhase phase = DeviceTaskPhase.running,
     bool isRunning = true,
   }) {
@@ -112,6 +113,7 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
         serial,
         type: type,
         status: status,
+        label: label,
         phase: phase,
         isRunning: isRunning,
       );

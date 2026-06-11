@@ -85,6 +85,7 @@ abstract class _SessionManagerStore with Store {
     String serial, {
     required DeviceTaskType type,
     String? status,
+    String? label,
     DeviceTaskPhase phase = DeviceTaskPhase.running,
     bool isRunning = true,
   }) {
@@ -101,6 +102,7 @@ abstract class _SessionManagerStore with Store {
       activeTasks[serial] = DeviceTaskState(
         type: type,
         status: status ?? '',
+        taskLabel: label,
         phase: phase,
       );
     }
@@ -120,10 +122,12 @@ enum DeviceTaskPhase { running, success, failed }
 class DeviceTaskState {
   final DeviceTaskType type;
   final String status;
+  final String? taskLabel;
   final DeviceTaskPhase phase;
 
   DeviceTaskState({
     required this.type,
+    this.taskLabel,
     this.status = '',
     this.phase = DeviceTaskPhase.running,
   });
@@ -134,6 +138,7 @@ class DeviceTaskState {
   }) {
     return DeviceTaskState(
       type: type,
+      taskLabel: taskLabel,
       status: status ?? this.status,
       phase: phase ?? this.phase,
     );
@@ -146,6 +151,7 @@ class DeviceTaskState {
       type == DeviceTaskType.install;
 
   String get label {
+    if(taskLabel != null) return taskLabel!;
     switch (type) {
       case DeviceTaskType.push:
         return 'Đẩy file';
