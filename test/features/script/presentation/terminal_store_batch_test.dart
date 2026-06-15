@@ -106,5 +106,35 @@ void main() {
       expect(bashBlock.commands[0], equals('DELAY=5'));
       expect(bashBlock.commands[1], equals(r'echo $DELAY'));
     });
+
+    test('Parse script containing server bash block and lowercase end labels', () {
+      final commands = [
+        'input tap 100 200',
+        '#bash server',
+        'echo "running on server"',
+        'dir',
+        '#end bash',
+        '#Bash',
+        'echo "running on android"',
+        '#end',
+      ];
+
+      final blocks = ScriptExecutionParser.parse(commands);
+
+      expect(blocks.length, equals(3));
+      expect(blocks[0], isA<SingleCommandBlock>());
+      expect((blocks[0] as SingleCommandBlock).command, equals('input tap 100 200'));
+
+      expect(blocks[1], isA<ServerBashScriptBlock>());
+      final serverBlock = blocks[1] as ServerBashScriptBlock;
+      expect(serverBlock.commands.length, equals(2));
+      expect(serverBlock.commands[0], equals('echo "running on server"'));
+      expect(serverBlock.commands[1], equals('dir'));
+
+      expect(blocks[2], isA<BashScriptBlock>());
+      final androidBlock = blocks[2] as BashScriptBlock;
+      expect(androidBlock.commands.length, equals(1));
+      expect(androidBlock.commands[0], equals('echo "running on android"'));
+    });
   });
 }

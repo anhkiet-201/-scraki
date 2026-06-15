@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 import 'dart:math';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
@@ -501,6 +502,38 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     );
   }
 
+  Future<void> _executeServerBashBlockOnDevice(
+    String serial,
+    List<String> bashCommands, {
+    required String deviceModel,
+  }) async {
+    final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
+    if (cleanCommands.isEmpty) return;
+
+    final isWindows = Platform.isWindows;
+    final executable = isWindows ? 'cmd.exe' : 'sh';
+    final arguments = isWindows ? ['/q'] : <String>[];
+
+    final List<String> scriptLines = [];
+    if (isWindows) {
+      scriptLines.add('@echo off');
+    }
+    scriptLines.addAll(cleanCommands);
+    scriptLines.add('exit');
+
+    final scriptText = '${scriptLines.join(isWindows ? '\r\n' : '\n')}\n';
+    final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
+
+    await _processWorker.executeCommand(
+      commandId: commandId,
+      serial: serial,
+      executable: executable,
+      arguments: arguments,
+      modelName: deviceModel,
+      stdin: scriptText,
+    );
+  }
+
   void _appendLog(LogEntry entry, String? serial) {
     runInAction(() {
       terminalOutput.add(entry);
@@ -557,6 +590,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
       } else if (block is BashScriptBlock) {
         await _executeBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+      } else if (block is ServerBashScriptBlock) {
+        await _executeServerBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
       }
     }
   }
