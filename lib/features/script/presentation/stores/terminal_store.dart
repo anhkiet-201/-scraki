@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
@@ -513,9 +515,15 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final isWindows = Platform.isWindows;
     final executable = isWindows ? 'powershell.exe' : 'sh';
     final scriptText = cleanCommands.join('\n');
-    final arguments = isWindows
-        ? ['-NoLogo', '-NonInteractive', '-Command', scriptText]
-        : ['-c', scriptText];
+
+    final List<String> arguments;
+    if (isWindows) {
+      final bytes = Uint16List.fromList(scriptText.codeUnits).buffer.asUint8List();
+      final base64Text = base64.encode(bytes);
+      arguments = ['-NoLogo', '-NonInteractive', '-EncodedCommand', base64Text];
+    } else {
+      arguments = ['-c', scriptText];
+    }
 
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
