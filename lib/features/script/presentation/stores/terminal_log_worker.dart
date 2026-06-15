@@ -45,20 +45,15 @@ class TerminalLogWorker {
         executionId: map['executionId'] as String?,
       );
 
-      if (entry.overwriteLast) {
-        final index = tempLogs.lastIndexWhere((e) {
-          if (e.type != LogType.output && e.type != LogType.error) return false;
-          if (entry.executionId != null) return e.executionId == entry.executionId;
-          return e.serial == entry.serial;
-        });
+      final index = tempLogs.lastIndexWhere((e) {
+        if (e.type != LogType.output && e.type != LogType.error) return false;
+        if (entry.executionId != null) return e.executionId == entry.executionId;
+        return e.serial == entry.serial;
+      });
 
-        if (index != -1 && tempLogs[index].overwriteLast) {
-          tempLogs[index] = entry;
-          onLogProcessed(entry, index);
-        } else {
-          tempLogs.add(entry);
-          onLogProcessed(entry, null);
-        }
+      if (index != -1 && tempLogs[index].overwriteLast) {
+        tempLogs[index] = entry;
+        onLogProcessed(entry, index);
       } else {
         tempLogs.add(entry);
         onLogProcessed(entry, null);
@@ -96,20 +91,15 @@ class TerminalLogWorker {
           executionId: map['executionId'] as String?,
         );
 
-        if (entry.overwriteLast) {
-          final index = currentList.lastIndexWhere((e) {
-            if (e.type != LogType.output && e.type != LogType.error) return false;
-            if (entry.executionId != null) return e.executionId == entry.executionId;
-            return e.serial == entry.serial;
-          });
+        final index = currentList.lastIndexWhere((e) {
+          if (e.type != LogType.output && e.type != LogType.error) return false;
+          if (entry.executionId != null) return e.executionId == entry.executionId;
+          return e.serial == entry.serial;
+        });
 
-          if (index != -1 && currentList[index].overwriteLast) {
-            currentList[index] = entry;
-            onLogProcessed(serial, entry, index);
-          } else {
-            currentList.add(entry);
-            onLogProcessed(serial, entry, null);
-          }
+        if (index != -1 && currentList[index].overwriteLast) {
+          currentList[index] = entry;
+          onLogProcessed(serial, entry, index);
         } else {
           currentList.add(entry);
           onLogProcessed(serial, entry, null);

@@ -57,7 +57,12 @@ class TerminalProcessWorker {
     return completer.future;
   }
 
-  /// Gửi yêu cầu khởi chạy tiến trình tới Isolate
+  /// Gửi yêu cầu khởi chạy tiến trình tới Isolate.
+  /// [serial] dùng để báo cáo trạng thái và log về Main Thread.
+  /// [processKey] (tuỳ chọn) dùng để quản lý tiến trình trong activeProcesses.
+  /// Nếu không truyền [processKey], mặc định sử dụng [serial].
+  /// Dùng [processKey] khác [serial] khi muốn tiến trình server chạy độc lập
+  /// với tiến trình ADB của cùng thiết bị (ví dụ: processKey = '__server__$serial').
   Future<void> executeCommand({
     required String commandId,
     required String serial,
@@ -65,6 +70,7 @@ class TerminalProcessWorker {
     required List<String> arguments,
     String? modelName,
     String? stdin,
+    String? processKey,
   }) async {
     final completer = Completer<void>();
     _pendingCommands[commandId] = completer;
@@ -73,6 +79,7 @@ class TerminalProcessWorker {
       'type': 'start',
       'commandId': commandId,
       'serial': serial,
+      'processKey': processKey ?? serial,
       'executable': executable,
       'arguments': arguments,
       'modelName': modelName,
@@ -167,15 +174,18 @@ void _processIsolateEntryPoint(SendPort sendPort) {
       if (type == 'start') {
         final commandId = message['commandId'] as String;
         final serial = message['serial'] as String;
+        // processKey: khóa trong activeProcesses. Có thể khác serial khi tiến trình
+        // server bash chạy độc lập với tiến trình ADB của cùng thiết bị.
+        final processKey = message['processKey'] as String? ?? serial;
         final executable = message['executable'] as String;
         final arguments = (message['arguments'] as List).cast<String>();
         final stdinPayload = message['stdin'] as String?;
         final modelName = message['modelName'] as String?;
 
-        // Dừng tiến trình cũ nếu đang chạy trên serial này
-        if (activeProcesses.containsKey(serial)) {
-          activeProcesses[serial]?.kill();
-          activeProcesses.remove(serial);
+        // Dừng tiến trình cũ nếu đang chạy với cùng processKey
+        if (activeProcesses.containsKey(processKey)) {
+          activeProcesses[processKey]?.kill();
+          activeProcesses.remove(processKey);
         }
 
         // Báo trạng thái running về Main
@@ -187,7 +197,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
 
         try {
           final process = await Process.start(executable, arguments);
-          activeProcesses[serial] = process;
+          activeProcesses[processKey] = process;
 
           // Dùng Completer để track khi nào stdout/stderr drain xong,
           // tránh deadlock do backpressure khi buffer đầy.
@@ -195,7 +205,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           final stderrDone = Completer<void>();
 
           _handleProcessStream(
-            stream: process.stdout.transform(utf8.decoder),
+            stream: process.stdout.transform(const Utf8Decoder(allowMalformed: true)),
             serial: serial,
             modelName: modelName,
             type: LogType.output,
@@ -205,7 +215,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           );
 
           _handleProcessStream(
-            stream: process.stderr.transform(utf8.decoder),
+            stream: process.stderr.transform(const Utf8Decoder(allowMalformed: true)),
             serial: serial,
             modelName: modelName,
             type: LogType.error,
@@ -217,8 +227,8 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           if (stdinPayload != null) {
             process.stdin.write(stdinPayload);
             await process.stdin.flush();
-            await process.stdin.close();
           }
+          await process.stdin.close();
 
           // Chờ đồng thời process exit + drain cả hai stream để tránh deadlock.
           final results = await Future.wait<dynamic>([
@@ -228,7 +238,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           ]);
           final int exitCode = results[0] as int;
 
-          activeProcesses.remove(serial);
+          activeProcesses.remove(processKey);
 
           final state = ShellState.fromCode(exitCode);
           final String logs = 'Process exited with code: $exitCode - ${state.message}';
@@ -253,7 +263,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
             if (exitCode != 0) 'error': logs,
           });
         } catch (e) {
-          activeProcesses.remove(serial);
+          activeProcesses.remove(processKey);
 
           batchTimer?.cancel();
           batchTimer = null;
@@ -273,9 +283,12 @@ void _processIsolateEntryPoint(SendPort sendPort) {
         }
       } else if (type == 'stop') {
         final serial = message['serial'] as String;
-        if (activeProcesses.containsKey(serial)) {
-          activeProcesses[serial]?.kill();
-          activeProcesses.remove(serial);
+        // Dừng cả tiến trình ADB và tiến trình server bash của thiết bị
+        for (final key in [serial, '__server__$serial']) {
+          if (activeProcesses.containsKey(key)) {
+            activeProcesses[key]?.kill();
+            activeProcesses.remove(key);
+          }
         }
       } else if (type == 'stop_all') {
         for (final p in activeProcesses.values) {
@@ -297,7 +310,6 @@ void _handleProcessStream({
   String? executionId,
 }) {
   String buffer = '';
-  bool overwrite = false;
   stream.listen((chunk) {
     buffer += chunk;
     while (true) {
@@ -323,19 +335,18 @@ void _handleProcessStream({
       }
       
       buffer = buffer.substring(pos + skip);
-      overwrite = (char == '\r' && skip == 1);
-      onLog(line, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+      final lineOverwrite = (char == '\r' && skip == 1);
+      onLog(line, serial, modelName, type, null, overwriteLast: lineOverwrite, executionId: executionId);
     }
   }, onDone: () {
     if (buffer.isNotEmpty) {
       if (buffer.endsWith('\r')) {
         final cleanBuffer = buffer.substring(0, buffer.length - 1);
-        onLog(cleanBuffer, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+        onLog(cleanBuffer, serial, modelName, type, null, overwriteLast: true, executionId: executionId);
       } else {
-        onLog(buffer, serial, modelName, type, null, overwriteLast: overwrite, executionId: executionId);
+        onLog(buffer, serial, modelName, type, null, overwriteLast: false, executionId: executionId);
       }
     }
-    overwrite = false;
     onDone?.call();
   });
 }

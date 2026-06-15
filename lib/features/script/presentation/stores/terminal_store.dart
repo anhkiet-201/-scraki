@@ -518,9 +518,35 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
     final List<String> arguments;
     if (isWindows) {
-      final bytes = Uint16List.fromList(scriptText.codeUnits).buffer.asUint8List();
+      // --- Script Setup ---
+      // PowerShell khi stdout bị pipe (không phải console) tự động bật CLIXML format,
+      // serialize mọi output (Write-Host, progress...) thành XML <Objs>.
+      // Fix 3 lớp:
+      //   1. [Console]::OutputEncoding = UTF8: Dart decode stdout bằng utf8.decoder.
+      //   2. $ProgressPreference = 'SilentlyContinue': Tắt progress bar XML.
+      //   3. Override Write-Host → Write-Output: Chuyển output của Write-Host
+      //      từ Information stream (stream 6, bị serialize thành CLIXML)
+      //      về stdout stream (stream 1, plain text).
+      const scriptSetup = r'''
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$ProgressPreference = 'SilentlyContinue'
+function Write-Host {
+    param(
+        [Parameter(Position=0, ValueFromPipeline=$true, ValueFromRemainingArguments=$true)]
+        $Object,
+        [switch]$NoNewLine,
+        $ForegroundColor,
+        $BackgroundColor,
+        $Separator
+    )
+    process { if ($null -ne $Object) { Write-Output ([string]$Object) } }
+}
+''';
+      final fullScript = '$scriptSetup$scriptText';
+      final bytes = Uint16List.fromList(fullScript.codeUnits).buffer.asUint8List();
       final base64Text = base64.encode(bytes);
-      arguments = ['-NoLogo', '-NonInteractive', '-EncodedCommand', base64Text];
+      // -OutputFormat Text: Tắt CLIXML, ép PowerShell xuất plain text.
+      arguments = ['-NoLogo', '-NonInteractive', '-NoProfile', '-OutputFormat', 'Text', '-EncodedCommand', base64Text];
     } else {
       arguments = ['-c', scriptText];
     }
@@ -533,6 +559,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       executable: executable,
       arguments: arguments,
       modelName: deviceModel,
+      processKey: '__server__$serial',
     );
   }
 
