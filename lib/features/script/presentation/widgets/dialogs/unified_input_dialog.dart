@@ -232,26 +232,27 @@ class _UnifiedInputDialogState extends State<UnifiedInputDialog> {
                           },
                           onPerformDrop: (event) async {
                             setState(() => _isFileDragOver = false);
-                            final paths = <String>[];
-                            for (final item in event.session.items) {
+                            final futures = event.session.items.map((item) async {
                               final reader = item.dataReader;
                               if (reader != null && reader.canProvide(Formats.fileUri)) {
                                 final completer = Completer<Uri?>();
                                 final dynamic dReader = reader;
-                                void callback(Object? value) {
+                                dReader.getValue(Formats.fileUri, (Object? value) {
                                   if (!completer.isCompleted) {
                                     completer.complete(value as Uri?);
                                   }
-                                }
-                                dReader.getValue(Formats.fileUri, callback);
+                                });
                                 final uri = await completer.future;
                                 if (uri != null && uri.isScheme('file')) {
-                                  final path = Uri.decodeComponent(uri.toFilePath());
-                                  paths.add(path);
+                                  return Uri.decodeComponent(uri.toFilePath());
                                 }
-                                completer.future.ignore(); // Tránh các cảnh báo unhandled future.
                               }
-                            }
+                              return null;
+                            });
+
+                            final results = await Future.wait(futures);
+                            final paths = results.whereType<String>().toList();
+
                             if (paths.isNotEmpty) {
                               setState(() {
                                 _fileController.text = paths.join('\n');

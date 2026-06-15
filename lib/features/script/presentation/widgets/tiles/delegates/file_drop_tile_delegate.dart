@@ -85,26 +85,27 @@ class _DropHighlightWrapperState extends State<_DropHighlightWrapper> {
       },
       onPerformDrop: (event) async {
         setState(() => _isDraggingOver = false);
-        final paths = <String>[];
-        for (final item in event.session.items) {
+        final futures = event.session.items.map((item) async {
           final reader = item.dataReader;
           if (reader != null && reader.canProvide(Formats.fileUri)) {
             final completer = Completer<Uri?>();
             final dynamic dReader = reader;
-            void callback(Object? value) {
+            dReader.getValue(Formats.fileUri, (Object? value) {
               if (!completer.isCompleted) {
                 completer.complete(value as Uri?);
               }
-            }
-
-            dReader.getValue(Formats.fileUri, callback);
+            });
             final uri = await completer.future;
             if (uri != null && uri.isScheme('file')) {
-              final path = Uri.decodeComponent(uri.toFilePath());
-              paths.add(path);
+              return Uri.decodeComponent(uri.toFilePath());
             }
           }
-        }
+          return null;
+        });
+
+        final results = await Future.wait(futures);
+        final paths = results.whereType<String>().toList();
+
         if (paths.isNotEmpty) {
           widget.onFileDropped?.call(paths.join('\n'));
         }
