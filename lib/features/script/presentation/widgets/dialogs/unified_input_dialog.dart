@@ -6,167 +6,15 @@ import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
-import '../script_tile_delegate.dart';
-import 'default_tile_ui_mixin.dart';
 
-/// Delegate hỗ trợ nhập nội dung trước khi chạy script (tự động phát hiện ô nhập đơn hoặc nhiều tham số).
-class InputTileDelegate with DefaultTileUiMixin implements ScriptTileDelegate {
-  @override
-  final ScriptTileDelegateCall? onRun;
-
-  @override
-  final ScriptTileDelegateCall? onDelete;
-
-  @override
-  final ScriptTileDelegateCall? onEdit;
-
-  @override
-  final bool isExecuting;
-
-  InputTileDelegate({
-    this.onRun,
-    this.onDelete,
-    this.onEdit,
-    this.isExecuting = false,
-  });
-
-  @override
-  Widget? buildTrailing(BuildContext context, ScriptEntity script) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          onPressed: () => _handleRunClick(context, script),
-          icon: const Icon(Icons.play_arrow_rounded, size: 20),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          color: const Color(0xFF10B981),
-          tooltip: 'Chạy script',
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: () => onEdit?.call(script),
-          icon: const Icon(Icons.edit_rounded, size: 14),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-          tooltip: 'Sửa script',
-        ),
-        const SizedBox(width: 4),
-        IconButton(
-          onPressed: () => _showDeleteConfirm(context, script),
-          icon: const Icon(Icons.delete_outline_rounded, size: 14),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          color: theme.colorScheme.error.withValues(alpha: 0.6),
-          tooltip: 'Xóa script',
-        ),
-      ],
-    );
-  }
-
-  @override
-  void onTap(BuildContext context, ScriptEntity script) {
-    onEdit?.call(script);
-  }
-
-  Set<String> _extractInputKeys(List<String> commands) {
-    final regex = RegExp(r'\{input:([^}]+)\}');
-    final keys = <String>{};
-    for (final command in commands) {
-      final matches = regex.allMatches(command);
-      for (final match in matches) {
-        final key = match.group(1);
-        if (key != null && key.trim().isNotEmpty) {
-          keys.add(key.trim());
-        }
-      }
-    }
-    return keys;
-  }
-
-  bool _hasSingleInput(List<String> commands) {
-    final regex = RegExp(r'\{input(?!:)\}');
-    return commands.any((command) => regex.hasMatch(command));
-  }
-
-  bool _hasFileInput(List<String> commands) {
-    final regex = RegExp(r'\{file\}');
-    return commands.any((command) => regex.hasMatch(command));
-  }
-
-  bool _onlyRequiresFile(List<String> commands) {
-    final hasFile = _hasFileInput(commands);
-    final hasSingle = _hasSingleInput(commands);
-    final hasKeys = _extractInputKeys(commands).isNotEmpty;
-    return hasFile && !hasSingle && !hasKeys;
-  }
-
-  void _handleRunClick(BuildContext context, ScriptEntity script) {
-    final staged = getIt<ScriptManagementStore>().stagedFiles[script.id];
-    final onlyFile = _onlyRequiresFile(script.commands);
-
-    if (onlyFile && staged != null && staged.trim().isNotEmpty) {
-      onRun?.call(script, {'file': staged});
-    } else {
-      _showInputDialog(context, script);
-    }
-  }
-
-  void _showInputDialog(BuildContext context, ScriptEntity script) {
-    final keys = _extractInputKeys(script.commands);
-    final hasSingle = _hasSingleInput(script.commands);
-    final hasFile = _hasFileInput(script.commands);
-
-    showDialog<Map<String, String>?>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (context) => _UnifiedInputDialog(
-        script: script,
-        keys: keys,
-        hasSingleInput: hasSingle,
-        hasFileInput: hasFile,
-      ),
-    ).then((args) {
-      if (args != null) {
-        onRun?.call(script, args);
-      }
-    });
-  }
-
-  void _showDeleteConfirm(BuildContext context, ScriptEntity script) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xóa Script'),
-        content: Text('Bạn có chắc chắn muốn xóa script "${script.name}" không?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onDelete?.call(script);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UnifiedInputDialog extends StatefulWidget {
+class UnifiedInputDialog extends StatefulWidget {
   final ScriptEntity script;
   final Set<String> keys;
   final bool hasSingleInput;
   final bool hasFileInput;
 
-  const _UnifiedInputDialog({
+  const UnifiedInputDialog({
+    super.key,
     required this.script,
     required this.keys,
     required this.hasSingleInput,
@@ -174,10 +22,10 @@ class _UnifiedInputDialog extends StatefulWidget {
   });
 
   @override
-  State<_UnifiedInputDialog> createState() => _UnifiedInputDialogState();
+  State<UnifiedInputDialog> createState() => _UnifiedInputDialogState();
 }
 
-class _UnifiedInputDialogState extends State<_UnifiedInputDialog> {
+class _UnifiedInputDialogState extends State<UnifiedInputDialog> {
   final Map<String, TextEditingController> _multiControllers = {};
   late final TextEditingController _singleController;
   late final TextEditingController _fileController;
@@ -401,6 +249,7 @@ class _UnifiedInputDialogState extends State<_UnifiedInputDialog> {
                                   final path = Uri.decodeComponent(uri.toFilePath());
                                   paths.add(path);
                                 }
+                                completer.future.ignore(); // Tránh các cảnh báo unhandled future.
                               }
                             }
                             if (paths.isNotEmpty) {
@@ -584,77 +433,77 @@ class _UnifiedInputDialogState extends State<_UnifiedInputDialog> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  key,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF475569),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  maxLines: null,
-                                  minLines: 3,
-                                  controller: _multiControllers[key],
-                                  autofocus: !showWarning &&
-                                      !widget.hasSingleInput &&
-                                      !widget.hasFileInput &&
-                                      widget.keys.first == key,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 15,
-                                    color: const Color(0xFF1E293B),
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Nhập giá trị cho $key...',
-                                    hintStyle: GoogleFonts.outfit(
-                                      color: const Color(0xFF94A3B8),
+                                  Text(
+                                    key,
+                                    style: GoogleFonts.outfit(
                                       fontSize: 13,
-                                    ),
-                                    filled: true,
-                                    fillColor: const Color(0xFFF8FAFC),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE2E8F0),
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFF4F46E5),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: Colors.redAccent,
-                                      ),
-                                    ),
-                                    focusedErrorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(
-                                        color: Colors.redAccent,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    errorStyle: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF475569),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'Vui lòng nhập giá trị';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    maxLines: null,
+                                    minLines: 3,
+                                    controller: _multiControllers[key],
+                                    autofocus: !showWarning &&
+                                        !widget.hasSingleInput &&
+                                        !widget.hasFileInput &&
+                                        widget.keys.first == key,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 15,
+                                      color: const Color(0xFF1E293B),
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Nhập giá trị cho $key...',
+                                      hintStyle: GoogleFonts.outfit(
+                                        color: const Color(0xFF94A3B8),
+                                        fontSize: 13,
+                                      ),
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFC),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF4F46E5),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      errorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                      focusedErrorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.redAccent,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      errorStyle: GoogleFonts.outfit(
+                                        fontSize: 11,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'Vui lòng nhập giá trị';
+                                      }
+                                      return null;
+                                    },
+                                  ),
                               ],
                             ),
                           );

@@ -1,4 +1,10 @@
-enum ScriptTileType { normal, confirm, dialog, input }
+enum ScriptTileType {
+  normal,
+  confirm,
+  dialog,
+  @Deprecated('Use normal instead. Input prompts are now auto-detected.')
+  input,
+}
 
 class ScriptEntity {
   final String id;

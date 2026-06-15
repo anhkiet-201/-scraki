@@ -9,7 +9,7 @@ import 'package:scraki/features/script/presentation/widgets/tiles/delegates/file
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/confirm_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/normal_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/dialog_tile_delegate.dart';
-import 'package:scraki/features/script/presentation/widgets/tiles/delegates/input_tile_delegate.dart';
+import 'package:scraki/features/script/presentation/widgets/dialogs/unified_input_dialog.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/script_tile_delegate.dart';
 
 class ScriptSidebar extends StatefulWidget {
@@ -193,11 +193,73 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                         
                         // 1. Tạo core delegate dựa trên tileType
                         ScriptTileDelegate coreDelegate;
+                        bool hasSingleInput(List<String> commands) {
+                          final regex = RegExp(r'\{input(?!:)\}');
+                          return commands.any((command) => regex.hasMatch(command));
+                        }
+
+                        bool hasFileInput(List<String> commands) {
+                          final regex = RegExp(r'\{file\}');
+                          return commands.any((command) => regex.hasMatch(command));
+                        }
+
+                        Set<String> extractInputKeys(List<String> commands) {
+                          final regex = RegExp(r'\{input:([^}]+)\}');
+                          final keys = <String>{};
+                          for (final command in commands) {
+                            final matches = regex.allMatches(command);
+                            for (final match in matches) {
+                              final key = match.group(1);
+                              if (key != null && key.trim().isNotEmpty) {
+                                keys.add(key.trim());
+                              }
+                            }
+                          }
+                          return keys;
+                        }
+
                         void onRun(ScriptEntity s, [Map<String, String>? args]) {
                           if (widget.terminalStore.isExecuting) {
                             widget.terminalStore.stopAll();
+                            return;
+                          }
+
+                          final staged = widget.scriptStore.stagedFiles[s.id];
+                          final hasStagedFile = staged != null && staged.trim().isNotEmpty;
+
+                          final keys = extractInputKeys(s.commands);
+                          final hasSingle = hasSingleInput(s.commands);
+                          final hasFile = hasFileInput(s.commands);
+
+                          bool needsDialog = false;
+                          if (hasSingle && (args == null || !args.containsKey('input') || args['input']!.isEmpty)) {
+                            needsDialog = true;
+                          }
+                          for (final key in keys) {
+                            if (args == null || !args.containsKey(key) || args[key]!.isEmpty) {
+                              needsDialog = true;
+                            }
+                          }
+                          if (hasFile && !hasStagedFile && (args == null || !args.containsKey('file') || args['file']!.isEmpty)) {
+                            needsDialog = true;
+                          }
+
+                          if (needsDialog) {
+                            showDialog<Map<String, String>?>(
+                              context: context,
+                              barrierColor: Colors.black.withValues(alpha: 0.4),
+                              builder: (context) => UnifiedInputDialog(
+                                script: s,
+                                keys: keys,
+                                hasSingleInput: hasSingle,
+                                hasFileInput: hasFile,
+                              ),
+                            ).then((newArgs) {
+                              if (newArgs != null) {
+                                onRun(s, newArgs);
+                              }
+                            });
                           } else {
-                            final staged = widget.scriptStore.stagedFiles[s.id];
                             final finalArgs = <String, String>{
                               if (staged != null && staged.trim().isNotEmpty) 'file': staged,
                               ...?args,
@@ -232,7 +294,7 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                               isExecuting: isExecuting,
                             );
                           case ScriptTileType.input:
-                            coreDelegate = InputTileDelegate(
+                            coreDelegate = NormalTileDelegate(
                               onRun: onRun,
                               onDelete: onDelete,
                               onEdit: onEdit,

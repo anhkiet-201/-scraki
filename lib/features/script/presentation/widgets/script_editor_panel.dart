@@ -343,8 +343,6 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
               _buildTypeChip('Inline', ScriptTileType.confirm),
               const SizedBox(width: 8),
               _buildTypeChip('Dialog', ScriptTileType.dialog),
-              const SizedBox(width: 8),
-              _buildTypeChip('Input', ScriptTileType.input),
             ],
           ),
           const Padding(
