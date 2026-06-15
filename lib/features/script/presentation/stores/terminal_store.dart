@@ -512,13 +512,11 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
     final isWindows = Platform.isWindows;
     final executable = isWindows ? 'powershell.exe' : 'sh';
-    final arguments = isWindows ? ['-NoLogo', '-NonInteractive', '-Command', '-'] : <String>[];
+    final scriptText = cleanCommands.join('\n');
+    final arguments = isWindows
+        ? ['-NoLogo', '-NonInteractive', '-Command', scriptText]
+        : ['-c', scriptText];
 
-    final List<String> scriptLines = [];
-    scriptLines.addAll(cleanCommands);
-    scriptLines.add('exit');
-
-    final scriptText = '${scriptLines.join('\n')}\n';
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
     await _processWorker.executeCommand(
@@ -527,7 +525,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       executable: executable,
       arguments: arguments,
       modelName: deviceModel,
-      stdin: scriptText,
     );
   }
 
