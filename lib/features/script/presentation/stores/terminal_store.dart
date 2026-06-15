@@ -511,17 +511,14 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     if (cleanCommands.isEmpty) return;
 
     final isWindows = Platform.isWindows;
-    final executable = isWindows ? 'cmd.exe' : 'sh';
-    final arguments = isWindows ? ['/q'] : <String>[];
+    final executable = isWindows ? 'powershell.exe' : 'sh';
+    final arguments = isWindows ? ['-NoLogo', '-NonInteractive', '-Command', '-'] : <String>[];
 
     final List<String> scriptLines = [];
-    if (isWindows) {
-      scriptLines.add('@echo off');
-    }
     scriptLines.addAll(cleanCommands);
     scriptLines.add('exit');
 
-    final scriptText = '${scriptLines.join(isWindows ? '\r\n' : '\n')}\n';
+    final scriptText = '${scriptLines.join('\n')}\n';
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
     await _processWorker.executeCommand(
