@@ -38,27 +38,27 @@ class TerminalView extends StatelessWidget {
           TerminalHeader(store: store),
           // Log Stream
           Expanded(
-            child: SelectionArea(
-              child: Observer(
-                builder: (_) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    itemCount: store.terminalOutput.length,
-                    reverse: true,
-                    itemBuilder: (context, index) {
-                      final log = store.terminalOutput.reversed
-                          .toList()[index];
-                      final prevLog = index > 0
-                          ? store.terminalOutput[index - 1]
-                          : null;
-                      return LogLineItem(log: log, prevLog: prevLog);
-                    },
-                  );
-                },
-              ),
+            child: Observer(
+              builder: (_) {
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  itemCount: store.terminalOutput.length,
+                  reverse: true,
+                  itemBuilder: (context, index) {
+                    final log = store.terminalOutput.reversed
+                        .toList()[index];
+                    final prevLog = index > 0
+                        ? store.terminalOutput[index - 1]
+                        : null;
+                    return SelectionArea(
+                      child: LogLineItem(log: log, prevLog: prevLog),
+                    );
+                  },
+                );
+              },
             ),
           ),
           TerminalPrompt(

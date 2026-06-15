@@ -187,90 +187,90 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               color: Colors.white,
-              child: SelectionArea(
-                child: Observer(
-                  builder: (context) {
-                    final itemCount =
-                        _store.deviceLogs[widget.device.serial]?.length ?? 0;
-                    return ListView.builder(
-                      itemCount: itemCount,
-                      reverse: true,
-                      itemBuilder: (context, i) {
-                        final log = _store
-                            .deviceLogs[widget.device.serial]!
-                            .reversed
-                            .toList()[i];
-                        switch (log.type) {
-                          case LogType.command:
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    r'$ ',
+              child: Observer(
+                builder: (context) {
+                  final itemCount =
+                      _store.deviceLogs[widget.device.serial]?.length ?? 0;
+                  return ListView.builder(
+                    itemCount: itemCount,
+                    reverse: true,
+                    itemBuilder: (context, i) {
+                      final log = _store
+                          .deviceLogs[widget.device.serial]!
+                          .reversed
+                          .toList()[i];
+                      final Widget logItem;
+                      switch (log.type) {
+                        case LogType.command:
+                          logItem = Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  r'$ ',
+                                  style: GoogleFonts.firaCode(
+                                    fontSize: 9,
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    log.message,
                                     style: GoogleFonts.firaCode(
                                       fontSize: 9,
-                                      color: theme.colorScheme.primary,
+                                      color: const Color(
+                                        0xFF1E293B,
+                                      ), // Slate 800
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  Expanded(
-                                    child: Text(
-                                      log.message,
-                                      style: GoogleFonts.firaCode(
-                                        fontSize: 9,
-                                        color: const Color(
-                                          0xFF1E293B,
-                                        ), // Slate 800
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          case LogType.error:
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                log.message,
-                                style: GoogleFonts.firaCode(
-                                  fontSize: 9,
-                                  color: Colors.red.shade700,
-                                  height: 1.4,
                                 ),
+                              ],
+                            ),
+                          );
+                        case LogType.error:
+                          logItem = Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              log.message,
+                              style: GoogleFonts.firaCode(
+                                fontSize: 9,
+                                color: Colors.red.shade700,
+                                height: 1.4,
                               ),
-                            );
-                          case LogType.info:
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                '// ${log.message}',
-                                style: GoogleFonts.firaCode(
-                                  fontSize: 9,
-                                  color: const Color(0xFF94A3B8), // Slate 400
-                                  fontStyle: FontStyle.italic,
-                                ),
+                            ),
+                          );
+                        case LogType.info:
+                          logItem = Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              '// ${log.message}',
+                              style: GoogleFonts.firaCode(
+                                fontSize: 9,
+                                color: const Color(0xFF94A3B8), // Slate 400
+                                fontStyle: FontStyle.italic,
                               ),
-                            );
-                          default:
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 1),
-                              child: Text(
-                                log.message,
-                                style: GoogleFonts.firaCode(
-                                  fontSize: 9,
-                                  color: const Color(0xFF334155), // Slate 700
-                                  height: 1.5,
-                                ),
+                            ),
+                          );
+                        default:
+                          logItem = Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 1),
+                            child: Text(
+                              log.message,
+                              style: GoogleFonts.firaCode(
+                                fontSize: 9,
+                                color: const Color(0xFF334155), // Slate 700
+                                height: 1.5,
                               ),
-                            );
-                        }
-                      },
-                    );
-                  },
-                ),
+                            ),
+                          );
+                      }
+                      return SelectionArea(child: logItem);
+                    },
+                  );
+                },
               ),
             ),
           ),
