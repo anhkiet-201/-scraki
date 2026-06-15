@@ -13,6 +13,7 @@ abstract class IImapRemoteDataSource {
     required String email,
     required String clientId,
     required String refreshToken,
+    void Function(String newRefreshToken)? onTokenRotated,
   });
 }
 
@@ -23,20 +24,26 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
     required String email,
     required String clientId,
     required String refreshToken,
+    void Function(String newRefreshToken)? onTokenRotated,
   }) async* {
     try {
-      final accessToken = await _getAccessToken(
+      final result = await _getAccessToken(
         clientId: clientId,
         refreshToken: refreshToken,
       );
 
-      yield* _streamFromImap(email: email, accessToken: accessToken);
+      // Thông báo token rotation nếu Microsoft trả về refresh_token mới
+      if (result.newRefreshToken != null) {
+        onTokenRotated?.call(result.newRefreshToken!);
+      }
+
+      yield* _streamFromImap(email: email, accessToken: result.accessToken);
     } catch (e) {
       yield Left(ApiFailure('IMAP Connection failed: $e'));
     }
   }
 
-  Future<String> _getAccessToken({
+  Future<({String accessToken, String? newRefreshToken})> _getAccessToken({
     required String clientId,
     required String refreshToken,
   }) async {
@@ -54,7 +61,11 @@ class ImapRemoteDataSourceImpl implements IImapRemoteDataSource {
       throw Exception('TOKEN ERROR: ${res.body}');
     }
 
-    return jsonDecode(res.body)['access_token'] as String;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return (
+      accessToken: data['access_token'] as String,
+      newRefreshToken: data['refresh_token'] as String?,
+    );
   }
 
   String _buildXoauth2(String email, String accessToken) {

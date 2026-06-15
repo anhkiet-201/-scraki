@@ -22,8 +22,6 @@ abstract class IEmailRepository {
   Future<Either<Failure, Unit>> bulkAddEmailAccounts(List<EmailAccount> accounts);
 
   Stream<Either<Failure, EmailMessage>> streamLatestEmails({
-    required String email,
-    required String clientId,
-    required String refreshToken,
+    required EmailAccount account,
   });
 }

@@ -159,9 +159,7 @@ abstract class _EmailStore with Store {
     _emailSubscription?.cancel();
     _emailSubscription = _emailRepository
         .streamLatestEmails(
-          email: matchedAccount!.email,
-          clientId: matchedAccount!.clientId,
-          refreshToken: matchedAccount!.refreshToken,
+          account: matchedAccount!,
         )
         .listen(
           (eitherMsg) {

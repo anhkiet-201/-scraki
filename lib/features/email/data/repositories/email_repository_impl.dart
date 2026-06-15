@@ -67,14 +67,17 @@ class EmailRepositoryImpl implements IEmailRepository {
 
   @override
   Stream<Either<Failure, EmailMessage>> streamLatestEmails({
-    required String email,
-    required String clientId,
-    required String refreshToken,
+    required EmailAccount account,
   }) {
     return _imapDataSource.streamLatestEmails(
-      email: email,
-      clientId: clientId,
-      refreshToken: refreshToken,
+      email: account.email,
+      clientId: account.clientId,
+      refreshToken: account.refreshToken,
+      onTokenRotated: (newToken) {
+        // Cập nhật Firebase bất đồng bộ khi nhận refresh_token mới từ Microsoft
+        final updatedAccount = account.copyWith(refreshToken: newToken);
+        _credentialDataSource.updateEmailAccount(updatedAccount);
+      },
     );
   }
 }
