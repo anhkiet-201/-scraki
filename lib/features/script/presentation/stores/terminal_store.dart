@@ -12,6 +12,7 @@ import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/script/presentation/stores/script_management_store.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
+import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
@@ -215,7 +216,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
               : null,
         );
       }
-      return executeCommandOnDevice(serial, processedCmd, logCommand: false);
+      await executeCommandOnDevice(serial, processedCmd, logCommand: false);
     });
   }
 
@@ -272,13 +273,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   }
 
   @action
-  Future<void> executeCommandOnDevice(
+  Future<int> executeCommandOnDevice(
     String serial,
     String command, {
     bool logCommand = true,
     bool updateTaskOverlay = true,
   }) async {
-    if (command.trim().isEmpty) return;
+    if (command.trim().isEmpty) return 0;
 
     final device = getDeviceBySerial(serial);
 
@@ -287,7 +288,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         'Lỗi: Không tìm thấy thiết bị với serial $serial',
         type: LogType.error,
       );
-      return;
+      return -1;
     }
 
     final deviceName = device.modelName;
@@ -308,13 +309,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
         'Lỗi: Không tìm thấy shell cho thiết bị với serial $serial',
         type: LogType.error,
       );
-      return;
+      return -1;
     }
 
     final parsed = _parseCommand(command, serial);
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    await _processWorker.executeCommand(
+    return await _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
       executable: parsed.executable,
@@ -480,13 +481,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     }
   }
 
-  Future<void> _executeBashBlockOnDevice(
+  Future<int> _executeBashBlockOnDevice(
     String serial,
     List<String> bashCommands, {
     required String deviceModel,
   }) async {
     final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
-    if (cleanCommands.isEmpty) return;
+    if (cleanCommands.isEmpty) return 0;
 
     // Nối thêm lệnh exit và đảm bảo kết thúc bằng newline để tránh treo EOF
     final scriptText = '${['#!/system/bin/sh', ...cleanCommands, 'exit'].join('\n')}\n';
@@ -494,7 +495,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final executable = 'adb';
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    await _processWorker.executeCommand(
+    return await _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
       executable: executable,
@@ -504,13 +505,13 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     );
   }
 
-  Future<void> _executeServerBashBlockOnDevice(
+  Future<int> _executeServerBashBlockOnDevice(
     String serial,
     List<String> bashCommands, {
     required String deviceModel,
   }) async {
     final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
-    if (cleanCommands.isEmpty) return;
+    if (cleanCommands.isEmpty) return 0;
 
     final isWindows = Platform.isWindows;
     final executable = isWindows ? 'powershell.exe' : 'sh';
@@ -553,7 +554,7 @@ function Write-Host {
 
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    await _processWorker.executeCommand(
+    return await _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
       executable: executable,
@@ -615,12 +616,17 @@ function Write-Host {
     final blocks = ScriptExecutionParser.parse(processedCommands);
 
     for (final block in blocks) {
+      int exitCode = 0;
       if (block is SingleCommandBlock) {
-        await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
+        exitCode = await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
       } else if (block is BashScriptBlock) {
-        await _executeBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+        exitCode = await _executeBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
       } else if (block is ServerBashScriptBlock) {
-        await _executeServerBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+        exitCode = await _executeServerBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+      }
+      final state = ShellState.fromCode(exitCode);
+      if (state == ShellState.stopped || state == ShellState.canceled) {
+        break;
       }
     }
   }

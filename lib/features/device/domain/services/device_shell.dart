@@ -66,11 +66,13 @@ enum ShellState {
   running,
   success,
   canceled,
-  error;
+  error,
+  stopped;
 
   factory ShellState.fromCode(int code) => switch(code){
-    < 0 => ShellState.canceled,
+    < 0 || 1 => ShellState.canceled,
     0 => ShellState.success,
+    99 => ShellState.stopped,
     _ => ShellState.error,
   };
 
@@ -79,5 +81,6 @@ enum ShellState {
     ShellState.success => 'Success!',
     ShellState.canceled => 'Canceled',
     ShellState.error => 'Error!',
+    ShellState.stopped => 'Stopped by user',
   };
 }

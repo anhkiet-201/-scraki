@@ -216,7 +216,7 @@ mixin _$TerminalStore on _TerminalStore, Store {
   );
 
   @override
-  Future<void> executeCommandOnDevice(
+  Future<int> executeCommandOnDevice(
     String serial,
     String command, {
     bool logCommand = true,

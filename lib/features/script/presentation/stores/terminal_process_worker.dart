@@ -15,15 +15,19 @@ class TerminalProcessWorker {
   final ReceivePort _fromIsolatePort = ReceivePort();
 
   // Callbacks phản hồi về Main Thread
-  void Function(List<dynamic> globalRaw, Map<dynamic, dynamic> deviceRaw)? onRawLogsReceived;
+  void Function(List<dynamic> globalRaw, Map<dynamic, dynamic> deviceRaw)?
+  onRawLogsReceived;
   void Function(String serial, bool isRunning)? onShellStateChanged;
 
   // Bản đồ lưu các Completer để đợi lệnh chạy xong
-  final Map<String, Completer<void>> _pendingCommands = {};
+  final Map<String, Completer<int>> _pendingCommands = {};
 
   Future<void> init() async {
     final completer = Completer<void>();
-    _isolate = await Isolate.spawn(_processIsolateEntryPoint, _fromIsolatePort.sendPort);
+    _isolate = await Isolate.spawn(
+      _processIsolateEntryPoint,
+      _fromIsolatePort.sendPort,
+    );
 
     _fromIsolatePort.listen((message) {
       if (message is SendPort) {
@@ -41,14 +45,10 @@ class TerminalProcessWorker {
           onShellStateChanged?.call(serial, isRunning);
         } else if (type == 'command_exit') {
           final commandId = message['commandId'] as String;
-          final error = message['error'] as String?;
+          final exitCode = message['exitCode'] as int? ?? 0;
           final completer = _pendingCommands.remove(commandId);
           if (completer != null) {
-            if (error != null) {
-              completer.completeError(error);
-            } else {
-              completer.complete();
-            }
+            completer.complete(exitCode);
           }
         }
       }
@@ -63,7 +63,7 @@ class TerminalProcessWorker {
   /// Nếu không truyền [processKey], mặc định sử dụng [serial].
   /// Dùng [processKey] khác [serial] khi muốn tiến trình server chạy độc lập
   /// với tiến trình ADB của cùng thiết bị (ví dụ: processKey = '__server__$serial').
-  Future<void> executeCommand({
+  Future<int> executeCommand({
     required String commandId,
     required String serial,
     required String executable,
@@ -72,7 +72,7 @@ class TerminalProcessWorker {
     String? stdin,
     String? processKey,
   }) async {
-    final completer = Completer<void>();
+    final completer = Completer<int>();
     _pendingCommands[commandId] = completer;
 
     _toIsolatePort?.send({
@@ -91,17 +91,12 @@ class TerminalProcessWorker {
 
   /// Gửi yêu cầu dừng một tiến trình cụ thể tới Isolate
   void stopCommand(String serial) {
-    _toIsolatePort?.send({
-      'type': 'stop',
-      'serial': serial,
-    });
+    _toIsolatePort?.send({'type': 'stop', 'serial': serial});
   }
 
   /// Gửi yêu cầu dừng tất cả tiến trình tới Isolate
   void stopAll() {
-    _toIsolatePort?.send({
-      'type': 'stop_all',
-    });
+    _toIsolatePort?.send({'type': 'stop_all'});
   }
 
   void dispose() {
@@ -132,7 +127,9 @@ void _processIsolateEntryPoint(SendPort sendPort) {
       'type': 'logs',
       'global': List<Map<String, dynamic>>.from(globalLogBuffer),
       'device': Map<String, List<Map<String, dynamic>>>.from(
-        deviceLogBuffer.map((k, v) => MapEntry(k, List<Map<String, dynamic>>.from(v))),
+        deviceLogBuffer.map(
+          (k, v) => MapEntry(k, List<Map<String, dynamic>>.from(v)),
+        ),
       ),
     });
 
@@ -140,7 +137,15 @@ void _processIsolateEntryPoint(SendPort sendPort) {
     deviceLogBuffer.clear();
   }
 
-  void addLog(String message, String? serial, String? model, LogType type, int? deviceCount, {bool overwriteLast = false, String? executionId}) {
+  void addLog(
+    String message,
+    String? serial,
+    String? model,
+    LogType type,
+    int? deviceCount, {
+    bool overwriteLast = false,
+    String? executionId,
+  }) {
     final cleanMsg = message.trim();
     if (cleanMsg.isEmpty) return;
 
@@ -184,7 +189,8 @@ void _processIsolateEntryPoint(SendPort sendPort) {
 
         // Dừng tiến trình cũ nếu đang chạy với cùng processKey
         if (activeProcesses.containsKey(processKey)) {
-          activeProcesses[processKey]?.kill();
+          final p = activeProcesses[processKey];
+          if (p != null) _killProcess(p);
           activeProcesses.remove(processKey);
         }
 
@@ -205,7 +211,9 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           final stderrDone = Completer<void>();
 
           _handleProcessStream(
-            stream: process.stdout.transform(const Utf8Decoder(allowMalformed: true)),
+            stream: process.stdout.transform(
+              const Utf8Decoder(allowMalformed: true),
+            ),
             serial: serial,
             modelName: modelName,
             type: LogType.output,
@@ -215,7 +223,9 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           );
 
           _handleProcessStream(
-            stream: process.stderr.transform(const Utf8Decoder(allowMalformed: true)),
+            stream: process.stderr.transform(
+              const Utf8Decoder(allowMalformed: true),
+            ),
             serial: serial,
             modelName: modelName,
             type: LogType.error,
@@ -237,12 +247,18 @@ void _processIsolateEntryPoint(SendPort sendPort) {
             stderrDone.future,
           ]);
           final int exitCode = results[0] as int;
-
           activeProcesses.remove(processKey);
 
           final state = ShellState.fromCode(exitCode);
-          final String logs = 'Process exited with code: $exitCode - ${state.message}';
-          addLog(logs, serial, modelName, exitCode == 0 ? LogType.info : LogType.error, null);
+          final String logs =
+              'Process exited with code: $exitCode - ${state.message}';
+          addLog(
+            logs,
+            serial,
+            modelName,
+            exitCode == 0 ? LogType.info : LogType.error,
+            null,
+          );
 
           // Flush toàn bộ log buffer TRƯỚC khi gửi command_exit để đảm bảo
           // thứ tự log đúng: output của lệnh này phải đến main trước khi
@@ -260,10 +276,15 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           sendPort.send({
             'type': 'command_exit',
             'commandId': commandId,
-            if (exitCode != 0) 'error': logs,
+            'exitCode': exitCode,
+            if (exitCode != 0 && exitCode != 99) 'error': logs,
           });
         } catch (e) {
           activeProcesses.remove(processKey);
+
+          final errorMsg =
+              'Lỗi hệ thống khi khởi chạy tiến trình: ${e.toString()}';
+          addLog(errorMsg, serial, modelName, LogType.error, null);
 
           batchTimer?.cancel();
           batchTimer = null;
@@ -278,7 +299,7 @@ void _processIsolateEntryPoint(SendPort sendPort) {
           sendPort.send({
             'type': 'command_exit',
             'commandId': commandId,
-            'error': e.toString(),
+            'exitCode': -1,
           });
         }
       } else if (type == 'stop') {
@@ -286,13 +307,14 @@ void _processIsolateEntryPoint(SendPort sendPort) {
         // Dừng cả tiến trình ADB và tiến trình server bash của thiết bị
         for (final key in [serial, '__server__$serial']) {
           if (activeProcesses.containsKey(key)) {
-            activeProcesses[key]?.kill();
+            final p = activeProcesses[key];
+            if (p != null) _killProcess(p);
             activeProcesses.remove(key);
           }
         }
       } else if (type == 'stop_all') {
         for (final p in activeProcesses.values) {
-          p.kill();
+          _killProcess(p);
         }
         activeProcesses.clear();
       }
@@ -305,48 +327,94 @@ void _handleProcessStream({
   required String serial,
   required String? modelName,
   required LogType type,
-  required void Function(String message, String? serial, String? model, LogType type, int? deviceCount, {bool overwriteLast, String? executionId}) onLog,
+  required void Function(
+    String message,
+    String? serial,
+    String? model,
+    LogType type,
+    int? deviceCount, {
+    bool overwriteLast,
+    String? executionId,
+  })
+  onLog,
   void Function()? onDone,
   String? executionId,
 }) {
   String buffer = '';
-  stream.listen((chunk) {
-    buffer += chunk;
-    while (true) {
-      int pos = -1;
-      for (int i = 0; i < buffer.length; i++) {
-        if (buffer[i] == '\n' || buffer[i] == '\r') {
-          pos = i;
+  stream.listen(
+    (chunk) {
+      buffer += chunk;
+      while (true) {
+        int pos = -1;
+        for (int i = 0; i < buffer.length; i++) {
+          if (buffer[i] == '\n' || buffer[i] == '\r') {
+            pos = i;
+            break;
+          }
+        }
+        if (pos == -1) break;
+
+        if (buffer[pos] == '\r' && pos == buffer.length - 1) {
           break;
         }
-      }
-      if (pos == -1) break;
 
-      if (buffer[pos] == '\r' && pos == buffer.length - 1) {
-        break;
-      }
+        final char = buffer[pos];
+        final line = buffer.substring(0, pos);
 
-      final char = buffer[pos];
-      final line = buffer.substring(0, pos);
-      
-      int skip = 1;
-      if (char == '\r' && pos + 1 < buffer.length && buffer[pos + 1] == '\n') {
-        skip = 2;
+        int skip = 1;
+        if (char == '\r' &&
+            pos + 1 < buffer.length &&
+            buffer[pos + 1] == '\n') {
+          skip = 2;
+        }
+
+        buffer = buffer.substring(pos + skip);
+        final lineOverwrite = (char == '\r' && skip == 1);
+        onLog(
+          line,
+          serial,
+          modelName,
+          type,
+          null,
+          overwriteLast: lineOverwrite,
+          executionId: executionId,
+        );
       }
-      
-      buffer = buffer.substring(pos + skip);
-      final lineOverwrite = (char == '\r' && skip == 1);
-      onLog(line, serial, modelName, type, null, overwriteLast: lineOverwrite, executionId: executionId);
-    }
-  }, onDone: () {
-    if (buffer.isNotEmpty) {
-      if (buffer.endsWith('\r')) {
-        final cleanBuffer = buffer.substring(0, buffer.length - 1);
-        onLog(cleanBuffer, serial, modelName, type, null, overwriteLast: true, executionId: executionId);
-      } else {
-        onLog(buffer, serial, modelName, type, null, overwriteLast: false, executionId: executionId);
+    },
+    onDone: () {
+      if (buffer.isNotEmpty) {
+        if (buffer.endsWith('\r')) {
+          final cleanBuffer = buffer.substring(0, buffer.length - 1);
+          onLog(
+            cleanBuffer,
+            serial,
+            modelName,
+            type,
+            null,
+            overwriteLast: true,
+            executionId: executionId,
+          );
+        } else {
+          onLog(
+            buffer,
+            serial,
+            modelName,
+            type,
+            null,
+            overwriteLast: false,
+            executionId: executionId,
+          );
+        }
       }
-    }
-    onDone?.call();
-  });
+      onDone?.call();
+    },
+  );
+}
+
+void _killProcess(Process process) {
+  if (Platform.isWindows) {
+    Process.run('taskkill', ['/F', '/T', '/PID', '${process.pid}']);
+  } else {
+    process.kill();
+  }
 }
