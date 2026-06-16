@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobx/mobx.dart';
 import 'package:re_editor/re_editor.dart';
@@ -120,48 +119,44 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-          child: Column(
-            children: [
-              _buildHeader(),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Cột trái: Vùng soạn thảo chính (Editor)
-                    Expanded(
-                      flex: 7,
-                      child: _buildEditorSection(),
-                    ),
-                    // Đường phân cách dọc
-                    const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
-                    // Cột phải: Sidebar cấu hình
-                    SizedBox(
-                      width: 340,
-                      child: _buildSidebarSection(),
-                    ),
-                  ],
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Cột trái: Vùng soạn thảo chính (Editor)
+                Expanded(
+                  flex: 7,
+                  child: _buildEditorSection(),
                 ),
-              ),
-            ],
+                // Đường phân cách dọc
+                const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                // Cột phải: Sidebar cấu hình
+                SizedBox(
+                  width: 340,
+                  child: _buildSidebarSection(),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
