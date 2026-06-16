@@ -2,6 +2,7 @@ enum ScriptTileType {
   normal,
   confirm,
   dialog,
+  callable,
   @Deprecated('Use normal instead. Input prompts are now auto-detected.')
   input,
 }

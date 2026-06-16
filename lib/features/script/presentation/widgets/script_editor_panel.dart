@@ -409,6 +409,7 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
   }
 
   Widget _buildTileSettings() {
+    final showFileDrop = _selectedTileType != ScriptTileType.callable;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -417,6 +418,7 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -434,59 +436,66 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
                   color: const Color(0xFF334155),
                 ),
               ),
-              const Spacer(),
-              _buildTypeChip('Normal', ScriptTileType.normal),
-              const SizedBox(width: 4),
-              _buildTypeChip('Inline', ScriptTileType.confirm),
-              const SizedBox(width: 4),
-              _buildTypeChip('Dialog', ScriptTileType.dialog),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Color(0xFFE2E8F0)),
-          ),
-          Row(
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              const Icon(
-                Icons.file_download_outlined,
-                size: 18,
-                color: Color(0xFF64748B),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Kéo thả file',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF334155),
-                      ),
-                    ),
-                    Text(
-                      'Kéo file từ PC vào tile',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Switch.adaptive(
-                value: _enableFileDrop,
-                activeTrackColor: const Color(0xFF4F46E5).withValues(alpha: 0.5),
-                activeThumbColor: const Color(0xFF4F46E5),
-                onChanged: (val) {
-                  setState(() => _enableFileDrop = val);
-                  _onChanged();
-                },
-              ),
+              _buildTypeChip('Normal', ScriptTileType.normal),
+              _buildTypeChip('Inline', ScriptTileType.confirm),
+              _buildTypeChip('Dialog', ScriptTileType.dialog),
+              _buildTypeChip('Callable', ScriptTileType.callable),
             ],
           ),
+          if (showFileDrop) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(color: Color(0xFFE2E8F0)),
+            ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.file_download_outlined,
+                  size: 18,
+                  color: Color(0xFF64748B),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kéo thả file',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF334155),
+                        ),
+                      ),
+                      Text(
+                        'Kéo file từ PC vào tile',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _enableFileDrop,
+                  activeTrackColor: const Color(0xFF4F46E5).withValues(alpha: 0.5),
+                  activeThumbColor: const Color(0xFF4F46E5),
+                  onChanged: (val) {
+                    setState(() => _enableFileDrop = val);
+                    _onChanged();
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -496,7 +505,12 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
     final isSelected = _selectedTileType == type;
     return InkWell(
       onTap: () {
-        setState(() => _selectedTileType = type);
+        setState(() {
+          _selectedTileType = type;
+          if (type == ScriptTileType.callable) {
+            _enableFileDrop = false;
+          }
+        });
         _onChanged();
       },
       borderRadius: BorderRadius.circular(6),

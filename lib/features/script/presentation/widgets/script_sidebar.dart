@@ -9,6 +9,7 @@ import 'package:scraki/features/script/presentation/widgets/tiles/delegates/file
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/confirm_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/normal_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/dialog_tile_delegate.dart';
+import 'package:scraki/features/script/presentation/widgets/tiles/delegates/callable_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/dialogs/unified_input_dialog.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/script_tile_delegate.dart';
 import '../utils/script_execution_parser.dart';
@@ -320,6 +321,12 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                               onEdit: onEdit,
                               isExecuting: isExecuting,
                             );
+                          case ScriptTileType.callable:
+                            coreDelegate = CallableTileDelegate(
+                              onDelete: onDelete,
+                              onEdit: onEdit,
+                              isExecuting: isExecuting,
+                            );
                           case ScriptTileType.input:
                             coreDelegate = NormalTileDelegate(
                               onRun: onRun,
@@ -329,8 +336,8 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                             );
                         }
 
-                        // 2. Bọc trong FileDrop nếu được bật
-                        final delegate = script.enableFileDrop
+                        // 2. Bọc trong FileDrop nếu được bật và không phải callable
+                        final delegate = (script.enableFileDrop && script.tileType != ScriptTileType.callable)
                             ? FileDropTileDelegate(
                                 child: coreDelegate,
                                 onFileDropped: (paths) {
