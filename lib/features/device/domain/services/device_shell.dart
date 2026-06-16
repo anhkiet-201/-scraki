@@ -70,7 +70,7 @@ enum ShellState {
   stopped;
 
   factory ShellState.fromCode(int code) => switch(code){
-    < 0 || 1 => ShellState.canceled,
+    < 0 => ShellState.canceled,
     0 => ShellState.success,
     99 => ShellState.stopped,
     _ => ShellState.error,
