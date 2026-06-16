@@ -96,6 +96,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     File? filterFile;
     Timer? watchdog;
     final Duration effectiveTimeout = timeout ?? const Duration(minutes: 10);
+    final List<String> errorLogs = [];
 
     try {
       final filterIdx = finalArgs.indexOf('-filter_complex');
@@ -148,6 +149,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         resetWatchdog(); // Start / reset watchdog khi nhận stderr đầu tiên
         final out = String.fromCharCodes(data);
         if (onLog != null) onLog(out);
+        errorLogs.add(out);
 
         if (onProgress != null &&
             targetDuration != null &&
@@ -183,7 +185,14 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         return ExecutionResult.success(args.last);
       } else {
         final reason = exitCode == -999 ? 'Timeout' : 'Exit code $exitCode';
-        return ExecutionResult.failure('FFmpeg failed: $reason');
+        final fullError = errorLogs.join().trim();
+        return ExecutionResult(
+          success: false,
+          logs: [
+            'FFmpeg failed: $reason',
+            if (fullError.isNotEmpty) 'Details:\n$fullError',
+          ],
+        );
       }
     } finally {
       watchdog?.cancel();

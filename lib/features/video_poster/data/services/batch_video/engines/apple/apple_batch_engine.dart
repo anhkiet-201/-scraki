@@ -35,6 +35,7 @@ class AppleBatchEngine
     pipe.add('fps=30');
     pipe.add('setpts=PTS-STARTPTS');
     pipe.add('format=${composition.getPreferredPixelFormat()}');
+    pipe.add('setsar=1');
     return pipe;
   }
 
