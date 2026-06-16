@@ -170,6 +170,18 @@ Scraki includes a high-performance engine for executing ADB commands and scripts
   - `{I}`: Replaced by the **3rd Octet** of the device's IP address (e.g., `192.168.x.10` -> `x`). Essential for network-segment-specific commands.
   - `{SERIAL}`: Replaced by the full device serial or IP:Port.
 - **Script Management**: Full CRUD support for saving and executing complex multi-command sequences.
+- **Script Modularization (#import & #import client)**:
+  - **`#import <script_name>`**: Imports and flattens a child script's commands directly. Only compatible between identical environments (e.g., PowerShell within `#bash server`, or Android within `#bash`).
+  - **`#import client <script_name> [arg1 arg2 "arg 3" ...]`**: Imports an Android script (Android bash/single commands) inside a `#bash server` (PowerShell) block. 
+    - Supports positional parameters: The child script uses standard Unix positional parameters like `$1`, `$2`, etc.
+    - Arguments passed are forwarded directly to the Android shell using `sh -s`.
+    - Commands are automatically wrapped in a PowerShell Here-String wrapper to execute on the Android device via ADB:
+      ```powershell
+      @'
+      # Child commands executed on device (using $1, $2...)
+      '@ | adb -s {SERIAL} shell "sh -s 'arg1' 'arg2'"
+      ```
+    - **Context Protection**: Throws compilation exceptions when mixing incompatible environments (e.g., importing PowerShell into Android bash, or using normal `#import` for Android commands in a server block) to prevent silent execution failures.
 - **Advanced Filtering**: Quickly select devices by group assignment or specific IP segment ranges (3rd octet).
 - **Real-time Monitoring**:
   - **Global Console**: Centralized terminal for aggregated logs across all devices (up to 5000 lines).

@@ -139,17 +139,17 @@ void main() {
       expect(androidBlock.commands[0], equals('echo "running on android"'));
     });
 
-    test('Flatten sub-script with parameter containing whitespace and quotes', () {
+    test('Flatten sub-script with simple import', () {
       final parentCommands = [
-        '#run-script sub_test name="Hello cvbc" age=25',
+        '#import sub_test',
       ];
       final subScript = ScriptEntity(
         id: '1',
         name: 'sub_test',
         description: 'test description',
         commands: [
-          'echo "{input:name}"',
-          'echo {input:age}',
+          'echo "Hello"',
+          'echo "World"',
         ],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -158,15 +158,15 @@ void main() {
       final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
 
       expect(flattened.length, equals(2));
-      expect(flattened[0], equals('echo "Hello cvbc"'));
-      expect(flattened[1], equals('echo 25'));
+      expect(flattened[0], equals('echo "Hello"'));
+      expect(flattened[1], equals('echo "World"'));
     });
 
     test('Flatten sub-script with environment labels inside parent environment block', () {
       final parentCommands = [
         '#bash server',
         'if (\$true) {',
-        '  #run-script sub_test',
+        '  #import sub_test',
         '}',
         '#end',
       ];
@@ -191,6 +191,174 @@ void main() {
       expect(flattened[2], equals('echo "hello"'));
       expect(flattened[3], equals('}'));
       expect(flattened[4], equals('#end'));
+    });
+
+    test('Flatten #import client inside #bash server without parameters', () {
+      final parentCommands = [
+        '#bash server',
+        '#import client sub_test',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '2',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'input tap 100 200',
+          'sleep 1',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(6));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals('input tap 100 200'));
+      expect(flattened[3], equals('sleep 1'));
+      expect(flattened[4], equals("'@ | adb -s {SERIAL} shell sh"));
+      expect(flattened[5], equals('#end'));
+    });
+
+    test('Flatten #import client inside #bash server with parameters', () {
+      final parentCommands = [
+        '#bash server',
+        '#import client sub_test "Tuan An" 20',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '3',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          r'echo "Hello $1"',
+          r'echo "Age is $2"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(6));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals(r'echo "Hello $1"'));
+      expect(flattened[3], equals(r'echo "Age is $2"'));
+      expect(flattened[4], equals("'@ | adb -s {SERIAL} shell \"sh -s 'Tuan An' '20'\""));
+      expect(flattened[5], equals('#end'));
+    });
+
+    test('Throw exception when #import client is used outside #bash server block', () {
+      final parentCommands = [
+        '#import client sub_test',
+      ];
+      final subScript = ScriptEntity(
+        id: '2',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'input tap 100 200',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(
+        () => ScriptExecutionParser.flatten(parentCommands, [subScript]),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('Chỉ thị "#import client" chỉ hợp lệ bên trong khối "#bash server"'),
+        )),
+      );
+    });
+
+    test('Throw exception when using normal #import to import Android script into #bash server', () {
+      final parentCommands = [
+        '#bash server',
+        '#import sub_test',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '4',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'input tap 100 200',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(
+        () => ScriptExecutionParser.flatten(parentCommands, [subScript]),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('không thể import trực tiếp vào khối "#bash server" bằng "#import"'),
+        )),
+      );
+    });
+
+    test('Throw exception when using normal #import to import PowerShell script into Android #bash', () {
+      final parentCommands = [
+        '#bash',
+        '#import sub_test',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '5',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          '#bash server',
+          'Write-Output "PowerShell code"',
+          '#end',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(
+        () => ScriptExecutionParser.flatten(parentCommands, [subScript]),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('Không thể import script con "sub_test" chứa mã PowerShell (#bash server) vào môi trường Android Bash (#bash)'),
+        )),
+      );
+    });
+
+    test('Throw exception when using #import client on a script containing PowerShell code', () {
+      final parentCommands = [
+        '#bash server',
+        '#import client sub_test',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '6',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          '#bash server',
+          'Write-Output "PowerShell code"',
+          '#end',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(
+        () => ScriptExecutionParser.flatten(parentCommands, [subScript]),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('Không thể sử dụng "#import client" cho script con "sub_test" chứa mã PowerShell (#bash server)'),
+        )),
+      );
     });
   });
 }

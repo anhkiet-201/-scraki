@@ -33,10 +33,10 @@ final _variableAssignmentMode = Mode(
   begin: '\\b[a-zA-Z_][a-zA-Z0-9_]*(?==)',
 );
 
-// Định nghĩa các nhãn chỉ thị đặc biệt của Scraki (#bash, #bash server, #run-script, #end...)
+// Định nghĩa các nhãn chỉ thị đặc biệt của Scraki (#bash, #bash server, #import, #end...)
 final _scrakiDirectivesMode = Mode(
   scope: 'keyword',
-  begin: r'#(?:bash\s+server|bash|run-script|endbash|end\s+bash|end)\b',
+  begin: r'#(?:bash\s+server|bash|import|endbash|end\s+bash|end)\b',
   relevance: 10,
 );
 

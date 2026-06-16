@@ -17,10 +17,22 @@ class ServerBashScriptBlock extends ScriptExecutionBlock {
   ServerBashScriptBlock(this.commands);
 }
 
-class SubScriptCall {
+class ClientImportCall {
   final String scriptName;
-  final Map<String, String> params;
-  SubScriptCall(this.scriptName, this.params);
+  final List<String> arguments;
+  ClientImportCall(this.scriptName, this.arguments);
+}
+
+class ScriptEnvInfo {
+  final bool hasServerBash;
+  final bool hasAndroidBash;
+  final bool hasSingleAndroidCommands;
+
+  ScriptEnvInfo({
+    required this.hasServerBash,
+    required this.hasAndroidBash,
+    required this.hasSingleAndroidCommands,
+  });
 }
 
 class ScriptExecutionParser {
@@ -28,88 +40,73 @@ class ScriptExecutionParser {
   static final RegExp _androidBashRegExp = RegExp(r'^#bash\b', caseSensitive: false);
   static final RegExp _endBashRegExp = RegExp(r'^#(endbash|end\s+bash|end|adb)\b', caseSensitive: false);
 
-  /// Phân tích dòng gọi script con để trích xuất tên script và các tham số
-  static SubScriptCall _parseSubScriptCall(String line) {
+  static ClientImportCall _parseClientImportCall(String line) {
     final trimmed = line.trim();
-    final content = trimmed.substring('#run-script '.length).trim();
+    final content = trimmed.substring('#import client '.length).trim();
     
-    // Sử dụng Regex để tách các phần tử mà không làm vỡ các chuỗi nằm trong dấu ngoặc kép/đơn (ví dụ: key="value")
     final regExp = RegExp(r"""[^\s"']*(?:"[^"]*"|'[^']*')[^\s"']*|[^\s]+""");
     final parts = regExp.allMatches(content).map((m) => m.group(0)!).toList();
     
-    final Map<String, String> params = {};
-    int paramStartIndex = parts.length;
-    
-    for (int i = parts.length - 1; i >= 0; i--) {
-      final part = parts[i];
-      if (part.contains('=')) {
-        final eqIndex = part.indexOf('=');
-        final key = part.substring(0, eqIndex).trim();
-        var value = part.substring(eqIndex + 1).trim();
-        
-        // Loại bỏ dấu ngoặc kép hoặc ngoặc đơn bao quanh giá trị nếu có
-        if (value.length >= 2 &&
-            ((value.startsWith('"') && value.endsWith('"')) ||
-             (value.startsWith("'") && value.endsWith("'")))) {
-          value = value.substring(1, value.length - 1);
-        }
-        
-        if (key.isNotEmpty) {
-          params[key] = value;
-          paramStartIndex = i;
-        } else {
-          break;
-        }
-      } else {
-        break;
-      }
+    if (parts.isEmpty) {
+      return ClientImportCall('', []);
     }
     
-    final scriptName = parts.sublist(0, paramStartIndex).join(' ').trim();
-    return SubScriptCall(scriptName, params);
+    final scriptName = parts[0];
+    final arguments = parts.sublist(1);
+    return ClientImportCall(scriptName, arguments);
   }
 
-  /// Kiểm tra tính hợp lệ của các tham số truyền vào so với các placeholder trong script con.
-  static void _validateParams(List<String> subCommands, Map<String, String> params, String subScriptName) {
-    final combinedCommands = subCommands.join('\n');
-
-    params.forEach((key, value) {
-      bool isUsed = false;
-      if (key == 'file') {
-        isUsed = combinedCommands.contains('{file}');
-      } else if (key == 'input') {
-        isUsed = combinedCommands.contains('{input}') || combinedCommands.contains('{input:input}');
-      } else {
-        isUsed = combinedCommands.contains('{input:$key}');
-      }
-
-      if (!isUsed) {
-        throw Exception('Script con "$subScriptName" không sử dụng tham số "$key". Vui lòng kiểm tra lại tên tham số.');
-      }
-    });
-  }
-
-  /// Áp dụng các tham số truyền vào để thay thế các placeholder tương ứng trong lệnh của script con
-  static List<String> _applyParams(List<String> commands, Map<String, String> params) {
-    final List<String> result = [];
-    for (final cmd in commands) {
-      var updatedCmd = cmd;
-      params.forEach((key, value) {
-        if (key == 'file') {
-          updatedCmd = updatedCmd.replaceAll('{file}', value);
-        } else if (key == 'input') {
-          updatedCmd = updatedCmd.replaceAll('{input}', value);
-          updatedCmd = updatedCmd.replaceAll('{input:input}', value);
-        } else {
-          updatedCmd = updatedCmd.replaceAll('{input:$key}', value);
-        }
-      });
-      result.add(updatedCmd);
+  static String _normalizeArgument(String arg) {
+    var trimmed = arg.trim();
+    if (trimmed.isEmpty) return "''";
+    
+    // Loại bỏ cặp nháy kép hoặc nháy đơn ngoài cùng nếu có
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      trimmed = trimmed.substring(1, trimmed.length - 1);
     }
-    return result;
+    
+    // Bọc lại bằng nháy đơn để truyền an toàn qua adb shell
+    return "'$trimmed'";
   }
 
-  /// Đệ quy làm phẳng danh sách lệnh bằng cách thay thế các tag `#run-script <tên>` bằng nội dung lệnh của script con.
+  static ScriptEnvInfo _detectScriptEnvironments(List<String> commands) {
+    bool hasServerBash = false;
+    bool hasAndroidBash = false;
+    bool hasSingleAndroidCommands = false;
+
+    bool inBlock = false;
+
+    for (final line in commands) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (_serverBashRegExp.hasMatch(trimmed)) {
+        hasServerBash = true;
+        inBlock = true;
+      } else if (_androidBashRegExp.hasMatch(trimmed)) {
+        hasAndroidBash = true;
+        inBlock = true;
+      } else if (_endBashRegExp.hasMatch(trimmed)) {
+        inBlock = false;
+      } else {
+        if (!inBlock) {
+          if (trimmed.startsWith('#') && !trimmed.startsWith('#import')) {
+            continue;
+          }
+          hasSingleAndroidCommands = true;
+        }
+      }
+    }
+
+    return ScriptEnvInfo(
+      hasServerBash: hasServerBash,
+      hasAndroidBash: hasAndroidBash,
+      hasSingleAndroidCommands: hasSingleAndroidCommands,
+    );
+  }
+
+  /// Đệ quy làm phẳng danh sách lệnh bằng cách thay thế các tag `#import <tên>` bằng nội dung lệnh của script con.
   /// Phát hiện và ném lỗi nếu có vòng lặp vô hạn hoặc thiếu script con.
   static List<String> flatten(
     List<String> commands,
@@ -137,8 +134,12 @@ class ScriptExecutionParser {
         isInAndroidBash = false;
       }
 
-      if (trimmed.startsWith('#run-script ')) {
-        final call = _parseSubScriptCall(trimmed);
+      if (trimmed.startsWith('#import client ')) {
+        if (!isInServerBash) {
+          throw Exception('Chỉ thị "#import client" chỉ hợp lệ bên trong khối "#bash server"');
+        }
+
+        final call = _parseClientImportCall(trimmed);
         if (call.scriptName.isEmpty) {
           result.add(cmd);
           continue;
@@ -156,17 +157,80 @@ class ScriptExecutionParser {
           orElse: () => throw Exception('Không tìm thấy script con có tên: "${call.scriptName}"'),
         );
 
-        // Kiểm tra tính hợp lệ của tham số truyền vào
-        _validateParams(subScript.commands, call.params, call.scriptName);
-
-        // Áp dụng các tham số truyền vào cho các lệnh của script con
-        final parameterizedCommands = _applyParams(subScript.commands, call.params);
+        // Kiểm tra tương thích ngữ cảnh
+        final info = _detectScriptEnvironments(subScript.commands);
+        if (info.hasServerBash) {
+          throw Exception('Không thể sử dụng "#import client" cho script con "${call.scriptName}" chứa mã PowerShell (#bash server).');
+        }
 
         // Đệ quy làm phẳng tiếp tục
         var subFlat = flatten(
-          parameterizedCommands,
+          subScript.commands,
           allScripts,
           visitedScriptNames: {...visitedScriptNames, call.scriptName},
+        );
+
+        // Loại bỏ các nhãn môi trường ở cấp ngoài cùng của script con
+        subFlat = subFlat.where((line) {
+          final t = line.trim();
+          final isLabel = _serverBashRegExp.hasMatch(t) ||
+                          _androidBashRegExp.hasMatch(t) ||
+                          _endBashRegExp.hasMatch(t);
+          return !isLabel;
+        }).toList();
+
+        // Tạo PowerShell wrapper
+        final String adbCommand;
+        if (call.arguments.isEmpty) {
+          adbCommand = "'@ | adb -s {SERIAL} shell sh";
+        } else {
+          final normalizedArgs = call.arguments.map(_normalizeArgument).toList();
+          adbCommand = "'@ | adb -s {SERIAL} shell \"sh -s ${normalizedArgs.join(' ')}\"";
+        }
+
+        final List<String> wrapper = [
+          "@'",
+          ...subFlat,
+          adbCommand
+        ];
+
+        result.addAll(wrapper);
+      } else if (trimmed.startsWith('#import ')) {
+        final subScriptName = trimmed.substring('#import '.length).trim();
+        if (subScriptName.isEmpty) {
+          result.add(cmd);
+          continue;
+        }
+
+        if (visitedScriptNames.contains(subScriptName)) {
+          throw Exception('Phát hiện vòng lặp vô hạn gọi script con: $subScriptName');
+        }
+
+        // Tìm script con theo tên
+        final subScript = allScripts.firstWhere(
+          (s) {
+            return s.name.trim().toLowerCase() == subScriptName.toLowerCase();
+          },
+          orElse: () => throw Exception('Không tìm thấy script con có tên: "$subScriptName"'),
+        );
+
+        // Kiểm tra tương thích ngữ cảnh
+        final info = _detectScriptEnvironments(subScript.commands);
+        if (isInServerBash) {
+          if (info.hasAndroidBash || info.hasSingleAndroidCommands) {
+            throw Exception('Script con "$subScriptName" chứa các lệnh Android (Bash/Single) không thể import trực tiếp vào khối "#bash server" bằng "#import". Vui lòng sử dụng "#import client $subScriptName" để thực thi trên thiết bị.');
+          }
+        } else if (isInAndroidBash) {
+          if (info.hasServerBash) {
+            throw Exception('Không thể import script con "$subScriptName" chứa mã PowerShell (#bash server) vào môi trường Android Bash (#bash).');
+          }
+        }
+
+        // Đệ quy làm phẳng tiếp tục
+        var subFlat = flatten(
+          subScript.commands,
+          allScripts,
+          visitedScriptNames: {...visitedScriptNames, subScriptName},
         );
 
         // Nếu đang ở trong một khối bash đang hoạt động của script cha,

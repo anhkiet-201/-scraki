@@ -653,7 +653,8 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
             // Scraki Directives
             const CodeKeywordPrompt(word: '#bash'),
             const CodeKeywordPrompt(word: '#bash server'),
-            const CodeKeywordPrompt(word: '#run-script'),
+            const CodeKeywordPrompt(word: '#import'),
+            const CodeKeywordPrompt(word: '#import client'),
             const CodeKeywordPrompt(word: '#end'),
 
             // Placeholder variables
