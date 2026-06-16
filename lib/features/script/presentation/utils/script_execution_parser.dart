@@ -72,8 +72,9 @@ class ScriptExecutionParser {
     if (trimmed.isEmpty) return "''";
     
     // Loại bỏ cặp nháy kép hoặc nháy đơn ngoài cùng nếu có
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    if (trimmed.length >= 2 &&
+        ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+         (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
       trimmed = trimmed.substring(1, trimmed.length - 1);
     }
     
