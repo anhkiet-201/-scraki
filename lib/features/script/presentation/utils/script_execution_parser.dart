@@ -32,7 +32,10 @@ class ScriptExecutionParser {
   static SubScriptCall _parseSubScriptCall(String line) {
     final trimmed = line.trim();
     final content = trimmed.substring('#run-script '.length).trim();
-    final parts = content.split(RegExp(r'\s+'));
+    
+    // Sử dụng Regex để tách các phần tử mà không làm vỡ các chuỗi nằm trong dấu ngoặc kép/đơn (ví dụ: key="value")
+    final regExp = RegExp(r"""[^\s"']*(?:"[^"]*"|'[^']*')[^\s"']*|[^\s]+""");
+    final parts = regExp.allMatches(content).map((m) => m.group(0)!).toList();
     
     final Map<String, String> params = {};
     int paramStartIndex = parts.length;
@@ -42,7 +45,15 @@ class ScriptExecutionParser {
       if (part.contains('=')) {
         final eqIndex = part.indexOf('=');
         final key = part.substring(0, eqIndex).trim();
-        final value = part.substring(eqIndex + 1).trim();
+        var value = part.substring(eqIndex + 1).trim();
+        
+        // Loại bỏ dấu ngoặc kép hoặc ngoặc đơn bao quanh giá trị nếu có
+        if (value.length >= 2 &&
+            ((value.startsWith('"') && value.endsWith('"')) ||
+             (value.startsWith("'") && value.endsWith("'")))) {
+          value = value.substring(1, value.length - 1);
+        }
+        
         if (key.isNotEmpty) {
           params[key] = value;
           paramStartIndex = i;
@@ -108,8 +119,24 @@ class ScriptExecutionParser {
     visitedScriptNames ??= {};
     final List<String> result = [];
 
+    bool isInServerBash = false;
+    bool isInAndroidBash = false;
+
     for (final cmd in commands) {
       final trimmed = cmd.trim();
+
+      // Theo dõi trạng thái khối môi trường hiện tại của script cha
+      if (_serverBashRegExp.hasMatch(trimmed)) {
+        isInServerBash = true;
+        isInAndroidBash = false;
+      } else if (_androidBashRegExp.hasMatch(trimmed)) {
+        isInAndroidBash = true;
+        isInServerBash = false;
+      } else if (_endBashRegExp.hasMatch(trimmed)) {
+        isInServerBash = false;
+        isInAndroidBash = false;
+      }
+
       if (trimmed.startsWith('#run-script ')) {
         final call = _parseSubScriptCall(trimmed);
         if (call.scriptName.isEmpty) {
@@ -136,11 +163,24 @@ class ScriptExecutionParser {
         final parameterizedCommands = _applyParams(subScript.commands, call.params);
 
         // Đệ quy làm phẳng tiếp tục
-        final subFlat = flatten(
+        var subFlat = flatten(
           parameterizedCommands,
           allScripts,
           visitedScriptNames: {...visitedScriptNames, call.scriptName},
         );
+
+        // Nếu đang ở trong một khối bash đang hoạt động của script cha,
+        // loại bỏ các nhãn phân đoạn môi trường ở cấp ngoài cùng của script con.
+        if (isInServerBash || isInAndroidBash) {
+          subFlat = subFlat.where((line) {
+            final t = line.trim();
+            final isLabel = _serverBashRegExp.hasMatch(t) ||
+                            _androidBashRegExp.hasMatch(t) ||
+                            _endBashRegExp.hasMatch(t);
+            return !isLabel;
+          }).toList();
+        }
+
         result.addAll(subFlat);
       } else {
         result.add(cmd);

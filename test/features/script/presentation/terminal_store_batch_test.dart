@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scraki/features/script/presentation/utils/script_execution_parser.dart';
+import 'package:scraki/features/script/domain/entities/script_entity.dart';
+
 
 void main() {
   group('ScriptExecutionParser Tests', () {
@@ -135,6 +137,60 @@ void main() {
       final androidBlock = blocks[2] as BashScriptBlock;
       expect(androidBlock.commands.length, equals(1));
       expect(androidBlock.commands[0], equals('echo "running on android"'));
+    });
+
+    test('Flatten sub-script with parameter containing whitespace and quotes', () {
+      final parentCommands = [
+        '#run-script sub_test name="Hello cvbc" age=25',
+      ];
+      final subScript = ScriptEntity(
+        id: '1',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'echo "{input:name}"',
+          'echo {input:age}',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(2));
+      expect(flattened[0], equals('echo "Hello cvbc"'));
+      expect(flattened[1], equals('echo 25'));
+    });
+
+    test('Flatten sub-script with environment labels inside parent environment block', () {
+      final parentCommands = [
+        '#bash server',
+        'if (\$true) {',
+        '  #run-script sub_test',
+        '}',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '1',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          '#bash server',
+          'echo "hello"',
+          '#end',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(5));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals('if (\$true) {'));
+      expect(flattened[2], equals('echo "hello"'));
+      expect(flattened[3], equals('}'));
+      expect(flattened[4], equals('#end'));
     });
   });
 }
