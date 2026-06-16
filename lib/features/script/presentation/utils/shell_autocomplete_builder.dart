@@ -8,7 +8,8 @@ class PlaceholderPrompt extends CodePrompt {
   final String insertText;
   final int baseSelectOffset; // Offset bắt đầu bôi đen (tính từ đầu insertText)
   final int extentSelectOffset; // Offset kết thúc bôi đen (tính từ đầu insertText)
-  final int inputLength; // Độ dài input đã gõ, dùng để bù trừ công thức của re_editor
+  final String input; // Chuỗi input thực tế người dùng đã nhập
+  final bool hasClosingBracketAfter; // Có dấu ngoặc nhọn đóng ở ngay sau con trỏ không
 
   const PlaceholderPrompt({
     required super.word,
@@ -16,30 +17,45 @@ class PlaceholderPrompt extends CodePrompt {
     required this.insertText,
     required this.baseSelectOffset,
     required this.extentSelectOffset,
-    this.inputLength = 0,
+    this.input = '',
+    this.hasClosingBracketAfter = false,
   });
 
-  PlaceholderPrompt copyWithInputLength(int length) {
+  PlaceholderPrompt copyWithInputAndBracket(String input, {required bool hasClosingBracketAfter}) {
     return PlaceholderPrompt(
       word: word,
       displayName: displayName,
       insertText: insertText,
       baseSelectOffset: baseSelectOffset,
       extentSelectOffset: extentSelectOffset,
-      inputLength: length,
+      input: input,
+      hasClosingBracketAfter: hasClosingBracketAfter,
     );
   }
 
   @override
   CodeAutocompleteResult get autocomplete {
-    // re_editor tự động trừ đi input.length ở kết quả cuối cùng,
-    // nên ta cần cộng bù inputLength vào selection offset.
+    final String actualInsertText;
+    final int actualExtentOffset;
+
+    // Nếu ngay sau con trỏ có dấu '}' và từ gợi ý kết thúc bằng '}',
+    // ta sẽ lược bỏ dấu '}' ở cuối để tránh bị thừa thành '}}'.
+    if (hasClosingBracketAfter && insertText.endsWith('}')) {
+      actualInsertText = insertText.substring(0, insertText.length - 1);
+      actualExtentOffset = extentSelectOffset > actualInsertText.length
+          ? actualInsertText.length
+          : extentSelectOffset;
+    } else {
+      actualInsertText = insertText;
+      actualExtentOffset = extentSelectOffset;
+    }
+
     return CodeAutocompleteResult(
-      input: '',
-      word: insertText,
+      input: input,
+      word: actualInsertText,
       selection: TextSelection(
-        baseOffset: baseSelectOffset + inputLength,
-        extentOffset: extentSelectOffset + inputLength,
+        baseOffset: baseSelectOffset,
+        extentOffset: actualExtentOffset,
       ),
     );
   }
@@ -60,7 +76,8 @@ class PlaceholderPrompt extends CodePrompt {
         other.insertText == insertText &&
         other.baseSelectOffset == baseSelectOffset &&
         other.extentSelectOffset == extentSelectOffset &&
-        other.inputLength == inputLength;
+        other.input == input &&
+        other.hasClosingBracketAfter == hasClosingBracketAfter;
   }
 
   @override
@@ -70,7 +87,8 @@ class PlaceholderPrompt extends CodePrompt {
         insertText,
         baseSelectOffset,
         extentSelectOffset,
-        inputLength,
+        input,
+        hasClosingBracketAfter,
       );
 }
 
@@ -134,10 +152,15 @@ class ShellAutocompletePromptsBuilder implements CodeAutocompletePromptsBuilder 
       return null;
     }
 
-    // Áp dụng độ dài input động cho các PlaceholderPrompt
+    final bool hasClosingBracketAfter = charactersAfter.isNotEmpty && charactersAfter.first == '}';
+
+    // Áp dụng input động và flag dấu ngoặc đóng cho các PlaceholderPrompt
     final finalPrompts = matchedPrompts.map((prompt) {
       if (prompt is PlaceholderPrompt) {
-        return prompt.copyWithInputLength(input.length);
+        return prompt.copyWithInputAndBracket(
+          input,
+          hasClosingBracketAfter: hasClosingBracketAfter,
+        );
       }
       return prompt;
     }).toList();
@@ -151,7 +174,7 @@ class ShellAutocompletePromptsBuilder implements CodeAutocompletePromptsBuilder 
 
   bool _isValidShellWordPart(String char) {
     final int code = char.codeUnits.first;
-    // Hỗ trợ chữ cái, số, gạch dưới, gạch ngang, dấu mở/đóng ngoặc nhọn, và dấu hai chấm.
+    // Hỗ trợ chữ cái, số, gạch dưới, gạch ngang, dấu mở/đóng ngoặc nhọn, dấu hai chấm và dấu thăng #.
     return (code >= 65 && code <= 90) || // A-Z
         (code >= 97 && code <= 122) || // a-z
         (code >= 48 && code <= 57) || // 0-9
@@ -159,7 +182,8 @@ class ShellAutocompletePromptsBuilder implements CodeAutocompletePromptsBuilder 
         char == '-' ||
         char == '{' ||
         char == '}' ||
-        char == ':';
+        char == ':' ||
+        char == '#';
   }
 }
 

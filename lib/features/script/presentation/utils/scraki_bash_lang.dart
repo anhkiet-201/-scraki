@@ -33,6 +33,13 @@ final _variableAssignmentMode = Mode(
   begin: '\\b[a-zA-Z_][a-zA-Z0-9_]*(?==)',
 );
 
+// Định nghĩa các nhãn chỉ thị đặc biệt của Scraki (#bash, #bash server, #run-script, #end...)
+final _scrakiDirectivesMode = Mode(
+  scope: 'keyword',
+  begin: r'#(?:bash\s+server|bash|run-script|endbash|end\s+bash|end)\b',
+  relevance: 10,
+);
+
 final scrakiBashLang = Mode(
   refs: {
     '~contains~3~contains~2': Mode(className: 'variable', variants: <Mode>[
@@ -138,6 +145,8 @@ final scrakiBashLang = Mode(
         Mode(ref: '~contains~3~contains~2'),
       ],
     ),
+    // Nhãn chỉ thị của Scraki đặt trước comment để ưu tiên highlight
+    _scrakiDirectivesMode,
     // Custom HASH_COMMENT_MODE
     _customCommentMode,
     Mode(

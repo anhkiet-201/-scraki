@@ -102,7 +102,7 @@ void main() {
       expect(result.prompts[1].word, equals('{input:tên_biến}'));
     });
 
-    test('PlaceholderPrompt selection adjustment offsets', () {
+    test('PlaceholderPrompt selection offsets and bracket trimming', () {
       const prompt = PlaceholderPrompt(
         word: '{input:tên_biến}',
         displayName: '{input:tên_biến}',
@@ -111,15 +111,19 @@ void main() {
         extentSelectOffset: 15,
       );
 
-      // Khi input rỗng hoặc dài 0
-      final p0 = prompt.copyWithInputLength(0);
+      // Khi không có dấu ngoặc đóng phía sau
+      final p0 = prompt.copyWithInputAndBracket('{in', hasClosingBracketAfter: false);
+      expect(p0.autocomplete.input, equals('{in'));
+      expect(p0.autocomplete.word, equals('{input:tên_biến}'));
       expect(p0.autocomplete.selection.baseOffset, equals(7));
       expect(p0.autocomplete.selection.extentOffset, equals(15));
 
-      // Khi input dài 3 (ví dụ "{in")
-      final p3 = prompt.copyWithInputLength(3);
-      expect(p3.autocomplete.selection.baseOffset, equals(10));
-      expect(p3.autocomplete.selection.extentOffset, equals(18));
+      // Khi có dấu ngoặc đóng phía sau (cắt bỏ '}' ở cuối)
+      final p1 = prompt.copyWithInputAndBracket('{in', hasClosingBracketAfter: true);
+      expect(p1.autocomplete.input, equals('{in'));
+      expect(p1.autocomplete.word, equals('{input:tên_biến'));
+      expect(p1.autocomplete.selection.baseOffset, equals(7));
+      expect(p1.autocomplete.selection.extentOffset, equals(15));
     });
 
     test('PlaceholderPrompt match is case insensitive', () {
