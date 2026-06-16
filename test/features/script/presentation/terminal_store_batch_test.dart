@@ -428,5 +428,160 @@ void main() {
         )),
       );
     });
+
+    test('Flatten multi-level nested imports of same type scripts', () {
+      final parentCommands = [
+        '#bash',
+        '#import sub_a',
+        '#end',
+      ];
+      final subScriptA = ScriptEntity(
+        id: 'a',
+        name: 'sub_a',
+        description: 'sub script a',
+        commands: [
+          '#bash',
+          'echo "Sub A Start"',
+          '#import sub_b',
+          'echo "Sub A End"',
+          '#end',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final subScriptB = ScriptEntity(
+        id: 'b',
+        name: 'sub_b',
+        description: 'sub script b',
+        commands: [
+          '#bash',
+          'echo "Sub B Content"',
+          '#end',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScriptA, subScriptB]);
+
+      expect(flattened.length, equals(5));
+      expect(flattened[0], equals('#bash'));
+      expect(flattened[1], equals('echo "Sub A Start"'));
+      expect(flattened[2], equals('echo "Sub B Content"'));
+      expect(flattened[3], equals('echo "Sub A End"'));
+      expect(flattened[4], equals('#end'));
+    });
+
+    test('Flatten #import client with complex arguments (quotes, spaces, special chars)', () {
+      final parentCommands = [
+        '#bash server',
+        '#import client sub_test "space value" "quote\'s value" \'\$special\$var\'',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: 'complex',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          r'echo "$1 $2 $3"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(5));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals(r'echo "$1 $2 $3"'));
+      expect(flattened[3], equals(r''''@ | adb -s {SERIAL} shell "sh -s 'space value' 'quote's value' '$special$var'"'''));
+      expect(flattened[4], equals('#end'));
+    });
+
+    test('Flatten #import client with exit code variable assignment', () {
+      final parentCommands = [
+        '#bash server',
+        r'$exitcode = #import client sub_test "param1"',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: 'exitcode_test',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'echo "hello"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(6));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals('echo "hello"'));
+      expect(flattened[3], equals(r''''@ | adb -s {SERIAL} shell "sh -s 'param1'"'''));
+      expect(flattened[4], equals(r'$exitcode = $LASTEXITCODE'));
+      expect(flattened[5], equals('#end'));
+    });
+
+    test('Flatten #import client with exit code variable assignment and different spacing/casing', () {
+      final parentCommands = [
+        '#bash server',
+        r'$myExit_code   =   #ImPoRt   ClIeNt   sub_test',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: 'exitcode_test2',
+        name: 'sub_test',
+        description: 'test description',
+        commands: [
+          'echo "hello"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(6));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals('echo "hello"'));
+      expect(flattened[3], equals("'@ | adb -s {SERIAL} shell sh"));
+      expect(flattened[4], equals(r'$myExit_code = $LASTEXITCODE'));
+      expect(flattened[5], equals('#end'));
+    });
+
+    test('Flatten #import client with exit code variable assignment without equals sign', () {
+      final parentCommands = [
+        '#bash server',
+        r'$c #import client client "$ba" "ấd"',
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: 'client_no_equals',
+        name: 'client',
+        description: 'client script',
+        commands: [
+          'echo "hello {SERIAL} \$1 \$2"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(6));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals('echo "hello {SERIAL} \$1 \$2"'));
+      expect(flattened[3], equals(r''''@ | adb -s {SERIAL} shell "sh -s '$ba' 'ấd'"'''));
+      expect(flattened[4], equals(r'$c = $LASTEXITCODE'));
+      expect(flattened[5], equals('#end'));
+    });
   });
 }
+

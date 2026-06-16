@@ -20,7 +20,8 @@ class ServerBashScriptBlock extends ScriptExecutionBlock {
 class ClientImportCall {
   final String scriptName;
   final List<String> arguments;
-  ClientImportCall(this.scriptName, this.arguments);
+  final String? exitCodeVariable;
+  ClientImportCall(this.scriptName, this.arguments, {this.exitCodeVariable});
 }
 
 class ScriptEnvInfo {
@@ -41,19 +42,34 @@ class ScriptExecutionParser {
   static final RegExp _endBashRegExp = RegExp(r'^#(endbash|end\s+bash|end|adb)\b', caseSensitive: false);
 
   static ClientImportCall _parseClientImportCall(String line) {
-    final trimmed = line.trim();
-    final content = trimmed.substring('#import client '.length).trim();
+    String? exitCodeVariable;
+    String directive = line.trim();
+
+    final assignRegExp = RegExp(r'^\$(\w+)\s*=?\s*(#import\s+client\s+.+)$', caseSensitive: false);
+    final match = assignRegExp.firstMatch(directive);
+    if (match != null) {
+      exitCodeVariable = match.group(1);
+      directive = match.group(2)!.trim();
+    }
+
+    final clientRegExp = RegExp(r'^#import\s+client\s+(.+)$', caseSensitive: false);
+    final clientMatch = clientRegExp.firstMatch(directive);
+    if (clientMatch == null) {
+      return ClientImportCall('', [], exitCodeVariable: exitCodeVariable);
+    }
+    
+    final content = clientMatch.group(1)!.trim();
     
     final regExp = RegExp(r"""[^\s"']*(?:"[^"]*"|'[^']*')[^\s"']*|[^\s]+""");
     final parts = regExp.allMatches(content).map((m) => m.group(0)!).toList();
     
     if (parts.isEmpty) {
-      return ClientImportCall('', []);
+      return ClientImportCall('', [], exitCodeVariable: exitCodeVariable);
     }
     
     final scriptName = _cleanQuotes(parts[0]);
     final arguments = parts.sublist(1);
-    return ClientImportCall(scriptName, arguments);
+    return ClientImportCall(scriptName, arguments, exitCodeVariable: exitCodeVariable);
   }
 
   static String _cleanQuotes(String s) {
@@ -146,7 +162,9 @@ class ScriptExecutionParser {
         isInAndroidBash = false;
       }
 
-      if (trimmed.startsWith('#import client ')) {
+      final isClientImport = RegExp(r'^(?:\$\w+\s*=?\s*)?#import\s+client\s+', caseSensitive: false).hasMatch(trimmed);
+
+      if (isClientImport) {
         if (!isInServerBash) {
           throw Exception('Chỉ thị "#import client" chỉ hợp lệ bên trong khối "#bash server"');
         }
@@ -203,7 +221,8 @@ class ScriptExecutionParser {
         final List<String> wrapper = [
           "@'",
           ...subFlat,
-          adbCommand
+          adbCommand,
+          if (call.exitCodeVariable != null) '\$${call.exitCodeVariable} = \$LASTEXITCODE',
         ];
 
         result.addAll(wrapper);
