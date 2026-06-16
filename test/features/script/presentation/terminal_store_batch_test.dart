@@ -292,6 +292,33 @@ void main() {
       expect(flattened[5], equals('#end'));
     });
 
+    test('Flatten #import client with single-quoted script name containing whitespaces', () {
+      final parentCommands = [
+        '#bash server',
+        "#import client 'Auto Post'",
+        '#end',
+      ];
+      final subScript = ScriptEntity(
+        id: '3',
+        name: 'Auto Post',
+        description: 'test description',
+        commands: [
+          r'echo "Hello $1"',
+        ],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final flattened = ScriptExecutionParser.flatten(parentCommands, [subScript]);
+
+      expect(flattened.length, equals(5));
+      expect(flattened[0], equals('#bash server'));
+      expect(flattened[1], equals("@'"));
+      expect(flattened[2], equals(r'echo "Hello $1"'));
+      expect(flattened[3], equals("'@ | adb -s {SERIAL} shell sh"));
+      expect(flattened[4], equals('#end'));
+    });
+
     test('Throw exception when #import client is used outside #bash server block', () {
       final parentCommands = [
         '#import client sub_test',
