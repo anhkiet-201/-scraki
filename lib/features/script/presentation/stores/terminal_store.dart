@@ -315,6 +315,21 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final parsed = _parseCommand(command, serial);
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
+    // Intercept adb push to show progress
+    final isAdbPush = parsed.executable == 'adb' && 
+                      parsed.arguments.isNotEmpty && 
+                      parsed.arguments.contains('push');
+
+    if (isAdbPush) {
+      return await _executeAdbPushWithProgress(
+        commandId,
+        serial,
+        parsed.executable,
+        parsed.arguments,
+        deviceName,
+      );
+    }
+
     return await _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
@@ -375,13 +390,18 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     String? model,
     required LogType type,
     int? deviceCount,
+    bool overwriteLast = false,
+    String? executionId,
   }) {
-    final entry = _logWorker.parseSingleLog(
+    final entry = LogEntry(
+      timestamp: DateTime.now(),
       message: message,
       type: type,
       serial: serial,
-      model: model,
+      deviceModel: model,
       deviceCount: deviceCount,
+      overwriteLast: overwriteLast,
+      executionId: executionId,
     );
     _appendLog(entry, serial);
   }
@@ -582,16 +602,37 @@ function Write-Host {
 
   void _appendLog(LogEntry entry, String? serial) {
     runInAction(() {
-      terminalOutput.add(entry);
+      final indexGlobal = terminalOutput.lastIndexWhere((e) {
+        if (e.type != LogType.output && e.type != LogType.error) return false;
+        if (entry.executionId != null) return e.executionId == entry.executionId;
+        return e.serial == entry.serial;
+      });
+
+      if (indexGlobal != -1 && terminalOutput[indexGlobal].overwriteLast) {
+        terminalOutput[indexGlobal] = entry;
+      } else {
+        terminalOutput.add(entry);
+      }
       if (terminalOutput.length > 5000) {
         terminalOutput.removeRange(0, terminalOutput.length - 5000);
       }
+
       if (serial != null) {
         if (!deviceLogs.containsKey(serial)) {
           deviceLogs[serial] = ObservableList<LogEntry>();
         }
         final list = deviceLogs[serial]!;
-        list.add(entry);
+        final indexDevice = list.lastIndexWhere((e) {
+          if (e.type != LogType.output && e.type != LogType.error) return false;
+          if (entry.executionId != null) return e.executionId == entry.executionId;
+          return e.serial == entry.serial;
+        });
+
+        if (indexDevice != -1 && list[indexDevice].overwriteLast) {
+          list[indexDevice] = entry;
+        } else {
+          list.add(entry);
+        }
         if (list.length > 500) {
           list.removeRange(0, list.length - 500);
         }
@@ -600,7 +641,16 @@ function Write-Host {
   }
 
   _CommandArgs _parseCommand(String command, String serial) {
-    final cmd = command.split(" ");
+    final trimmed = command.trim();
+    
+    // Tách các đối số bằng khoảng trắng nhưng giữ nguyên nội dung trong dấu nháy
+    final regExp = RegExp(r"""[^\s"']*(?:"[^"]*"|'[^']*')[^\s"']*|[^\s]+""");
+    final cmd = regExp.allMatches(trimmed).map((m) => m.group(0)!).toList();
+    
+    if (cmd.isEmpty) {
+      return _CommandArgs('', []);
+    }
+
     if (cmd[0] == ">") {
       cmd.removeAt(0);
       cmd.insertAll(0, ["adb", "-s", serial]);
@@ -610,7 +660,139 @@ function Write-Host {
       cmd.insertAll(0, ["adb", "-s", serial, "shell"]);
     }
     final executable = cmd.removeAt(0);
-    return _CommandArgs(executable, cmd);
+    
+    // Làm sạch dấu nháy kép/nháy đơn cho các đối số sau khi parse
+    final cleanedArgs = cmd.map((arg) {
+      var t = arg.trim();
+      if (t.length >= 2) {
+        if ((t.startsWith('"') && t.endsWith('"')) ||
+            (t.startsWith("'") && t.endsWith("'"))) {
+          return t.substring(1, t.length - 1).trim();
+        }
+      }
+      return t;
+    }).toList();
+
+    return _CommandArgs(executable, cleanedArgs);
+  }
+
+  Future<int> _executeAdbPushWithProgress(
+    String commandId,
+    String serial,
+    String executable,
+    List<String> arguments,
+    String deviceName,
+  ) async {
+    final pushIdx = arguments.indexOf('push');
+    if (pushIdx == -1 || pushIdx + 2 >= arguments.length) {
+      return await _processWorker.executeCommand(
+        commandId: commandId,
+        serial: serial,
+        executable: executable,
+        arguments: arguments,
+        modelName: deviceName,
+      );
+    }
+
+    final localPath = arguments[pushIdx + 1];
+    final remotePath = arguments[pushIdx + 2];
+
+    final localFile = File(localPath);
+    if (!localFile.existsSync()) {
+      _log(
+        'Lỗi: File nguồn không tồn tại: $localPath',
+        serial: serial,
+        model: deviceName,
+        type: LogType.error,
+      );
+      return 1;
+    }
+
+    final totalBytes = localFile.lengthSync();
+    final fileName = localPath.split(RegExp(r'[/\\]')).last;
+    final String remoteFilePath;
+    if (remotePath.endsWith('/') || remotePath.endsWith('\\')) {
+      remoteFilePath = '$remotePath$fileName';
+    } else {
+      final lastPart = remotePath.split('/').last;
+      if (!lastPart.contains('.')) {
+        remoteFilePath = '$remotePath/$fileName';
+      } else {
+        remoteFilePath = remotePath;
+      }
+    }
+
+    final completer = Completer<int>();
+    final pushFuture = _processWorker.executeCommand(
+      commandId: commandId,
+      serial: serial,
+      executable: executable,
+      arguments: arguments,
+      modelName: deviceName,
+    );
+
+    bool isDone = false;
+    final timer = Timer.periodic(const Duration(milliseconds: 500), (t) async {
+      if (isDone) {
+        t.cancel();
+        return;
+      }
+
+      try {
+        final result = await Process.run('adb', ['-s', serial, 'shell', 'ls', '-l', remoteFilePath]);
+        if (isDone) return;
+        
+        final output = result.stdout.toString().trim();
+        if (output.isNotEmpty && !output.contains('No such file')) {
+          final parts = output.split(RegExp(r'\s+'));
+          if (parts.length >= 4) {
+            int? currentBytes;
+            for (final part in parts) {
+              final val = int.tryParse(part);
+              if (val != null && val > 0 && val != totalBytes && parts.indexOf(part) > 2) {
+                currentBytes = val;
+                break;
+              }
+            }
+            currentBytes ??= int.tryParse(parts[4]);
+            currentBytes ??= int.tryParse(parts[3]);
+
+            if (currentBytes != null && totalBytes > 0) {
+              final pct = (currentBytes * 100 / totalBytes).toStringAsFixed(1);
+              final currentMB = (currentBytes / (1024 * 1024)).toStringAsFixed(1);
+              final totalMB = (totalBytes / (1024 * 1024)).toStringAsFixed(1);
+              
+              _log(
+                '[Tiến trình] $pct% ($currentMB MB / $totalMB MB) đã truyền tải...',
+                serial: serial,
+                model: deviceName,
+                type: LogType.output,
+                overwriteLast: true,
+                executionId: commandId,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    });
+
+    final exitCode = await pushFuture;
+    isDone = true;
+    timer.cancel();
+
+    if (exitCode == 0) {
+      final totalMB = (totalBytes / (1024 * 1024)).toStringAsFixed(1);
+      _log(
+        'Đẩy file thành công! Tổng dung lượng: $totalMB MB',
+        serial: serial,
+        model: deviceName,
+        type: LogType.info,
+        overwriteLast: true,
+        executionId: commandId,
+      );
+    }
+
+    return exitCode;
   }
 
   Future<void> _executeScriptOnDevice(
