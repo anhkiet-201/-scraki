@@ -51,9 +51,20 @@ class ScriptExecutionParser {
       return ClientImportCall('', []);
     }
     
-    final scriptName = parts[0];
+    final scriptName = _cleanQuotes(parts[0]);
     final arguments = parts.sublist(1);
     return ClientImportCall(scriptName, arguments);
+  }
+
+  static String _cleanQuotes(String s) {
+    var trimmed = s.trim();
+    if (trimmed.length >= 2) {
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        return trimmed.substring(1, trimmed.length - 1).trim();
+      }
+    }
+    return trimmed;
   }
 
   static String _normalizeArgument(String arg) {
@@ -196,11 +207,12 @@ class ScriptExecutionParser {
 
         result.addAll(wrapper);
       } else if (trimmed.startsWith('#import ')) {
-        final subScriptName = trimmed.substring('#import '.length).trim();
-        if (subScriptName.isEmpty) {
+        final rawSubScriptName = trimmed.substring('#import '.length).trim();
+        if (rawSubScriptName.isEmpty) {
           result.add(cmd);
           continue;
         }
+        final subScriptName = _cleanQuotes(rawSubScriptName);
 
         if (visitedScriptNames.contains(subScriptName)) {
           throw Exception('Phát hiện vòng lặp vô hạn gọi script con: $subScriptName');
