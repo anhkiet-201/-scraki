@@ -11,6 +11,8 @@ import 'package:scraki/features/script/presentation/widgets/tiles/delegates/norm
 import 'package:scraki/features/script/presentation/widgets/tiles/delegates/dialog_tile_delegate.dart';
 import 'package:scraki/features/script/presentation/widgets/dialogs/unified_input_dialog.dart';
 import 'package:scraki/features/script/presentation/widgets/tiles/script_tile_delegate.dart';
+import '../utils/script_execution_parser.dart';
+import '../../domain/entities/log_entry.dart';
 
 class ScriptSidebar extends StatefulWidget {
   final ScriptManagementStore scriptStore;
@@ -224,12 +226,34 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                             return;
                           }
 
+                          // 1. Làm phẳng danh sách câu lệnh bao gồm các script con
+                          List<String> flattenedCmds;
+                          try {
+                            flattenedCmds = ScriptExecutionParser.flatten(s.commands, widget.scriptStore.scripts);
+                          } catch (e) {
+                            final errorMsg = 'Lỗi biên dịch kịch bản: ${e.toString()}';
+                            final selectedSerials = widget.terminalStore.selectedSerials;
+                            if (selectedSerials.isEmpty) {
+                              widget.terminalStore.writeLog(errorMsg, type: LogType.error);
+                            } else {
+                              for (final serial in selectedSerials) {
+                                widget.terminalStore.writeLog(
+                                  errorMsg,
+                                  serial: serial,
+                                  type: LogType.error,
+                                );
+                              }
+                            }
+                            return;
+                          }
+
                           final staged = widget.scriptStore.stagedFiles[s.id];
                           final hasStagedFile = staged != null && staged.trim().isNotEmpty;
 
-                          final keys = extractInputKeys(s.commands);
-                          final hasSingle = hasSingleInput(s.commands);
-                          final hasFile = hasFileInput(s.commands);
+                          // 2. Trích xuất input dựa trên danh sách lệnh đã làm phẳng
+                          final keys = extractInputKeys(flattenedCmds);
+                          final hasSingle = hasSingleInput(flattenedCmds);
+                          final hasFile = hasFileInput(flattenedCmds);
 
                           bool needsDialog = false;
                           if (hasSingle && (args == null || !args.containsKey('input') || args['input']!.isEmpty)) {
@@ -249,7 +273,7 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                               context: context,
                               barrierColor: Colors.black.withValues(alpha: 0.4),
                               builder: (context) => UnifiedInputDialog(
-                                script: s,
+                                script: s.copyWith(commands: flattenedCmds),
                                 keys: keys,
                                 hasSingleInput: hasSingle,
                                 hasFileInput: hasFile,
@@ -264,7 +288,10 @@ class _ScriptSidebarState extends State<ScriptSidebar> {
                               if (staged != null && staged.trim().isNotEmpty) 'file': staged,
                               ...?args,
                             };
-                            widget.terminalStore.runScript(s, args: finalArgs);
+                            
+                            // 3. Thực thi script ảo đã được làm phẳng câu lệnh
+                            final flattenedScript = s.copyWith(commands: flattenedCmds);
+                            widget.terminalStore.runScript(flattenedScript, args: finalArgs);
                           }
                         }
                         void onDelete(ScriptEntity s, [Map<String, dynamic>? args]) => widget.scriptStore.deleteScript(s.id);

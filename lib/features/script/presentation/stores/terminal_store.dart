@@ -348,6 +348,21 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
 
   @action
+  void writeLog(
+    String message, {
+    String? serial,
+    LogType type = LogType.error,
+  }) {
+    final device = serial != null ? getDeviceBySerial(serial) : null;
+    _log(
+      message,
+      serial: serial,
+      model: device?.modelName,
+      type: type,
+    );
+  }
+
+  @action
   void clearTerminal() {
     terminalOutput.clear();
     deviceLogs.clear();
