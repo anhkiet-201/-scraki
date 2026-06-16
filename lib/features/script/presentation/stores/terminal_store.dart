@@ -545,6 +545,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       //      về stdout stream (stream 1, plain text).
       const scriptSetup = r'''
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $ProgressPreference = 'SilentlyContinue'
 function Write-Host {
     param(
