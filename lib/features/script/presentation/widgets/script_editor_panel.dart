@@ -483,7 +483,7 @@ class _ScriptEditorPanelState extends State<ScriptEditorPanel> {
 
           // CodeEditor with Autocomplete
           SizedBox(
-            height: 350,
+            height: 700,
             child: CodeAutocomplete(
               viewBuilder: (context, notifier, onSelected) {
                 return PreferredSize(
