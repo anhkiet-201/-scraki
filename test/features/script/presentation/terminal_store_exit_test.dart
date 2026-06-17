@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:get_it/get_it.dart';
@@ -124,17 +125,17 @@ void main() {
         bool isExit99 = false;
         if (stdin != null && stdin.contains('exit 99')) {
           isExit99 = true;
-        } else if (executable == 'powershell.exe') {
-          final encodedIdx = args.indexOf('-EncodedCommand');
-          if (encodedIdx != -1 && encodedIdx + 1 < args.length) {
-            final encoded = args[encodedIdx + 1];
+        } else if (executable == 'pwsh.exe' || executable == 'powershell.exe') {
+          final fileIdx = args.indexOf('-File');
+          if (fileIdx != -1 && fileIdx + 1 < args.length) {
+            final filePath = args[fileIdx + 1];
             try {
-              final bytes = base64.decode(encoded);
-              final decoded = String.fromCharCodes(
-                List.generate(bytes.length ~/ 2, (i) => bytes[i * 2] + (bytes[i * 2 + 1] << 8)),
-              );
-              if (decoded.contains('exit 99')) {
-                isExit99 = true;
+              final file = File(filePath);
+              if (file.existsSync()) {
+                final content = file.readAsStringSync();
+                if (content.contains('exit 99')) {
+                  isExit99 = true;
+                }
               }
             } catch (_) {}
           }

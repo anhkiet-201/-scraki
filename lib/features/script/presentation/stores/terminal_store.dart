@@ -71,8 +71,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   ObservableList<DeviceEntity> get devices => _deviceManagerStore.devices;
 
   @readonly
-  ObservableMap<String, bool> _shellStates =
-      ObservableMap<String, bool>();
+  ObservableMap<String, bool> _shellStates = ObservableMap<String, bool>();
 
   @observable
   ObservableList<LogEntry> terminalOutput = ObservableList<LogEntry>();
@@ -99,7 +98,8 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   bool isTiledView = false;
 
   @observable
-  ObservableMap<String, LastExecution> lastExecutions = ObservableMap<String, LastExecution>();
+  ObservableMap<String, LastExecution> lastExecutions =
+      ObservableMap<String, LastExecution>();
 
   void initialized() {
     _processWorker.init().then((_) {
@@ -186,7 +186,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @action
   Future<void> executeCurrentCommand() async {
     if (!getIt<AppAuthStore>().isAuthenticated) {
-      _log('Lỗi: Cần xác thực (Anonymous Auth) để chạy lệnh!', type: LogType.error);
+      _log(
+        'Lỗi: Cần xác thực (Anonymous Auth) để chạy lệnh!',
+        type: LogType.error,
+      );
       return;
     }
     if (commandInput.trim().isEmpty) return;
@@ -316,9 +319,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
     // Intercept adb push to show progress
-    final isAdbPush = parsed.executable == 'adb' && 
-                      parsed.arguments.isNotEmpty && 
-                      parsed.arguments.contains('push');
+    final isAdbPush =
+        parsed.executable == 'adb' &&
+        parsed.arguments.isNotEmpty &&
+        parsed.arguments.contains('push');
 
     if (isAdbPush) {
       return await _executeAdbPushWithProgress(
@@ -345,7 +349,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     Map<String, String>? args,
   }) async {
     if (!getIt<AppAuthStore>().isAuthenticated) {
-      _log('Lỗi: Cần xác thực (Anonymous Auth) để chạy script!', type: LogType.error);
+      _log(
+        'Lỗi: Cần xác thực (Anonymous Auth) để chạy script!',
+        type: LogType.error,
+      );
       return;
     }
     _log(
@@ -360,8 +367,6 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     });
   }
 
-
-
   @action
   void writeLog(
     String message, {
@@ -369,12 +374,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     LogType type = LogType.error,
   }) {
     final device = serial != null ? getDeviceBySerial(serial) : null;
-    _log(
-      message,
-      serial: serial,
-      model: device?.modelName,
-      type: type,
-    );
+    _log(message, serial: serial, model: device?.modelName, type: type);
   }
 
   @action
@@ -491,7 +491,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
       final args = exec.args;
       final device = getDeviceBySerial(serial);
       if (device == null) return;
-      
+
       _log(
         'Rerunning script: ${script.name}',
         serial: serial,
@@ -521,11 +521,14 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     List<String> bashCommands, {
     required String deviceModel,
   }) async {
-    final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
+    final cleanCommands = bashCommands
+        .skipWhile((s) => s.trim().isEmpty)
+        .toList();
     if (cleanCommands.isEmpty) return 0;
 
     // Nối thêm lệnh exit và đảm bảo kết thúc bằng newline để tránh treo EOF
-    final scriptText = '${['#!/system/bin/sh', ...cleanCommands, 'exit'].join('\n')}\n';
+    final scriptText =
+        '${['#!/system/bin/sh', ...cleanCommands, 'exit'].join('\n')}\n';
     final arguments = ['-s', serial, 'shell', 'sh'];
     final executable = 'adb';
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
@@ -545,7 +548,9 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     List<String> bashCommands, {
     required String deviceModel,
   }) async {
-    final cleanCommands = bashCommands.skipWhile((s) => s.trim().isEmpty).toList();
+    final cleanCommands = bashCommands
+        .skipWhile((s) => s.trim().isEmpty)
+        .toList();
     if (cleanCommands.isEmpty) return 0;
 
     final isWindows = Platform.isWindows;
@@ -553,6 +558,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     final scriptText = cleanCommands.join('\n');
 
     final List<String> arguments;
+    File? tempFile;
     if (isWindows) {
       // --- Script Setup ---
       // PowerShell khi stdout bị pipe (không phải console) tự động bật CLIXML format,
@@ -576,35 +582,90 @@ function Write-Host {
         $BackgroundColor,
         $Separator
     )
-    process { if ($null -ne $Object) { Write-Output ([string]$Object) } }
+    process {
+        if ($null -ne $Object) {
+            if ($NoNewLine) {
+                [System.Console]::Write([string]$Object)
+            } else {
+                [System.Console]::WriteLine([string]$Object)
+            }
+        } else {
+            if (-not $NoNewLine) {
+                [System.Console]::WriteLine()
+            }
+        }
+    }
+}
+function echo {
+    param(
+        [Parameter(Position=0, ValueFromPipeline=$true, ValueFromRemainingArguments=$true)]
+        $Object
+    )
+    process {
+        if ($null -ne $Object) {
+            [System.Console]::WriteLine([string]$Object)
+        } else {
+            [System.Console]::WriteLine()
+        }
+    }
 }
 ''';
       final fullScript = '$scriptSetup$scriptText';
-      final bytes = Uint16List.fromList(fullScript.codeUnits).buffer.asUint8List();
-      final base64Text = base64.encode(bytes);
-      // -OutputFormat Text: Tắt CLIXML, ép PowerShell xuất plain text.
-      arguments = ['-NoLogo', '-NonInteractive', '-NoProfile', '-OutputFormat', 'Text', '-EncodedCommand', base64Text];
+      final tempDir = Directory.systemTemp;
+      final sanitizedSerial = serial.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final f = File('${tempDir.path}\\scraki_script_${sanitizedSerial}_${DateTime.now().microsecondsSinceEpoch}.ps1');
+      tempFile = f;
+      
+      final bom = [0xEF, 0xBB, 0xBF];
+      final scriptBytes = utf8.encode(fullScript);
+      final fileBytes = Uint8List(bom.length + scriptBytes.length);
+      fileBytes.setRange(0, bom.length, bom);
+      fileBytes.setRange(bom.length, fileBytes.length, scriptBytes);
+      f.writeAsBytesSync(fileBytes);
+
+      arguments = [
+        '-NoLogo',
+        '-NonInteractive',
+        '-NoProfile',
+        '-File',
+        f.path,
+      ];
     } else {
+      tempFile = null;
       arguments = ['-c', scriptText];
     }
 
     final commandId = '${serial}_${DateTime.now().microsecondsSinceEpoch}';
 
-    return await _processWorker.executeCommand(
-      commandId: commandId,
-      serial: serial,
-      executable: executable,
-      arguments: arguments,
-      modelName: deviceModel,
-      processKey: '__server__$serial',
-    );
+    int exitCode = -1;
+    try {
+      exitCode = await _processWorker.executeCommand(
+        commandId: commandId,
+        serial: serial,
+        executable: executable,
+        arguments: arguments,
+        modelName: deviceModel,
+        processKey: '__server__$serial',
+      );
+    } finally {
+      if (tempFile != null) {
+        try {
+          if (tempFile.existsSync()) {
+            tempFile.deleteSync();
+          }
+        } catch (_) {}
+      }
+    }
+
+    return exitCode;
   }
 
   void _appendLog(LogEntry entry, String? serial) {
     runInAction(() {
       final indexGlobal = terminalOutput.lastIndexWhere((e) {
         if (e.type != LogType.output && e.type != LogType.error) return false;
-        if (entry.executionId != null) return e.executionId == entry.executionId;
+        if (entry.executionId != null)
+          return e.executionId == entry.executionId;
         return e.serial == entry.serial;
       });
 
@@ -624,7 +685,8 @@ function Write-Host {
         final list = deviceLogs[serial]!;
         final indexDevice = list.lastIndexWhere((e) {
           if (e.type != LogType.output && e.type != LogType.error) return false;
-          if (entry.executionId != null) return e.executionId == entry.executionId;
+          if (entry.executionId != null)
+            return e.executionId == entry.executionId;
           return e.serial == entry.serial;
         });
 
@@ -642,11 +704,11 @@ function Write-Host {
 
   _CommandArgs _parseCommand(String command, String serial) {
     final trimmed = command.trim();
-    
+
     // Tách các đối số bằng khoảng trắng nhưng giữ nguyên nội dung trong dấu nháy
     final regExp = RegExp(r"""[^\s"']*(?:"[^"]*"|'[^']*')[^\s"']*|[^\s]+""");
     final cmd = regExp.allMatches(trimmed).map((m) => m.group(0)!).toList();
-    
+
     if (cmd.isEmpty) {
       return _CommandArgs('', []);
     }
@@ -660,7 +722,7 @@ function Write-Host {
       cmd.insertAll(0, ["adb", "-s", serial, "shell"]);
     }
     final executable = cmd.removeAt(0);
-    
+
     // Làm sạch dấu nháy kép/nháy đơn cho các đối số sau khi parse
     final cleanedArgs = cmd.map((arg) {
       var t = arg.trim();
@@ -739,9 +801,16 @@ function Write-Host {
       }
 
       try {
-        final result = await Process.run('adb', ['-s', serial, 'shell', 'ls', '-l', remoteFilePath]);
+        final result = await Process.run('adb', [
+          '-s',
+          serial,
+          'shell',
+          'ls',
+          '-l',
+          remoteFilePath,
+        ]);
         if (isDone) return;
-        
+
         final output = result.stdout.toString().trim();
         if (output.isNotEmpty && !output.contains('No such file')) {
           final parts = output.split(RegExp(r'\s+'));
@@ -749,7 +818,10 @@ function Write-Host {
             int? currentBytes;
             for (final part in parts) {
               final val = int.tryParse(part);
-              if (val != null && val > 0 && val != totalBytes && parts.indexOf(part) > 2) {
+              if (val != null &&
+                  val > 0 &&
+                  val != totalBytes &&
+                  parts.indexOf(part) > 2) {
                 currentBytes = val;
                 break;
               }
@@ -759,9 +831,11 @@ function Write-Host {
 
             if (currentBytes != null && totalBytes > 0) {
               final pct = (currentBytes * 100 / totalBytes).toStringAsFixed(1);
-              final currentMB = (currentBytes / (1024 * 1024)).toStringAsFixed(1);
+              final currentMB = (currentBytes / (1024 * 1024)).toStringAsFixed(
+                1,
+              );
               final totalMB = (totalBytes / (1024 * 1024)).toStringAsFixed(1);
-              
+
               _log(
                 '[Tiến trình] $pct% ($currentMB MB / $totalMB MB) đã truyền tải...',
                 serial: serial,
@@ -804,11 +878,13 @@ function Write-Host {
     lastExecutions[serial] = ScriptExecution(script, args);
 
     final processedCommands = script.commands
-        .map((cmd) => _interpolator.interpolate(cmd, {
-              'serial': serial,
-              'index': selectedSerials.toList().indexOf(serial).toString(),
-              ...?args,
-            }))
+        .map(
+          (cmd) => _interpolator.interpolate(cmd, {
+            'serial': serial,
+            'index': selectedSerials.toList().indexOf(serial).toString(),
+            ...?args,
+          }),
+        )
         .toList();
 
     final blocks = ScriptExecutionParser.parse(processedCommands);
@@ -816,11 +892,24 @@ function Write-Host {
     for (final block in blocks) {
       int exitCode = 0;
       if (block is SingleCommandBlock) {
-        exitCode = await executeCommandOnDevice(serial, block.command, logCommand: false, updateTaskOverlay: false);
+        exitCode = await executeCommandOnDevice(
+          serial,
+          block.command,
+          logCommand: false,
+          updateTaskOverlay: false,
+        );
       } else if (block is BashScriptBlock) {
-        exitCode = await _executeBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+        exitCode = await _executeBashBlockOnDevice(
+          serial,
+          block.commands,
+          deviceModel: deviceModel,
+        );
       } else if (block is ServerBashScriptBlock) {
-        exitCode = await _executeServerBashBlockOnDevice(serial, block.commands, deviceModel: deviceModel);
+        exitCode = await _executeServerBashBlockOnDevice(
+          serial,
+          block.commands,
+          deviceModel: deviceModel,
+        );
       }
       final state = ShellState.fromCode(exitCode);
       if (state == ShellState.stopped || state == ShellState.canceled) {
@@ -862,7 +951,7 @@ function Write-Host {
       if (logs != null && logs.isNotEmpty) {
         final lastLog = logs.last;
         final lowerMsg = lastLog.message.toLowerCase();
-        if (lastLog.type == LogType.error || 
+        if (lastLog.type == LogType.error ||
             lowerMsg.contains('failed') ||
             lowerMsg.contains('error') ||
             lowerMsg.contains('timeout') ||
@@ -891,7 +980,8 @@ function Write-Host {
 
   void _updateTaskStatusFromLog(String serial, LogEntry entry) {
     final currentTask = sessionManagerStore.activeTasks[serial];
-    if (currentTask == null || currentTask.phase != DeviceTaskPhase.running) return;
+    if (currentTask == null || currentTask.phase != DeviceTaskPhase.running)
+      return;
     if (entry.message.trim().isEmpty) return;
 
     sessionManagerStore.updateDeviceTask(
