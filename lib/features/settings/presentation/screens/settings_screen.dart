@@ -12,6 +12,8 @@ import '../widgets/settings_phone_card.dart';
 import '../widgets/settings_save_bar.dart';
 import '../widgets/settings_section_header.dart';
 import '../widgets/settings_help_panel.dart';
+import '../widgets/settings_ip_range_card.dart';
+import '../widgets/settings_max_devices_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,6 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final emailStore = GetIt.I<SettingsEmailStore>();
   final _apiKeyController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _ipRangeController = TextEditingController();
+  final _maxDevicesController = TextEditingController();
   int _selectedCategoryIndex = 0;
 
   @override
@@ -34,6 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     settingsStore.loadSettings().then((_) {
       _apiKeyController.text = settingsStore.aiApiKey;
       _phoneController.text = settingsStore.posterPhoneNumber;
+      _ipRangeController.text = settingsStore.ipRange;
+      _maxDevicesController.text = settingsStore.maxDevices.toString();
     });
     emailStore.loadCredentials();
   }
@@ -42,6 +48,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _apiKeyController.dispose();
     _phoneController.dispose();
+    _ipRangeController.dispose();
+    _maxDevicesController.dispose();
     super.dispose();
   }
 
@@ -318,6 +326,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: settingsStore.updatePhoneNumber,
                   ),
                   const SizedBox(height: 24),
+                  SettingsIpRangeCard(
+                    controller: _ipRangeController,
+                    onChanged: settingsStore.updateIpRange,
+                  ),
+                  const SizedBox(height: 24),
+                  SettingsMaxDevicesCard(
+                    controller: _maxDevicesController,
+                    onChanged: (val) {
+                      final value = int.tryParse(val) ?? 100;
+                      settingsStore.updateMaxDevices(value);
+                    },
+                  ),
+                  const SizedBox(height: 24),
                   SettingsCollectionCard(
                     selectedCollection: settingsStore.deviceGroupCollection,
                     onChanged: settingsStore.updateDeviceGroupCollection,
@@ -348,6 +369,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     description: 'Số điện thoại này sẽ được hiển thị công khai trên các poster hoặc video khi xuất bản.',
                     accentColor: Color(0xFFF59E0B),
                     icon: Icons.phone_android_rounded,
+                  ),
+                  const SizedBox(height: 16),
+                  const SettingsHelpPanel(
+                    title: 'Dải mạng kết nối',
+                    description: 'Dải IP mạng dùng để quét và tự động kết nối tới các thiết bị Box qua giao thức ADB TCP/IP. Ví dụ: 10.10.0.0 hoặc 192.168.0.0.',
+                    accentColor: Color(0xFF10B981),
+                    icon: Icons.lan_rounded,
+                  ),
+                  const SizedBox(height: 16),
+                  const SettingsHelpPanel(
+                    title: 'Số thiết bị tối đa',
+                    description: 'Số lượng thiết bị tối đa được ứng dụng quét và tự động kết nối ADB TCP/IP. Điều này giúp tối ưu hóa hiệu suất và tránh quét các IP không tồn tại.',
+                    accentColor: Color(0xFF8B5CF6),
+                    icon: Icons.devices_other_rounded,
                   ),
                 ],
               ),

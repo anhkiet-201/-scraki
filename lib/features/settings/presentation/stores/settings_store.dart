@@ -44,6 +44,12 @@ abstract class _SettingsStore with Store {
   String get deviceGroupCollection =>
       settings?.deviceGroupCollection ?? 'device_groups';
 
+  @computed
+  String get ipRange => settings?.ipRange ?? '10.10.0.0';
+
+  @computed
+  int get maxDevices => settings?.maxDevices ?? 100;
+
   // ===== Actions =====
   @action
   Future<void> loadSettings() async {
@@ -83,6 +89,20 @@ abstract class _SettingsStore with Store {
   void updateDeviceGroupCollection(String collection) {
     settings ??= SettingsEntity.empty();
     settings = settings!.copyWith(deviceGroupCollection: collection);
+    errorMessage = null;
+  }
+
+  @action
+  void updateIpRange(String newRange) {
+    settings ??= SettingsEntity.empty();
+    settings = settings!.copyWith(ipRange: newRange);
+    errorMessage = null;
+  }
+
+  @action
+  void updateMaxDevices(int value) {
+    settings ??= SettingsEntity.empty();
+    settings = settings!.copyWith(maxDevices: value);
     errorMessage = null;
   }
 

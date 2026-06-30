@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/config/settings_config_provider.dart';
 import 'package:scraki/core/mixins/device_manager_store_mixin.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
@@ -425,6 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (_) {
         final isLoading = deviceManagerStore.isLoading;
         final count = deviceManagerStore.connectedBoxCount;
+        final maxDevices = inject<SettingsConfigProvider>().maxDevices;
         final colorScheme = theme.colorScheme;
         final isLight = theme.brightness == Brightness.light;
 
@@ -526,7 +528,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                   ),
                                   TextSpan(
-                                    text: '($count/96)',
+                                    text: '($count/$maxDevices)',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w400,
                                       fontSize: 12,

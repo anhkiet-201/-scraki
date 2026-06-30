@@ -32,6 +32,20 @@ mixin _$SettingsStore on _SettingsStore, Store {
         () => super.deviceGroupCollection,
         name: '_SettingsStore.deviceGroupCollection',
       )).value;
+  Computed<String>? _$ipRangeComputed;
+
+  @override
+  String get ipRange => (_$ipRangeComputed ??= Computed<String>(
+    () => super.ipRange,
+    name: '_SettingsStore.ipRange',
+  )).value;
+  Computed<int>? _$maxDevicesComputed;
+
+  @override
+  int get maxDevices => (_$maxDevicesComputed ??= Computed<int>(
+    () => super.maxDevices,
+    name: '_SettingsStore.maxDevices',
+  )).value;
 
   late final _$appVersionAtom = Atom(
     name: '_SettingsStore.appVersion',
@@ -177,6 +191,30 @@ mixin _$SettingsStore on _SettingsStore, Store {
   }
 
   @override
+  void updateIpRange(String newRange) {
+    final _$actionInfo = _$_SettingsStoreActionController.startAction(
+      name: '_SettingsStore.updateIpRange',
+    );
+    try {
+      return super.updateIpRange(newRange);
+    } finally {
+      _$_SettingsStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateMaxDevices(int value) {
+    final _$actionInfo = _$_SettingsStoreActionController.startAction(
+      name: '_SettingsStore.updateMaxDevices',
+    );
+    try {
+      return super.updateMaxDevices(value);
+    } finally {
+      _$_SettingsStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 appVersion: ${appVersion},
@@ -185,7 +223,9 @@ isLoading: ${isLoading},
 errorMessage: ${errorMessage},
 aiApiKey: ${aiApiKey},
 posterPhoneNumber: ${posterPhoneNumber},
-deviceGroupCollection: ${deviceGroupCollection}
+deviceGroupCollection: ${deviceGroupCollection},
+ipRange: ${ipRange},
+maxDevices: ${maxDevices}
     ''';
   }
 }

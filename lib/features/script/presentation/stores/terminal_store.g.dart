@@ -298,6 +298,22 @@ mixin _$TerminalStore on _TerminalStore, Store {
   }
 
   @override
+  void writeLog(
+    String message, {
+    String? serial,
+    LogType type = LogType.error,
+  }) {
+    final _$actionInfo = _$_TerminalStoreActionController.startAction(
+      name: '_TerminalStore.writeLog',
+    );
+    try {
+      return super.writeLog(message, serial: serial, type: type);
+    } finally {
+      _$_TerminalStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void clearTerminal() {
     final _$actionInfo = _$_TerminalStoreActionController.startAction(
       name: '_TerminalStore.clearTerminal',

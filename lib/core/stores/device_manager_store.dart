@@ -4,6 +4,7 @@ import 'package:mobx/mobx.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
+import '../config/settings_config_provider.dart';
 
 part 'device_manager_store.g.dart';
 
@@ -20,8 +21,9 @@ class DeviceManagerStore = _DeviceManagerStore with _$DeviceManagerStore;
 /// - Ngắt kết nối thiết bị
 abstract class _DeviceManagerStore with Store {
   final DeviceRepository _repository;
+  final SettingsConfigProvider _configProvider;
 
-  _DeviceManagerStore(this._repository);
+  _DeviceManagerStore(this._repository, this._configProvider);
 
   // ═══════════════════════════════════════════════════════════════
   // DEVICE LIST
@@ -187,13 +189,17 @@ abstract class _DeviceManagerStore with Store {
   }
 
   @computed
-  int get connectedBoxCount => devices
-      .where(
-        (d) => d.serial.startsWith('192.168.') && d.serial.endsWith('.20:5555'),
-      )
-      .length;
+  int get connectedBoxCount {
+    final ipPrefix = _configProvider.ipRange.split('.').take(2).join('.');
+    final targetPrefix = ipPrefix.isNotEmpty ? ipPrefix : '10.10';
+    return devices
+        .where(
+          (d) => d.serial.startsWith('$targetPrefix.') && d.serial.endsWith('.20:5555'),
+        )
+        .length;
+  }
 
-  /// Kết nối tới các Box trong dải IP 192.168.1.20 -> 192.168.96.20
+  /// Kết nối tới các Box trong dải IP từ cấu hình (ví dụ: 10.10.1.20 -> 10.10.N.20)
   @action
   Future<void> connectToBox() async {
     errorMessage = null;
@@ -210,8 +216,10 @@ abstract class _DeviceManagerStore with Store {
     );
     await _loadDevicesInternal();
 
-    // 2. Build target IP list (1-96)
-    final allIps = List.generate(96, (index) => '192.168.${index + 1}.20');
+    // 2. Build target IP list (1-N)
+    final ipPrefix = _configProvider.ipRange.split('.').take(2).join('.');
+    final targetPrefix = ipPrefix.isNotEmpty ? ipPrefix : '10.10';
+    final allIps = List.generate(_configProvider.maxDevices, (index) => '$targetPrefix.${index + 1}.20');
 
     // 3. Filter out already connected IPs
     final currentSerials = devices.map((d) => d.serial).toSet();

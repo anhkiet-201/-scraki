@@ -7,11 +7,15 @@ class SettingsModel extends HiveObject {
   String aiApiKey;
   String posterPhoneNumber;
   String deviceGroupCollection;
+  String ipRange;
+  int maxDevices;
 
   SettingsModel({
     required this.aiApiKey,
     required this.posterPhoneNumber,
     this.deviceGroupCollection = 'device_groups',
+    this.ipRange = '10.10.0.0',
+    this.maxDevices = 100,
   });
 
   /// Mapper từ Entity sang Model
@@ -20,6 +24,8 @@ class SettingsModel extends HiveObject {
       aiApiKey: entity.aiApiKey,
       posterPhoneNumber: entity.posterPhoneNumber,
       deviceGroupCollection: entity.deviceGroupCollection,
+      ipRange: entity.ipRange,
+      maxDevices: entity.maxDevices,
     );
   }
 
@@ -29,6 +35,8 @@ class SettingsModel extends HiveObject {
       aiApiKey: aiApiKey,
       posterPhoneNumber: posterPhoneNumber,
       deviceGroupCollection: deviceGroupCollection,
+      ipRange: ipRange,
+      maxDevices: maxDevices,
     );
   }
 }
@@ -48,21 +56,27 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
     return SettingsModel(
       aiApiKey: fields[0] as String? ?? '',
       posterPhoneNumber: fields[1] as String? ?? '',
-      // Backward compatible: dữ liệu cũ (2 fields) sẽ fallback về default
+      // Backward compatible: dữ liệu cũ (2-4 fields) sẽ fallback về default
       deviceGroupCollection: fields[2] as String? ?? 'device_groups',
+      ipRange: fields[3] as String? ?? '10.10.0.0',
+      maxDevices: fields[4] as int? ?? 100,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(3) // Tăng lên 3 fields
+      ..writeByte(5) // Tăng lên 5 fields
       ..writeByte(0)
       ..write(obj.aiApiKey)
       ..writeByte(1)
       ..write(obj.posterPhoneNumber)
       ..writeByte(2)
-      ..write(obj.deviceGroupCollection);
+      ..write(obj.deviceGroupCollection)
+      ..writeByte(3)
+      ..write(obj.ipRange)
+      ..writeByte(4)
+      ..write(obj.maxDevices);
   }
 
   @override

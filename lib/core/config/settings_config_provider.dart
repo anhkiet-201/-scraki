@@ -35,4 +35,10 @@ class SettingsConfigProvider {
   /// Get Firestore collection name for device groups
   String get deviceGroupCollection =>
       _cachedSettings?.deviceGroupCollection ?? 'device_groups';
+
+  /// Get IP range from cached settings
+  String get ipRange => _cachedSettings?.ipRange ?? '10.10.0.0';
+
+  /// Get maximum device count from cached settings
+  int get maxDevices => _cachedSettings?.maxDevices ?? 100;
 }

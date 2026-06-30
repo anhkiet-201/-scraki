@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'features/script/data/models/script_model.dart';
 import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
@@ -20,7 +21,8 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await Hive.initFlutter();
+  final appSupportDir = await getApplicationSupportDirectory();
+  Hive.init(appSupportDir.path);
   Hive.registerAdapter(ScriptModelAdapter());
   MediaKit.ensureInitialized();
   final env = Platform.isMacOS ? 'macos' : (Platform.isWindows ? 'windows' : null);

@@ -6,16 +6,22 @@ import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/core/error/failures.dart';
 import 'package:fpdart/fpdart.dart';
 
+import 'package:scraki/core/config/settings_config_provider.dart';
+
 // Mocks
 class MockDeviceRepository extends Mock implements DeviceRepository {}
+class MockSettingsConfigProvider extends Mock implements SettingsConfigProvider {}
 
 void main() {
   late MockDeviceRepository repository;
+  late MockSettingsConfigProvider configProvider;
   late DeviceManagerStore store;
 
   setUp(() {
     repository = MockDeviceRepository();
-    store = DeviceManagerStore(repository);
+    configProvider = MockSettingsConfigProvider();
+    when(() => configProvider.ipRange).thenReturn('10.10.0.0');
+    store = DeviceManagerStore(repository, configProvider);
   });
 
   group('DeviceManagerStore', () {
