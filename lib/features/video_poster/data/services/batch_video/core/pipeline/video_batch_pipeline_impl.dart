@@ -99,7 +99,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     );
 
     // 3. Ambient Sourcing
-    if (config.generateAmbientAudio) {
+    if (config.generateAmbientAudio && config.outputOption != BatchVideoOutputOption.tiktokAutocutSet) {
       _eventController.add('[0/3] Đang tải âm thanh nền...');
       try {
         final paths = await _ambientAudioProvider.fetchRandomAmbientAudios(
@@ -242,6 +242,25 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       }
       
       final plan = await _generateCompositionPlan(ctx, i);
+
+      if (ctx.config.outputOption == BatchVideoOutputOption.tiktokAutocutSet) {
+        // Autocut Set mode: Do not render. Just copy segments to a folder.
+        final String idxStr = i.toString().padLeft(3, '0');
+        final String setDir = p.join(ctx.outputDir, 'tik_set_autocut_$idxStr');
+        await Directory(setDir).create(recursive: true);
+        
+        for (int s = 0; s < plan.segmentPaths.length; s++) {
+          final String src = plan.segmentPaths[s];
+          final String sIdxStr = (s + 1).toString().padLeft(2, '0');
+          final String dest = p.join(setDir, 'segment_$sIdxStr.mp4');
+          await File(src).copy(dest);
+        }
+        
+        _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất bộ Autocut $i');
+        // Notify 100% progress for UI
+        _eventController.add('_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: 100%');
+        continue; // Skip rendering
+      }
 
       late Future<void> task;
       task = ctx.engine
@@ -478,23 +497,29 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       }
     }
 
+    final isAutocutSet = config.outputOption == BatchVideoOutputOption.tiktokAutocutSet;
+
     final ambientPath =
-        (ctx.tempAmbientAudioPaths.isNotEmpty &&
+        (!isAutocutSet &&
+            ctx.tempAmbientAudioPaths.isNotEmpty &&
             index - 1 < ctx.tempAmbientAudioPaths.length)
         ? ctx.tempAmbientAudioPaths[index - 1]
         : null;
 
     final hasCustomAudio =
+        !isAutocutSet &&
         config.customAudioPath != null &&
         config.customAudioPath!.isNotEmpty &&
         File(config.customAudioPath!).existsSync();
 
     // Prepare text overlays
     final textPaths = <String>[];
-    for (var i = 0; i < config.textOverlays.length; i++) {
-      final file = File(p.join(ctx.tempDir.path, 'text_${index}_$i.png'));
-      await file.writeAsBytes(config.textOverlays[i].bytes);
-      textPaths.add(file.absolute.path);
+    if (!isAutocutSet) {
+      for (var i = 0; i < config.textOverlays.length; i++) {
+        final file = File(p.join(ctx.tempDir.path, 'text_${index}_$i.png'));
+        await file.writeAsBytes(config.textOverlays[i].bytes);
+        textPaths.add(file.absolute.path);
+      }
     }
 
     return CompositionPlan(

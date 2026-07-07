@@ -1,6 +1,31 @@
 import 'package:scraki/features/video_poster/domain/entities/custom_image_overlay.dart';
 import 'package:scraki/features/video_poster/domain/entities/timed_overlay.dart';
 
+enum BatchVideoOutputOption {
+  tiktokVideo,
+  tiktokAutocutSet,
+  facebookGroupsVideo,
+  facebookReelsVideo,
+  facebookFeedsVideo,
+}
+
+extension BatchVideoOutputOptionExtension on BatchVideoOutputOption {
+  String get label {
+    switch (this) {
+      case BatchVideoOutputOption.tiktokVideo:
+        return 'TikTok Video';
+      case BatchVideoOutputOption.tiktokAutocutSet:
+        return 'TikTok Autocut Set';
+      case BatchVideoOutputOption.facebookGroupsVideo:
+        return 'Facebook Groups Video';
+      case BatchVideoOutputOption.facebookReelsVideo:
+        return 'Facebook Reels Video';
+      case BatchVideoOutputOption.facebookFeedsVideo:
+        return 'Facebook Feeds Video';
+    }
+  }
+}
+
 /// Configuration constants matching make-vid.sh defaults.
 class BatchVideoConfig {
   final int minSegmentDuration; // seconds
@@ -12,6 +37,7 @@ class BatchVideoConfig {
   final String? outputDir; // null = auto-generate with timestamp
   final List<TimedOverlay> textOverlays;
   final List<CustomImageOverlay> imageOverlays;
+  final BatchVideoOutputOption outputOption;
 
   /// Đường dẫn file audio tùy chỉnh để mix vào video.
   /// null = chỉ dùng audio gốc (giảm về 5%).
@@ -40,6 +66,7 @@ class BatchVideoConfig {
     this.outputDir,
     this.textOverlays = const [],
     this.imageOverlays = const [],
+    this.outputOption = BatchVideoOutputOption.tiktokVideo,
     this.customAudioPath,
     this.customAudioVolume = 0.8,
     this.generateAmbientAudio = true,

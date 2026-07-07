@@ -47,8 +47,22 @@ class CompositionPlan {
   });
 
   /// Returns the absolute path where the final rendered video should be saved.
-  String get finalOutputPath => 
-      '$outputDir/tik_final_${outputIndex.toString().padLeft(3, '0')}.mp4';
+  String get finalOutputPath {
+    final idxStr = outputIndex.toString().padLeft(3, '0');
+    switch (config.outputOption) {
+      case BatchVideoOutputOption.tiktokVideo:
+        return '$outputDir/tik_final_$idxStr.mp4';
+      case BatchVideoOutputOption.facebookGroupsVideo:
+        return '$outputDir/fb_groups_$idxStr.mp4';
+      case BatchVideoOutputOption.facebookReelsVideo:
+        return '$outputDir/fb_reels_$idxStr.mp4';
+      case BatchVideoOutputOption.facebookFeedsVideo:
+        return '$outputDir/fb_feeds_$idxStr.mp4';
+      case BatchVideoOutputOption.tiktokAutocutSet:
+        // Autocut set bypasses final render, but in case it's called:
+        return '$outputDir/tik_set_autocut_$idxStr.mp4';
+    }
+  }
 }
 
 /// A set of randomized parameters used to diversify video output.

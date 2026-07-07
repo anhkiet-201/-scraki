@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 import 'playground_constants.dart';
 
@@ -23,9 +24,19 @@ class PlaygroundNavBar extends StatelessWidget {
           const SizedBox(height: 80),
           _buildNavIcon(PlaygroundConstants.kNavMedia, Icons.inventory_2_outlined, 'MEDIA'),
           const SizedBox(height: 4),
-          _buildNavIcon(PlaygroundConstants.kNavText, Icons.text_fields_rounded, 'TEXT'),
-          const SizedBox(height: 4),
-          _buildNavIcon(PlaygroundConstants.kNavImage, Icons.image_outlined, 'IMAGES'),
+          Observer(
+            builder: (context) {
+              final isAutocut = store.batchOutputOption == BatchVideoOutputOption.tiktokAutocutSet && !store.isImagePosterMode;
+              if (isAutocut) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  _buildNavIcon(PlaygroundConstants.kNavText, Icons.text_fields_rounded, 'TEXT'),
+                  const SizedBox(height: 4),
+                  _buildNavIcon(PlaygroundConstants.kNavImage, Icons.image_outlined, 'IMAGES'),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

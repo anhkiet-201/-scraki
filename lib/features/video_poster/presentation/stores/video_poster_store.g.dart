@@ -429,6 +429,24 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$batchOutputOptionAtom = Atom(
+    name: '_VideoPosterStore.batchOutputOption',
+    context: context,
+  );
+
+  @override
+  BatchVideoOutputOption get batchOutputOption {
+    _$batchOutputOptionAtom.reportRead();
+    return super.batchOutputOption;
+  }
+
+  @override
+  set batchOutputOption(BatchVideoOutputOption value) {
+    _$batchOutputOptionAtom.reportWrite(value, super.batchOutputOption, () {
+      super.batchOutputOption = value;
+    });
+  }
+
   late final _$customAudioPathAtom = Atom(
     name: '_VideoPosterStore.customAudioPath',
     context: context,
@@ -1172,6 +1190,18 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setBatchOutputOption(BatchVideoOutputOption option) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setBatchOutputOption',
+    );
+    try {
+      return super.setBatchOutputOption(option);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setCustomAudioPath(String? path) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setCustomAudioPath',
@@ -1400,6 +1430,7 @@ batchOutputCount: ${batchOutputCount},
 isBatchCreating: ${isBatchCreating},
 batchLogs: ${batchLogs},
 batchOutputDir: ${batchOutputDir},
+batchOutputOption: ${batchOutputOption},
 customAudioPath: ${customAudioPath},
 customAudioVolume: ${customAudioVolume},
 generateAmbientAudio: ${generateAmbientAudio},

@@ -4,6 +4,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as p;
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
+import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
 import 'package:scraki/features/video_poster/presentation/stores/video_poster_store.dart';
 
 /// Các định dạng audio được hỗ trợ khi chọn file hoặc drag & drop.
@@ -106,6 +107,8 @@ class _BatchVideoPanelState extends State<BatchVideoPanel> {
             children: [
               _buildOutputCountField(context, isCreating),
               const SizedBox(height: 20),
+              _buildOutputOptionField(context, isCreating),
+              const SizedBox(height: 20),
               _buildAudioSection(context, isCreating),
               const SizedBox(height: 8),
             ],
@@ -180,6 +183,73 @@ class _BatchVideoPanelState extends State<BatchVideoPanel> {
     );
   }
 
+  Widget _buildOutputOptionField(BuildContext context, bool isCreating) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final option = widget.store.batchOutputOption;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(context, 'ĐỊNH DẠNG XUẤT'),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: isLight
+                ? Colors.black.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isLight
+                  ? Colors.black.withValues(alpha: 0.05)
+                  : Colors.white10,
+              width: 0.5,
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<BatchVideoOutputOption>(
+              value: option,
+              dropdownColor: isLight ? Colors.white : const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(12),
+              elevation: 8,
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isLight ? const Color(0xFF64748B) : Colors.white38,
+              ),
+              isExpanded: true,
+              style: TextStyle(
+                color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              onChanged: isCreating
+                  ? null
+                  : (BatchVideoOutputOption? newValue) {
+                      if (newValue != null) {
+                        widget.store.setBatchOutputOption(newValue);
+                      }
+                    },
+              items: BatchVideoOutputOption.values.map((BatchVideoOutputOption opt) {
+                return DropdownMenuItem<BatchVideoOutputOption>(
+                  value: opt,
+                  child: Text(
+                    opt.label,
+                    style: TextStyle(
+                      color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                      fontSize: 14,
+                      fontWeight: opt == option ? FontWeight.bold : FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ─── Section Âm thanh tùy chỉnh ──────────────────────────────────────────
 
   Widget _buildAudioSection(BuildContext context, bool isCreating) {
@@ -187,6 +257,10 @@ class _BatchVideoPanelState extends State<BatchVideoPanel> {
 
     return Observer(
       builder: (context) {
+        if (widget.store.batchOutputOption == BatchVideoOutputOption.tiktokAutocutSet) {
+          return const SizedBox.shrink();
+        }
+
         final audioPath = widget.store.customAudioPath;
         final hasAudio = audioPath != null && audioPath.isNotEmpty;
         final volume = widget.store.customAudioVolume;

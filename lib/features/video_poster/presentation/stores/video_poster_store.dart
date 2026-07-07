@@ -683,6 +683,14 @@ abstract class _VideoPosterStore with Store {
   @observable
   String? batchOutputDir;
 
+  @observable
+  BatchVideoOutputOption batchOutputOption = BatchVideoOutputOption.tiktokVideo;
+
+  @action
+  void setBatchOutputOption(BatchVideoOutputOption option) {
+    batchOutputOption = option;
+  }
+
   // ─── Custom Audio ──────────────────────────────────────────────────
 
   /// Đường dẫn file nhạc nền tùy chỉnh được chọn bởi người dùng.
@@ -844,11 +852,14 @@ abstract class _VideoPosterStore with Store {
 
     final config = BatchVideoConfig(
       outputCount: batchOutputCount,
+      outputDir: batchOutputDir,
+      outputOption: batchOutputOption,
       textOverlays: timedOverlays,
       imageOverlays: customImages.toList(),
       customAudioPath: customAudioPath,
       customAudioVolume: customAudioVolume,
       generateAmbientAudio: generateAmbientAudio,
+      generateColorFilter: true, // Hardcode or configure later
     );
 
     try {
