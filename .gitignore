@@ -61,3 +61,8 @@ scripts/
 .firebase_sdk/
 firebase_cpp_sdk_windows_13.5.0.zip
 
+
+#Ignore subfolders
+/auto_script/
+/java_wrapper/src/*.class
+/java_wrapper/build_tiktok_share_dex.ps1
