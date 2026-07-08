@@ -1041,6 +1041,12 @@ abstract class _VideoPosterStore with Store {
   @observable
   bool isImagePosterMode = false;
 
+  bool get is4x5Ratio {
+    if (isImagePosterMode) return true;
+    return batchOutputOption == BatchVideoOutputOption.facebookGroupsVideo ||
+           batchOutputOption == BatchVideoOutputOption.facebookFeedsVideo;
+  }
+
   @action
   void toggleImagePosterMode() {
     isImagePosterMode = !isImagePosterMode;

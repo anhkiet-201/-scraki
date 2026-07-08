@@ -166,10 +166,10 @@ class DashedBorderPainter extends CustomPainter {
     final dashPath = Path();
     double distance = 0.0;
 
-    for (final Metric in path.computeMetrics()) {
-      while (distance < Metric.length) {
+    for (final metric in path.computeMetrics()) {
+      while (distance < metric.length) {
         dashPath.addPath(
-          Metric.extractPath(distance, distance + gap),
+          metric.extractPath(distance, distance + gap),
           Offset.zero,
         );
         distance += gap * 2;
