@@ -63,6 +63,19 @@ class CompositionPlan {
         return '$outputDir/tik_set_autocut_$idxStr.mp4';
     }
   }
+
+  /// Indicates whether the video should use a 4:5 aspect ratio (1080x1350)
+  /// instead of the default 9:16 (1080x1920).
+  bool get is4x5Ratio {
+    return config.outputOption == BatchVideoOutputOption.facebookGroupsVideo ||
+        config.outputOption == BatchVideoOutputOption.facebookFeedsVideo;
+  }
+
+  /// Target video width.
+  int get targetWidth => 1080;
+
+  /// Target video height.
+  int get targetHeight => is4x5Ratio ? 1350 : 1920;
 }
 
 /// A set of randomized parameters used to diversify video output.

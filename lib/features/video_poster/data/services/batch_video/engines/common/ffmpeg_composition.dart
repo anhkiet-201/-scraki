@@ -281,10 +281,10 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         'crop=iw*(1-${params.cropJitterX}):ih*(1-${params.cropJitterY}):0:0';
 
     // 2. Dynamic Pan (Ken Burns Effect)
-    final cropW = (1080 / params.zoomVal).round();
-    final cropH = (1920 / params.zoomVal).round();
-    final maxOffX = 1080 - cropW;
-    final maxOffY = 1920 - cropH;
+    final cropW = (plan.targetWidth / params.zoomVal).round();
+    final cropH = (plan.targetHeight / params.zoomVal).round();
+    final maxOffX = plan.targetWidth - cropW;
+    final maxOffY = plan.targetHeight - cropH;
 
     final sx = (params.panStartX * maxOffX).round();
     final ex = (params.panEndX * maxOffX).round();
@@ -299,7 +299,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         plan.segmentPaths.length > 1 ? '[v_concat]' : inputLabel;
 
     // Reconstruction: sourceLabel -> [v_clean]
-    return '$sourceLabel setpts=N/30/TB,fps=30[v_clean];[v_clean]$dynamicPan,$jitterCrop,${toolkit.scale(1080, 1920)},${toolkit.adjustSpeed(params.pts)}';
+    return '$sourceLabel setpts=N/30/TB,fps=30[v_clean];[v_clean]$dynamicPan,$jitterCrop,${toolkit.scale(plan.targetWidth, plan.targetHeight)},${toolkit.adjustSpeed(params.pts)}';
   }
 
   /// Builds the color grading filter chain.
@@ -378,8 +378,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       if (fTargetW % 2 != 0) fTargetW++;
       if (fTargetH % 2 != 0) fTargetH++;
 
-      final int targetX = (imgConfig.x * 1080 - finalW / 2).round();
-      final int targetY = (imgConfig.y * 1920 - finalH / 2).round();
+      final int targetX = (imgConfig.x * plan.targetWidth - finalW / 2).round();
+      final int targetY = (imgConfig.y * plan.targetHeight - finalH / 2).round();
 
       String scaleLabel = '[scaled$overlayIdx]';
       String scaleF =
@@ -414,8 +414,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       final int textInputIdx = currentInputCounter++;
 
       if (!overlayCfg.isAnimated) {
-        final int centerX = (overlayCfg.x * 1080).round();
-        final int centerY = (overlayCfg.y * 1920).round();
+        final int centerX = (overlayCfg.x * plan.targetWidth).round();
+        final int centerY = (overlayCfg.y * plan.targetHeight).round();
         final int tW = (overlayCfg.width * 1.5).round();
         final int tH = (overlayCfg.height * 1.5).round();
         final int tX = centerX - (tW ~/ 2);
@@ -449,8 +449,8 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
           fH = (tW * sin(a).abs() + tH * cos(a).abs()).round();
         }
 
-        final int centerX = (overlayCfg.x * 1080).round();
-        final int centerY = (overlayCfg.y * 1920).round();
+        final int centerX = (overlayCfg.x * plan.targetWidth).round();
+        final int centerY = (overlayCfg.y * plan.targetHeight).round();
         final int tX = centerX - (fW ~/ 2);
         final int tY = centerY - (fH ~/ 2);
 

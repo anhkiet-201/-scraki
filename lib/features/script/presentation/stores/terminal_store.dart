@@ -784,7 +784,6 @@ function echo {
       }
     }
 
-    final completer = Completer<int>();
     final pushFuture = _processWorker.executeCommand(
       commandId: commandId,
       serial: serial,
