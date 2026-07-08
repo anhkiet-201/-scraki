@@ -119,80 +119,110 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         hardwareResolver.ffmpegBin,
         finalArgs,
       );
-      context.addProcess(process);
-
-      // Watchdog logic: Không start ngay vì fast seek trên network drive (Google Drive)
-      // cần thời gian đọc moov atom trước khi output stderr đầu tiên.
-      // Watchdog chỉ kích hoạt SAU khi nhận được stderr đầu tiên (FFmpeg đã mở file).
-      // Sau đó 180s không có activity mới kill (đủ thời gian cho file chậm / seek lớn).
-      void resetWatchdog() {
-        watchdog?.cancel();
-        watchdog = Timer(const Duration(seconds: 180), () {
-          onLog?.call(
-            '  ⚠️ Watchdog: No activity detected for 180s. Killing process...',
-          );
-          process.kill();
-        });
-      }
-
-
-      final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
-
-      final stdoutSub = process.stdout.listen((data) {
-        final out = String.fromCharCodes(data);
-        if (out.trim().isNotEmpty) {
-          debugPrint('  [FFMPEG STDOUT] $out');
-        }
-      });
-
-      final stderrSub = process.stderr.listen((data) {
-        resetWatchdog(); // Start / reset watchdog khi nhận stderr đầu tiên
-        final out = String.fromCharCodes(data);
-        if (onLog != null) onLog(out);
-        errorLogs.add(out);
-
-        if (onProgress != null &&
-            targetDuration != null &&
-            !context.cancelled) {
-          final match = regex.firstMatch(out);
-          if (match != null) {
-            final currentSeconds =
-                int.parse(match.group(1)!) * 3600 +
-                int.parse(match.group(2)!) * 60 +
-                double.parse(match.group(3)!);
-            onProgress((currentSeconds / targetDuration).clamp(0.0, 1.0));
-          }
-        }
-      });
-
-      final exitCode = await process.exitCode.timeout(
-        effectiveTimeout,
-        onTimeout: () {
-          onLog?.call(
-            '  ❌ Timeout: FFmpeg execution exceeded ${effectiveTimeout.inMinutes} minutes.',
-          );
-          process.kill();
-          return -999;
-        },
-      );
-
-      await stderrSub.cancel();
-      await stdoutSub.cancel();
-      watchdog?.cancel();
-      context.removeProcess(process);
-
-      if (exitCode == 0) {
-        return ExecutionResult.success(args.last);
-      } else {
-        final reason = exitCode == -999 ? 'Timeout' : 'Exit code $exitCode';
-        final fullError = errorLogs.join().trim();
+      
+      if (context.cancelled) {
+        process.kill();
         return ExecutionResult(
           success: false,
-          logs: [
-            'FFmpeg failed: $reason',
-            if (fullError.isNotEmpty) 'Details:\n$fullError',
-          ],
+          logs: ['Cancelled by user immediately after start'],
         );
+      }
+      
+      context.addProcess(process);
+      
+      try {
+        // Watchdog logic: Khởi động ngay để bắt lỗi hang IO từ ban đầu (đọc file/network quá chậm)
+        // và reset liên tục mỗi khi có dữ liệu stderr mới.
+        void resetWatchdog() {
+          watchdog?.cancel();
+          watchdog = Timer(const Duration(seconds: 180), () {
+            try {
+              onLog?.call(
+                '  ⚠️ Watchdog: No activity detected for 180s. Killing process...',
+              );
+            } catch (e) {
+              debugPrint('  [FFMPEG STREAM ERROR] Watchdog onLog exception: $e');
+            }
+            process.kill();
+          });
+        }
+        resetWatchdog(); // Bắt đầu đếm ngay lập tức
+
+
+        final regex = RegExp(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})');
+
+        final stdoutSub = process.stdout.listen((data) {
+          final out = String.fromCharCodes(data);
+          if (out.trim().isNotEmpty) {
+            debugPrint('  [FFMPEG STDOUT] $out');
+          }
+        });
+
+        final stderrSub = process.stderr.listen((data) {
+          resetWatchdog(); // Reset watchdog khi nhận stderr mới
+          final out = String.fromCharCodes(data);
+          
+          try {
+            if (onLog != null) onLog(out);
+          } catch (e, st) {
+            debugPrint('  [FFMPEG STREAM ERROR] onLog exception: $e\n$st');
+          }
+          
+          errorLogs.add(out);
+
+          try {
+            if (onProgress != null &&
+                targetDuration != null &&
+                !context.cancelled) {
+              final match = regex.firstMatch(out);
+              if (match != null) {
+                final currentSeconds =
+                    int.parse(match.group(1)!) * 3600 +
+                    int.parse(match.group(2)!) * 60 +
+                    double.parse(match.group(3)!);
+                onProgress((currentSeconds / targetDuration).clamp(0.0, 1.0));
+              }
+            }
+          } catch (e, st) {
+            debugPrint('  [FFMPEG STREAM ERROR] onProgress exception: $e\n$st');
+          }
+        });
+
+        final exitCode = await process.exitCode.timeout(
+          effectiveTimeout,
+          onTimeout: () {
+            try {
+              onLog?.call(
+                '  ❌ Timeout: FFmpeg execution exceeded ${effectiveTimeout.inMinutes} minutes.',
+              );
+            } catch (e) {
+              debugPrint('  [FFMPEG STREAM ERROR] Timeout onLog exception: $e');
+            }
+            process.kill();
+            return -999;
+          },
+        );
+
+        await stderrSub.cancel();
+        await stdoutSub.cancel();
+        watchdog?.cancel();
+
+        if (exitCode == 0) {
+          return ExecutionResult.success(args.last);
+        } else {
+          final reason = exitCode == -999 ? 'Timeout' : 'Exit code $exitCode';
+          final fullError = errorLogs.join().trim();
+          return ExecutionResult(
+            success: false,
+            logs: [
+              'FFmpeg failed: $reason',
+              if (fullError.isNotEmpty) 'Details:\n$fullError',
+            ],
+          );
+        }
+      } finally {
+        // Đảm bảo LUÔN tháo gỡ process khỏi context để tránh memory leak
+        context.removeProcess(process);
       }
     } finally {
       watchdog?.cancel();

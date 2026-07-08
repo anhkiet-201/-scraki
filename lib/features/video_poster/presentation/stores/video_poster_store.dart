@@ -868,15 +868,15 @@ abstract class _VideoPosterStore with Store {
         runInAction(() => _handleLogUpdate(line));
       });
 
-      if (_batchService == null) return;
-
-      await _batchService!.plan(
+      await _batchService?.plan(
         sourceVideoPaths: List<String>.from(sourceVideoPaths),
         config: config,
       );
 
-      await _batchService!.executeCutSegments();
-      await _batchService!.executeRender();
+      await _batchService?.executeCutSegments();
+      if (_batchService == null) return;
+      
+      await _batchService?.executeRender();
 
     } catch (e) {
       _batchService?.cancel();
