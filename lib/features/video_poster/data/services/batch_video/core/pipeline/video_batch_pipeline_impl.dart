@@ -15,9 +15,16 @@ import 'package:scraki/features/video_poster/data/services/batch_video/models/ba
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/common/lut_asset_provider.dart';
 import 'package:scraki/features/video_poster/domain/entities/batch_video_config.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/core/utils/lut_transformer.dart';
-
 import '../../factory/video_batch_engine_factory.dart';
 
+/// Orchestrates the entire batch video generation pipeline.
+/// 
+/// This pipeline is responsible for:
+/// - Hardware discovery and engine initialization.
+/// - Source video metadata analysis.
+/// - Audio fetching.
+/// - Segment planning and unique segment extraction.
+/// - Final video rendering and composition.
 @LazySingleton(as: VideoBatchPipeline)
 class VideoBatchPipelineImpl implements VideoBatchPipeline {
   final VideoHardwareCapabilityResolver _hardwareResolver;
@@ -39,6 +46,10 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   @override
   Stream<String> get events => _eventController.stream;
 
+  /// Starts the planning phase of the pipeline.
+  /// 
+  /// Initializes context, resolves hardware capabilities, probes video metadata,
+  /// fetches ambient audio if requested, and generates the composition plans.
   @override
   Future<void> plan({
     required List<String> sourceVideoPaths,
@@ -49,10 +60,10 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     _context = PipelineContext(config: config);
     _isContextInitialized = true;
-    _eventController.add('📋 Đang khởi tạo pipeline...');
+    _eventController.add('Đang khởi tạo cấu hình mẻ render...');
 
     final ctx = _context;
-    // 1. Hardware Discovery
+    
     await _hardwareResolver.resolve();
     ctx.engine = VideoBatchEngineFactory.createEngine(
       _hardwareResolver,
@@ -62,16 +73,10 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     ctx.gpuInfo = _hardwareResolver.gpuInfo!;
     _eventController.add(
-      '🚀 Phần cứng: ${ctx.gpuInfo.name} | Encoder: ${ctx.gpuInfo.encoder} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}',
+      'Phần cứng xử lý: ${ctx.gpuInfo.name} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}',
     );
-    if (ctx.gpuInfo.hwaccel != null) {
-      _eventController.add(
-        '  💡 Tăng tốc: ${ctx.gpuInfo.hwaccel} | PixFmt: ${ctx.gpuInfo.preferredPixFmt}',
-      );
-    }
 
-    // 2. Metadata Analysis
-    _eventController.add('📋 Kiểm tra video nguồn...');
+    _eventController.add('Đang kiểm tra metadata video nguồn...');
     final probeResults = await Future.wait(
       sourceVideoPaths.map((path) => _metadataAnalyzer.probeSourceVideo(path)),
     );
@@ -88,19 +93,13 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
 
     if (_context.validSourceVideos.isEmpty) {
-      _eventController.add(
-        '❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!',
-      );
+      _eventController.add('❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!');
       _isProcessing = false;
       return;
     }
-    _eventController.add(
-      '✅ Tìm thấy ${_context.validSourceVideos.length} video hợp lệ.',
-    );
 
-    // 3. Ambient Sourcing
     if (config.generateAmbientAudio && config.outputOption != BatchVideoOutputOption.tiktokAutocutSet) {
-      _eventController.add('[0/3] Đang tải âm thanh nền...');
+      _eventController.add('Đang tải tài nguyên âm thanh...');
       try {
         final paths = await _ambientAudioProvider.fetchRandomAmbientAudios(
           config.outputCount,
@@ -109,30 +108,140 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         );
         _context.tempAmbientAudioPaths.addAll(paths);
       } catch (e) {
-        _eventController.add('  ⚠️ Lỗi tải ambient audio: $e');
+        _eventController.add('⚠️ Lỗi tải ambient audio: $e');
       }
     }
 
-    // 4. Planning (Dynamic Shifting Pool)
-    _eventController.add('[1/3] Lập kế hoạch cắt video...');
+    _eventController.add('Đang lập bản vẽ cắt ghép video...');
     _generatePlanning(config);
   }
 
+  /// Prepares the output directory for the final generated videos.
+  Future<void> _prepareOutputDir(PipelineContext ctx) async {
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '')
+        .replaceAll('-', '')
+        .replaceAll('T', '_')
+        .substring(0, 15);
+    String baseOutputDir;
+    if (ctx.config.outputDir != null) {
+      baseOutputDir = ctx.config.outputDir!;
+    } else {
+      try {
+        final documentsDir = await getApplicationDocumentsDirectory();
+        if (Platform.isWindows) {
+          final userProfile = Platform.environment['USERPROFILE'];
+          baseOutputDir =
+              (userProfile != null &&
+                  await Directory(p.join(userProfile, 'Desktop')).exists())
+              ? p.join(userProfile, 'Desktop')
+              : p.join(documentsDir.parent.path, 'Desktop');
+        } else {
+          baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
+        }
+        if (!await Directory(baseOutputDir).exists()) {
+          baseOutputDir = Directory.current.path;
+        }
+      } catch (_) {
+        baseOutputDir = Directory.current.path;
+      }
+    }
+
+    ctx.outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
+    await Directory(ctx.outputDir).create(recursive: true);
+  }
+
+  /// Bypasses temporary extraction and renders segments directly to the output directory,
+  /// specifically designed for the TikTok Autocut Set option.
+  Future<void> _executeDirectCutForAutocutSet(PipelineContext ctx) async {
+    _eventController.add('Đang phân xuất trực tiếp các luồng segments...');
+    
+    final activeTasks = <Future<void>>[];
+    int completed = 0;
+    int failed = 0;
+    final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
+    
+    int totalSegments = ctx.videoPlans.values.fold(0, (sum, plan) => sum + plan.length);
+
+    for (var entry in ctx.videoPlans.entries) {
+      if (ctx.cancelled) break;
+      
+      final i = entry.key;
+      final plan = entry.value;
+      
+      final String idxStr = i.toString().padLeft(3, '0');
+      final String setDir = p.join(ctx.outputDir, 'tik_set_autocut_$idxStr');
+      await Directory(setDir).create(recursive: true);
+      
+      for (int s = 0; s < plan.length; s++) {
+        if (ctx.cancelled) break;
+        
+        while (activeTasks.length >= maxConcurrent) {
+          await Future.any(List.from(activeTasks));
+        }
+        
+        final req = plan[s];
+        final String sIdxStr = (s + 1).toString().padLeft(2, '0');
+        final outputPath = p.join(setDir, 'segment_$sIdxStr.mp4');
+        
+        late Future<void> task;
+        task = ctx.engine
+            .cutSegment(
+              request: req,
+              outputPath: outputPath,
+              context: ctx.executionContext,
+              timeout: const Duration(minutes: 5),
+            )
+            .then((result) {
+              if (_context != ctx) return;
+              if (result.success) {
+                completed++;
+                final pct = (completed / totalSegments * 100).toStringAsFixed(0);
+                _eventController.add('_PROGRESS_LAZY: ⏳ Đang cắt: $pct% ($completed/$totalSegments)');
+              } else {
+                failed++;
+                _eventController.add('⚠️ Lỗi cắt segment ${req.id}: ${result.logs}');
+                if (failed > 5 && failed > totalSegments * 0.2) {
+                  _eventController.add('❌ Quá nhiều lỗi trích xuất. Đang tự động dừng...');
+                  cancel();
+                }
+              }
+            }).catchError((Object error) {
+              if (_context != ctx) return;
+              failed++;
+              _eventController.add('❌ Lỗi ngoại lệ khi cắt segment ${req.id}: $error');
+              if (failed > 5) cancel();
+            }).whenComplete(() {
+              activeTasks.remove(task);
+            });
+            
+        activeTasks.add(task);
+      }
+    }
+    
+    if (activeTasks.isNotEmpty) await Future.wait(List.from(activeTasks));
+  }
+
+  /// Extracts all unique segments across all generated plans into a temporary directory.
   @override
   Future<void> executeCutSegments() async {
     if (!_isContextInitialized || _context.cancelled) return;
     final ctx = _context;
 
-    _eventController.add(
-      '[2/3] Đang xử lý ${ctx.allUniqueSegments.length} segments...',
-    );
+    await _prepareOutputDir(ctx);
 
-    // Create temp dir
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     ctx.tempDir = Directory(
       p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'),
     );
     await ctx.tempDir.create(recursive: true);
+
+    if (ctx.config.outputOption == BatchVideoOutputOption.tiktokAutocutSet) {
+      return _executeDirectCutForAutocutSet(ctx);
+    }
+
+    _eventController.add('Đang bóc tách ${ctx.allUniqueSegments.length} segments...');
 
     final activeTasks = <Future<void>>[];
     int completed = 0;
@@ -142,7 +251,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     for (final req in ctx.allUniqueSegments) {
       if (ctx.cancelled) break;
       
-      // Sử dụng List.from để tạo snapshot, tránh ConcurrentModificationError
       while (activeTasks.length >= maxConcurrent) {
         await Future.any(List.from(activeTasks));
       }
@@ -167,16 +275,15 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             } else {
               failed++;
               _eventController.add('⚠️ Lỗi cắt segment ${req.id}: ${result.logs}');
-              // Chỉ cancel nếu lỗi quá nhiều (ví dụ > 20% và ít nhất 5 segment)
               if (failed > 5 && failed > ctx.allUniqueSegments.length * 0.2) {
-                _eventController.add('❌ Quá nhiều lỗi cắt segment. Đang dừng...');
+                _eventController.add('❌ Quá nhiều lỗi trích xuất. Đang tự động dừng...');
                 cancel();
               }
             }
           }).catchError((Object error) {
             if (_context != ctx) return;
             failed++;
-            _eventController.add('❌ Exception cắt segment ${req.id}: $error');
+            _eventController.add('❌ Lỗi ngoại lệ khi cắt segment ${req.id}: $error');
             if (failed > 5) cancel();
           }).whenComplete(() {
             activeTasks.remove(task);
@@ -188,6 +295,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     if (activeTasks.isNotEmpty) await Future.wait(List.from(activeTasks));
   }
 
+  /// Composes and renders the final videos based on the extracted segments.
   @override
   Future<void> executeRender() async {
     if (!_isContextInitialized || _context.cancelled) {
@@ -197,39 +305,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     final ctx = _context;
 
     _eventController.add('[3/3] Đang ghép ${ctx.config.outputCount} videos...');
-
-    // Prepare output dir
-    final timestamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(':', '')
-        .replaceAll('-', '')
-        .replaceAll('T', '_')
-        .substring(0, 15);
-    String baseOutputDir;
-    if (ctx.config.outputDir != null) {
-      baseOutputDir = ctx.config.outputDir!;
-    } else {
-      try {
-        final documentsDir = await getApplicationDocumentsDirectory();
-        if (Platform.isWindows) {
-          final userProfile = Platform.environment['USERPROFILE'];
-          baseOutputDir =
-              (userProfile != null &&
-                  await Directory(p.join(userProfile, 'Desktop')).exists())
-              ? p.join(userProfile, 'Desktop')
-              : p.join(documentsDir.parent.path, 'Desktop');
-        } else {
-          baseOutputDir = p.join(documentsDir.parent.path, 'Desktop');
-        }
-        if (!await Directory(baseOutputDir).exists())
-          baseOutputDir = Directory.current.path;
-      } catch (_) {
-        baseOutputDir = Directory.current.path;
-      }
-    }
-
-    ctx.outputDir = p.join(baseOutputDir, 'output_vids_$timestamp');
-    await Directory(ctx.outputDir).create(recursive: true);
 
     final activeTasks = <Future<void>>[];
     final maxConcurrent = ctx.gpuInfo.maxConcurrentEncodes;
@@ -244,22 +319,9 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       final plan = await _generateCompositionPlan(ctx, i);
 
       if (ctx.config.outputOption == BatchVideoOutputOption.tiktokAutocutSet) {
-        // Autocut Set mode: Do not render. Just copy segments to a folder.
-        final String idxStr = i.toString().padLeft(3, '0');
-        final String setDir = p.join(ctx.outputDir, 'tik_set_autocut_$idxStr');
-        await Directory(setDir).create(recursive: true);
-        
-        for (int s = 0; s < plan.segmentPaths.length; s++) {
-          final String src = plan.segmentPaths[s];
-          final String sIdxStr = (s + 1).toString().padLeft(2, '0');
-          final String dest = p.join(setDir, 'segment_$sIdxStr.mp4');
-          await File(src).copy(dest);
-        }
-        
         _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất bộ Autocut $i');
-        // Notify 100% progress for UI
         _eventController.add('_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: 100%');
-        continue; // Skip rendering
+        continue;
       }
 
       late Future<void> task;
@@ -279,14 +341,14 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
           .then((result) {
             if (_context != ctx) return;
             if (result.success) {
-              _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất video $i');
+              _eventController.add('_PROGRESS_VID$i: ✅ Kết xuất thành công video $i');
             } else {
               logger.e('❌ Thất bại video $i: ${result.logs}');
-              _eventController.add('_PROGRESS_VID$i: ❌ Thất bại video $i');
+              _eventController.add('_PROGRESS_VID$i: ❌ Lỗi kết xuất video $i');
             }
           }).catchError((Object error) {
             if (_context != ctx) return;
-            _eventController.add('❌ Exception render video $i: $error');
+            _eventController.add('❌ Lỗi tiến trình render video $i: $error');
           }).whenComplete(() {
             activeTasks.remove(task);
           });
@@ -295,10 +357,11 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
 
     if (activeTasks.isNotEmpty) await Future.wait(List.from(activeTasks));
-    _eventController.add('✅ Hoàn thành pipeline.');
+    _eventController.add('✅ Hoàn thành quy trình Pipeline.');
     _isProcessing = false;
   }
 
+  /// Cancels all ongoing tasks and operations inside the pipeline.
   @override
   void cancel() {
     if (_isContextInitialized) {
@@ -307,26 +370,28 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       } catch (_) {}
     }
     _isProcessing = false;
-    _eventController.add('🛑 Đã dừng pipeline.');
+    _eventController.add('🛑 Đã tạm dừng chuỗi tác vụ.');
   }
 
+  /// Cleans up any resources or temporary files created during the pipeline execution.
   @override
   Future<void> cleanup() async {
     if (_isContextInitialized) {
       try {
         if (await _context.tempDir.exists()) {
           await _context.tempDir.delete(recursive: true);
-          _eventController.add('🧹 Đã dọn dẹp thư mục tạm.');
+          _eventController.add('🧹 Giải phóng thư mục đệm thành công.');
         }
       } catch (e) {
-        _eventController.add('⚠️ Lỗi dọn dẹp thư mục tạm: $e');
+        _eventController.add('⚠️ Lỗi xóa thư mục đệm: $e');
       }
     }
   }
 
+  /// Generates the overarching mapping of generated videos to their required segments.
   void _generatePlanning(BatchVideoConfig config) {
     final random = Random();
-    _context.validSourceVideos.shuffle(random); // Shuffle sources first
+    _context.validSourceVideos.shuffle(random);
 
     List<SegmentRequest> globalSegmentPool = _generateSegmentPool(
       _context.validSourceVideos,
@@ -361,7 +426,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         }
 
         int foundIndex = -1;
-        // Simple shifting logic kept from original
         for (
           int checked = 0;
           checked < min(15, globalSegmentPool.length - poolIndex);
@@ -394,6 +458,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     }
   }
 
+  /// Creates a pool of available segments parsed from the source videos.
   List<SegmentRequest> _generateSegmentPool(
     List<String> validVideos,
     Map<String, int> videoDurations,
@@ -432,6 +497,8 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     return pool..shuffle(random);
   }
 
+  /// Builds a [CompositionPlan] containing the specific configuration and paths
+  /// needed for rendering a single video iteration.
   Future<CompositionPlan> _generateCompositionPlan(
     PipelineContext ctx,
     int index,
@@ -439,10 +506,12 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     final random = Random();
     final config = ctx.config;
 
+    final isAutocutSet = config.outputOption == BatchVideoOutputOption.tiktokAutocutSet;
+
     String? lutFilePath;
-    if (config.generateColorFilter) {
+    if (config.generateColorFilter && !isAutocutSet) {
       final extractedPath = await LutAssetProvider.extractRandom(random, ctx.tempDir.path);
-      final intensity = 0.2 + random.nextDouble() * 0.6; // Random 0.2 - 0.8
+      final intensity = 0.2 + random.nextDouble() * 0.6;
       final transformedPath = p.join(ctx.tempDir.path, 'lut_transformed_${index}_${DateTime.now().millisecondsSinceEpoch}.cube');
       await LutTransformer.transform(File(extractedPath), File(transformedPath), intensity);
       lutFilePath = transformedPath;
@@ -455,7 +524,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       pts: 0.99 + random.nextDouble() * 0.02,
       brightness: _gaussian(random) * 0.015,
       contrast: 1.0 + _gaussian(random) * 0.02,
-      gopSize: 48 + random.nextInt(144), // Mở rộng range 48-192
+      gopSize: 48 + random.nextInt(144),
       bFrames: [0, 2, 3][random.nextInt(3)],
       creationTime:
           '${DateTime.now().toUtc().toIso8601String().split('.').first}.000000Z',
@@ -470,7 +539,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       panStartY: random.nextDouble(),
       panEndX: random.nextDouble(),
       panEndY: random.nextDouble(),
-      transitionDuration: 0.05 + random.nextDouble() * 0.05, // 0.05 - 0.10s
+      transitionDuration: 0.05 + random.nextDouble() * 0.05,
       lutFilePath: lutFilePath,
       gammaR: !config.generateColorFilter
           ? 0.98 + random.nextDouble() * 0.04
@@ -497,8 +566,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       }
     }
 
-    final isAutocutSet = config.outputOption == BatchVideoOutputOption.tiktokAutocutSet;
-
     final ambientPath =
         (!isAutocutSet &&
             ctx.tempAmbientAudioPaths.isNotEmpty &&
@@ -512,7 +579,6 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         config.customAudioPath!.isNotEmpty &&
         File(config.customAudioPath!).existsSync();
 
-    // Prepare text overlays
     final textPaths = <String>[];
     if (!isAutocutSet) {
       for (var i = 0; i < config.textOverlays.length; i++) {
