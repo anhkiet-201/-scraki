@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:injectable/injectable.dart';
-import 'package:path/path.dart' as p;
 import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
@@ -8,6 +6,7 @@ import 'package:scraki/features/device/data/datasources/scrcpy_service.dart';
 import 'package:scraki/features/device/domain/services/i_device_task_service.dart';
 import 'package:scraki/features/device/domain/services/i_tiktok_post_service.dart';
 import 'package:scraki/features/device/domain/services/i_facebook_post_service.dart';
+import 'package:scraki/features/device/data/services/file_upload_task_classifier.dart';
 
 @LazySingleton(as: IDeviceTaskService)
 class DeviceTaskServiceImpl implements IDeviceTaskService {
@@ -57,125 +56,25 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
 
   @override
   Future<void> executeFileUploadTask(String serial, List<String> paths) async {
-    if (paths.isEmpty) return;
+    final classifier = FileUploadTaskClassifier(paths);
+    if (classifier.isEmpty) return;
 
-    final fileName = p.basename(paths.first);
-    final isSetDir =
-        paths.length == 1 &&
-        Directory(paths.first).existsSync() &&
-        (fileName.startsWith('Set_') ||
-            fileName.startsWith('fb_Set_') ||
-            fileName.startsWith('FB_Set_'));
-    final isVideo =
-        !isSetDir &&
-        paths.every((p) {
-          final ext = p.toLowerCase().split('.').last;
-          return const {
-            'mp4',
-            'mov',
-            'avi',
-            'mkv',
-            'webm',
-            '3gp',
-            'ts',
-            'm4v',
-            'flv',
-            'wmv',
-          }.contains(ext);
-        });
-    final isImage =
-        !isSetDir &&
-        !isVideo &&
-        paths.every((p) {
-          final ext = p.toLowerCase().split('.').last;
-          return const {
-            'png',
-            'jpg',
-            'jpeg',
-            'webp',
-            'gif',
-            'bmp',
-          }.contains(ext);
-        });
-    final isApk =
-        !isSetDir &&
-        !isVideo &&
-        !isImage &&
-        paths.every((path) => path.toLowerCase().endsWith('.apk'));
-    final isXapk =
-        !isSetDir &&
-        !isVideo &&
-        !isImage &&
-        paths.every((path) => path.toLowerCase().endsWith('.xapk'));
-
-    final isFbPrefix =
-        fileName.startsWith('fb_feeds_') ||
-        fileName.startsWith('fb_groups_') ||
-        fileName.startsWith('fb_reels_');
-
-    final DeviceTaskType taskType;
-    if (isSetDir) {
-      taskType =
-          (fileName.startsWith('fb_Set_') || fileName.startsWith('FB_Set_'))
-          ? DeviceTaskType.facebookImage
-          : DeviceTaskType.imagePost;
-    } else if (isVideo) {
-      if (fileName.startsWith('tik_final_')) {
-        taskType = DeviceTaskType.videoGen;
-      } else {
-        taskType = isFbPrefix
-            ? DeviceTaskType.facebookVideo
-            : DeviceTaskType.push;
-      }
-    } else if (isImage) {
-      taskType = isFbPrefix
-          ? DeviceTaskType.facebookImage
-          : DeviceTaskType.push;
-    } else if (isApk || isXapk) {
-      taskType = DeviceTaskType.install;
-    } else {
-      taskType = DeviceTaskType.push;
-    }
+    final taskType = classifier.determineTaskType();
+    final fileName = classifier.fileName;
+    final isXapk = classifier.isXapk;
+    final isSetDir = classifier.isSetDir;
+    final isVideo = classifier.isVideo;
 
     try {
-      switch (taskType) {
-        case DeviceTaskType.facebookImage:
-          if (isSetDir) {
-            await _handleFacebookImage(serial, paths.first, fileName);
-          } else {
-            await _handleFacebookSingleFile(
-              serial,
-              paths,
-              fileName,
-              DeviceTaskType.facebookImage,
-            );
-          }
-          break;
-        case DeviceTaskType.imagePost:
-          await _handleSetDir(serial, paths.first, fileName);
-          break;
-        case DeviceTaskType.facebookVideo:
-          await _handleFacebookSingleFile(
-            serial,
-            paths,
-            fileName,
-            DeviceTaskType.facebookVideo,
-          );
-          break;
-        case DeviceTaskType.videoGen:
-        case DeviceTaskType.push:
-          if (isVideo) {
-            await _handleVideo(serial, paths, fileName);
-          } else {
-            await _handleDefaultPush(serial, paths);
-          }
-          break;
-        case DeviceTaskType.install:
-          await _handleInstall(serial, paths.first, fileName, isXapk: isXapk);
-          break;
-        default:
-          await _handleDefaultPush(serial, paths);
-      }
+      await _dispatchTask(
+        serial: serial,
+        paths: paths,
+        taskType: taskType,
+        fileName: fileName,
+        isSetDir: isSetDir,
+        isVideo: isVideo,
+        isXapk: isXapk,
+      );
     } catch (e) {
       logger.e('[DeviceTaskService] Task failed', error: e);
       if (_isCanceled(serial)) return;
@@ -190,6 +89,55 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
       if (!_isCanceled(serial)) {
         _sessionManagerStore.clearDeviceTask(serial);
       }
+    }
+  }
+
+  Future<void> _dispatchTask({
+    required String serial,
+    required List<String> paths,
+    required DeviceTaskType taskType,
+    required String fileName,
+    required bool isSetDir,
+    required bool isVideo,
+    required bool isXapk,
+  }) async {
+    switch (taskType) {
+      case DeviceTaskType.facebookImage:
+        if (isSetDir) {
+          await _handleFacebookImage(serial, paths.first, fileName);
+        } else {
+          await _handleFacebookSingleFile(
+            serial,
+            paths,
+            fileName,
+            DeviceTaskType.facebookImage,
+          );
+        }
+        break;
+      case DeviceTaskType.imagePost:
+        await _handleSetDir(serial, paths.first, fileName);
+        break;
+      case DeviceTaskType.facebookVideo:
+        await _handleFacebookSingleFile(
+          serial,
+          paths,
+          fileName,
+          DeviceTaskType.facebookVideo,
+        );
+        break;
+      case DeviceTaskType.videoGen:
+      case DeviceTaskType.push:
+        if (isVideo) {
+          await _handleVideo(serial, paths, fileName);
+        } else {
+          await _handleDefaultPush(serial, paths);
+        }
+        break;
+      case DeviceTaskType.install:
+        await _handleInstall(serial, paths.first, fileName, isXapk: isXapk);
+        break;
+      default:
+        await _handleDefaultPush(serial, paths);
     }
   }
 
@@ -224,7 +172,17 @@ class DeviceTaskServiceImpl implements IDeviceTaskService {
       type: DeviceTaskType.facebookImage,
       status: 'Đang đẩy bộ ảnh Facebook $fileName...',
     );
-    await _facebookService.openFacebookPostImages(serial, path);
+    final nameLower = fileName.toLowerCase();
+    final FacebookPostTarget target;
+    if (nameLower.contains('_groups_')) {
+      target = FacebookPostTarget.group;
+    } else if (nameLower.contains('_reels_')) {
+      target = FacebookPostTarget.reels;
+    } else {
+      target = FacebookPostTarget.feed;
+    }
+
+    await _facebookService.openFacebookPostImages(serial, path, target: target);
     if (_isCanceled(serial)) return;
     _sessionManagerStore.updateDeviceTask(
       serial,

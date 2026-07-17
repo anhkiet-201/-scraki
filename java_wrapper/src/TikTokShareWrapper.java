@@ -16,6 +16,12 @@ public class TikTokShareWrapper {
         }
 
         String targetPackage = args[0];
+        String targetActivity = null;
+        if (targetPackage.contains("/")) {
+            String[] parts = targetPackage.split("/");
+            targetPackage = parts[0];
+            targetActivity = parts[1];
+        }
         String[] uriStrings = args[1].split(",");
         String mimeType = (args.length > 2) ? args[2] : "image/*";
 
@@ -34,7 +40,11 @@ public class TikTokShareWrapper {
 
         try {
             Intent intent = new Intent("android.intent.action.SEND_MULTIPLE");
-            intent.setPackage(targetPackage);
+            if (targetActivity != null) {
+                intent.setClassName(targetPackage, targetActivity);
+            } else {
+                intent.setPackage(targetPackage);
+            }
             intent.setType(mimeType);
             intent.putParcelableArrayListExtra("android.intent.extra.STREAM", uriList);
             intent.putExtra("android.intent.extra.TEXT", "");

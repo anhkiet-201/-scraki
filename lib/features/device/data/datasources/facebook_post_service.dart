@@ -129,7 +129,11 @@ class FacebookPostService implements IFacebookPostService {
   }
 
   @override
-  Future<void> openFacebookPostImages(String serial, String folderPath) async {
+  Future<void> openFacebookPostImages(
+    String serial,
+    String folderPath, {
+    required FacebookPostTarget target,
+  }) async {
     final installed = await isFacebookInstalled(serial);
     if (!installed) {
       throw AkiRemoteException('Không tìm thấy ứng dụng Facebook trên thiết bị $serial.');
@@ -245,7 +249,21 @@ class FacebookPostService implements IFacebookPostService {
       logger.i('[FacebookPostService] Đã ánh xạ được ${contentUris.where((u) => u.startsWith('content')).length}/${imageFiles.length} URIs.');
 
       final String finalUriString = contentUris.join(',');
-      final String wrapperCmd = 'CLASSPATH=/data/local/tmp/tiktok_share.dex app_process /system/bin TikTokShareWrapper $_packageName "$finalUriString"';
+      final String activityName;
+      switch (target) {
+        case FacebookPostTarget.feed:
+          activityName = 'com.facebook.composer.shareintent.ImplicitShareIntentHandlerDefaultAlias';
+          break;
+        case FacebookPostTarget.group:
+          activityName = 'com.facebook.composer.shareintent.ShareToGroupsAlias';
+          break;
+        case FacebookPostTarget.reels:
+          activityName = 'com.facebook.inspiration.fbshorts.shareintent.InpirationFbShortsShareAlias';
+          break;
+      }
+
+      final String targetComponent = '$_packageName/$activityName';
+      final String wrapperCmd = 'CLASSPATH=/data/local/tmp/tiktok_share.dex app_process /system/bin TikTokShareWrapper $targetComponent "$finalUriString"';
       
       logger.i('[FacebookPostService] Đang thực thi Java Intent Wrapper cho Facebook...');
       

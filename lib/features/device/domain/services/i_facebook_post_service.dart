@@ -13,6 +13,10 @@ abstract class IFacebookPostService {
 
   /// Mở màn hình đăng nhiều ảnh của Facebook thông qua Share Intent (SEND_MULTIPLE).
   /// [folderPath] là đường dẫn thư mục sẽ được push lên thiết bị.
-  Future<void> openFacebookPostImages(String serial, String folderPath);
+  Future<void> openFacebookPostImages(
+    String serial,
+    String folderPath, {
+    required FacebookPostTarget target,
+  });
 }
 

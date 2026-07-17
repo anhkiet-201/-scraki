@@ -691,6 +691,22 @@ abstract class _VideoPosterStore with Store {
     batchOutputOption = option;
   }
 
+  @observable
+  PosterPlatformSet posterPlatformSet = PosterPlatformSet.tiktok;
+
+  @action
+  void setPosterPlatformSet(PosterPlatformSet value) {
+    posterPlatformSet = value;
+  }
+
+  @observable
+  FacebookSubtype facebookSubtype = FacebookSubtype.groups;
+
+  @action
+  void setFacebookSubtype(FacebookSubtype value) {
+    facebookSubtype = value;
+  }
+
   // ─── Custom Audio ──────────────────────────────────────────────────
 
   /// Đường dẫn file nhạc nền tùy chỉnh được chọn bởi người dùng.
@@ -1015,6 +1031,8 @@ abstract class _VideoPosterStore with Store {
         outputFormat: 'jpg',
         width: 1080,
         height: 1350,
+        platformSet: posterPlatformSet,
+        facebookSubtype: facebookSubtype,
       );
 
       final stream = _imagePosterService!.generateImagePosters(

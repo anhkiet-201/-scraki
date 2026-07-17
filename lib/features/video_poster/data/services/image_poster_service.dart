@@ -275,12 +275,20 @@ class ImagePosterService {
 
       // Start the task pump
       () async {
+        final platformPrefix = config.platformSet.prefix;
         for (int i = 1; i <= totalSets; i++) {
           if (_cancelled) break;
 
+          final randomId = 1000000 + random.nextInt(9000000);
+          final String folderName;
+          if (config.platformSet == PosterPlatformSet.facebook) {
+            folderName = '${platformPrefix}_${config.facebookSubtype.name}_${i}_$randomId';
+          } else {
+            folderName = '${platformPrefix}_${i}_$randomId';
+          }
           final setDir = p.join(
             outputDir,
-            'Set_${i}_${DateTime.now().microsecondsSinceEpoch}',
+            folderName,
           );
           await Directory(setDir).create(recursive: true);
 

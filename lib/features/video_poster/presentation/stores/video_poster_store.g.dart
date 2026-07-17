@@ -447,6 +447,42 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
     });
   }
 
+  late final _$posterPlatformSetAtom = Atom(
+    name: '_VideoPosterStore.posterPlatformSet',
+    context: context,
+  );
+
+  @override
+  PosterPlatformSet get posterPlatformSet {
+    _$posterPlatformSetAtom.reportRead();
+    return super.posterPlatformSet;
+  }
+
+  @override
+  set posterPlatformSet(PosterPlatformSet value) {
+    _$posterPlatformSetAtom.reportWrite(value, super.posterPlatformSet, () {
+      super.posterPlatformSet = value;
+    });
+  }
+
+  late final _$facebookSubtypeAtom = Atom(
+    name: '_VideoPosterStore.facebookSubtype',
+    context: context,
+  );
+
+  @override
+  FacebookSubtype get facebookSubtype {
+    _$facebookSubtypeAtom.reportRead();
+    return super.facebookSubtype;
+  }
+
+  @override
+  set facebookSubtype(FacebookSubtype value) {
+    _$facebookSubtypeAtom.reportWrite(value, super.facebookSubtype, () {
+      super.facebookSubtype = value;
+    });
+  }
+
   late final _$customAudioPathAtom = Atom(
     name: '_VideoPosterStore.customAudioPath',
     context: context,
@@ -1202,6 +1238,30 @@ mixin _$VideoPosterStore on _VideoPosterStore, Store {
   }
 
   @override
+  void setPosterPlatformSet(PosterPlatformSet value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setPosterPlatformSet',
+    );
+    try {
+      return super.setPosterPlatformSet(value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setFacebookSubtype(FacebookSubtype value) {
+    final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
+      name: '_VideoPosterStore.setFacebookSubtype',
+    );
+    try {
+      return super.setFacebookSubtype(value);
+    } finally {
+      _$_VideoPosterStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void setCustomAudioPath(String? path) {
     final _$actionInfo = _$_VideoPosterStoreActionController.startAction(
       name: '_VideoPosterStore.setCustomAudioPath',
@@ -1431,6 +1491,8 @@ isBatchCreating: ${isBatchCreating},
 batchLogs: ${batchLogs},
 batchOutputDir: ${batchOutputDir},
 batchOutputOption: ${batchOutputOption},
+posterPlatformSet: ${posterPlatformSet},
+facebookSubtype: ${facebookSubtype},
 customAudioPath: ${customAudioPath},
 customAudioVolume: ${customAudioVolume},
 generateAmbientAudio: ${generateAmbientAudio},
