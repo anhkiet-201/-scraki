@@ -6,6 +6,9 @@ import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import '../../domain/entities/log_entry.dart';
 import '../stores/terminal_store.dart';
 
+import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/features/api_server/domain/services/p2p_gui_service.dart';
+
 class TiledLogView extends StatelessWidget {
   final TerminalStore store = inject<TerminalStore>();
 
@@ -15,18 +18,25 @@ class TiledLogView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) {
-        final devices = store.selectedSerials.toList();
-        if (devices.isEmpty) {
+        final p2pService = getIt<P2pGuiService>();
+        final activeSerials = p2pService.activeScriptSerials;
+        final targetSerials = <String>{
+          ...store.selectedSerials,
+          ...activeSerials,
+          ...store.deviceLogs.keys.where((s) => s != 'system'),
+        }.toList();
+
+        if (targetSerials.isEmpty) {
           return const Center(
-            child: Text('Hãy chọn thiết bị để xem log riêng biệt'),
+            child: Text('Hãy chọn hoặc chạy kịch bản trên thiết bị để xem log riêng biệt'),
           );
         }
 
         // Dynamic column count based on device count
         int crossAxisCount = 2;
-        if (devices.length >= 7) {
+        if (targetSerials.length >= 7) {
           crossAxisCount = 4;
-        } else if (devices.length >= 3) {
+        } else if (targetSerials.length >= 3) {
           crossAxisCount = 3;
         }
 
@@ -38,11 +48,18 @@ class TiledLogView extends StatelessWidget {
             mainAxisSpacing: 8,
             childAspectRatio: 1.4, // Slightly taller to account for input
           ),
-          itemCount: devices.length,
+          itemCount: targetSerials.length,
           itemBuilder: (context, index) {
-            final serial = devices[index];
-            final device = store.getDeviceBySerial(serial);
-            return _DeviceLogTile(device: device!);
+            final serial = targetSerials[index];
+            final device = store.getDeviceBySerial(serial) ??
+                DeviceEntity(
+                  id: serial,
+                  serial: serial,
+                  modelName: serial,
+                  status: DeviceStatus.connected,
+                  connectionType: ConnectionType.usb,
+                );
+            return _DeviceLogTile(device: device);
           },
         );
       },
@@ -120,8 +137,12 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                 ),
                 Observer(
                   builder: (_) {
+                    final isP2pActive = getIt<P2pGuiService>()
+                        .activeScriptSerials
+                        .contains(widget.device.serial);
                     final isActive =
-                        _store.shellStates[widget.device.serial] ?? false;
+                        (_store.shellStates[widget.device.serial] ?? false) ||
+                            isP2pActive;
                     if (!isActive) {
                       final hasLastExec =
                           _store.lastExecutions.containsKey(widget.device.serial);
@@ -166,12 +187,15 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => _store.stopCommand(widget.device.serial),
-                          child: const Icon(
-                            Icons.stop_circle_rounded,
-                            size: 16,
-                            color: Colors.pinkAccent,
+                        Tooltip(
+                          message: 'Dừng kịch bản trên thiết bị này',
+                          child: GestureDetector(
+                            onTap: () => _store.stopCommand(widget.device.serial),
+                            child: const Icon(
+                              Icons.stop_circle_rounded,
+                              size: 18,
+                              color: Colors.pinkAccent,
+                            ),
                           ),
                         ),
                       ],

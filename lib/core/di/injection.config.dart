@@ -13,6 +13,8 @@ import 'package:dio/dio.dart' as _i361;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 
+import '../../features/api_server/domain/services/p2p_gui_service.dart'
+    as _i922;
 import '../../features/auth/data/datasources/auth_remote_data_source.dart'
     as _i107;
 import '../../features/auth/data/repositories/auth_repository_impl.dart'
@@ -475,6 +477,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i391.DeviceNicknameStore>(
       () => _i391.DeviceNicknameStore(gh<_i246.DeviceGroupStore>()),
+    );
+    gh.lazySingleton<_i922.P2pGuiService>(
+      () => _i922.P2pGuiService(
+        gh<_i563.DeviceManagerStore>(),
+        gh<_i246.DeviceGroupStore>(),
+        gh<_i137.TerminalStore>(),
+        gh<_i773.SessionManagerStore>(),
+      ),
     );
     return this;
   }
