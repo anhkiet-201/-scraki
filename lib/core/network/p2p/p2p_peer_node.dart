@@ -236,7 +236,7 @@ class P2pPeerNode {
   }) async {
     final completer = Completer<P2pMessage?>();
 
-    StreamSubscription? sub;
+    StreamSubscription<P2pMessage>? sub;
     sub = onMessage.listen((incoming) {
       if (incoming.type == expectedResponseType || incoming.payload['replyTo'] == message.id) {
         if (!completer.isCompleted) {
@@ -251,7 +251,7 @@ class P2pPeerNode {
     try {
       return await completer.future.timeout(timeout);
     } catch (_) {
-      sub?.cancel();
+      sub.cancel();
       return null;
     }
   }
