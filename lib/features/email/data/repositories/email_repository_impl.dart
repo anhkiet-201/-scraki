@@ -70,12 +70,13 @@ class EmailRepositoryImpl implements IEmailRepository {
     required EmailAccount account,
   }) {
     return _imapDataSource.streamLatestEmails(
-      email: account.email,
-      clientId: account.clientId,
-      refreshToken: account.refreshToken,
-      onTokenRotated: (newToken) {
-        // Cập nhật Firebase bất đồng bộ khi nhận refresh_token mới từ Microsoft
-        final updatedAccount = account.copyWith(refreshToken: newToken);
+      account: account,
+      onTokensUpdated: (newAccessToken, newRefreshToken) {
+        // Cập nhật Firestore bất đồng bộ với accessToken và refreshToken mới (nếu có)
+        final updatedAccount = account.copyWith(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken ?? account.refreshToken,
+        );
         _credentialDataSource.updateEmailAccount(updatedAccount);
       },
     );

@@ -9,7 +9,6 @@ import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/presentation/stores/device_group_store.dart';
 import 'package:scraki/features/script/domain/entities/log_entry.dart';
 import 'package:scraki/features/script/presentation/stores/terminal_store.dart';
-import 'package:uuid/uuid.dart';
 
 @lazySingleton
 class P2pGuiService {
@@ -44,24 +43,17 @@ class P2pGuiService {
   }
 
   void _queryActiveScripts() {
-    final queryMsg = P2pMessage(
-      id: const Uuid().v4(),
-      type: P2pMessageType.queryActiveScripts,
+    final queryMsg = QueryActiveScriptsMessage(
       senderId: _peerNode.peerId,
-      payload: {},
     );
     _peerNode.broadcastMessage(queryMsg);
   }
 
   /// Sends a P2P request to CLI nodes to stop script execution (for specific serials or all)
   void stopScript({List<String>? serials}) {
-    final stopMsg = P2pMessage(
-      id: const Uuid().v4(),
-      type: P2pMessageType.stopScript,
+    final stopMsg = StopScriptMessage(
       senderId: _peerNode.peerId,
-      payload: {
-        'serials': serials ?? [],
-      },
+      serials: serials ?? [],
     );
     _peerNode.broadcastMessage(stopMsg);
 
@@ -86,33 +78,51 @@ class P2pGuiService {
   }
 
   void _handleIncomingMessage(P2pMessage msg) {
-    switch (msg.type) {
-      case P2pMessageType.queryGroups:
-        _handleQueryGroups(msg);
+    final typedMsg = msg.toTypedMessage();
+    logger.i('[P2pGuiService] ${typedMsg.type}: ${typedMsg.payload}');
+    switch (typedMsg) {
+      case QueryGroupsMessage():
+        _handleQueryGroups(typedMsg);
         break;
-      case P2pMessageType.querySelectedDevices:
-        _handleQuerySelectedDevices(msg);
+      case QuerySelectedDevicesMessage():
+        _handleQuerySelectedDevices(typedMsg);
         break;
-      case P2pMessageType.peerAnnounce:
+      case PeerAnnounceMessage():
         _queryActiveScripts();
         break;
-      case 'PEER_DISCONNECTED':
-        _handlePeerDisconnected(msg);
+      case PeerDisconnectedMessage():
+        _handlePeerDisconnected(typedMsg);
         break;
-      case P2pMessageType.activeScriptsStatus:
-      case P2pMessageType.scriptStarted:
-        _handleScriptStarted(msg);
+      case ActiveScriptsStatusMessage():
+        _handleActiveScriptsStatus(typedMsg);
         break;
-      case P2pMessageType.scriptLog:
-        _handleScriptLog(msg);
+      case ScriptStartedMessage():
+        _handleScriptStarted(typedMsg);
         break;
-      case P2pMessageType.scriptFinished:
-        _handleScriptFinished(msg);
+      case ScriptLogMessage():
+        _handleScriptLog(typedMsg);
+        break;
+      case ScriptFinishedMessage():
+        _handleScriptFinished(typedMsg);
+        break;
+      case DeviceStatusUpdateMessage():
+        _handleDeviceStatusUpdate(typedMsg);
+        break;
+      default:
         break;
     }
   }
 
-  void _handlePeerDisconnected(P2pMessage msg) {
+  void _handleActiveScriptsStatus(ActiveScriptsStatusMessage msg) {
+    if (!msg.isExecuting) return;
+    _handleScriptStarted(ScriptStartedMessage(
+      scriptName: msg.scriptName ?? 'Script',
+      serials: msg.serials,
+      executionId: msg.executionId ?? '',
+    ));
+  }
+
+  void _handlePeerDisconnected(PeerDisconnectedMessage msg) {
     runInAction(() {
       if (activeScriptSerials.isNotEmpty) {
         for (final s in activeScriptSerials.toList()) {
@@ -132,7 +142,7 @@ class P2pGuiService {
     });
   }
 
-  void _handleQueryGroups(P2pMessage msg) {
+  void _handleQueryGroups(QueryGroupsMessage msg) {
     final groupsList = _deviceGroupStore.groups.map((g) {
       return {
         'id': g.id,
@@ -141,38 +151,28 @@ class P2pGuiService {
       };
     }).toList();
 
-    final response = P2pMessage(
-      id: const Uuid().v4(),
-      type: P2pMessageType.groupsResponse,
+    final response = GroupsResponseMessage(
       senderId: _peerNode.peerId,
-      payload: {
-        'replyTo': msg.id,
-        'groups': groupsList,
-      },
+      replyId: msg.id,
+      groups: groupsList,
     );
     _peerNode.broadcastMessage(response);
   }
 
-  void _handleQuerySelectedDevices(P2pMessage msg) {
+  void _handleQuerySelectedDevices(QuerySelectedDevicesMessage msg) {
     final selected = _deviceManagerStore.selectedSerials.toList();
 
-    final response = P2pMessage(
-      id: const Uuid().v4(),
-      type: P2pMessageType.selectedDevicesResponse,
+    final response = SelectedDevicesResponseMessage(
       senderId: _peerNode.peerId,
-      payload: {
-        'replyTo': msg.id,
-        'selectedSerials': selected,
-      },
+      replyId: msg.id,
+      selectedSerials: selected,
     );
     _peerNode.broadcastMessage(response);
   }
 
-  void _handleScriptStarted(P2pMessage msg) {
-    final payload = msg.payload;
-    final rawSerials = payload['serials'];
-    final serials = rawSerials is List ? rawSerials.cast<String>() : <String>[];
-    final scriptName = payload['scriptName'] as String? ?? 'Script';
+  void _handleScriptStarted(ScriptStartedMessage msg) {
+    List<String> serials = msg.serials;
+    String scriptName = msg.scriptName;
 
     runInAction(() {
       activeScriptSerials.addAll(serials);
@@ -202,11 +202,10 @@ class P2pGuiService {
     logger.i('[P2pGuiService] Script started from CLI on serials: $serials');
   }
 
-  void _handleScriptLog(P2pMessage msg) {
-    final payload = msg.payload;
-    final serial = payload['serial'] as String? ?? 'system';
-    final text = payload['message'] as String? ?? '';
-    final level = payload['level'] as String? ?? 'info';
+  void _handleScriptLog(ScriptLogMessage msg) {
+    final serial = msg.serial ?? 'system';
+    final text = msg.message;
+    final level = msg.level;
 
     LogType logType = LogType.info;
     if (level == 'error') {
@@ -242,11 +241,9 @@ class P2pGuiService {
     });
   }
 
-  void _handleScriptFinished(P2pMessage msg) {
-    final payload = msg.payload;
-    final rawSerials = payload['serials'];
-    final serials = rawSerials is List ? rawSerials.cast<String>() : <String>[];
-    final exitCode = payload['exitCode'] as int? ?? 0;
+  void _handleScriptFinished(ScriptFinishedMessage msg) {
+    final serials = msg.serials;
+    final exitCode = msg.exitCode;
 
     runInAction(() {
       for (final s in serials) {
@@ -276,6 +273,50 @@ class P2pGuiService {
     });
 
     logger.i('[P2pGuiService] Script finished with exit code $exitCode');
+  }
+
+  void _handleDeviceStatusUpdate(DeviceStatusUpdateMessage msg) {
+    final serial = msg.serial;
+    final status = msg.status;
+    final reason = msg.reason;
+
+    if (serial.isEmpty) return;
+
+    runInAction(() {
+      if (status == 'stopped') {
+        activeScriptSerials.remove(serial);
+        _terminalStore.shellStates[serial] = false;
+
+        final statusMsg = reason != null && reason.isNotEmpty
+            ? 'Đã dừng ($reason)'
+            : 'Đã dừng session';
+
+        _sessionManagerStore.updateDeviceTask(
+          serial,
+          type: DeviceTaskType.script,
+          status: statusMsg,
+          phase: DeviceTaskPhase.failed,
+        );
+
+        Future.delayed(const Duration(seconds: 3), () {
+          _sessionManagerStore.clearDeviceTask(serial);
+        });
+
+        if (activeScriptSerials.isEmpty) {
+          _terminalStore.isExecuting = false;
+        }
+
+        final entry = LogEntry(
+          timestamp: DateTime.now(),
+          serial: serial,
+          message: '🛑 [CLI P2P] Thiết bị $serial đã dừng session: ${reason ?? 'Hoàn tất dispose'}',
+          type: LogType.error,
+        );
+        _terminalStore.terminalOutput.add(entry);
+      }
+    });
+
+    logger.i('[P2pGuiService] Device status update for $serial: $status (reason: $reason)');
   }
 
   Future<void> dispose() async {

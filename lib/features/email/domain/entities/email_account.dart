@@ -6,6 +6,7 @@ class EmailAccount extends Equatable {
   final String password;
   final String refreshToken;
   final String clientId;
+  final String? accessToken;
 
   const EmailAccount({
     required this.username,
@@ -13,6 +14,7 @@ class EmailAccount extends Equatable {
     required this.password,
     required this.refreshToken,
     required this.clientId,
+    this.accessToken,
   });
 
   /// Chuyển đổi email thành ID an toàn cho Firestore (thay . bằng _)
@@ -25,6 +27,7 @@ class EmailAccount extends Equatable {
       'password': password.trim(),
       'refreshToken': refreshToken.trim(),
       'clientId': clientId.trim(),
+      if (accessToken != null) 'accessToken': accessToken!.trim(),
       'updated_at': DateTime.now().toIso8601String(),
     };
   }
@@ -36,6 +39,7 @@ class EmailAccount extends Equatable {
       password: map['password'] as String? ?? '',
       refreshToken: map['refreshToken'] as String? ?? '',
       clientId: map['clientId'] as String? ?? '',
+      accessToken: map['accessToken'] as String?,
     );
   }
 
@@ -46,6 +50,7 @@ class EmailAccount extends Equatable {
         password,
         refreshToken,
         clientId,
+        accessToken,
       ];
 
   EmailAccount copyWith({
@@ -54,6 +59,7 @@ class EmailAccount extends Equatable {
     String? password,
     String? refreshToken,
     String? clientId,
+    String? accessToken,
   }) {
     return EmailAccount(
       username: username ?? this.username,
@@ -61,6 +67,7 @@ class EmailAccount extends Equatable {
       password: password ?? this.password,
       refreshToken: refreshToken ?? this.refreshToken,
       clientId: clientId ?? this.clientId,
+      accessToken: accessToken ?? this.accessToken,
     );
   }
 }
