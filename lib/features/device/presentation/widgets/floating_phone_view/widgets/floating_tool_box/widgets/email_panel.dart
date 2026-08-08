@@ -184,7 +184,50 @@ class _EmailPanelState extends State<EmailPanel> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _store.isLoading
+                                ? null
+                                : () async {
+                                    final email = _emailController.text.trim();
+                                    await _store.autoFillPasswordToDevice(
+                                      deviceSerial: widget.deviceSerial,
+                                      targetEmail: email,
+                                    );
+                                    if (context.mounted &&
+                                        _store.errorMessage == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Đã tự động điền mật khẩu qua ADB'),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colorScheme.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              side: BorderSide(
+                                color: colorScheme.primary.withValues(alpha: 0.5),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.password_rounded, size: 16),
+                            label: const Text(
+                              'FILL PASS',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           ElevatedButton.icon(
                             onPressed: _store.isLoading
                                 ? null
@@ -224,7 +267,7 @@ class _EmailPanelState extends State<EmailPanel> {
                               elevation: 0,
                               shadowColor: Colors.transparent,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
+                                horizontal: 16,
                                 vertical: 12,
                               ),
                               shape: RoundedRectangleBorder(

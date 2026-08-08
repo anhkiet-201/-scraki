@@ -72,7 +72,7 @@ class EmailRepositoryImpl implements IEmailRepository {
     return _imapDataSource.streamLatestEmails(
       account: account,
       onTokensUpdated: (newAccessToken, newRefreshToken) {
-        // Cập nhật Firestore bất đồng bộ với accessToken và refreshToken mới (nếu có)
+        // Cập nhật Firestore bất đồng bộ với accessToken, refreshToken và updated_at mới
         final updatedAccount = account.copyWith(
           accessToken: newAccessToken,
           refreshToken: newRefreshToken ?? account.refreshToken,

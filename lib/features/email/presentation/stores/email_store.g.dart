@@ -139,6 +139,24 @@ mixin _$EmailStore on _EmailStore, Store {
     );
   }
 
+  late final _$autoFillPasswordToDeviceAsyncAction = AsyncAction(
+    '_EmailStore.autoFillPasswordToDevice',
+    context: context,
+  );
+
+  @override
+  Future<void> autoFillPasswordToDevice({
+    required String deviceSerial,
+    required String targetEmail,
+  }) {
+    return _$autoFillPasswordToDeviceAsyncAction.run(
+      () => super.autoFillPasswordToDevice(
+        deviceSerial: deviceSerial,
+        targetEmail: targetEmail,
+      ),
+    );
+  }
+
   late final _$_EmailStoreActionController = ActionController(
     name: '_EmailStore',
     context: context,

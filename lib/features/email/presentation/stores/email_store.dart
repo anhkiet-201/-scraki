@@ -221,4 +221,58 @@ abstract class _EmailStore with Store {
       });
     }
   }
+
+  @action
+  Future<void> autoFillPasswordToDevice({
+    required String deviceSerial,
+    required String targetEmail,
+  }) async {
+    if (targetEmail.trim().isEmpty) {
+      errorMessage = 'Chưa nhập email để lấy mật khẩu.';
+      return;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+
+    try {
+      final accountsEither = await _emailRepository.getEmailAccounts();
+      accountsEither.fold(
+        (failure) {
+          errorMessage = 'Không lấy được tài khoản từ Firestore: ${failure.message}';
+        },
+        (accounts) async {
+          final searchEmail = targetEmail.trim().toLowerCase();
+          final matched = accounts.where(
+            (acc) => acc.email.trim().toLowerCase() == searchEmail,
+          );
+
+          if (matched.isEmpty) {
+            errorMessage = 'Không tìm thấy mật khẩu cho email $targetEmail trên Firestore.';
+            return;
+          }
+
+          final password = matched.first.password;
+          if (password.isEmpty) {
+            errorMessage = 'Mật khẩu của tài khoản này trên Firestore đang trống.';
+            return;
+          }
+
+          final inputResult = await _deviceRepository.inputText(deviceSerial, password);
+          inputResult.fold(
+            (failure) {
+              errorMessage = 'Lỗi nhập mật khẩu qua ADB: ${failure.message}';
+            },
+            (_) {
+              // Điền thành công
+            },
+          );
+        },
+      );
+    } catch (e) {
+      errorMessage = 'Lỗi tự động điền mật khẩu: $e';
+    } finally {
+      isLoading = false;
+    }
+  }
 }
