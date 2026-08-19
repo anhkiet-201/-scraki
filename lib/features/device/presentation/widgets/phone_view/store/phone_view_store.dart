@@ -116,7 +116,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _floatingDisposer?.call();
     stopMirroring();
     deviceShell.dispose();
-    _appStateStore.removeListener(onAppStateChanged);
     _stateSub?.cancel();
     _frameSub?.cancel();
   }
@@ -351,7 +350,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> stopMirroring() async {
-    _controller?.stop();
+    _controllerService.release(serial);
+    _controller = null;
+    
     sessionManagerStore.activeSessions.remove(sessionId);
 
     runInAction(() {

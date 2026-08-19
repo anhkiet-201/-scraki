@@ -10,10 +10,13 @@ import 'package:scraki/core/utils/logger.dart';
 class ScrcpyControllerService {
   final Map<String, ScrcpyController> _controllers = {};
 
+  final Map<String, int> _refCounts = {};
+
   /// Lấy controller hiện tại cho [serial], hoặc tạo mới nếu chưa có.
   ScrcpyController getOrCreate(String serial) {
+    _refCounts[serial] = (_refCounts[serial] ?? 0) + 1;
     if (_controllers.containsKey(serial)) {
-      logger.d('[ScrcpyControllerService] Reusing controller for $serial');
+      logger.d('[ScrcpyControllerService] Reusing controller for $serial (refs: ${_refCounts[serial]})');
       return _controllers[serial]!;
     }
     logger.d('[ScrcpyControllerService] Creating new controller for $serial');
@@ -25,13 +28,20 @@ class ScrcpyControllerService {
   /// Lấy controller hiện tại cho [serial] nếu tồn tại, null nếu không có.
   ScrcpyController? get(String serial) => _controllers[serial];
 
-  /// Dừng và giải phóng controller của [serial].
-  void dispose(String serial) {
-    final controller = _controllers.remove(serial);
-    if (controller != null) {
-      logger.i('[ScrcpyControllerService] Disposing controller for $serial');
-      controller.stop();
-      controller.dispose();
+  /// Giảm tham chiếu của controller. Nếu bằng 0, dừng và giải phóng.
+  void release(String serial) {
+    final count = (_refCounts[serial] ?? 0) - 1;
+    if (count <= 0) {
+      _refCounts.remove(serial);
+      final controller = _controllers.remove(serial);
+      if (controller != null) {
+        logger.i('[ScrcpyControllerService] Disposing controller for $serial (no refs left)');
+        controller.stop();
+        controller.dispose();
+      }
+    } else {
+      _refCounts[serial] = count;
+      logger.d('[ScrcpyControllerService] Released controller for $serial (refs left: $count)');
     }
   }
 
