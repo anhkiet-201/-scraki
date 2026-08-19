@@ -233,7 +233,7 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
                     }
                   }
                 : null,
-            child: Observer(
+            child: Builder(
               builder: (context) {
                 final controller = _store.controller;
                 if (controller == null) {

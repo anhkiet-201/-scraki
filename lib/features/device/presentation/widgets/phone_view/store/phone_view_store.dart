@@ -37,7 +37,7 @@ class PerformanceProfiles {
         serial: serial,
         videoBitRate: 500000,
         maxFps: 10,
-        control: true,
+        control: true, // MUST be true to allow requesting keyframes on resume
         maxSize: 720,
       );
 
@@ -116,6 +116,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _floatingDisposer?.call();
     stopMirroring();
     deviceShell.dispose();
+    _appStateStore.removeListener(onAppStateChanged);
     _stateSub?.cancel();
     _frameSub?.cancel();
   }
