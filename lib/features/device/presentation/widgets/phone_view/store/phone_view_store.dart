@@ -39,6 +39,7 @@ class PerformanceProfiles {
         maxFps: 10,
         control: true, // MUST be true to allow requesting keyframes on resume
         maxSize: 720,
+        audio: false
       );
 
   static plugin.ScrcpyOptions forFloating(String serial) => plugin.ScrcpyOptions(
@@ -98,8 +99,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           }
         }, fireImmediately: true);
       } else {
-        await startMirroring();
-      }
+            await startMirroring();
+          }
     } catch (e) {
       logger.e(
         '[PhoneView] Failed to start mirroring or setting reactions',
@@ -187,7 +188,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @computed
   bool get isBlockedByFloating =>
-      !isFloatingView && sessionManagerStore.isFloatingVisible;
+      !isFloatingView && sessionManagerStore.floatingSerial == serial;
 
   @action
   void toggleFloating(String? serial) {
@@ -210,9 +211,13 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
       if (wasVisible != _isVisible && _controller != null) {
         if (_isVisible) {
-          _controller!.resume();
+          if (_controller!.currentState == plugin.ScrcpyState.connected) {
+            _controller!.resume();
+          }
         } else {
-          _controller!.pause();
+          if (!_controller!.isPaused) {
+            _controller!.pause();
+          }
         }
       }
 
@@ -253,17 +258,17 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
     try {
       // [Buộc hướng đứng] Tắt tự động xoay màn hình và khóa hướng dọc
-      try {
-        await _adbDataSource.runShellCommand(serial, 'settings put system accelerometer_rotation 0');
-        await _adbDataSource.runShellCommand(serial, 'settings put system user_rotation 0');
-      } catch (e) {
-        logger.w('[PhoneViewStore] Failed to lock screen orientation physically', error: e);
-      }
+      // try {
+      //   await _adbDataSource.runShellCommand(serial, 'settings put system accelerometer_rotation 0');
+      //   await _adbDataSource.runShellCommand(serial, 'settings put system user_rotation 0');
+      // } catch (e) {
+      //   logger.w('[PhoneViewStore] Failed to lock screen orientation physically', error: e);
+      // }
 
       if (session != null) return session!;
 
-      // Lấy hoặc tạo controller cho serial này
-      _controller = _controllerService.getOrCreate(serial);
+      // Lấy hoặc tạo controller cho serial này theo sessionId
+      _controller = _controllerService.getOrCreate(sessionId);
 
       // Hủy subscription cũ nếu có
       await _stateSub?.cancel();
@@ -282,17 +287,28 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           ? PerformanceProfiles.forFloating(serial)
           : (options ?? PerformanceProfiles.forGrid(serial));
 
+      // Gán một port tĩnh (từ pool) để chắc chắn tiến trình này không tranh chấp port
+      final basePort = _controllerService.getPortForSession(sessionId);
+      pluginOptions.portRangeFirst = basePort;
+      pluginOptions.portRangeLast = basePort + 19; // Dành 20 port để scrcpy tự động retry nếu Address already in use
+
       await _controller!.start(pluginOptions);
 
-      // Đợi tối đa 10s để lấy kích thước video
-      final size = await sizeCompleter.future.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => const Size(1080, 1920),
-      );
+      final existingSize = _controller!.videoSize;
+      final Size finalSize;
+      if (existingSize != null) {
+        finalSize = existingSize;
+      } else {
+        // Đợi tối đa 10s để lấy kích thước video
+        finalSize = await sizeCompleter.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => const Size(1080, 1920),
+        );
+      }
 
       final mirrorSession = MirrorSession(
-        width: size.width.toInt(),
-        height: size.height.toInt(),
+        width: finalSize.width.toInt(),
+        height: finalSize.height.toInt(),
         deviceShell: _deviceShell,
       );
 
@@ -350,7 +366,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> stopMirroring() async {
-    _controllerService.release(serial);
+    _controllerService.release(sessionId);
     _controller = null;
     
     sessionManagerStore.activeSessions.remove(sessionId);
@@ -360,12 +376,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       isConnecting = false;
       error = null;
     });
-
-    final hasOtherSessions = sessionManagerStore.activeSessions.keys.any((k) => k.startsWith('${serial}_'));
-    if (!hasOtherSessions) {
-      _controllerService.dispose(serial);
-      _controller = null;
-    }
   }
 
   @action

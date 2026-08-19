@@ -2,46 +2,50 @@ import 'package:injectable/injectable.dart';
 import 'package:scrcpy_flutter_plugin/scrcpy_flutter_plugin.dart';
 import 'package:scraki/core/utils/logger.dart';
 
-/// Quản lý pool [ScrcpyController] theo [serial] thiết bị.
+/// Quản lý pool [ScrcpyController] theo [sessionId].
 ///
-/// Hỗ trợ reuse controller khi cùng serial xuất hiện ở cả Grid và Floating view,
-/// và giải phóng tài nguyên native khi không còn consumer nào dùng session.
+/// Mỗi [sessionId] (ví dụ: "serial_grid" hoặc "serial_floating") sẽ có một controller riêng biệt.
+/// 1 sessionId = 1 controller = 1 tiến trình scrcpy.
 @lazySingleton
 class ScrcpyControllerService {
   final Map<String, ScrcpyController> _controllers = {};
+  final Map<String, int> _sessionPorts = {};
+  int _nextPort = 20000 + DateTime.now().millisecondsSinceEpoch % 20000;
 
-  final Map<String, int> _refCounts = {};
-
-  /// Lấy controller hiện tại cho [serial], hoặc tạo mới nếu chưa có.
-  ScrcpyController getOrCreate(String serial) {
-    _refCounts[serial] = (_refCounts[serial] ?? 0) + 1;
-    if (_controllers.containsKey(serial)) {
-      logger.d('[ScrcpyControllerService] Reusing controller for $serial (refs: ${_refCounts[serial]})');
-      return _controllers[serial]!;
+  /// Cấp phát một port riêng biệt cho mỗi sessionId để tránh xung đột 'Address already in use'
+  int getPortForSession(String sessionId) {
+    if (!_sessionPorts.containsKey(sessionId)) {
+      _sessionPorts[sessionId] = _nextPort;
+      _nextPort += 20; // Dành một khoảng 20 port cho mỗi session để scrcpy tự động retry
+      if (_nextPort > 45000) {
+        _nextPort = 20000 + DateTime.now().millisecondsSinceEpoch % 20000; 
+      }
     }
-    logger.d('[ScrcpyControllerService] Creating new controller for $serial');
+    return _sessionPorts[sessionId]!;
+  }
+
+  /// Lấy controller hiện tại cho [sessionId], hoặc tạo mới nếu chưa có.
+  ScrcpyController getOrCreate(String sessionId) {
+    if (_controllers.containsKey(sessionId)) {
+      logger.d('[ScrcpyControllerService] Reusing controller for $sessionId');
+      return _controllers[sessionId]!;
+    }
+    logger.d('[ScrcpyControllerService] Creating new controller for $sessionId');
     final controller = ScrcpyController();
-    _controllers[serial] = controller;
+    _controllers[sessionId] = controller;
     return controller;
   }
 
-  /// Lấy controller hiện tại cho [serial] nếu tồn tại, null nếu không có.
-  ScrcpyController? get(String serial) => _controllers[serial];
+  /// Lấy controller hiện tại cho [sessionId] nếu tồn tại, null nếu không có.
+  ScrcpyController? get(String sessionId) => _controllers[sessionId];
 
-  /// Giảm tham chiếu của controller. Nếu bằng 0, dừng và giải phóng.
-  void release(String serial) {
-    final count = (_refCounts[serial] ?? 0) - 1;
-    if (count <= 0) {
-      _refCounts.remove(serial);
-      final controller = _controllers.remove(serial);
-      if (controller != null) {
-        logger.i('[ScrcpyControllerService] Disposing controller for $serial (no refs left)');
-        controller.stop();
-        controller.dispose();
-      }
-    } else {
-      _refCounts[serial] = count;
-      logger.d('[ScrcpyControllerService] Released controller for $serial (refs left: $count)');
+  /// Dừng và giải phóng controller cho [sessionId].
+  void release(String sessionId) {
+    final controller = _controllers.remove(sessionId);
+    if (controller != null) {
+      logger.i('[ScrcpyControllerService] Disposing controller for $sessionId');
+      controller.stop();
+      controller.dispose();
     }
   }
 
@@ -53,6 +57,8 @@ class ScrcpyControllerService {
       entry.value.dispose();
     }
     _controllers.clear();
+    _sessionPorts.clear();
+    _nextPort = 27183;
     ScrcpyController.cleanupAll();
   }
 }
