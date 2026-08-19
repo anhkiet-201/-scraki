@@ -1304,6 +1304,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  scrcpy_flutter_plugin:
+    dependency: "direct main"
+    description:
+      path: "/Volumes/aki/workspace/scrcpy/scrcpy_flutter_plugin"
+      relative: false
+    source: path
+    version: "0.1.1"
   shelf:
     dependency: transitive
     description:
@@ -1806,5 +1813,5 @@ packages:
     source: hosted
     version: "0.0.6"
 sdks:
-  dart: ">=3.11.0-273.0.dev <4.0.0"
+  dart: ">=3.12.2 <4.0.0"
   flutter: ">=3.38.4"

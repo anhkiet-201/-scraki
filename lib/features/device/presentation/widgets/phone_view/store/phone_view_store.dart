@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scrcpy_flutter_plugin/scrcpy_flutter_plugin.dart' as plugin;
 import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
@@ -10,15 +11,10 @@ import 'package:scraki/core/utils/android_key_codes.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
-import 'package:scraki/features/device/data/datasources/scrcpy_client.dart';
-import 'package:scraki/features/device/data/datasources/scrcpy_service.dart';
-import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
-import 'package:scraki/features/device/data/utils/scrcpy_input_serializer.dart';
+import 'package:scraki/features/device/data/services/scrcpy_controller_service.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
-import 'package:scraki/features/device/domain/entities/scrcpy_options.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/device/domain/services/i_device_task_service.dart';
-import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
 import 'package:scraki/features/device/data/datasources/adb_remote_data_source.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
@@ -37,35 +33,46 @@ class DashboardTabs {
 
 /// Performance profiles for different viewing modes.
 class PerformanceProfiles {
-  static const grid = ScrcpyOptions(
-    bitRate: 500000, // 5 Mbps
-    maxFps: 10,
-    control: true,
-    maxSize: 720,
-  );
+  static plugin.ScrcpyOptions forGrid(String serial) => plugin.ScrcpyOptions(
+        serial: serial,
+        videoBitRate: 500000,
+        maxFps: 10,
+        control: true,
+        maxSize: 720,
+      );
 
-  static const floating = ScrcpyOptions(
-    bitRate: 2500000, // 25 Mbps
-    maxFps: 60,
-    control: true,
-  );
+  static plugin.ScrcpyOptions forFloating(String serial) => plugin.ScrcpyOptions(
+        serial: serial,
+        videoBitRate: 2500000,
+        maxFps: 60,
+        control: true,
+      );
 }
 
 // ignore: library_private_types_in_public_api
 class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 
-/// Store responsible for managing screen mirroring sessions and input handling.
+/// Store chịu trách nhiệm quản lý phiên mirror màn hình và xử lý input.
+/// Sử dụng [ScrcpyController] từ scrcpy_flutter_plugin để thay thế
+/// toàn bộ stack native tự viết (ScrcpyService, VideoWorkerManager, NativeVideoDecoderServiceImpl).
 abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
-  final ScrcpyService _scrcpyService = getIt<ScrcpyService>();
-  final VideoWorkerManager _workerManager = getIt<VideoWorkerManager>();
+  final ScrcpyControllerService _controllerService = getIt<ScrcpyControllerService>();
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final IDeviceTaskService _deviceTaskService = getIt<IDeviceTaskService>();
   final IAdbRemoteDataSource _adbDataSource = getIt<IAdbRemoteDataSource>();
-  final IVideoDecoderService _decoderService = getIt<IVideoDecoderService>();
   final String serial;
   final bool isFloatingView;
 
   late final String sessionId;
+
+  /// [ScrcpyController] chính cho thiết bị này.
+  /// Được khởi tạo lazy khi start mirroring.
+  plugin.ScrcpyController? _controller;
+  plugin.ScrcpyController? get controller => _controller;
+
+  StreamSubscription<plugin.ScrcpyState>? _stateSub;
+  StreamSubscription<Size>? _frameSub;
+  int _retryCount = 0;
 
   @observable
   DeviceShellResult? deviceShellResult;
@@ -76,7 +83,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       _dashboardStore.selectedIndex == DashboardTabs.devices;
 
   ReactionDisposer? _floatingDisposer;
-  int _retryCount = 0;
 
   _PhoneViewStore(this.serial, this.isFloatingView) {
     sessionId = isFloatingView ? '${serial}_floating' : '${serial}_grid';
@@ -110,6 +116,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _floatingDisposer?.call();
     stopMirroring();
     deviceShell.dispose();
+    _stateSub?.cancel();
+    _frameSub?.cancel();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -199,21 +207,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     if (isFloating == isFloatingView) {
       final bool wasVisible = _isVisible;
       _isVisible = isVisible || isFloating;
-      
 
-      // [Optimization] Tạm dừng/Tiếp tục xử lý trong isolate khi ẩn/hiện để tiết kiệm CPU
-      // UPDATE: Các thiết bị lỗi không hỗ trợ ép tạo I-Frame. Nếu flush decoder, nó sẽ chết cứng.
-      // Do đó, ta PHẢI giữ luồng video liên tục. C++ sẽ tự động giải mã ngầm (chiếm 1-2% CPU).
-      // Việc này giúp Resume tức thì và hoàn hảo 100%.
-      if (wasVisible != _isVisible && session != null) {
+      if (wasVisible != _isVisible && _controller != null) {
         if (_isVisible) {
-          _decoderService.setVisibility(session!.videoUrl, true);
-          _decoderService.flush(session!.videoUrl);
-          _workerManager.resumeMirroring(sessionId);
-          _workerManager.requestKeyFrame(sessionId);
+          _controller!.resume();
         } else {
-          _decoderService.setVisibility(session!.videoUrl, false);
-          _workerManager.pauseMirroring(sessionId);
+          _controller!.pause();
         }
       }
 
@@ -230,10 +229,10 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // ═══════════════════════════════════════════════════════════════
 
   @action
-  Future<MirrorSession?> startMirroring([ScrcpyOptions? options]) async {
+  Future<MirrorSession?> startMirroring([plugin.ScrcpyOptions? options]) async {
     if (isConnecting || isLoading) return session;
 
-    // [Optimization] Nếu đã có session đang hoạt động cho ID này, tái sử dụng nó thay vì start mới
+    // [Optimization] Nếu đã có session đang hoạt động cho ID này, tái sử dụng nó
     if (session != null) {
       logger.i('[PhoneViewStore] Reusing existing session for $sessionId');
       runInAction(() {
@@ -253,12 +252,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     });
 
     try {
-      final isOnline = await _scrcpyService.isDeviceConnected(serial);
-      if (!isOnline) {
-        throw 'Device $serial is not connected or unauthorized.';
-      }
-
-      // [Buộc hướng đứng] Tắt tự động xoay màn hình và khóa hướng dọc (0 độ) ở tầng hệ thống Android
+      // [Buộc hướng đứng] Tắt tự động xoay màn hình và khóa hướng dọc
       try {
         await _adbDataSource.runShellCommand(serial, 'settings put system accelerometer_rotation 0');
         await _adbDataSource.runShellCommand(serial, 'settings put system user_rotation 0');
@@ -268,73 +262,49 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
       if (session != null) return session!;
 
-      final scrcpyOptions = options ?? (isFloatingView ? PerformanceProfiles.floating : PerformanceProfiles.grid);
+      // Lấy hoặc tạo controller cho serial này
+      _controller = _controllerService.getOrCreate(serial);
 
-      final resolutionFuture = _workerManager.waitForEvent(sessionId, 'resolution_ready');
+      // Hủy subscription cũ nếu có
+      await _stateSub?.cancel();
+      await _frameSub?.cancel();
 
-      final portsData = await _workerManager.startMirroring(
-        sessionId,
-        listener: (event) {
-          if (event.type == 'connection_lost') {
-            runInAction(() {
-              _workerManager.stopMirroring(sessionId);
-              sessionManagerStore.activeSessions.remove(sessionId);
-              hasLostConnection = true;
-            });
+      // Lắng nghe thay đổi trạng thái từ plugin
+      _stateSub = _controller!.onStateChanged.listen(_handleStateChange);
 
-            if (_retryCount < 3) {
-              final delaySeconds = [1, 2, 5][_retryCount];
-              _retryCount++;
-              Timer(Duration(seconds: delaySeconds), () {
-                if (_isVisible || isFloatingView) startMirroring();
-              });
-            }
-          }
-        },
+      // Lắng nghe kích thước video khi frame đầu tiên đến
+      final sizeCompleter = Completer<Size>();
+      _frameSub = _controller!.onVideoFrame.listen((size) {
+        if (!sizeCompleter.isCompleted) sizeCompleter.complete(size);
+      });
+
+      final pluginOptions = isFloatingView
+          ? PerformanceProfiles.forFloating(serial)
+          : (options ?? PerformanceProfiles.forGrid(serial));
+
+      await _controller!.start(pluginOptions);
+
+      // Đợi tối đa 10s để lấy kích thước video
+      final size = await sizeCompleter.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => const Size(1080, 1920),
       );
-      final adbPort = portsData['adbPort'] as int;
-      final proxyPort = portsData['proxyPort'] as int;
 
-      final serverData = await _scrcpyService.initServer(serial, scrcpyOptions, adbPort);
-      final scid = serverData.scid;
-
-      final resolutionData = await resolutionFuture;
-      final width = resolutionData['width'] as int;
-      final height = resolutionData['height'] as int;
-
-      final url = 'tcp://127.0.0.1:$proxyPort';
       final mirrorSession = MirrorSession(
-        videoUrl: url,
-        width: width,
-        height: height,
-        port: adbPort,
-        scid: scid,
-        decoderService: _decoderService,
+        width: size.width.toInt(),
+        height: size.height.toInt(),
         deviceShell: _deviceShell,
       );
 
-      await mirrorSession.decoderService.start(url, sessionId);
-      
       runInAction(() {
         sessionManagerStore.activeSessions[sessionId] = mirrorSession;
         isLoading = false;
         _retryCount = 0;
       });
 
-      // Đồng bộ trạng thái visibility ngay khi session đã được đăng ký vào MobX
-      if (_isVisible || isFloatingView) {
-        await mirrorSession.decoderService.setVisibility(url, true);
-        // [Fix] Yêu cầu I-Frame có delay để đảm bảo Native Decoder đã sẵn sàng nhận dữ liệu
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (sessionManagerStore.activeSessions.containsKey(sessionId)) {
-            _workerManager.requestKeyFrame(sessionId);
-          }
-        });
-      }
-
       return mirrorSession;
     } catch (e, stackTrace) {
-      logger.e('[SessionManagerStore] ERROR during mirroring setup', error: e, stackTrace: stackTrace);
+      logger.e('[PhoneViewStore] ERROR during mirroring setup', error: e, stackTrace: stackTrace);
       runInAction(() {
         error = 'Mirror failed: $e';
         isLoading = false;
@@ -345,20 +315,43 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     }
   }
 
+  void _handleStateChange(plugin.ScrcpyState state) {
+    logger.i('[PhoneViewStore] ScrcpyState changed: $state for $serial');
+    switch (state) {
+      case plugin.ScrcpyState.connected:
+        runInAction(() {
+          isConnecting = false;
+          hasLostConnection = false;
+          error = null;
+        });
+      case plugin.ScrcpyState.disconnected:
+        runInAction(() {
+          sessionManagerStore.activeSessions.remove(sessionId);
+          hasLostConnection = true;
+        });
+        // Auto-retry với exponential back-off
+        if (_retryCount < 3 && (_isVisible || isFloatingView)) {
+          final delaySeconds = [1, 2, 5][_retryCount];
+          _retryCount++;
+          Timer(Duration(seconds: delaySeconds), () {
+            if (_isVisible || isFloatingView) startMirroring();
+          });
+        }
+      case plugin.ScrcpyState.error:
+        runInAction(() {
+          error = 'Scrcpy connection error';
+          isLoading = false;
+          isConnecting = false;
+        });
+      case plugin.ScrcpyState.connecting:
+        runInAction(() => isConnecting = true);
+    }
+  }
+
   @action
   Future<void> stopMirroring() async {
-    final currentSession = session;
-    if (currentSession != null) {
-      await currentSession.decoderService.stop(currentSession.videoUrl);
-      try {
-        await getIt<ScrcpyClient>().removeTunnel(serial, currentSession.scid);
-      } catch (e) {
-        logger.w('[SessionManagerStore] Failed to remove tunnel', error: e);
-      }
-    }
-
+    _controller?.stop();
     sessionManagerStore.activeSessions.remove(sessionId);
-    _workerManager.stopMirroring(sessionId);
 
     runInAction(() {
       isLoading = false;
@@ -368,11 +361,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
     final hasOtherSessions = sessionManagerStore.activeSessions.keys.any((k) => k.startsWith('${serial}_'));
     if (!hasOtherSessions) {
-      try {
-        await _scrcpyService.killServer(serial);
-      } catch (e) {
-        logger.w('[SessionManagerStore] Error cleaning up server', error: e);
-      }
+      _controllerService.dispose(serial);
+      _controller = null;
     }
   }
 
@@ -386,18 +376,21 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   // ═══════════════════════════════════════════════════════════════
 
   void handlePointerEvent(String serial, PointerEvent event, int action, int nativeWidth, int nativeHeight) {
-    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
-    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
-    sendTouch(sessionId, x, y, action, nativeWidth, nativeHeight, buttons: event.buttons);
+    if (_controller == null) return;
+    final nx = (event.localPosition.dx / nativeWidth).clamp(0.0, 1.0);
+    final ny = (event.localPosition.dy / nativeHeight).clamp(0.0, 1.0);
+    _controller!.sendTouch(action, 0, nx, ny, 1.0);
   }
 
   void sendTouch(String sessionId, int x, int y, int action, int width, int height, {int buttons = UIConstants.defaultTouchButtons}) {
-    if (x < 0 || y < 0) return;
-    final message = TouchControlMessage(action: action, x: x, y: y, width: width, height: height, buttons: buttons, pointerId: 0);
-    _workerManager.sendControl(sessionId, message.serialize());
+    if (_controller == null || x < 0 || y < 0) return;
+    final nx = x / width;
+    final ny = y / height;
+    _controller!.sendTouch(action, 0, nx.clamp(0.0, 1.0), ny.clamp(0.0, 1.0), 1.0);
   }
 
   void handleScrollEvent(String serial, PointerScrollEvent event, int nativeWidth, int nativeHeight) {
+    if (_controller == null) return;
     const double sensitivity = 15.0;
     _scrollAccumulatorX -= event.scrollDelta.dx * sensitivity;
     _scrollAccumulatorY -= event.scrollDelta.dy * sensitivity;
@@ -410,28 +403,32 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     _scrollAccumulatorX -= hScroll;
     _scrollAccumulatorY -= vScroll;
 
-    final x = event.localPosition.dx.toInt().clamp(0, nativeWidth);
-    final y = event.localPosition.dy.toInt().clamp(0, nativeHeight);
-    sendScroll(sessionId, x, y, nativeWidth, nativeHeight, hScroll, vScroll);
+    final nx = (event.localPosition.dx / nativeWidth).clamp(0.0, 1.0);
+    final ny = (event.localPosition.dy / nativeHeight).clamp(0.0, 1.0);
+    _controller!.sendScroll(nx, ny, hScroll / 50.0, -vScroll / 50.0);
   }
 
   double _scrollAccumulatorX = 0;
   double _scrollAccumulatorY = 0;
 
   void sendScroll(String sessionId, int x, int y, int width, int height, int hScroll, int vScroll) {
-    if (x < 0 || y < 0) return;
-    final message = ScrollControlMessage(x: x, y: y, width: width, height: height, hScroll: hScroll, vScroll: vScroll);
-    _workerManager.sendControl(sessionId, message.serialize());
+    if (_controller == null || x < 0 || y < 0) return;
+    _controller!.sendScroll(x / width, y / height, hScroll / 50.0, -vScroll / 50.0);
   }
 
   void handleKeyboardEvent(String serial, KeyEvent event) {
+    if (_controller == null) return;
     int action = -1;
     int repeat = 0;
 
     if (event is KeyDownEvent) {
       action = 0;
-    } else if (event is KeyRepeatEvent) { action = 0; repeat = 1; }
-    else if (event is KeyUpEvent) action = 1;
+    } else if (event is KeyRepeatEvent) {
+      action = 0;
+      repeat = 1;
+    } else if (event is KeyUpEvent) {
+      action = 1;
+    }
 
     if (action == -1) return;
 
@@ -456,9 +453,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   }
 
   void sendKey(String serial, int keyCode, int action, {int repeat = 0, int metaState = 0}) {
-    if (keyCode == 0) return;
-    final message = KeyControlMessage(action: action, keyCode: keyCode, repeat: repeat, metaState: metaState);
-    _workerManager.sendControl(sessionId, message.serialize());
+    if (_controller == null || keyCode == 0) return;
+    _controller!.sendKey(keyCode, action, repeat, metaState);
   }
 
   void sendKeyByAdb(int keyCode) {
@@ -484,14 +480,12 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   }
 
   void setClipboard(String serial, String text, {bool paste = false}) {
-    final message = SetClipboardControlMessage(text, paste: paste);
-    _workerManager.sendControl(sessionId, message.serialize());
+    _controller?.setClipboard(text, paste: paste);
   }
 
   void sendText(String serial, String text) {
     if (text.isEmpty) return;
-    final message = InjectTextControlMessage(text);
-    _workerManager.sendControl(sessionId, message.serialize());
+    _controller?.injectText(text);
   }
 
   // ═══════════════════════════════════════════════════════════════

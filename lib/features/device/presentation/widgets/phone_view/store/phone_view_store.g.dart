@@ -252,7 +252,7 @@ mixin _$PhoneViewStore on _PhoneViewStore, Store {
   );
 
   @override
-  Future<MirrorSession?> startMirroring([ScrcpyOptions? options]) {
+  Future<MirrorSession?> startMirroring([plugin.ScrcpyOptions? options]) {
     return _$startMirroringAsyncAction.run(() => super.startMirroring(options));
   }
 

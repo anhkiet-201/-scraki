@@ -93,6 +93,10 @@ dependencies:
   archive: ^4.0.9
   rxdart: ^0.28.0
   firebase_auth: ^6.5.2
+
+  # Screen Mirroring
+  scrcpy_flutter_plugin:
+    path: /Volumes/aki/workspace/scrcpy/scrcpy_flutter_plugin
 dev_dependencies:
   flutter_test:
     sdk: flutter

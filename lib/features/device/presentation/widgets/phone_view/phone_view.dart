@@ -2,12 +2,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scrcpy_flutter_plugin/scrcpy_flutter_plugin.dart' as plugin;
 import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/widgets/connection_lost_view.dart';
 import 'package:scraki/core/widgets/error_view.dart';
 import 'package:scraki/core/widgets/loading_view.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
-import 'package:scraki/features/device/presentation/widgets/native_video_decoder/native_video_decoder.dart';
 import 'package:scraki/features/device/presentation/widgets/phone_view/store/phone_view_store.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
@@ -235,17 +235,13 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
                 : null,
             child: Observer(
               builder: (context) {
-                return NativeVideoDecoder(
+                final controller = _store.controller;
+                if (controller == null) {
+                  return Container(color: Colors.black);
+                }
+                return plugin.ScrcpyTextureWidget(
                   key: Key('decoder_${widget.serial}'),
-                  streamUrl: session.videoUrl,
-                  sessionId: widget.serial,
-                  nativeWidth: session.width,
-                  nativeHeight: session.height,
-                  service: session.decoderService,
-                  fit: widget.fit,
-                  isVisible: _store.isVisible,
-                  onError: (error) =>
-                      _store.setDecoderError(widget.serial, error),
+                  controller: controller,
                 );
               },
             ),

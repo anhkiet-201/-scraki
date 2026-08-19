@@ -32,22 +32,17 @@ import '../../features/device/data/datasources/device_group_remote_data_source.d
     as _i521;
 import '../../features/device/data/datasources/facebook_post_service.dart'
     as _i180;
-import '../../features/device/data/datasources/scrcpy_client.dart' as _i212;
 import '../../features/device/data/datasources/scrcpy_service.dart' as _i972;
-import '../../features/device/data/datasources/scrcpy_socket_client.dart'
-    as _i607;
 import '../../features/device/data/datasources/tiktok_post_service.dart'
     as _i727;
-import '../../features/device/data/datasources/video_worker_manager.dart'
-    as _i3;
 import '../../features/device/data/repositories/device_group_repository_firebase_impl.dart'
     as _i936;
 import '../../features/device/data/repositories/device_repository_impl.dart'
     as _i740;
 import '../../features/device/data/services/device_task_service_impl.dart'
     as _i229;
-import '../../features/device/data/services/native_video_decoder_service_impl.dart'
-    as _i892;
+import '../../features/device/data/services/scrcpy_controller_service.dart'
+    as _i247;
 import '../../features/device/domain/repositories/device_group_repository.dart'
     as _i510;
 import '../../features/device/domain/repositories/device_repository.dart'
@@ -60,8 +55,6 @@ import '../../features/device/domain/services/i_facebook_post_service.dart'
     as _i350;
 import '../../features/device/domain/services/i_tiktok_post_service.dart'
     as _i229;
-import '../../features/device/domain/services/i_video_decoder_service.dart'
-    as _i768;
 import '../../features/device/presentation/stores/device_group_store.dart'
     as _i246;
 import '../../features/device/presentation/stores/device_nickname_store.dart'
@@ -225,12 +218,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i773.SessionManagerStore(),
     );
     gh.lazySingleton<_i891.DashboardStore>(() => _i891.DashboardStore());
-    gh.lazySingleton<_i212.ScrcpyClient>(() => _i212.ScrcpyClient());
     gh.lazySingleton<_i972.ScrcpyService>(() => _i972.ScrcpyService());
-    gh.lazySingleton<_i607.ScrcpySocketClient>(
-      () => _i607.ScrcpySocketClient(),
+    gh.lazySingleton<_i247.ScrcpyControllerService>(
+      () => _i247.ScrcpyControllerService(),
     );
-    gh.lazySingleton<_i3.VideoWorkerManager>(() => _i3.VideoWorkerManager());
     gh.lazySingleton<_i255.TerminalLogWorker>(() => _i255.TerminalLogWorker());
     gh.lazySingleton<_i190.TerminalProcessWorker>(
       () => _i190.TerminalProcessWorker(),
@@ -299,9 +290,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i284.RecruitmentRemoteDataSource>(
       () => _i284.RecruitmentRemoteDataSourceImpl(gh<_i667.DioClient>()),
-    );
-    gh.lazySingleton<_i768.IVideoDecoderService>(
-      () => _i892.NativeVideoDecoderServiceImpl(),
     );
     gh.lazySingleton<_i482.IEmailRepository>(
       () => _i352.EmailRepositoryImpl(
