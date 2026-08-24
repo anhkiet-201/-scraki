@@ -33,8 +33,9 @@ class ToolBoxMenu extends StatelessWidget {
       width: isCollapsed ? 56 : 100,
       height: height,
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
         children: [
      
             _buildExpandedButton(
@@ -95,6 +96,7 @@ class ToolBoxMenu extends StatelessWidget {
             isError: false,
           ),
         ],
+      ),
       ),
     );
   }

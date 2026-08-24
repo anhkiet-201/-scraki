@@ -239,9 +239,13 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
                 if (controller == null) {
                   return Container(color: Colors.black);
                 }
-                return plugin.ScrcpyTextureWidget(
-                  key: Key('decoder_${widget.serial}'),
-                  controller: controller,
+                return ExcludeFocus(
+                  excluding: !widget.isFloating,
+                  child: plugin.ScrcpyTextureWidget(
+                    key: Key('decoder_${widget.serial}'),
+                    controller: controller,
+                    inputHandler: const _NoOpInputHandler(),
+                  ),
                 );
               },
             ),
@@ -399,4 +403,26 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
     );
   }
 
+}
+
+class _NoOpInputHandler extends plugin.ScrcpyInputHandler {
+  const _NoOpInputHandler();
+
+  @override
+  KeyEventResult handleKeyEvent(FocusNode focusNode, KeyEvent event, plugin.ScrcpyController controller) => KeyEventResult.ignored;
+
+  @override
+  void handlePointerDown(PointerDownEvent event, BoxConstraints constraints, plugin.ScrcpyController controller, FocusNode focusNode) {}
+
+  @override
+  void handlePointerMove(PointerMoveEvent event, BoxConstraints constraints, plugin.ScrcpyController controller) {}
+
+  @override
+  void handlePointerUp(PointerUpEvent event, BoxConstraints constraints, plugin.ScrcpyController controller) {}
+
+  @override
+  void handlePointerCancel(PointerCancelEvent event, BoxConstraints constraints, plugin.ScrcpyController controller) {}
+
+  @override
+  void handlePointerScroll(PointerScrollEvent event, BoxConstraints constraints, plugin.ScrcpyController controller) {}
 }

@@ -39,7 +39,7 @@ class PerformanceProfiles {
         maxFps: 10,
         control: true, // MUST be true to allow requesting keyframes on resume
         maxSize: 720,
-        audio: false
+        audio: false,
       );
 
   static plugin.ScrcpyOptions forFloating(String serial) => plugin.ScrcpyOptions(
@@ -47,6 +47,7 @@ class PerformanceProfiles {
         videoBitRate: 2500000,
         maxFps: 60,
         control: true,
+        softwareDecoding: false
       );
 }
 
@@ -57,6 +58,9 @@ class PhoneViewStore = _PhoneViewStore with _$PhoneViewStore;
 /// Sử dụng [ScrcpyController] từ scrcpy_flutter_plugin để thay thế
 /// toàn bộ stack native tự viết (ScrcpyService, VideoWorkerManager, NativeVideoDecoderServiceImpl).
 abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
+  static Future<void> _globalStartQueue = Future.value();
+
+
   final ScrcpyControllerService _controllerService = getIt<ScrcpyControllerService>();
   final DashboardStore _dashboardStore = getIt<DashboardStore>();
   final IDeviceTaskService _deviceTaskService = getIt<IDeviceTaskService>();
@@ -215,7 +219,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
             _controller!.resume();
           }
         } else {
-          if (!_controller!.isPaused) {
+          if (_controller!.currentState == plugin.ScrcpyState.connected && !_controller!.isPaused) {
             _controller!.pause();
           }
         }
@@ -256,14 +260,22 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       isConnecting = true;
     });
 
+    if (!isFloatingView) {
+      final previousQueue = _globalStartQueue;
+      final completer = Completer<void>();
+      _globalStartQueue = completer.future;
+
+      // Chờ thiết bị trước đó
+      await previousQueue;
+
+      // Cho phép thiết bị tiếp theo bắt đầu sau 150ms
+      Future.delayed(const Duration(milliseconds: 200), () {
+        completer.complete();
+      });
+    }
+
     try {
-      // [Buộc hướng đứng] Tắt tự động xoay màn hình và khóa hướng dọc
-      // try {
-      //   await _adbDataSource.runShellCommand(serial, 'settings put system accelerometer_rotation 0');
-      //   await _adbDataSource.runShellCommand(serial, 'settings put system user_rotation 0');
-      // } catch (e) {
-      //   logger.w('[PhoneViewStore] Failed to lock screen orientation physically', error: e);
-      // }
+
 
       if (session != null) return session!;
 
@@ -346,11 +358,17 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           hasLostConnection = true;
         });
         // Auto-retry với exponential back-off
+        // Cleanup controller cũ trước khi retry để tránh 2 session song song
         if (_retryCount < 3 && (_isVisible || isFloatingView)) {
           final delaySeconds = [1, 2, 5][_retryCount];
           _retryCount++;
           Timer(Duration(seconds: delaySeconds), () {
-            if (_isVisible || isFloatingView) startMirroring();
+            if (_isVisible || isFloatingView) {
+              // Giải phóng controller cũ trước — đảm bảo không còn zombie session
+              _controllerService.release(sessionId);
+              _controller = null;
+              startMirroring();
+            }
           });
         }
       case plugin.ScrcpyState.error:
