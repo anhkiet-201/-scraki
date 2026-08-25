@@ -25,15 +25,13 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   }
 
   ReactionDisposer? _aspectRatioDisposer;
+  double _lastKnownRatio = 9 / 19;
 
   void _initializeStore() {
     // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình thực tế của thiết bị này
-    final session = sessionManagerStore.activeSessions['${serial}_floating'] ??
-        sessionManagerStore.activeSessions['${serial}_grid'] ??
-        sessionManagerStore.activeSessions[serial];
-    final aspectRatio = (session != null && session.width > 0 && session.height > 0)
-        ? (session.width / session.height)
-        : sessionManagerStore.deviceAspectRatio;
+    final aspectRatio =
+        sessionManagerStore.deviceAspectRatios[serial] ?? (9 / 19);
+    _lastKnownRatio = aspectRatio;
 
     final isLandscape = aspectRatio > 1.0;
     final initialWidth = isLandscape ? 560.0 : 320.0;
@@ -45,29 +43,29 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
 
     // Phản ứng với thay đổi tỷ lệ khung hình khi thiết bị xoay màn hình
     _aspectRatioDisposer ??= reaction(
-      (_) {
-        final s = sessionManagerStore.activeSessions['${serial}_floating'] ??
-            sessionManagerStore.activeSessions['${serial}_grid'] ??
-            sessionManagerStore.activeSessions[serial];
-        return (s != null && s.width > 0 && s.height > 0)
-            ? (s.width / s.height)
-            : sessionManagerStore.deviceAspectRatio;
-      },
+      (_) => sessionManagerStore.deviceAspectRatios[serial] ?? (9 / 19),
       (ratio) {
-        runInAction(() {
-          final isLandscape = ratio > 1.0;
-          final targetWidth = isLandscape
-              ? (width < 450 ? 560.0 : width)
-              : (width > 450 ? 320.0 : width);
-          final newHeight = (targetWidth / ratio) +
-              40 +
-              UIConstants.floatingNavigationBarHeight +
-              12;
-          updateDimensions(targetWidth, newHeight);
-          updatePosition(getClampedPosition(position, parentSize));
-        });
+        syncWithAspectRatio(ratio);
       },
     );
+  }
+
+  @action
+  void syncWithAspectRatio(double ratio) {
+    if ((_lastKnownRatio - ratio).abs() > 0.01) {
+      _lastKnownRatio = ratio;
+      final isLandscape = ratio > 1.0;
+      final targetWidth = isLandscape
+          ? (width < 450 ? 560.0 : width)
+          : (width > 450 ? 320.0 : width);
+      final newHeight = (targetWidth / ratio) +
+          40 +
+          UIConstants.floatingNavigationBarHeight +
+          12;
+      width = targetWidth;
+      height = newHeight;
+      position = getClampedPosition(position, parentSize);
+    }
   }
 
   void dispose() {

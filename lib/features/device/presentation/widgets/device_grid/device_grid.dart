@@ -91,26 +91,25 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
       );
     }
 
-    return Observer(
-      builder: (_) {
-        final deviceRatio = sessionManagerStore.deviceAspectRatio;
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth = constraints.maxWidth;
-            const maxItemWidth = 300.0;
-            const spacing = 20.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        const maxItemWidth = 300.0;
+        const spacing = 20.0;
 
-            final contentWidth = availableWidth - 48; // Sidebar + Margins
+        final contentWidth = availableWidth - 48; // Sidebar + Margins
 
-            final crossAxisCount =
-                ((contentWidth + spacing) / (maxItemWidth + spacing))
-                    .ceil()
-                    .clamp(1, 10);
+        final crossAxisCount =
+            ((contentWidth + spacing) / (maxItemWidth + spacing))
+                .ceil()
+                .clamp(1, 10);
 
-            final itemWidth =
-                (contentWidth - ((crossAxisCount - 1) * spacing)) /
-                crossAxisCount;
+        final itemWidth =
+            (contentWidth - ((crossAxisCount - 1) * spacing)) /
+            crossAxisCount;
 
+        return Observer(
+          builder: (_) {
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -122,15 +121,9 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
                       visibleSerials == null ||
                       visibleSerials!.contains(device.serial);
 
-                  final session = sessionManagerStore
-                          .activeSessions['${device.serial}_grid'] ??
-                      sessionManagerStore.activeSessions[device.serial];
-
-                  final ratio = (session != null &&
-                          session.width > 0 &&
-                          session.height > 0)
-                      ? (session.width / session.height)
-                      : deviceRatio;
+                  final ratio =
+                      sessionManagerStore.deviceAspectRatios[device.serial] ??
+                      (9 / 19);
 
                   final cardHeight = (itemWidth / ratio) +
                       52 +

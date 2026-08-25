@@ -9,14 +9,6 @@ part of 'session_manager_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$SessionManagerStore on _SessionManagerStore, Store {
-  Computed<double>? _$deviceAspectRatioComputed;
-
-  @override
-  double get deviceAspectRatio =>
-      (_$deviceAspectRatioComputed ??= Computed<double>(
-        () => super.deviceAspectRatio,
-        name: '_SessionManagerStore.deviceAspectRatio',
-      )).value;
   Computed<bool>? _$isFloatingVisibleComputed;
 
   @override
@@ -40,6 +32,24 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
   set activeSessions(ObservableMap<String, MirrorSession> value) {
     _$activeSessionsAtom.reportWrite(value, super.activeSessions, () {
       super.activeSessions = value;
+    });
+  }
+
+  late final _$deviceAspectRatiosAtom = Atom(
+    name: '_SessionManagerStore.deviceAspectRatios',
+    context: context,
+  );
+
+  @override
+  ObservableMap<String, double> get deviceAspectRatios {
+    _$deviceAspectRatiosAtom.reportRead();
+    return super.deviceAspectRatios;
+  }
+
+  @override
+  set deviceAspectRatios(ObservableMap<String, double> value) {
+    _$deviceAspectRatiosAtom.reportWrite(value, super.deviceAspectRatios, () {
+      super.deviceAspectRatios = value;
     });
   }
 
@@ -83,6 +93,18 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
     name: '_SessionManagerStore',
     context: context,
   );
+
+  @override
+  void updateDeviceAspectRatio(String serial, double ratio) {
+    final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
+      name: '_SessionManagerStore.updateDeviceAspectRatio',
+    );
+    try {
+      return super.updateDeviceAspectRatio(serial, ratio);
+    } finally {
+      _$_SessionManagerStoreActionController.endAction(_$actionInfo);
+    }
+  }
 
   @override
   void toggleFloating(String? serial) {
@@ -138,9 +160,9 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
   String toString() {
     return '''
 activeSessions: ${activeSessions},
+deviceAspectRatios: ${deviceAspectRatios},
 floatingSerial: ${floatingSerial},
 activeTasks: ${activeTasks},
-deviceAspectRatio: ${deviceAspectRatio},
 isFloatingVisible: ${isFloatingVisible}
     ''';
   }

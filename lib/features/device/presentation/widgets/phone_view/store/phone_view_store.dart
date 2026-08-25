@@ -249,9 +249,28 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     if (_isDisposed) return null;
     if (isConnecting || isLoading) return session;
 
-    // [Optimization] Nếu đã có session đang hoạt động cho ID này, tái sử dụng nó
-    if (session != null) {
-      logger.i('[PhoneViewStore] Reusing existing session for $sessionId');
+    // Lấy hoặc tạo controller cho serial này theo sessionId
+    _controller = _controllerService.getOrCreate(sessionId);
+
+    // Nếu controller đã đang chạy và có session, tái sử dụng nhưng vẫn bảo đảm subscription hoạt động
+    if (_controller!.currentState == plugin.ScrcpyState.connected && session != null) {
+      logger.i('[PhoneViewStore] Reusing existing running session for $sessionId');
+      _frameSub ??= _controller!.onVideoFrame.listen((size) {
+        if (_isDisposed) return;
+        final newWidth = size.width.toInt();
+        final newHeight = size.height.toInt();
+        final current = sessionManagerStore.activeSessions[sessionId];
+        if (current == null || current.width != newWidth || current.height != newHeight) {
+          runInAction(() {
+            sessionManagerStore.activeSessions[sessionId] = MirrorSession(
+              width: newWidth,
+              height: newHeight,
+              deviceShell: _deviceShell,
+            );
+            sessionManagerStore.updateDeviceAspectRatio(serial, newWidth / newHeight);
+          });
+        }
+      });
       runInAction(() {
         isLoading = false;
         isConnecting = false;
@@ -286,10 +305,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
     try {
       if (_isDisposed) return null;
-      if (session != null) return session!;
-
-      // Lấy hoặc tạo controller cho serial này theo sessionId
-      _controller = _controllerService.getOrCreate(sessionId);
 
       // Hủy subscription cũ nếu có
       await _stateSub?.cancel();
@@ -305,16 +320,19 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       _frameSub = _controller!.onVideoFrame.listen((size) {
         if (!sizeCompleter.isCompleted) sizeCompleter.complete(size);
         if (_isDisposed) return;
+        final newWidth = size.width.toInt();
+        final newHeight = size.height.toInt();
         final current = sessionManagerStore.activeSessions[sessionId];
         if (current == null ||
-            current.width != size.width.toInt() ||
-            current.height != size.height.toInt()) {
+            current.width != newWidth ||
+            current.height != newHeight) {
           runInAction(() {
             sessionManagerStore.activeSessions[sessionId] = MirrorSession(
-              width: size.width.toInt(),
-              height: size.height.toInt(),
+              width: newWidth,
+              height: newHeight,
               deviceShell: _deviceShell,
             );
+            sessionManagerStore.updateDeviceAspectRatio(serial, newWidth / newHeight);
           });
         }
       });
@@ -354,6 +372,10 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
       runInAction(() {
         sessionManagerStore.activeSessions[sessionId] = mirrorSession;
+        sessionManagerStore.updateDeviceAspectRatio(
+          serial,
+          finalSize.width / finalSize.height,
+        );
         isLoading = false;
         _retryCount = 0;
       });

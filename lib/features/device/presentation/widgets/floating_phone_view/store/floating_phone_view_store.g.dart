@@ -141,6 +141,18 @@ mixin _$FloatingPhoneViewStore on _FloatingPhoneViewStore, Store {
   );
 
   @override
+  void syncWithAspectRatio(double ratio) {
+    final _$actionInfo = _$_FloatingPhoneViewStoreActionController.startAction(
+      name: '_FloatingPhoneViewStore.syncWithAspectRatio',
+    );
+    try {
+      return super.syncWithAspectRatio(ratio);
+    } finally {
+      _$_FloatingPhoneViewStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void updatePosition(Offset newPosition) {
     final _$actionInfo = _$_FloatingPhoneViewStoreActionController.startAction(
       name: '_FloatingPhoneViewStore.updatePosition',

@@ -80,14 +80,10 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
 
     return Observer(
       builder: (_) {
-        final session = sessionManagerStore
-                .activeSessions['${widget.serial}_floating'] ??
-            sessionManagerStore.activeSessions['${widget.serial}_grid'] ??
-            sessionManagerStore.activeSessions[widget.serial];
         final aspectRatio =
-            (session != null && session.width > 0 && session.height > 0)
-                ? (session.width / session.height)
-                : sessionManagerStore.deviceAspectRatio;
+            sessionManagerStore.deviceAspectRatios[widget.serial] ?? (9 / 19);
+        _store.syncWithAspectRatio(aspectRatio);
+
         return Positioned(
           left: _store.position.dx,
           top: _store.position.dy,
@@ -115,7 +111,9 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
                       width: _store.width,
                       height: _store.height,
                       decoration: BoxDecoration(
@@ -156,7 +154,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                                     height: _store.height,
                                     child: PhoneView(
                                       serial: widget.serial,
-                                      fit: BoxFit.fill,
+                                      fit: BoxFit.contain,
                                       isFloating: true,
                                       onPosterDropped: (data) async {
                                         final file = await _toolBoxKey

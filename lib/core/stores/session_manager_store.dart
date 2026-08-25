@@ -30,31 +30,27 @@ abstract class _SessionManagerStore with Store {
   ObservableMap<String, MirrorSession> activeSessions =
       ObservableMap<String, MirrorSession>();
 
+  @observable
+  ObservableMap<String, double> deviceAspectRatios =
+      ObservableMap<String, double>();
 
   Map<String, DeviceShell> get activeDeviceShells {
     return activeSessions.map((k,v) => MapEntry(k.replaceAll("_grid", "").replaceAll("_floating", ""),v.deviceShell));
   }
 
-  @computed
-  double get deviceAspectRatio {
-    const double defaultVideoRatio = 9 / 19; // Modern phone ratio
-    final double fallbackRatio = defaultVideoRatio;
 
-    if (activeSessions.isEmpty) return fallbackRatio;
-
-    // Sử dụng tỷ lệ khung hình video thực tế của session hoạt động đầu tiên
-    final firstSession = activeSessions.values.first;
-    if (firstSession.width > 0 && firstSession.height > 0) {
-      return firstSession.width / firstSession.height;
+  @action
+  void updateDeviceAspectRatio(String serial, double ratio) {
+    if (deviceAspectRatios[serial] != ratio) {
+      deviceAspectRatios[serial] = ratio;
     }
-    return fallbackRatio;
   }
 
   // ═══════════════════════════════════════════════════════════════
   // FLOATING WINDOW
   // ═══════════════════════════════════════════════════════════════
 
-  @observable
+  @observable  
   String? floatingSerial;
 
   @computed
