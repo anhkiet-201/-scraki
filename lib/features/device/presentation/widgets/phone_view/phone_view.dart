@@ -182,72 +182,66 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
   }
 
   Widget _buildMirrorView(MirrorSession session) {
-    return FittedBox(
-      fit: widget.fit,
-      alignment: Alignment.center,
-      child: Focus(
-        focusNode: _focusNode,
-        onKeyEvent: widget.isFloating
-            ? (node, event) {
-                _store.handleKeyboardEvent(widget.serial, event);
-                return KeyEventResult.handled;
-              }
-            : null,
-        child: SizedBox(
-          width: session.width.toDouble(),
-          height:
-              session.height.toDouble() +
-              (_store.isFloating
-                  ? UIConstants.floatingNavigationBarHeight
-                  : UIConstants.gridNavigationBarHeight),
-          child: _buildVideoWithNavigation(session),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoWithNavigation(MirrorSession session) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: Listener(
-            onPointerDown: widget.isFloating
-                ? (e) => _handlePointer(e, 0, session)
-                : (e) => _handleDoubleTapOnly(e),
-            onPointerUp: widget.isFloating
-                ? (e) => _handlePointer(e, 1, session)
-                : null,
-            onPointerMove: widget.isFloating
-                ? (e) => _handlePointer(e, 2, session)
-                : null,
-            onPointerSignal: widget.isFloating
-                ? (event) {
-                    if (event is PointerScrollEvent) {
-                      _store.handleScrollEvent(
-                        widget.serial,
-                        event,
-                        session.width,
-                        session.height,
-                      );
+          child: FittedBox(
+            fit: widget.fit,
+            alignment: Alignment.center,
+            child: Focus(
+              focusNode: _focusNode,
+              onKeyEvent: widget.isFloating
+                  ? (node, event) {
+                      _store.handleKeyboardEvent(widget.serial, event);
+                      return KeyEventResult.handled;
                     }
-                  }
-                : null,
-            child: Builder(
-              builder: (context) {
-                final controller = _store.controller;
-                if (controller == null) {
-                  return Container(color: Colors.black);
-                }
-                return ExcludeFocus(
-                  excluding: !widget.isFloating,
-                  child: plugin.ScrcpyTextureWidget(
-                    key: Key('decoder_${widget.serial}'),
-                    controller: controller,
-                    inputHandler: const _NoOpInputHandler(),
+                  : null,
+              child: SizedBox(
+                width: session.width.toDouble(),
+                height: session.height.toDouble(),
+                child: Listener(
+                  onPointerDown: widget.isFloating
+                      ? (e) => _handlePointer(e, 0, session)
+                      : (e) => _handleDoubleTapOnly(e),
+                  onPointerUp: widget.isFloating
+                      ? (e) => _handlePointer(e, 1, session)
+                      : null,
+                  onPointerMove: widget.isFloating
+                      ? (e) => _handlePointer(e, 2, session)
+                      : null,
+                  onPointerSignal: widget.isFloating
+                      ? (event) {
+                          if (event is PointerScrollEvent) {
+                            _store.handleScrollEvent(
+                              widget.serial,
+                              event,
+                              session.width,
+                              session.height,
+                            );
+                          }
+                        }
+                      : null,
+                  child: Builder(
+                    builder: (context) {
+                      final controller = _store.controller;
+                      if (controller == null) {
+                        return Container(color: Colors.black);
+                      }
+                      return ExcludeFocus(
+                        excluding: !widget.isFloating,
+                        child: plugin.ScrcpyTextureWidget(
+                          key: Key(
+                            'decoder_${widget.isFloating ? "floating" : "grid"}_${widget.serial}',
+                          ),
+                          controller: controller,
+                          inputHandler: const _NoOpInputHandler(),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/features/poster/domain/entities/poster_data.dart';
 
@@ -36,7 +37,10 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
 
     final isLandscape = aspectRatio > 1.0;
     final initialWidth = isLandscape ? 560.0 : 320.0;
-    final initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+    final initialHeight = (initialWidth / aspectRatio) +
+        40 +
+        UIConstants.floatingNavigationBarHeight +
+        12;
     initializePositionAndSize(const Offset(100, 100), initialWidth, initialHeight);
 
     // Phản ứng với thay đổi tỷ lệ khung hình khi thiết bị xoay màn hình
@@ -55,7 +59,10 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
           final targetWidth = isLandscape
               ? (width < 450 ? 560.0 : width)
               : (width > 450 ? 320.0 : width);
-          final newHeight = (targetWidth / ratio) + 40 + 12;
+          final newHeight = (targetWidth / ratio) +
+              40 +
+              UIConstants.floatingNavigationBarHeight +
+              12;
           updateDimensions(targetWidth, newHeight);
           updatePosition(getClampedPosition(position, parentSize));
         });

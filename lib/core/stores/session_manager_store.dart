@@ -1,6 +1,5 @@
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
-import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
@@ -43,12 +42,10 @@ abstract class _SessionManagerStore with Store {
 
     if (activeSessions.isEmpty) return fallbackRatio;
 
-    // Sử dụng tỷ lệ khung hình của session hoạt động đầu tiên cho toàn bộ lưới
-    // Logic: Tỷ lệ = Chiều rộng / (Chiều cao + Chiều cao thanh điều hướng)
+    // Sử dụng tỷ lệ khung hình video thực tế của session hoạt động đầu tiên
     final firstSession = activeSessions.values.first;
     if (firstSession.width > 0 && firstSession.height > 0) {
-      return firstSession.width /
-          (firstSession.height + UIConstants.gridNavigationBarHeight);
+      return firstSession.width / firstSession.height;
     }
     return fallbackRatio;
   }

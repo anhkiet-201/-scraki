@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/mixins/di_mixin.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/stores/device_manager_store.dart';
@@ -176,12 +177,19 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                                 double maxAllowedWidth = 1200.0;
                                 if (!widget.parentSize.isEmpty) {
                                   final maxWidthByX = widget.parentSize.width - _store.position.dx;
-                                  final maxHeightAvailable = widget.parentSize.height - _store.position.dy - 52;
+                                  final maxHeightAvailable = widget.parentSize.height -
+                                      _store.position.dy -
+                                      40 -
+                                      UIConstants.floatingNavigationBarHeight -
+                                      12;
                                   final maxWidthByY = maxHeightAvailable * aspectRatio;
                                   maxAllowedWidth = [maxWidthByX, maxWidthByY, 1200.0].reduce((a, b) => a < b ? a : b);
                                 }
                                 final newWidth = (_store.width + delta).clamp(240.0, maxAllowedWidth);
-                                final newHeight = (newWidth / aspectRatio) + 48 + 16;
+                                final newHeight = (newWidth / aspectRatio) +
+                                    40 +
+                                    UIConstants.floatingNavigationBarHeight +
+                                    12;
                                 _store.updateDimensions(newWidth, newHeight);
                                 _store.updatePosition(_store.getClampedPosition(_store.position, widget.parentSize));
                               });
