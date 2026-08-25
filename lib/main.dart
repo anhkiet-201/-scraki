@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -6,6 +7,9 @@ import 'package:media_kit/media_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scrcpy_flutter_plugin/scrcpy_flutter_plugin.dart';
+import 'core/utils/logger.dart';
+import 'features/device/data/services/scrcpy_controller_service.dart';
 import 'features/script/data/models/script_model.dart';
 import 'core/config/settings_config_provider.dart';
 import 'core/di/injection.dart';
@@ -19,6 +23,9 @@ import 'features/api_server/domain/services/p2p_gui_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Dọn dẹp bất kỳ session scrcpy native nào còn sót từ lần chạy trước / hot restart
+  ScrcpyController.cleanupAll();
 
   await dotenv.load(fileName: ".env");
 
@@ -48,8 +55,48 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppLifecycleListener _lifecycleListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onExitRequested: _handleExitRequested,
+      onDetach: _handleDetach,
+    );
+  }
+
+  Future<AppExitResponse> _handleExitRequested() async {
+    logger.i('[App] Yêu cầu thoát ứng dụng, đang dọn dẹp các session scrcpy ngầm...');
+    try {
+      getIt<ScrcpyControllerService>().disposeAll();
+    } catch (e, stack) {
+      logger.e('[App] Lỗi khi dọn dẹp ScrcpyControllerService', error: e, stackTrace: stack);
+    }
+    return AppExitResponse.exit;
+  }
+
+  void _handleDetach() {
+    try {
+      getIt<ScrcpyControllerService>().disposeAll();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
