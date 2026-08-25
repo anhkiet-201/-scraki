@@ -9,9 +9,11 @@ import 'package:scraki/core/di/injection.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/utils/android_key_codes.dart';
 import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/core/stores/device_manager_store.dart';
 import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/features/dashboard/presentation/stores/dashboard_store.dart';
 import 'package:scraki/features/device/data/services/scrcpy_controller_service.dart';
+import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/entities/mirror_session.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 import 'package:scraki/features/device/domain/services/i_device_task_service.dart';
@@ -78,6 +80,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   StreamSubscription<plugin.ScrcpyState>? _stateSub;
   StreamSubscription<Size>? _frameSub;
   int _retryCount = 0;
+  Timer? _retryTimer;
+  bool _isDisposed = false;
 
   @observable
   DeviceShellResult? deviceShellResult;
@@ -117,6 +121,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
   }
 
   void dispose() {
+    _isDisposed = true;
+    _retryTimer?.cancel();
+    _retryTimer = null;
     setVisibility(serial, false, isFloating: isFloatingView);
     _floatingDisposer?.call();
     stopMirroring();
@@ -239,6 +246,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<MirrorSession?> startMirroring([plugin.ScrcpyOptions? options]) async {
+    if (_isDisposed) return null;
     if (isConnecting || isLoading) return session;
 
     // [Optimization] Nếu đã có session đang hoạt động cho ID này, tái sử dụng nó
@@ -268,6 +276,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       // Chờ thiết bị trước đó
       await previousQueue;
 
+      if (_isDisposed) return null;
+
       // Cho phép thiết bị tiếp theo bắt đầu sau 150ms
       Future.delayed(const Duration(milliseconds: 200), () {
         completer.complete();
@@ -275,8 +285,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
     }
 
     try {
-
-
+      if (_isDisposed) return null;
       if (session != null) return session!;
 
       // Lấy hoặc tạo controller cho serial này theo sessionId
@@ -286,6 +295,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       await _stateSub?.cancel();
       await _frameSub?.cancel();
 
+      if (_isDisposed) return null;
+
       // Lắng nghe thay đổi trạng thái từ plugin
       _stateSub = _controller!.onStateChanged.listen(_handleStateChange);
 
@@ -293,6 +304,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       final sizeCompleter = Completer<Size>();
       _frameSub = _controller!.onVideoFrame.listen((size) {
         if (!sizeCompleter.isCompleted) sizeCompleter.complete(size);
+        if (_isDisposed) return;
         final current = sessionManagerStore.activeSessions[sessionId];
         if (current == null ||
             current.width != size.width.toInt() ||
@@ -318,6 +330,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
       await _controller!.start(pluginOptions);
 
+      if (_isDisposed) return null;
+
       final existingSize = _controller!.videoSize;
       final Size finalSize;
       if (existingSize != null) {
@@ -329,6 +343,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           onTimeout: () => const Size(1080, 1920),
         );
       }
+
+      if (_isDisposed) return null;
 
       final mirrorSession = MirrorSession(
         width: finalSize.width.toInt(),
@@ -344,6 +360,7 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
       return mirrorSession;
     } catch (e, stackTrace) {
+      if (_isDisposed) return null;
       logger.e('[PhoneViewStore] ERROR during mirroring setup', error: e, stackTrace: stackTrace);
       runInAction(() {
         error = 'Mirror failed: $e';
@@ -351,11 +368,14 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       });
       rethrow;
     } finally {
-      runInAction(() => isConnecting = false);
+      if (!_isDisposed) {
+        runInAction(() => isConnecting = false);
+      }
     }
   }
 
   void _handleStateChange(plugin.ScrcpyState state) {
+    if (_isDisposed) return;
     logger.i('[PhoneViewStore] ScrcpyState changed: $state for $serial');
     switch (state) {
       case plugin.ScrcpyState.connected:
@@ -369,13 +389,15 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
           sessionManagerStore.activeSessions.remove(sessionId);
           hasLostConnection = true;
         });
-        // Auto-retry với exponential back-off
-        // Cleanup controller cũ trước khi retry để tránh 2 session song song
-        if (_retryCount < 3 && (_isVisible || isFloatingView)) {
+        // Auto-retry với exponential back-off chỉ khi widget còn active và thiết bị vẫn còn trong danh sách
+        _retryTimer?.cancel();
+        final deviceManager = getIt<DeviceManagerStore>();
+        final isDeviceStillConnected = deviceManager.devices.any((DeviceEntity d) => d.serial == serial);
+        if (!_isDisposed && isDeviceStillConnected && _retryCount < 3 && (_isVisible || isFloatingView)) {
           final delaySeconds = [1, 2, 5][_retryCount];
           _retryCount++;
-          Timer(Duration(seconds: delaySeconds), () {
-            if (_isVisible || isFloatingView) {
+          _retryTimer = Timer(Duration(seconds: delaySeconds), () {
+            if (!_isDisposed && (_isVisible || isFloatingView)) {
               // Giải phóng controller cũ trước — đảm bảo không còn zombie session
               _controllerService.release(sessionId);
               _controller = null;
@@ -396,6 +418,8 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   @action
   Future<void> stopMirroring() async {
+    _retryTimer?.cancel();
+    _retryTimer = null;
     _controllerService.release(sessionId);
     _controller = null;
     

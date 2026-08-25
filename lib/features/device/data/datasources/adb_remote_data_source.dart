@@ -114,7 +114,8 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   Future<String> getConnectedDevicesOutput() async {
     for (int i = 0; i < 3; i++) {
       try {
-        final result = await Process.run('adb', ['devices', '-l']);
+        final result = await Process.run('adb', ['devices', '-l'])
+            .timeout(const Duration(seconds: 4));
         final output = (result.stdout as String).trim();
         final stderr = (result.stderr as String).trim();
         
@@ -152,7 +153,8 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   @override
   Future<void> connectTcp(String ip, int port) async {
     try {
-      final result = await Process.run('adb', ['connect', '$ip:$port']);
+      final result = await Process.run('adb', ['connect', '$ip:$port'])
+          .timeout(const Duration(seconds: 4));
       final output = (result.stdout as String).trim();
       if (output.contains('unable') || output.contains('failed')) {
         throw ServerException(output);
@@ -170,7 +172,8 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
       return;
     }
     try {
-      final result = await Process.run('adb', ['disconnect', serial]);
+      final result = await Process.run('adb', ['disconnect', serial])
+          .timeout(const Duration(seconds: 3));
       final output = (result.stdout as String).trim();
       if (output.contains('error')) {
         throw ServerException(output);
@@ -184,8 +187,10 @@ class AdbRemoteDataSourceImpl implements IAdbRemoteDataSource {
   @override
   Future<void> restartServer() async {
     try {
-      await Process.run('adb', ['kill-server']);
-      await Process.run('adb', ['start-server']);
+      await Process.run('adb', ['kill-server'])
+          .timeout(const Duration(seconds: 3));
+      await Process.run('adb', ['start-server'])
+          .timeout(const Duration(seconds: 5));
     } catch (e) {
       throw ServerException('Failed to restart ADB server: $e');
     }

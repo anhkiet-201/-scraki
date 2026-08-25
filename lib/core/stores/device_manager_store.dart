@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:mobx/mobx.dart';
+import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/core/utils/logger.dart';
+import 'package:scraki/features/device/data/services/scrcpy_controller_service.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/repositories/device_repository.dart';
 import '../config/settings_config_provider.dart';
@@ -141,24 +144,47 @@ abstract class _DeviceManagerStore with Store {
     errorMessage = null;
     logger.i('[DeviceManagerStore] Disconnecting device: $serial');
 
-    final result = await _repository.disconnectDevice(serial);
-    await result.fold(
-      (failure) async {
-        logger.e(
-          '[DeviceManagerStore] Disconnection failed',
-          error: failure.message,
-        );
-        runInAction(() => errorMessage = failure.message);
-      },
-      (_) async {
-        logger.i('[DeviceManagerStore] Device disconnected successfully');
-        // Thay vì loadDevices() (gây overload ADB), chỉ cần xóa khỏi danh sách local
-        runInAction(() {
-          devices.removeWhere((d) => d.serial == serial);
-          selectedSerials.remove(serial);
-        });
-      },
-    );
+    // 1. Lập tức giải phóng controller scrcpy và session của thiết bị
+    try {
+      final controllerService = getIt<ScrcpyControllerService>();
+      final sessionManagerStore = getIt<SessionManagerStore>();
+      controllerService.release('${serial}_grid');
+      controllerService.release('${serial}_floating');
+      controllerService.release(serial);
+      sessionManagerStore.activeSessions.remove('${serial}_grid');
+      sessionManagerStore.activeSessions.remove('${serial}_floating');
+      sessionManagerStore.activeSessions.remove(serial);
+      if (sessionManagerStore.floatingSerial == serial) {
+        sessionManagerStore.floatingSerial = null;
+      }
+    } catch (e) {
+      logger.w('[DeviceManagerStore] Failed to cleanup session during disconnect: $e');
+    }
+
+    // 2. Lập tức xóa khỏi danh sách local để UI cập nhật ngay mà không bị block
+    runInAction(() {
+      devices.removeWhere((d) => d.serial == serial);
+      selectedSerials.remove(serial);
+    });
+
+    // 3. Thực hiện ngắt kết nối ADB bất đồng bộ với timeout
+    try {
+      final result = await _repository
+          .disconnectDevice(serial)
+          .timeout(const Duration(seconds: 3));
+      result.fold(
+        (failure) {
+          logger.w(
+            '[DeviceManagerStore] ADB disconnect returned warning/error: ${failure.message}',
+          );
+        },
+        (_) {
+          logger.i('[DeviceManagerStore] ADB disconnect completed for $serial');
+        },
+      );
+    } catch (e) {
+      logger.w('[DeviceManagerStore] ADB disconnect timed out or failed: $e');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
