@@ -25,25 +25,28 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   }
 
   ReactionDisposer? _aspectRatioDisposer;
-  double _lastKnownRatio = 9 / 19;
+  double _lastKnownRatio = UIConstants.defaultDeviceAspectRatio;
 
   void _initializeStore() {
     // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình thực tế của thiết bị này
     final aspectRatio =
-        sessionManagerStore.deviceAspectRatios[serial] ?? (9 / 19);
+        sessionManagerStore.deviceAspectRatios[serial] ??
+        UIConstants.defaultDeviceAspectRatio;
     _lastKnownRatio = aspectRatio;
 
     final isLandscape = aspectRatio > 1.0;
     final initialWidth = isLandscape ? 560.0 : 320.0;
     final initialHeight = (initialWidth / aspectRatio) +
-        40 +
+        40 +  
         UIConstants.floatingNavigationBarHeight +
         12;
     initializePositionAndSize(const Offset(100, 100), initialWidth, initialHeight);
 
     // Phản ứng với thay đổi tỷ lệ khung hình khi thiết bị xoay màn hình
     _aspectRatioDisposer ??= reaction(
-      (_) => sessionManagerStore.deviceAspectRatios[serial] ?? (9 / 19),
+      (_) =>
+          sessionManagerStore.deviceAspectRatios[serial] ??
+          UIConstants.defaultDeviceAspectRatio,
       (ratio) {
         syncWithAspectRatio(ratio);
       },

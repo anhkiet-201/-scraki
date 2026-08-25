@@ -94,4 +94,9 @@ class UIConstants {
 
   /// Stroke width for progress indicators
   static const double progressIndicatorStroke = 2.0;
+
+  // === ASPECT RATIOS ===
+
+  /// Default aspect ratio for mobile devices (9 / 19.5 ≈ 0.4615)
+  static const double defaultDeviceAspectRatio = 9 / 19.5;
 }

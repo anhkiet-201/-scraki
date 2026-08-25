@@ -123,7 +123,7 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
 
                   final ratio =
                       sessionManagerStore.deviceAspectRatios[device.serial] ??
-                      (9 / 19);
+                      UIConstants.defaultDeviceAspectRatio;
 
                   final cardHeight = (itemWidth / ratio) +
                       52 +

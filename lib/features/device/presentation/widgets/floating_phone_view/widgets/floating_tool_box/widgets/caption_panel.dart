@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/features/device/presentation/widgets/floating_phone_view/widgets/floating_tool_box/widgets/floating_tool_box_card.dart';
 
 class CaptionPanel extends StatelessWidget {
@@ -21,9 +22,9 @@ class CaptionPanel extends StatelessWidget {
 
     // Tính toán chiều rộng khả dụng: Tổng - (Action + Poster Generator)
     // Action: 100 (expanded) + padding margin
-    // Poster Generator: height * (9/19) (Column chứa Selector + Preview)
+    // Poster Generator: height * defaultDeviceAspectRatio (Column chứa Selector + Preview)
     // Card padding/margin: ~32
-    final usedWidth = 100.0 + (height * (9 / 19)) + 32;
+    final usedWidth = 100.0 + (height * UIConstants.defaultDeviceAspectRatio) + 32;
     final remainingSpace = availableSpace - usedWidth;
 
     // Nếu không đủ chỗ hiển thị tối thiểu 150px thì ẩn

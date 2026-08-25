@@ -81,7 +81,8 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
     return Observer(
       builder: (_) {
         final aspectRatio =
-            sessionManagerStore.deviceAspectRatios[widget.serial] ?? (9 / 19);
+            sessionManagerStore.deviceAspectRatios[widget.serial] ??
+            UIConstants.defaultDeviceAspectRatio;
         _store.syncWithAspectRatio(aspectRatio);
 
         return Positioned(
