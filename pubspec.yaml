@@ -96,7 +96,8 @@ dependencies:
 
   # Screen Mirroring
   scrcpy_flutter_plugin:
-    path: /Volumes/aki/workspace/scrcpy/scrcpy_flutter_plugin
+    git:
+      url: https://github.com/anhkiet-201/scrcpy_flutter_plugin.git
 dev_dependencies:
   flutter_test:
     sdk: flutter

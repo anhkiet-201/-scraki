@@ -1307,9 +1307,11 @@ packages:
   scrcpy_flutter_plugin:
     dependency: "direct main"
     description:
-      path: "/Volumes/aki/workspace/scrcpy/scrcpy_flutter_plugin"
-      relative: false
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "6a11b85d96413683b1d4bbf857786aa997828b1e"
+      url: "https://github.com/anhkiet-201/scrcpy_flutter_plugin.git"
+    source: git
     version: "0.1.1"
   shelf:
     dependency: transitive
