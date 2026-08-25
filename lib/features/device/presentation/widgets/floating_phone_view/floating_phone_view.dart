@@ -51,7 +51,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
   @override
   void initState() {
     super.initState();
-    _store = FloatingPhoneViewStore(widget.parentSize);
+    _store = FloatingPhoneViewStore(widget.parentSize, widget.serial);
     _deviceManagerStore = inject<DeviceManagerStore>();
     _toolBoxStore = FloatingToolBoxStore();
   }
@@ -79,7 +79,14 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
 
     return Observer(
       builder: (_) {
-        final aspectRatio = sessionManagerStore.deviceAspectRatio;
+        final session = sessionManagerStore
+                .activeSessions['${widget.serial}_floating'] ??
+            sessionManagerStore.activeSessions['${widget.serial}_grid'] ??
+            sessionManagerStore.activeSessions[widget.serial];
+        final aspectRatio =
+            (session != null && session.width > 0 && session.height > 0)
+                ? (session.width / session.height)
+                : sessionManagerStore.deviceAspectRatio;
         return Positioned(
           left: _store.position.dx,
           top: _store.position.dy,

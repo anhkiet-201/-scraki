@@ -289,10 +289,22 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       // Lắng nghe thay đổi trạng thái từ plugin
       _stateSub = _controller!.onStateChanged.listen(_handleStateChange);
 
-      // Lắng nghe kích thước video khi frame đầu tiên đến
+      // Lắng nghe kích thước video khi frame đầu tiên đến và khi thiết bị xoay màn hình
       final sizeCompleter = Completer<Size>();
       _frameSub = _controller!.onVideoFrame.listen((size) {
         if (!sizeCompleter.isCompleted) sizeCompleter.complete(size);
+        final current = sessionManagerStore.activeSessions[sessionId];
+        if (current == null ||
+            current.width != size.width.toInt() ||
+            current.height != size.height.toInt()) {
+          runInAction(() {
+            sessionManagerStore.activeSessions[sessionId] = MirrorSession(
+              width: size.width.toInt(),
+              height: size.height.toInt(),
+              deviceShell: _deviceShell,
+            );
+          });
+        }
       });
 
       final pluginOptions = isFloatingView

@@ -17,26 +17,46 @@ class FloatingPhoneViewStore = _FloatingPhoneViewStore
 /// - Quản lý trạng thái luồng tạo Poster
 abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   final Size parentSize;
+  final String serial;
 
-  _FloatingPhoneViewStore(this.parentSize) {
+  _FloatingPhoneViewStore(this.parentSize, this.serial) {
     _initializeStore();
   }
 
   ReactionDisposer? _aspectRatioDisposer;
 
   void _initializeStore() {
-    // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình
-    final aspectRatio = sessionManagerStore.deviceAspectRatio;
-    final initialHeight = (320 / aspectRatio) + 40 + 12;
-    initializePositionAndSize(const Offset(100, 100), 320, initialHeight);
+    // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình thực tế của thiết bị này
+    final session = sessionManagerStore.activeSessions['${serial}_floating'] ??
+        sessionManagerStore.activeSessions['${serial}_grid'] ??
+        sessionManagerStore.activeSessions[serial];
+    final aspectRatio = (session != null && session.width > 0 && session.height > 0)
+        ? (session.width / session.height)
+        : sessionManagerStore.deviceAspectRatio;
 
-    // Phản ứng với thay đổi tỷ lệ khung hình (ví dụ: khi session bắt đầu)
+    final isLandscape = aspectRatio > 1.0;
+    final initialWidth = isLandscape ? 560.0 : 320.0;
+    final initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+    initializePositionAndSize(const Offset(100, 100), initialWidth, initialHeight);
+
+    // Phản ứng với thay đổi tỷ lệ khung hình khi thiết bị xoay màn hình
     _aspectRatioDisposer ??= reaction(
-      (_) => sessionManagerStore.deviceAspectRatio,
+      (_) {
+        final s = sessionManagerStore.activeSessions['${serial}_floating'] ??
+            sessionManagerStore.activeSessions['${serial}_grid'] ??
+            sessionManagerStore.activeSessions[serial];
+        return (s != null && s.width > 0 && s.height > 0)
+            ? (s.width / s.height)
+            : sessionManagerStore.deviceAspectRatio;
+      },
       (ratio) {
         runInAction(() {
-          final newHeight = (width / ratio) + 40 + 12;
-          updateDimensions(width, newHeight);
+          final isLandscape = ratio > 1.0;
+          final targetWidth = isLandscape
+              ? (width < 450 ? 560.0 : width)
+              : (width > 450 ? 320.0 : width);
+          final newHeight = (targetWidth / ratio) + 40 + 12;
+          updateDimensions(targetWidth, newHeight);
           updatePosition(getClampedPosition(position, parentSize));
         });
       },

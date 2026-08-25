@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:scraki/core/constants/ui_constants.dart';
 import 'package:scraki/core/mixins/session_manager_store_mixin.dart';
 import 'package:scraki/core/widgets/box_card.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
@@ -110,8 +111,6 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
                 (contentWidth - ((crossAxisCount - 1) * spacing)) /
                 crossAxisCount;
 
-            final totalHeight = (itemWidth / deviceRatio) + 60; // Extra room for header
-
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -123,30 +122,35 @@ class DeviceGrid extends StatelessWidget with SessionManagerStoreMixin {
                       visibleSerials == null ||
                       visibleSerials!.contains(device.serial);
 
+                  final session = sessionManagerStore
+                          .activeSessions['${device.serial}_grid'] ??
+                      sessionManagerStore.activeSessions[device.serial];
+
+                  final ratio = (session != null &&
+                          session.width > 0 &&
+                          session.height > 0)
+                      ? (session.width /
+                          (session.height +
+                              UIConstants.gridNavigationBarHeight))
+                      : deviceRatio;
+
+                  final cardHeight = (itemWidth / ratio) +
+                      52 +
+                      UIConstants.gridNavigationBarHeight;
+
                   return Offstage(
                     key: ValueKey('grid_item_${device.serial}'),
                     offstage: !isVisible,
-                    child: TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 400),
-                      tween: Tween(begin: 0.0, end: 1.0),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: SizedBox(
-                              width: isVisible ? itemWidth : 0.01,
-                              height: isVisible ? totalHeight : 0.01,
-                              child: DeviceCard(
-                                key: ValueKey('card_${device.serial}'),
-                                device: device,
-                                onDisconnect: () => onDisconnect(device),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      width: isVisible ? itemWidth : 0.01,
+                      height: isVisible ? cardHeight : 0.01,
+                      child: DeviceCard(
+                        key: ValueKey('card_${device.serial}'),
+                        device: device,
+                        onDisconnect: () => onDisconnect(device),
+                      ),
                     ),
                   );
                 }).toList(),

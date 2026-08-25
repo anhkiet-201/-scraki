@@ -21,38 +21,38 @@ class UIConstants {
   // === DIMENSIONS ===
 
   /// Height of the Android navigation bar at bottom of PhoneView
-  static const double gridNavigationBarHeight = 30.0;
+  static const double gridNavigationBarHeight = 32.0;
 
   /// Navigation button icon size (regular)
-  static const double gridNavButtonIconSize = 12.0;
+  static const double gridNavButtonIconSize = 14.0;
 
   /// Navigation button icon size (primary)
-  static const double gridNavButtonIconSizePrimary = 12.0;
+  static const double gridNavButtonIconSizePrimary = 14.0;
 
   // === PADDING & SPACING ===
 
   /// Horizontal padding for navigation buttons
-  static const double gridNavButtonPaddingHorizontal = 8.0;
+  static const double gridNavButtonPaddingHorizontal = 12.0;
 
   /// Vertical padding for navigation buttons
   static const double gridNavButtonPaddingVertical = 4.0;
 
-    /// Height of the Android navigation bar at bottom of PhoneView
-  static const double floatingNavigationBarHeight = 140.0;
+  /// Height of the Android navigation bar at bottom of PhoneView
+  static const double floatingNavigationBarHeight = 40.0;
 
   /// Navigation button icon size (regular)
-  static const double floatingNavButtonIconSize = 48.0;
+  static const double floatingNavButtonIconSize = 18.0;
 
   /// Navigation button icon size (primary)
-  static const double floatingNavButtonIconSizePrimary = 48.0;
+  static const double floatingNavButtonIconSizePrimary = 18.0;
 
   // === PADDING & SPACING ===
 
   /// Horizontal padding for navigation buttons
-  static const double floatingNavButtonPaddingHorizontal = 24.0;
+  static const double floatingNavButtonPaddingHorizontal = 16.0;
 
   /// Vertical padding for navigation buttons
-  static const double floatingNavButtonPaddingVertical = 16.0;
+  static const double floatingNavButtonPaddingVertical = 6.0;
 
   /// Border radius for device cards
   static const double deviceCardBorderRadius = 20.0;
