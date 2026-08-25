@@ -44,8 +44,12 @@ class ScrcpyControllerService {
     final controller = _controllers.remove(sessionId);
     if (controller != null) {
       logger.i('[ScrcpyControllerService] Disposing controller for $sessionId');
-      controller.stop();
-      controller.dispose();
+      try {
+        controller.stop();
+        controller.dispose();
+      } catch (e) {
+        logger.w('[ScrcpyControllerService] Error releasing controller for $sessionId: $e');
+      }
     }
   }
 
@@ -53,12 +57,20 @@ class ScrcpyControllerService {
   void disposeAll() {
     logger.i('[ScrcpyControllerService] Disposing all ${_controllers.length} controllers');
     for (final entry in _controllers.entries) {
-      entry.value.stop();
-      entry.value.dispose();
+      try {
+        entry.value.stop();
+        entry.value.dispose();
+      } catch (e) {
+        logger.w('[ScrcpyControllerService] Error disposing session ${entry.key}: $e');
+      }
     }
     _controllers.clear();
     _sessionPorts.clear();
     _nextPort = 27183;
-    ScrcpyController.cleanupAll();
+    try {
+      ScrcpyController.cleanupAll();
+    } catch (e) {
+      logger.w('[ScrcpyControllerService] Error in ScrcpyController.cleanupAll: $e');
+    }
   }
 }
