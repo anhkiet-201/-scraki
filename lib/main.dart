@@ -19,8 +19,6 @@ import 'core/auth/presentation/stores/app_auth_store.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-import 'features/api_server/domain/services/p2p_gui_service.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -36,9 +34,6 @@ void main() async {
   MediaKit.ensureInitialized();
   final env = Platform.isMacOS ? 'macos' : (Platform.isWindows ? 'windows' : null);
   configureDependencies(environment: env);
-
-  // Initialize P2P GUI Service
-  getIt<P2pGuiService>().init();
 
   // Load settings khi khởi động
   final settingsStore = getIt<SettingsStore>();

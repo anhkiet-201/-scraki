@@ -6,7 +6,7 @@
 	<false/>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.example.scraki</string>
+		<string>$(AppIdentifierPrefix)com.anhkiet.scraki</string>
 	</array>
 </dict>
 </plist>

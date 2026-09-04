@@ -6,8 +6,6 @@ import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import '../../domain/entities/log_entry.dart';
 import '../stores/terminal_store.dart';
 
-import 'package:scraki/core/di/injection.dart';
-import 'package:scraki/features/api_server/domain/services/p2p_gui_service.dart';
 
 class TiledLogView extends StatelessWidget {
   final TerminalStore store = inject<TerminalStore>();
@@ -18,11 +16,8 @@ class TiledLogView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) {
-        final p2pService = getIt<P2pGuiService>();
-        final activeSerials = p2pService.activeScriptSerials;
         final targetSerials = <String>{
           ...store.selectedSerials,
-          ...activeSerials,
           ...store.deviceLogs.keys.where((s) => s != 'system'),
         }.toList();
 
@@ -137,12 +132,8 @@ class _DeviceLogTileState extends State<_DeviceLogTile> {
                 ),
                 Observer(
                   builder: (_) {
-                    final isP2pActive = getIt<P2pGuiService>()
-                        .activeScriptSerials
-                        .contains(widget.device.serial);
                     final isActive =
-                        (_store.shellStates[widget.device.serial] ?? false) ||
-                            isP2pActive;
+                        _store.shellStates[widget.device.serial] ?? false;
                     if (!isActive) {
                       final hasLastExec =
                           _store.lastExecutions.containsKey(widget.device.serial);
