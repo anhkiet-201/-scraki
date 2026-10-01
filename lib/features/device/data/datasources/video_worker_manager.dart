@@ -96,7 +96,9 @@ class VideoWorkerManager {
   }
 
   void _handleWorkerEvent(VideoWorkerEvent event) {
-    if (event.type == 'ports_ready' || event.type == 'resolution_ready') {
+    if (event.type == 'ports_ready' ||
+        event.type == 'resolution_ready' ||
+        event.type == 'config_ready') {
       final completer = _pendingSessions['${event.sessionId}_${event.type}'];
       if (completer != null) {
         completer.complete(event.data);
@@ -421,8 +423,8 @@ class _IsolateVideoSession {
               '[Isolate-Video] Player connected. Dumping initial buffer: ${_initialBuffer.length} chunks',
             );
 
-            // Always send config header first to ensure decoder has parameters
-            // even if initial buffer was truncated.
+            // Always send config header FIRST so the native decoder can
+            // initialize VTDecompressionSession before any frame packets arrive.
             if (_configHeader.isNotEmpty) {
               _playerSocket!.add(_configHeader);
             }
@@ -431,6 +433,7 @@ class _IsolateVideoSession {
               _playerSocket!.add(chunk);
             }
             _initialBuffer.clear();
+
           } else {
             logger.i(
               '[Isolate-Video] Late player connected. Sending Meta only.',
@@ -488,15 +491,32 @@ class _IsolateVideoSession {
   }
 
   void _processVideoData(List<int> data) {
-    // Collect config headers (SPS/PPS) if not already done
+    // Phase 1: Collect SPS/PPS/VPS config headers from the stream.
+    // During this phase we do NOT buffer raw bytes into _initialBuffer because
+    // _configHeader already tracks them in parsed form. Mixing both would
+    // cause the native decoder to receive duplicate config packets.
     if (!_isFirstFrameReceived) {
       _parseBuffer.addAll(data);
       _extractConfigHeaders();
+
+      if (!_isFirstFrameReceived) {
+        // Still accumulating config — nothing to forward yet.
+        return;
+      }
+
+      // Config collection just completed. _parseBuffer now holds the bytes
+      // of the first IDR frame and everything after. Use those as the
+      // actual payload going forward (drop the config bytes already captured).
+      if (_parseBuffer.isEmpty) return;
+      data = Uint8List.fromList(_parseBuffer);
+      _parseBuffer.clear();
     }
 
+    // Phase 2: Stream frame data to the native player.
     if (!_anyPlayerConnected) {
-      // Still buffering key info but not forwarding to player when not connected
-      _initialBuffer.add(data);
+      // Buffer frames so the player receives them immediately on connect.
+      // _configHeader will be sent separately (see proxyServerSocket listener).
+      _initialBuffer.add(List<int>.from(data));
       if (_initialBuffer.length > 2000) _initialBuffer.removeAt(0);
       return;
     }
@@ -517,17 +537,13 @@ class _IsolateVideoSession {
       final pts = view.getInt64(0, Endian.big);
       final size = view.getUint32(8, Endian.big);
 
-      // Scrcpy uses 1 << 63 as a flag for metadata packets (CONFIG)
-      // Any negative PTS (except maybe specifically documented ones) is treated as meta.
+      // Scrcpy uses negative PTS as a flag for metadata packets (SPS/PPS/VPS).
       if (pts < 0) {
         final totalSize = 12 + size;
         if (_parseBuffer.length >= totalSize) {
           final configPacket = _parseBuffer.sublist(0, totalSize);
           _configHeader.addAll(configPacket);
           _parseBuffer.removeRange(0, totalSize);
-
-          // Meta captured, if player is already here, we must forward it
-          _playerSocket?.add(configPacket);
 
           logger.i(
             '[Isolate-Video] Captured Meta Packet: $size bytes (Total Meta: ${_configHeader.length} bytes)',
@@ -536,8 +552,17 @@ class _IsolateVideoSession {
           break;
         }
       } else {
+        // First actual video frame detected — config collection is complete.
+        // Notify Main thread so it can safely connect the native decoder,
+        // which is guaranteed to receive SPS/PPS before any IDR frames.
         _isFirstFrameReceived = true;
-        logger.i('[Isolate-Video] First data frame reached. PTS: $pts');
+        logger.i('[Isolate-Video] First data frame reached. PTS: $pts — emitting config_ready');
+        eventPort?.send(
+          VideoWorkerEvent(
+            sessionId: sessionId,
+            type: 'config_ready',
+          ),
+        );
         break;
       }
     }

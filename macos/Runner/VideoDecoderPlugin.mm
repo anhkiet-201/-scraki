@@ -2,88 +2,173 @@
 //  VideoDecoderPlugin.mm
 //  Runner
 //
-//  Multi-session low-latency video decoder using FFmpeg
+//  Low-latency video decoder using VideoToolbox (no FFmpeg dependency).
+//  Supports H264 and HEVC. Auto-detects codec from scrcpy config packets.
 //
 
 #import "VideoDecoderPlugin.h"
 
-// FFmpeg imports
-#define AVMediaType FFMPEG_AVMediaType
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/imgutils.h>
-#include <libavutil/opt.h>
-#include <libswscale/swscale.h>
-}
-#undef AVMediaType
-
-// System imports
 #import <AVFoundation/AVFoundation.h>
+#import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
+#import <VideoToolbox/VideoToolbox.h>
 
 #include <arpa/inet.h>
 #include <atomic>
-#include <map>
 #include <mutex>
-#include <queue>
 #include <sys/socket.h>
 #include <thread>
+#include <vector>
 
 #include <libkern/OSByteOrder.h>
 #ifndef be64toh
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #endif
 
-//------------------------------------------------------------------------------
-// VideoDecoder Class (Handles one video stream)
-//------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Codec type
+// ---------------------------------------------------------------------------
 
-static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
-                                        const enum AVPixelFormat *pix_fmts) {
-  for (const enum AVPixelFormat *p = pix_fmts; *p != -1; p++) {
-    if (*p == AV_PIX_FMT_VIDEOTOOLBOX) {
-      return *p;
+typedef enum : NSInteger {
+  VideoCodecUnknown = 0,
+  VideoCodecH264,
+  VideoCodecHEVC,
+} VideoCodecType;
+
+// ---------------------------------------------------------------------------
+// Helper: Parse Annex-B → list of (firstByte, NAL data) pairs
+// ---------------------------------------------------------------------------
+
+static std::vector<std::pair<uint8_t, std::vector<uint8_t>>>
+parseNalUnits(const std::vector<uint8_t> &data) {
+  std::vector<std::pair<uint8_t, std::vector<uint8_t>>> result;
+  size_t offset = 0;
+
+  while (offset + 3 <= data.size()) {
+    // Find start code (3 or 4 byte)
+    size_t scStart = SIZE_MAX, scLen = 0;
+    for (size_t i = offset; i + 3 <= data.size(); i++) {
+      if (data[i] == 0 && data[i + 1] == 0) {
+        if (data[i + 2] == 1) {
+          scStart = i;
+          scLen = 3;
+          break;
+        } else if (i + 4 <= data.size() && data[i + 2] == 0 &&
+                   data[i + 3] == 1) {
+          scStart = i;
+          scLen = 4;
+          break;
+        }
+      }
     }
+    if (scStart == SIZE_MAX)
+      break;
+
+    size_t nalStart = scStart + scLen;
+    if (nalStart >= data.size())
+      break;
+
+    // Find end of this NAL (next start code)
+    size_t nalEnd = data.size();
+    for (size_t i = nalStart; i + 3 <= data.size(); i++) {
+      if (data[i] == 0 && data[i + 1] == 0) {
+        if (data[i + 2] == 1) {
+          nalEnd = i;
+          break;
+        } else if (i + 4 <= data.size() && data[i + 2] == 0 &&
+                   data[i + 3] == 1) {
+          nalEnd = i;
+          break;
+        }
+      }
+    }
+
+    if (nalStart < nalEnd) {
+      result.push_back(
+          {data[nalStart],
+           std::vector<uint8_t>(data.begin() + nalStart, data.begin() + nalEnd)});
+    }
+    offset = nalEnd;
   }
-  return AV_PIX_FMT_YUV420P; // Fallback
+  return result;
 }
 
-typedef NS_ENUM(NSInteger, FrameType) {
-  FrameTypeDrop = 0,
-  FrameTypeHeaderOnly = 1,
-  FrameTypeKeyframe = 2
-};
+// ---------------------------------------------------------------------------
+// Helper: Convert Annex-B stream → length-prefixed (AVCC/HVCC) for VT.
+// Also filters out in-band parameter sets (VPS, SPS, PPS) since VideoToolbox
+// has them in CMVideoFormatDescription and rejects them in CMSampleBuffer (-12909).
+// ---------------------------------------------------------------------------
+
+static std::vector<uint8_t>
+annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecType) {
+  std::vector<uint8_t> out;
+  out.reserve(annexB.size());
+
+  auto nalUnits = parseNalUnits(annexB);
+  for (const auto &pair : nalUnits) {
+    uint8_t firstByte = pair.first;
+    const auto &nal = pair.second;
+    if (nal.empty()) continue;
+
+    // Filter in-band parameter sets from CMSampleBuffer to avoid
+    // kVTVideoDecoderBadDataErr (-12909).
+    if (codecType == VideoCodecHEVC) {
+      uint8_t hevcType = (firstByte >> 1) & 0x3F;
+      if (hevcType == 32 || hevcType == 33 || hevcType == 34) {
+        continue; // VPS, SPS, PPS
+      }
+    } else if (codecType == VideoCodecH264) {
+      uint8_t h264Type = firstByte & 0x1F;
+      if (h264Type == 7 || h264Type == 8) {
+        continue; // SPS, PPS
+      }
+    }
+
+    uint32_t len = (uint32_t)nal.size();
+    // Standard Big-Endian 4-byte length prefix (AVCC/HVCC)
+    out.push_back((len >> 24) & 0xFF);
+    out.push_back((len >> 16) & 0xFF);
+    out.push_back((len >> 8) & 0xFF);
+    out.push_back(len & 0xFF);
+    out.insert(out.end(), nal.begin(), nal.end());
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// VideoDecoder – one per mirroring session
+// ---------------------------------------------------------------------------
 
 @interface VideoDecoder : NSObject <FlutterTexture>
 
 @property(nonatomic, assign) int64_t textureId;
 @property(nonatomic, weak) id<FlutterTextureRegistry> registry;
 
-// State
+// Thread / socket state
 @property(nonatomic, assign) std::atomic<bool> *isDecodingPtr;
 @property(nonatomic, assign) std::thread *decoderThread;
+@property(nonatomic, assign) int socketFd;
+
+// Pixel buffer (shared with Flutter)
 @property(nonatomic, assign) std::mutex *pixelBufferMutex;
 @property(nonatomic, assign) CVPixelBufferRef latestPixelBuffer;
-@property(nonatomic, assign) std::atomic<bool> *needsFlushPtr;
-@property(nonatomic, assign) std::atomic<bool> *waitingForIFramePtr;
 @property(nonatomic, assign) std::atomic<bool> *isVisiblePtr;
 
-// FFmpeg
-@property(nonatomic, assign) AVCodecContext *codecContext;
-@property(nonatomic, assign) struct SwsContext *swsContext;
-@property(nonatomic, assign) AVPacket *packet;
-@property(nonatomic, assign) AVFrame *frame;
+// VideoToolbox
+@property(nonatomic, assign) VTDecompressionSessionRef decompressionSession;
+@property(nonatomic, assign) CMFormatDescriptionRef formatDescription;
+@property(nonatomic, assign) VideoCodecType codecType;
 
-// Network
-@property(nonatomic, assign) int socketFd;
+// Stored parameter sets (rebuilt on config packet)
+@property(nonatomic, strong) NSData *vpsData; // HEVC VPS
+@property(nonatomic, strong) NSData *spsData;
+@property(nonatomic, strong) NSData *ppsData;
 
 - (instancetype)initWithRegistry:(id<FlutterTextureRegistry>)registry;
 - (void)startWithHost:(NSString *)host
                  port:(int)port
                result:(FlutterResult)result;
 - (void)stop;
-- (void)flush;
 - (void)setVisibility:(BOOL)visible;
 
 @end
@@ -99,31 +184,19 @@ typedef NS_ENUM(NSInteger, FrameType) {
     _latestPixelBuffer = nil;
     _socketFd = -1;
     _decoderThread = nullptr;
-    _needsFlushPtr = new std::atomic<bool>(false);
-    _waitingForIFramePtr = new std::atomic<bool>(false);
-    _isVisiblePtr = new std::atomic<bool>(false);
-
-    // Initialize FFmpeg structures to null
-    _codecContext = nullptr;
-    _swsContext = nullptr;
-    _packet = nullptr;
-    _frame = nullptr;
+    _isVisiblePtr = new std::atomic<bool>(true);
+    _decompressionSession = NULL;
+    _formatDescription = NULL;
+    _codecType = VideoCodecUnknown;
   }
   return self;
 }
 
 - (void)dealloc {
   [self stop];
-  if (_isDecodingPtr)
-    delete _isDecodingPtr;
-  if (_pixelBufferMutex)
-    delete _pixelBufferMutex;
-  if (_needsFlushPtr)
-    delete _needsFlushPtr;
-  if (_waitingForIFramePtr)
-    delete _waitingForIFramePtr;
-  if (_isVisiblePtr)
-    delete _isVisiblePtr;
+  delete _isDecodingPtr;
+  delete _pixelBufferMutex;
+  delete _isVisiblePtr;
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
@@ -142,35 +215,25 @@ typedef NS_ENUM(NSInteger, FrameType) {
 - (void)startWithHost:(NSString *)host
                  port:(int)port
                result:(FlutterResult)result {
-  // Register texture first to get ID
   _textureId = [_registry registerTexture:self];
-  // NSLog(@"[VideoDecoder] Created session for %@:%d with TextureID: %lld",
-  // host, port, _textureId);
-
-  // Start thread
   *_isDecodingPtr = true;
   _decoderThread = new std::thread(
       [self, host, port]() { [self decoderThreadMain:host port:port]; });
-
-  // Return texture ID to Flutter
   result(@(_textureId));
 }
 
 - (void)stop {
   if (!*_isDecodingPtr)
-    return; // Already stopped
+    return;
 
-  NSLog(@"[VideoDecoder] Stopping session TextureID: %lld", _textureId);
   *_isDecodingPtr = false;
 
-  // 1. Close socket immediately to break any blocking recv()
   if (_socketFd >= 0) {
     shutdown(_socketFd, SHUT_RDWR);
     close(_socketFd);
     _socketFd = -1;
   }
 
-  // 2. Unregister texture immediately on Main Thread to free engine resources
   int64_t tid = _textureId;
   if (tid != 0) {
     [_registry unregisterTexture:tid];
@@ -180,117 +243,69 @@ typedef NS_ENUM(NSInteger, FrameType) {
   std::thread *t = _decoderThread;
   _decoderThread = nullptr;
 
-  // 3. Join thread and cleanup in background to avoid hanging UI Thread
-  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                 ^{
-                   if (t) {
-                     if (t->joinable()) {
-                       t->join();
-                     }
-                     delete t;
-                   }
-
-                   // Final FFmpeg cleanup can also happen in background now
-                   // that thread is joined
-                   dispatch_async(dispatch_get_main_queue(), ^{
-                     [self cleanupDecoder];
-                   });
-                 });
-}
-
-- (void)flush {
-  *_needsFlushPtr = true;
-  *_waitingForIFramePtr = true;
-}
-
-- (void)decoderThreadMain:(NSString *)host port:(int)port {
-  @try {
-    if (![self connectToServer:host port:port])
-      return;
-    if (![self initializeDecoder])
-      return;
-    [self decodingLoop];
-  } @catch (NSException *e) {
-    NSLog(@"[VideoDecoder] Exception: %@", e);
-  } @finally {
-    [self cleanupDecoder];
-  }
-}
-
-- (BOOL)connectToServer:(NSString *)host port:(int)port {
-  struct sockaddr_in serverAddr;
-  _socketFd = socket(AF_INET, SOCK_STREAM, 0);
-  if (_socketFd < 0)
-    return NO;
-
-  memset(&serverAddr, 0, sizeof(serverAddr));
-  serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(port);
-  inet_pton(AF_INET, [host UTF8String], &serverAddr.sin_addr);
-
-  if (connect(_socketFd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) <
-      0) {
-    NSLog(@"[VideoDecoder] Connect failed");
-    close(_socketFd);
-    _socketFd = -1;
-    return NO;
-  }
-  return YES;
-}
-
-- (BOOL)initializeDecoder {
-  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
-  if (!codec)
-    return NO;
-
-  _codecContext = avcodec_alloc_context3(codec);
-  _codecContext->flags |= AV_CODEC_FLAG_LOW_DELAY;
-  _codecContext->flags2 |= AV_CODEC_FLAG2_FAST;
-  _codecContext->thread_count = 1; // Multi-threading here adds latency?
-
-  // Hardware accel
-  AVBufferRef *hw_device_ctx = nullptr;
-  if (av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
-                             nullptr, nullptr, 0) >= 0) {
-    _codecContext->hw_device_ctx = av_buffer_ref(hw_device_ctx);
-    _codecContext->get_format =
-        get_hw_format; // Ép buộc FFmpeg trả về frame phần cứng
-    av_buffer_unref(&hw_device_ctx);
-  }
-
-  if (avcodec_open2(_codecContext, codec, nullptr) < 0) {
-    avcodec_free_context(&_codecContext);
-    return NO;
-  }
-
-  _packet = av_packet_alloc();
-  _frame = av_frame_alloc();
-  return YES;
+  dispatch_async(
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        if (t) {
+          if (t->joinable())
+            t->join();
+          delete t;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self cleanupDecoder];
+        });
+      });
 }
 
 - (void)cleanupDecoder {
-  if (_swsContext) {
-    sws_freeContext(_swsContext);
-    _swsContext = nullptr;
+  if (_decompressionSession) {
+    VTDecompressionSessionInvalidate(_decompressionSession);
+    CFRelease(_decompressionSession);
+    _decompressionSession = NULL;
   }
-  if (_frame) {
-    av_frame_free(&_frame);
-    _frame = nullptr;
+  if (_formatDescription) {
+    CFRelease(_formatDescription);
+    _formatDescription = NULL;
   }
-  if (_packet) {
-    av_packet_free(&_packet);
-    _packet = nullptr;
-  }
-  if (_codecContext) {
-    avcodec_free_context(&_codecContext);
-    _codecContext = nullptr;
-  }
-
   std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
   if (_latestPixelBuffer) {
     CVPixelBufferRelease(_latestPixelBuffer);
     _latestPixelBuffer = nil;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Networking
+// ---------------------------------------------------------------------------
+
+- (void)decoderThreadMain:(NSString *)host port:(int)port {
+  @try {
+    if (![self connectToServer:host port:port])
+      return;
+    [self decodingLoop];
+  } @catch (NSException *e) {
+    NSLog(@"[VideoDecoder] Exception: %@", e);
+  }
+  [self cleanupDecoder];
+}
+
+- (BOOL)connectToServer:(NSString *)host port:(int)port {
+  struct sockaddr_in addr;
+  _socketFd = socket(AF_INET, SOCK_STREAM, 0);
+  if (_socketFd < 0)
+    return NO;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  inet_pton(AF_INET, [host UTF8String], &addr.sin_addr);
+
+  if (connect(_socketFd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    NSLog(@"[VideoDecoder] Connect failed to %@:%d", host, port);
+    close(_socketFd);
+    _socketFd = -1;
+    return NO;
+  }
+  return YES;
 }
 
 - (void)decodingLoop {
@@ -304,15 +319,14 @@ typedef NS_ENUM(NSInteger, FrameType) {
   bool isConfigPacket = false;
 
   while (*_isDecodingPtr) {
-    ssize_t bytesRead = recv(_socketFd, tempBuf, sizeof(tempBuf), 0);
-    if (bytesRead <= 0)
+    ssize_t n = recv(_socketFd, tempBuf, sizeof(tempBuf), 0);
+    if (n <= 0)
       break;
 
-    buffer.insert(buffer.end(), tempBuf, tempBuf + bytesRead);
+    buffer.insert(buffer.end(), tempBuf, tempBuf + n);
 
-    while (buffer.size() >= neededBytes) {
+    while ((int)buffer.size() >= neededBytes) {
       if (readingHeader) {
-        // PTS (8) + SIZE (4)
         int64_t pts;
         memcpy(&pts, buffer.data(), 8);
         uint32_t size;
@@ -320,8 +334,8 @@ typedef NS_ENUM(NSInteger, FrameType) {
         size = ntohl(size);
         pts = be64toh(pts);
 
-        isConfigPacket = (pts < 0); // Scrcpy config packet flag
-        payloadSize = size;
+        isConfigPacket = (pts < 0);
+        payloadSize = (int)size;
         buffer.erase(buffer.begin(), buffer.begin() + 12);
         neededBytes = payloadSize;
         readingHeader = false;
@@ -331,14 +345,11 @@ typedef NS_ENUM(NSInteger, FrameType) {
         buffer.erase(buffer.begin(), buffer.begin() + payloadSize);
 
         if (isConfigPacket) {
-          NSLog(@"[VideoDecoder] Received Config Packet (Size: %d)",
-                (int)payload.size());
-          [self decodePacket:payload];
+          [self processConfigPacket:payload];
         } else {
-          // NSLog(@"[VideoDecoder] Received Frame Packet (Size: %d)",
-          // (int)payload.size());
-          [self decodePacket:payload];
+          [self processFramePacket:payload];
         }
+
         neededBytes = 12;
         readingHeader = true;
       }
@@ -346,183 +357,266 @@ typedef NS_ENUM(NSInteger, FrameType) {
   }
 }
 
-- (void)decodePacket:(const std::vector<uint8_t> &)data {
-  _packet->data = (uint8_t *)data.data();
-  _packet->size = (int)data.size();
+// ---------------------------------------------------------------------------
+// Config packet: detect codec, extract param sets, create VT session
+// ---------------------------------------------------------------------------
 
-  if (*_needsFlushPtr) {
-    if (_codecContext) {
-      avcodec_flush_buffers(_codecContext);
-      NSLog(@"[VideoDecoder] Decoder flushed for TextureID: %lld", _textureId);
-    }
-    *_needsFlushPtr = false;
-  }
-
-  // [Logic mới] Chặn P-Frame nếu đang chờ I-Frame (sau khi Flush hoặc Resume)
-  // TUY NHIÊN: Luôn cho phép Config Packets (HeaderOnly) đi qua để bộ giải mã
-  // không bị mất thông số.
-  bool isKeyframe = false;
-  bool isHeader = false;
-  if (*_waitingForIFramePtr || !*_isVisiblePtr) {
-    FrameType type = [self analyzePacket:data];
-    if (type == FrameTypeKeyframe) {
-      if (*_waitingForIFramePtr) {
-        NSLog(@"[VideoDecoder] Keyframe detected! Unlocking decoder for "
-              @"TextureID: %lld",
-              _textureId);
-        *_waitingForIFramePtr = false;
-      }
-      isKeyframe = true;
-    } else if (type == FrameTypeHeaderOnly) {
-      isHeader = true;
-      // NSLog(@"[VideoDecoder] Header allowed for TextureID: %lld",
-      // _textureId);
-    } else if (*_waitingForIFramePtr || !*_isVisiblePtr) {
-      // Drop P-Frame nếu đang ẩn HOẶC đang đợi I-Frame
-      av_packet_unref(_packet);
-      return;
-    }
-  }
-
-  if (avcodec_send_packet(_codecContext, _packet) < 0)
+- (void)processConfigPacket:(const std::vector<uint8_t> &)data {
+  auto nalUnits = parseNalUnits(data);
+  if (nalUnits.empty()) {
+    NSLog(@"[VideoDecoder] Config packet: no NAL units found");
     return;
-
-  while (avcodec_receive_frame(_codecContext, _frame) == 0) {
-    // Chỉ xử lý render nếu đang hiển thị để tiết kiệm GPU/CPU
-    if (*_isVisiblePtr) {
-      CVPixelBufferRef pb = [self convertFrameToPixelBuffer:_frame];
-      if (pb) {
-        {
-          std::lock_guard<std::mutex> lock(*_pixelBufferMutex);
-          if (_latestPixelBuffer)
-            CVPixelBufferRelease(_latestPixelBuffer);
-          _latestPixelBuffer = pb;
-        }
-        // Notify Flutter
-        __weak VideoDecoder *weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-          VideoDecoder *strongSelf = weakSelf;
-          if (strongSelf && strongSelf.textureId != 0) {
-            [strongSelf.registry textureFrameAvailable:strongSelf.textureId];
-          }
-        });
-      }
-    }
-    av_frame_unref(_frame);
   }
-  av_packet_unref(_packet);
+
+  NSData *vps = nil, *sps = nil, *pps = nil;
+  VideoCodecType detected = VideoCodecUnknown;
+
+  for (auto &nalPair : nalUnits) {
+    uint8_t firstByte = nalPair.first;
+    const auto &nal = nalPair.second;
+    uint8_t h264Type = firstByte & 0x1F;
+    uint8_t hevcType = (firstByte >> 1) & 0x3F;
+    NSData *d = [NSData dataWithBytes:nal.data() length:nal.size()];
+
+    if (h264Type == 7) { // H264 SPS
+      sps = d;
+      detected = VideoCodecH264;
+    } else if (h264Type == 8) { // H264 PPS
+      pps = d;
+      detected = VideoCodecH264;
+    } else if (hevcType == 32) { // HEVC VPS
+      vps = d;
+      detected = VideoCodecHEVC;
+    } else if (hevcType == 33) { // HEVC SPS
+      sps = d;
+      detected = VideoCodecHEVC;
+    } else if (hevcType == 34) { // HEVC PPS
+      pps = d;
+      detected = VideoCodecHEVC;
+    }
+  }
+
+  if (detected == VideoCodecUnknown || !sps || !pps) {
+    NSLog(@"[VideoDecoder] Config: could not parse param sets (codec=%ld "
+          @"sps=%@ pps=%@)",
+          (long)detected, sps ? @"OK" : @"nil", pps ? @"OK" : @"nil");
+    return;
+  }
+
+  _codecType = detected;
+  _vpsData = vps;
+  _spsData = sps;
+  _ppsData = pps;
+
+  [self recreateSession];
 }
 
-- (FrameType)analyzePacket:(const std::vector<uint8_t> &)data {
-  if (data.size() < 5)
-    return FrameTypeDrop;
-
-  BOOL hasHeader = NO;
-  BOOL hasKeyframe = NO;
-  size_t offset = 0;
-
-  while (offset < (int)data.size() - 4) {
-    if (data[offset] == 0 && data[offset + 1] == 0) {
-      size_t startCodeLen = 0;
-      if (data[offset + 2] == 1) {
-        startCodeLen = 3;
-      } else if (data[offset + 2] == 0 && data[offset + 3] == 1) {
-        startCodeLen = 4;
-      }
-
-      if (startCodeLen > 0) {
-        size_t nalStart = offset + startCodeLen;
-        if (nalStart < data.size()) {
-          // HEVC: NAL unit type is in bits 1-6 of the first byte
-          uint8_t hevcType = (data[nalStart] >> 1) & 0x3F;
-          // H.264: NAL unit type is in bits 0-4 of the first byte
-          uint8_t h264Type = data[nalStart] & 0x1F;
-
-          // HEVC Keyframes: IDR_W_RADL (19), IDR_N_LP (20), CRA_NUT (21)
-          if (hevcType >= 16 && hevcType <= 21)
-            hasKeyframe = YES;
-          // HEVC Headers: VPS (32), SPS (33), PPS (34)
-          if (hevcType >= 32 && hevcType <= 34)
-            hasHeader = YES;
-
-          // H264 Keyframe: IDR (5)
-          if (h264Type == 5)
-            hasKeyframe = YES;
-          // H264 Headers: SPS (7), PPS (8)
-          if (h264Type == 7 || h264Type == 8)
-            hasHeader = YES;
-
-          if (hasKeyframe)
-            return FrameTypeKeyframe;
-        }
-        offset += startCodeLen;
-        continue;
-      }
-    }
-    offset++;
+- (void)recreateSession {
+  // Tear down existing session
+  if (_decompressionSession) {
+    VTDecompressionSessionInvalidate(_decompressionSession);
+    CFRelease(_decompressionSession);
+    _decompressionSession = NULL;
+  }
+  if (_formatDescription) {
+    CFRelease(_formatDescription);
+    _formatDescription = NULL;
   }
 
-  if (hasKeyframe)
-    return FrameTypeKeyframe;
-  if (hasHeader)
-    return FrameTypeHeaderOnly;
-  return FrameTypeDrop;
-}
+  OSStatus status;
 
-- (CVPixelBufferRef)convertFrameToPixelBuffer:(AVFrame *)frame {
-  // 1. Zero-copy GPU path: Trích xuất trực tiếp CVPixelBufferRef từ Hardware
-  // Frame
-  if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
-    CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)frame->data[3];
-    if (pixelBuffer) {
-      CVPixelBufferRetain(pixelBuffer);
-      return pixelBuffer;
+  // --- Create format description ---
+  if (_codecType == VideoCodecH264) {
+    const uint8_t *params[2] = {(const uint8_t *)_spsData.bytes,
+                                 (const uint8_t *)_ppsData.bytes};
+    size_t sizes[2] = {_spsData.length, _ppsData.length};
+    status = CMVideoFormatDescriptionCreateFromH264ParameterSets(
+        kCFAllocatorDefault, 2, params, sizes, 4, &_formatDescription);
+  } else {
+    NSMutableArray<NSData *> *sets = [NSMutableArray array];
+    if (_vpsData)
+      [sets addObject:_vpsData];
+    [sets addObject:_spsData];
+    [sets addObject:_ppsData];
+
+    size_t count = sets.count;
+    const uint8_t **params =
+        (const uint8_t **)malloc(sizeof(uint8_t *) * count);
+    size_t *sizes = (size_t *)malloc(sizeof(size_t) * count);
+    for (size_t i = 0; i < count; i++) {
+      params[i] = (const uint8_t *)sets[i].bytes;
+      sizes[i] = sets[i].length;
     }
+    status = CMVideoFormatDescriptionCreateFromHEVCParameterSets(
+        kCFAllocatorDefault, count, params, sizes, 4, nullptr,
+        &_formatDescription);
+    free(params);
+    free(sizes);
   }
 
-  // 2. CPU Fallback path: Nếu frame giải mã bằng phần mềm
-  CVPixelBufferRef pixelBuffer = nullptr;
-  NSDictionary *options = @{
-    (id)kCVPixelBufferCGImageCompatibilityKey : @YES,
-    (id)kCVPixelBufferCGBitmapContextCompatibilityKey : @YES,
-    (id)kCVPixelBufferIOSurfacePropertiesKey :
-        @{} // Critical for Metal/Flutter Texture
+  if (status != noErr) {
+    NSLog(@"[VideoDecoder] CMVideoFormatDescriptionCreate failed: %d",
+          (int)status);
+    return;
+  }
+
+  // --- Create decompression session ---
+  NSDictionary *outputAttrs = @{
+    (id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA),
+    (id)kCVPixelBufferIOSurfacePropertiesKey : @{},
+    (id)kCVPixelBufferMetalCompatibilityKey : @YES,
   };
 
-  if (CVPixelBufferCreate(kCFAllocatorDefault, frame->width, frame->height,
-                          kCVPixelFormatType_32BGRA,
-                          (__bridge CFDictionaryRef)options,
-                          &pixelBuffer) != kCVReturnSuccess) {
-    return nullptr;
+  VTDecompressionOutputCallbackRecord callback;
+  callback.decompressionOutputCallback = vtOutputCallback;
+  callback.decompressionOutputRefCon = (__bridge void *)self;
+
+  NSDictionary *sessionAttrs = @{
+    (id)kVTDecompressionPropertyKey_RealTime : @YES,
+  };
+
+  status = VTDecompressionSessionCreate(
+      kCFAllocatorDefault, _formatDescription,
+      (__bridge CFDictionaryRef)sessionAttrs,
+      (__bridge CFDictionaryRef)outputAttrs, &callback,
+      &_decompressionSession);
+
+  if (status != noErr) {
+    NSLog(@"[VideoDecoder] VTDecompressionSessionCreate failed: %d",
+          (int)status);
+    _decompressionSession = NULL;
+    return;
   }
-
-  CVPixelBufferLockBaseAddress(pixelBuffer, 0);
-
-  if (!_swsContext || _codecContext->width != frame->width ||
-      _codecContext->height != frame->height) {
-    if (_swsContext)
-      sws_freeContext(_swsContext);
-    _swsContext = sws_getContext(frame->width, frame->height,
-                                 (AVPixelFormat)frame->format, frame->width,
-                                 frame->height, AV_PIX_FMT_BGRA,
-                                 SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
-  }
-
-  uint8_t *dest[1] = {(uint8_t *)CVPixelBufferGetBaseAddress(pixelBuffer)};
-  int destStride[1] = {(int)CVPixelBufferGetBytesPerRow(pixelBuffer)};
-
-  sws_scale(_swsContext, frame->data, frame->linesize, 0, frame->height, dest,
-            destStride);
-
-  CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
-  return pixelBuffer;
 }
+
+// ---------------------------------------------------------------------------
+// VideoToolbox output callback (called on an internal VT thread)
+// ---------------------------------------------------------------------------
+
+static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
+                              OSStatus status,
+                              VTDecodeInfoFlags infoFlags,
+                              CVImageBufferRef imageBuffer,
+                              CMTime presentationTimeStamp,
+                              CMTime presentationDuration) {
+  if (status != noErr || imageBuffer == NULL) {
+    if (status != noErr)
+      NSLog(@"[VideoDecoder] VT decode error in callback: %d", (int)status);
+    return;
+  }
+
+  VideoDecoder *decoder = (__bridge VideoDecoder *)refCon;
+
+  if (!decoder.isVisiblePtr->load())
+    return;
+
+  CVPixelBufferRef pb = (CVPixelBufferRef)imageBuffer;
+  CVPixelBufferRetain(pb);
+
+  {
+    std::lock_guard<std::mutex> lock(*decoder.pixelBufferMutex);
+    if (decoder.latestPixelBuffer)
+      CVPixelBufferRelease(decoder.latestPixelBuffer);
+    decoder.latestPixelBuffer = pb;
+  }
+
+  __weak VideoDecoder *weak = decoder;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    VideoDecoder *strong = weak;
+    if (strong && strong.textureId != 0)
+      [strong.registry textureFrameAvailable:strong.textureId];
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Frame packet: convert Annex-B → length-prefixed → CMSampleBuffer → VT
+// ---------------------------------------------------------------------------
+
+- (void)processFramePacket:(const std::vector<uint8_t> &)data {
+  if (!_decompressionSession || !_formatDescription)
+    return; // Config not received yet
+
+  if (data.empty()) return;
+
+  std::vector<uint8_t> lpData = annexBToLengthPrefixed(data, _codecType);
+  if (lpData.empty()) {
+    // If all NALs in this packet were parameter sets, update configuration
+    auto nalUnits = parseNalUnits(data);
+    for (const auto &pair : nalUnits) {
+      uint8_t firstByte = pair.first;
+      if (_codecType == VideoCodecHEVC) {
+        uint8_t hevcType = (firstByte >> 1) & 0x3F;
+        if (hevcType == 32 || hevcType == 33 || hevcType == 34) {
+          [self processConfigPacket:data];
+          break;
+        }
+      } else if (_codecType == VideoCodecH264) {
+        uint8_t h264Type = firstByte & 0x1F;
+        if (h264Type == 7 || h264Type == 8) {
+          [self processConfigPacket:data];
+          break;
+        }
+      }
+    }
+    return;
+  }
+
+  // CMBlockBuffer takes ownership of heapCopy via kCFAllocatorMalloc
+  CMBlockBufferRef blockBuf = NULL;
+  void *heapCopy = malloc(lpData.size());
+  if (!heapCopy) return;
+  memcpy(heapCopy, lpData.data(), lpData.size());
+
+  OSStatus status = CMBlockBufferCreateWithMemoryBlock(
+      kCFAllocatorDefault,
+      heapCopy,
+      lpData.size(),
+      kCFAllocatorMalloc, // CM will call free() on heapCopy
+      NULL, 0, lpData.size(), 0,
+      &blockBuf);
+
+  if (status != noErr || !blockBuf) {
+    free(heapCopy);
+    NSLog(@"[VideoDecoder] CMBlockBufferCreate failed: %d", (int)status);
+    return;
+  }
+
+  // CMSampleBuffer: 0 timing entries indicates untimed / real-time frames
+  size_t sampleSize = lpData.size();
+  CMSampleBufferRef sampleBuf = NULL;
+  status = CMSampleBufferCreateReady(kCFAllocatorDefault, blockBuf,
+                                     _formatDescription, 1, 0, NULL, 1,
+                                     &sampleSize, &sampleBuf);
+  CFRelease(blockBuf);
+
+  if (status != noErr || !sampleBuf) {
+    NSLog(@"[VideoDecoder] CMSampleBufferCreateReady failed: %d", (int)status);
+    return;
+  }
+
+  VTDecodeInfoFlags flagsOut = 0;
+  status = VTDecompressionSessionDecodeFrame(
+      _decompressionSession, sampleBuf,
+      kVTDecodeFrame_EnableAsynchronousDecompression, NULL, &flagsOut);
+
+  CFRelease(sampleBuf);
+
+  if (status != noErr) {
+    static int errCount = 0;
+    if (++errCount <= 10 || errCount % 100 == 0) {
+      NSLog(@"[VideoDecoder] VTDecompressionSessionDecodeFrame error: %d (sampleSize=%zu, count=%d)",
+            (int)status, lpData.size(), errCount);
+    }
+  }
+}
+
 
 @end
 
-//------------------------------------------------------------------------------
-// VideoDecoderPlugin Class (Manager)
-//------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// VideoDecoderPlugin – channel handler / session manager
+// ---------------------------------------------------------------------------
+
 @interface VideoDecoderPlugin ()
 @property(nonatomic, strong) NSObject<FlutterPluginRegistrar> *registrar;
 @property(nonatomic, strong)
@@ -532,9 +626,9 @@ typedef NS_ENUM(NSInteger, FrameType) {
 @implementation VideoDecoderPlugin
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
-  FlutterMethodChannel *channel =
-      [FlutterMethodChannel methodChannelWithName:@"com.scraki.video_decoder"
-                                  binaryMessenger:[registrar messenger]];
+  FlutterMethodChannel *channel = [FlutterMethodChannel
+      methodChannelWithName:@"com.scraki.video_decoder"
+            binaryMessenger:[registrar messenger]];
   VideoDecoderPlugin *instance =
       [[VideoDecoderPlugin alloc] initWithRegistrar:registrar];
   [registrar addMethodCallDelegate:instance channel:channel];
@@ -546,7 +640,6 @@ typedef NS_ENUM(NSInteger, FrameType) {
   if (self) {
     _registrar = registrar;
     _sessions = [NSMutableDictionary dictionary];
-    av_log_set_level(AV_LOG_ERROR);
   }
   return self;
 }
@@ -562,13 +655,13 @@ typedef NS_ENUM(NSInteger, FrameType) {
       return;
     }
 
-    // Parse URL tcp://host:port
-    NSString *urlStr = [url stringByReplacingOccurrencesOfString:@"tcp://"
-                                                      withString:@""];
-    NSArray *parts = [urlStr componentsSeparatedByString:@":"];
+    // Parse tcp://host:port
+    NSString *stripped =
+        [url stringByReplacingOccurrencesOfString:@"tcp://" withString:@""];
+    NSArray *parts = [stripped componentsSeparatedByString:@":"];
     if (parts.count != 2) {
       result([FlutterError errorWithCode:@"BAD_URL"
-                                 message:@"Invalid URL"
+                                 message:@"Invalid URL format"
                                  details:nil]);
       return;
     }
@@ -576,7 +669,6 @@ typedef NS_ENUM(NSInteger, FrameType) {
     NSString *host = parts[0];
     int port = [parts[1] intValue];
 
-    // Create NEW session
     VideoDecoder *decoder =
         [[VideoDecoder alloc] initWithRegistry:[_registrar textures]];
     [decoder startWithHost:host
@@ -598,25 +690,20 @@ typedef NS_ENUM(NSInteger, FrameType) {
       }
     }
     result(nil);
+
   } else if ([@"flush" isEqualToString:call.method]) {
-    NSNumber *textureId = call.arguments[@"textureId"];
-    if (textureId) {
-      VideoDecoder *decoder = _sessions[textureId];
-      if (decoder) {
-        [decoder flush];
-      }
-    }
+    // No-op for VideoToolbox: VT handles frame ordering internally.
     result(nil);
+
   } else if ([@"setVisibility" isEqualToString:call.method]) {
     NSNumber *textureId = call.arguments[@"textureId"];
     BOOL visible = [call.arguments[@"visible"] boolValue];
     if (textureId) {
       VideoDecoder *decoder = _sessions[textureId];
-      if (decoder) {
-        [decoder setVisibility:visible];
-      }
+      [decoder setVisibility:visible];
     }
     result(nil);
+
   } else {
     result(FlutterMethodNotImplemented);
   }

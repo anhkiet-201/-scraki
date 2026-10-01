@@ -39,13 +39,18 @@ class ScrcpyService {
   Future<void> pushServer(String deviceSerial) async {
     try {
       final localPath = await _getServerPath();
-      await Process.run('adb', [
+      final result = await Process.run('adb', [
         '-s',
         deviceSerial,
         'push',
         localPath,
         _remoteServerPath,
       ]);
+      if (result.exitCode != 0) {
+        logger.e(
+          '[ScrcpyService] adb push returned exit code ${result.exitCode}: ${result.stderr}',
+        );
+      }
     } catch (e) {
       throw ServerException('Failed to push server to $deviceSerial: $e');
     }

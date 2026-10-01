@@ -208,7 +208,6 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       if (wasVisible != _isVisible && session != null) {
         if (_isVisible) {
           _decoderService.setVisibility(session!.videoUrl, true);
-          _decoderService.flush(session!.videoUrl);
           _workerManager.resumeMirroring(sessionId);
           _workerManager.requestKeyFrame(sessionId);
         } else {
@@ -295,12 +294,32 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
       final adbPort = portsData['adbPort'] as int;
       final proxyPort = portsData['proxyPort'] as int;
 
+      // Register config_ready listener BEFORE starting the scrcpy server so
+      // we cannot miss the event even if data arrives very quickly.
+      final configReadyFuture = _workerManager.waitForEvent(sessionId, 'config_ready');
+
       final serverData = await _scrcpyService.initServer(serial, scrcpyOptions, adbPort);
       final scid = serverData.scid;
 
       final resolutionData = await resolutionFuture;
       final width = resolutionData['width'] as int;
       final height = resolutionData['height'] as int;
+
+      // Wait for the Dart Isolate to finish collecting SPS/PPS/VPS config packets.
+      // Only after this are we guaranteed the proxy has config headers ready to
+      // send to the native decoder the moment it connects.
+      try {
+        await configReadyFuture.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            logger.w('[PhoneViewStore] config_ready timeout — proceeding anyway');
+            return null;
+          },
+        );
+        logger.i('[PhoneViewStore] Config headers ready — connecting native decoder');
+      } catch (e) {
+        logger.w('[PhoneViewStore] Error waiting for config_ready: $e');
+      }
 
       final url = 'tcp://127.0.0.1:$proxyPort';
       final mirrorSession = MirrorSession(
@@ -321,16 +340,17 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
         _retryCount = 0;
       });
 
-      // Đồng bộ trạng thái visibility ngay khi session đã được đăng ký vào MobX
+      // Sync visibility state once session is registered in MobX
       if (_isVisible || isFloatingView) {
         await mirrorSession.decoderService.setVisibility(url, true);
-        // [Fix] Yêu cầu I-Frame có delay để đảm bảo Native Decoder đã sẵn sàng nhận dữ liệu
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // Request I-Frame with a short delay to ensure native decoder is ready
+        Future.delayed(const Duration(milliseconds: 200), () {
           if (sessionManagerStore.activeSessions.containsKey(sessionId)) {
             _workerManager.requestKeyFrame(sessionId);
           }
         });
       }
+
 
       return mirrorSession;
     } catch (e, stackTrace) {

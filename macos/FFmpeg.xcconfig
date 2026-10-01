@@ -1,19 +1,9 @@
-// Custom build settings for VideoDecoderPlugin with FFmpeg
-//
-// Dùng symlink /opt/homebrew/opt/ffmpeg thay vì hardcode version cụ thể.
-// Symlink này luôn trỏ đến phiên bản FFmpeg mới nhất được Homebrew install,
-// nên không cần sửa file này sau mỗi lần brew upgrade ffmpeg.
+// Build settings for VideoDecoderPlugin — now using VideoToolbox directly.
+// FFmpeg dependency has been removed. VideoToolbox is part of macOS SDK
+// and does not require any Homebrew install.
 
-FFMPEG_PREFIX = /opt/homebrew/opt/ffmpeg
+// Link against VideoToolbox (hardware video decode) and CoreMedia/CoreVideo
+OTHER_LDFLAGS = $(inherited) -framework VideoToolbox -framework CoreMedia -framework CoreVideo -framework AVFoundation
 
-// Header search paths
-HEADER_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/include
-
-// Library search paths
-LIBRARY_SEARCH_PATHS = $(inherited) $(FFMPEG_PREFIX)/lib
-
-// Link against FFmpeg libraries
-OTHER_LDFLAGS = $(inherited) -lavcodec -lavformat -lavutil -lswscale
-
-// Runtime library search paths
-LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks $(FFMPEG_PREFIX)/lib
+// Runtime search paths (keep for other dependencies)
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks

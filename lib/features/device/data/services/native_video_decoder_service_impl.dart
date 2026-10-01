@@ -173,10 +173,9 @@ class NativeVideoDecoderServiceImpl implements IVideoDecoderService {
           'visible': newActualVisible,
         });
         
-        // If just became visible, request an I-Frame immediately for smooth visuals
+        // If just became visible, request a keyframe refresh from device
         if (newActualVisible) {
-           await _channel.invokeMethod('flush', {'textureId': session.textureId});
-           getIt<VideoWorkerManager>().requestKeyFrame(session.sessionId);
+          getIt<VideoWorkerManager>().requestKeyFrame(session.sessionId);
         }
       } catch (e) {
         logger.e('[NativeVideoDecoderService] Error setting visibility', error: e);
