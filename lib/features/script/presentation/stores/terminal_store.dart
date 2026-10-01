@@ -21,7 +21,6 @@ import 'package:scraki/features/script/presentation/stores/terminal_log_worker.d
 import 'package:scraki/features/script/presentation/stores/terminal_process_worker.dart';
 import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 import 'package:scraki/core/di/injection.dart';
-import 'package:scraki/features/api_server/domain/services/p2p_gui_service.dart';
 import '../utils/script_execution_parser.dart';
 
 part 'terminal_store.g.dart';
@@ -418,18 +417,12 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @action
   void stopCommand(String serial) {
     _processWorker.stopCommand(serial);
-    try {
-      getIt<P2pGuiService>().stopScript(serials: [serial]);
-    } catch (_) {}
   }
 
   @action
   void stopAll() {
     _processWorker.stopAll();
     isExecuting = false;
-    try {
-      getIt<P2pGuiService>().stopScript();
-    } catch (_) {}
   }
 
   void dispose() {
