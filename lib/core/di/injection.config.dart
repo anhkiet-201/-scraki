@@ -471,6 +471,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i101.CommandInterpolator>(),
         gh<_i255.TerminalLogWorker>(),
         gh<_i190.TerminalProcessWorker>(),
+        gh<_i730.SettingsConfigProvider>(),
       ),
     );
     gh.singleton<_i391.DeviceNicknameStore>(

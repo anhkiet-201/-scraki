@@ -50,6 +50,9 @@ abstract class _SettingsStore with Store {
   @computed
   int get maxDevices => settings?.maxDevices ?? 100;
 
+  @computed
+  int get maxConcurrentDevices => settings?.maxConcurrentDevices ?? 20;
+
   // ===== Actions =====
   @action
   Future<void> loadSettings() async {
@@ -103,6 +106,13 @@ abstract class _SettingsStore with Store {
   void updateMaxDevices(int value) {
     settings ??= SettingsEntity.empty();
     settings = settings!.copyWith(maxDevices: value);
+    errorMessage = null;
+  }
+
+  @action
+  void updateMaxConcurrentDevices(int value) {
+    settings ??= SettingsEntity.empty();
+    settings = settings!.copyWith(maxConcurrentDevices: value <= 0 ? 1 : value);
     errorMessage = null;
   }
 

@@ -41,4 +41,7 @@ class SettingsConfigProvider {
 
   /// Get maximum device count from cached settings
   int get maxDevices => _cachedSettings?.maxDevices ?? 100;
+
+  /// Get maximum concurrent devices count for script execution from cached settings
+  int get maxConcurrentDevices => _cachedSettings?.maxConcurrentDevices ?? 20;
 }

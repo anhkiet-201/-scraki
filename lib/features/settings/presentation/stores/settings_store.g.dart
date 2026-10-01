@@ -46,6 +46,13 @@ mixin _$SettingsStore on _SettingsStore, Store {
     () => super.maxDevices,
     name: '_SettingsStore.maxDevices',
   )).value;
+  Computed<int>? _$maxConcurrentDevicesComputed;
+
+  @override
+  int get maxConcurrentDevices => (_$maxConcurrentDevicesComputed ??=
+          Computed<int>(() => super.maxConcurrentDevices,
+              name: '_SettingsStore.maxConcurrentDevices'))
+      .value;
 
   late final _$appVersionAtom = Atom(
     name: '_SettingsStore.appVersion',
@@ -215,6 +222,18 @@ mixin _$SettingsStore on _SettingsStore, Store {
   }
 
   @override
+  void updateMaxConcurrentDevices(int value) {
+    final _$actionInfo = _$_SettingsStoreActionController.startAction(
+      name: '_SettingsStore.updateMaxConcurrentDevices',
+    );
+    try {
+      return super.updateMaxConcurrentDevices(value);
+    } finally {
+      _$_SettingsStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   String toString() {
     return '''
 appVersion: ${appVersion},
@@ -225,7 +244,8 @@ aiApiKey: ${aiApiKey},
 posterPhoneNumber: ${posterPhoneNumber},
 deviceGroupCollection: ${deviceGroupCollection},
 ipRange: ${ipRange},
-maxDevices: ${maxDevices}
+maxDevices: ${maxDevices},
+maxConcurrentDevices: ${maxConcurrentDevices}
     ''';
   }
 }

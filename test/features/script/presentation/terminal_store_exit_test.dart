@@ -13,6 +13,7 @@ import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
 import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/features/script/domain/interpolation/command_interpolator.dart';
 import 'package:scraki/features/script/domain/entities/script_entity.dart';
+import 'package:scraki/core/config/settings_config_provider.dart';
 import 'package:scraki/features/device/domain/entities/device_entity.dart';
 import 'package:scraki/features/device/domain/services/device_shell.dart';
 
@@ -25,6 +26,7 @@ class MockTerminalProcessWorker extends Mock implements TerminalProcessWorker {}
 class MockAppAuthStore extends Mock implements AppAuthStore {}
 class MockSessionManagerStore extends Mock implements SessionManagerStore {}
 class MockDeviceShell extends Mock implements DeviceShell {}
+class MockSettingsConfigProvider extends Mock implements SettingsConfigProvider {}
 
 void main() {
   late TerminalStore store;
@@ -36,6 +38,7 @@ void main() {
   late MockAppAuthStore appAuthStore;
   late MockSessionManagerStore sessionManagerStore;
   late MockDeviceShell deviceShell;
+  late MockSettingsConfigProvider configProvider;
 
   setUp(() {
     GetIt.I.reset();
@@ -48,6 +51,7 @@ void main() {
     appAuthStore = MockAppAuthStore();
     sessionManagerStore = MockSessionManagerStore();
     deviceShell = MockDeviceShell();
+    configProvider = MockSettingsConfigProvider();
 
     // Register singletons
     GetIt.I.registerSingleton<AppAuthStore>(appAuthStore);
@@ -57,6 +61,7 @@ void main() {
     when(() => scriptManagementStore.logStream).thenAnswer((_) => const Stream.empty());
     when(() => processWorker.init()).thenAnswer((_) async => {});
     when(() => appAuthStore.isAuthenticated).thenReturn(true);
+    when(() => configProvider.maxConcurrentDevices).thenReturn(20);
     when(() => deviceManagerStore.selectedSerials).thenReturn(ObservableSet.of({'dev1'}));
     when(() => deviceManagerStore.devices).thenReturn(ObservableList.of([
       const DeviceEntity(
@@ -83,6 +88,7 @@ void main() {
       commandInterpolator,
       TerminalLogWorker(),
       processWorker,
+      configProvider,
     );
   });
 

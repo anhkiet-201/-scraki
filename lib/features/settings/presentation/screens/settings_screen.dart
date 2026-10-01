@@ -14,6 +14,7 @@ import '../widgets/settings_section_header.dart';
 import '../widgets/settings_help_panel.dart';
 import '../widgets/settings_ip_range_card.dart';
 import '../widgets/settings_max_devices_card.dart';
+import '../widgets/settings_max_concurrent_devices_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _phoneController = TextEditingController();
   final _ipRangeController = TextEditingController();
   final _maxDevicesController = TextEditingController();
+  final _maxConcurrentDevicesController = TextEditingController();
   int _selectedCategoryIndex = 0;
 
   @override
@@ -40,6 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _phoneController.text = settingsStore.posterPhoneNumber;
       _ipRangeController.text = settingsStore.ipRange;
       _maxDevicesController.text = settingsStore.maxDevices.toString();
+      _maxConcurrentDevicesController.text =
+          settingsStore.maxConcurrentDevices.toString();
     });
     emailStore.loadCredentials();
   }
@@ -50,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _phoneController.dispose();
     _ipRangeController.dispose();
     _maxDevicesController.dispose();
+    _maxConcurrentDevicesController.dispose();
     super.dispose();
   }
 
@@ -336,6 +341,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (val) {
                       final value = int.tryParse(val) ?? 100;
                       settingsStore.updateMaxDevices(value);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SettingsMaxConcurrentDevicesCard(
+                    controller: _maxConcurrentDevicesController,
+                    onChanged: (val) {
+                      final value = int.tryParse(val) ?? 20;
+                      settingsStore.updateMaxConcurrentDevices(value);
                     },
                   ),
                   const SizedBox(height: 24),

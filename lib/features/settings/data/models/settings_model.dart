@@ -9,6 +9,7 @@ class SettingsModel extends HiveObject {
   String deviceGroupCollection;
   String ipRange;
   int maxDevices;
+  int maxConcurrentDevices;
 
   SettingsModel({
     required this.aiApiKey,
@@ -16,6 +17,7 @@ class SettingsModel extends HiveObject {
     this.deviceGroupCollection = 'device_groups',
     this.ipRange = '10.10.0.0',
     this.maxDevices = 100,
+    this.maxConcurrentDevices = 20,
   });
 
   /// Mapper từ Entity sang Model
@@ -26,6 +28,7 @@ class SettingsModel extends HiveObject {
       deviceGroupCollection: entity.deviceGroupCollection,
       ipRange: entity.ipRange,
       maxDevices: entity.maxDevices,
+      maxConcurrentDevices: entity.maxConcurrentDevices,
     );
   }
 
@@ -37,6 +40,7 @@ class SettingsModel extends HiveObject {
       deviceGroupCollection: deviceGroupCollection,
       ipRange: ipRange,
       maxDevices: maxDevices,
+      maxConcurrentDevices: maxConcurrentDevices,
     );
   }
 }
@@ -56,17 +60,18 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
     return SettingsModel(
       aiApiKey: fields[0] as String? ?? '',
       posterPhoneNumber: fields[1] as String? ?? '',
-      // Backward compatible: dữ liệu cũ (2-4 fields) sẽ fallback về default
+      // Backward compatible: dữ liệu cũ (2-5 fields) sẽ fallback về default
       deviceGroupCollection: fields[2] as String? ?? 'device_groups',
       ipRange: fields[3] as String? ?? '10.10.0.0',
       maxDevices: fields[4] as int? ?? 100,
+      maxConcurrentDevices: fields[5] as int? ?? 20,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(5) // Tăng lên 5 fields
+      ..writeByte(6) // Tăng lên 6 fields
       ..writeByte(0)
       ..write(obj.aiApiKey)
       ..writeByte(1)
@@ -76,7 +81,9 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(3)
       ..write(obj.ipRange)
       ..writeByte(4)
-      ..write(obj.maxDevices);
+      ..write(obj.maxDevices)
+      ..writeByte(5)
+      ..write(obj.maxConcurrentDevices);
   }
 
   @override

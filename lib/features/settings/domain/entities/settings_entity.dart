@@ -4,6 +4,7 @@ class SettingsEntity {
   final String deviceGroupCollection;
   final String ipRange;
   final int maxDevices;
+  final int maxConcurrentDevices;
 
   const SettingsEntity({
     required this.aiApiKey,
@@ -11,6 +12,7 @@ class SettingsEntity {
     this.deviceGroupCollection = 'device_groups',
     this.ipRange = '10.10.0.0',
     this.maxDevices = 100,
+    this.maxConcurrentDevices = 20,
   });
 
   /// Copy with method cho immutability
@@ -20,6 +22,7 @@ class SettingsEntity {
     String? deviceGroupCollection,
     String? ipRange,
     int? maxDevices,
+    int? maxConcurrentDevices,
   }) {
     return SettingsEntity(
       aiApiKey: aiApiKey ?? this.aiApiKey,
@@ -28,6 +31,7 @@ class SettingsEntity {
           deviceGroupCollection ?? this.deviceGroupCollection,
       ipRange: ipRange ?? this.ipRange,
       maxDevices: maxDevices ?? this.maxDevices,
+      maxConcurrentDevices: maxConcurrentDevices ?? this.maxConcurrentDevices,
     );
   }
 
@@ -39,6 +43,7 @@ class SettingsEntity {
       deviceGroupCollection: 'device_groups',
       ipRange: '10.10.0.0',
       maxDevices: 100,
+      maxConcurrentDevices: 20,
     );
   }
 
@@ -51,7 +56,8 @@ class SettingsEntity {
         other.posterPhoneNumber == posterPhoneNumber &&
         other.deviceGroupCollection == deviceGroupCollection &&
         other.ipRange == ipRange &&
-        other.maxDevices == maxDevices;
+        other.maxDevices == maxDevices &&
+        other.maxConcurrentDevices == maxConcurrentDevices;
   }
 
   @override
@@ -60,5 +66,6 @@ class SettingsEntity {
       posterPhoneNumber.hashCode ^
       deviceGroupCollection.hashCode ^
       ipRange.hashCode ^
-      maxDevices.hashCode;
+      maxDevices.hashCode ^
+      maxConcurrentDevices.hashCode;
 }

@@ -20,6 +20,7 @@ import 'package:scraki/features/script/domain/interpolation/command_interpolator
 import 'package:scraki/features/script/presentation/stores/terminal_log_worker.dart';
 import 'package:scraki/features/script/presentation/stores/terminal_process_worker.dart';
 import 'package:scraki/core/auth/presentation/stores/app_auth_store.dart';
+import 'package:scraki/core/config/settings_config_provider.dart';
 import 'package:scraki/core/di/injection.dart';
 import '../utils/script_execution_parser.dart';
 
@@ -36,6 +37,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
 
   final TerminalLogWorker _logWorker;
   final TerminalProcessWorker _processWorker;
+  final SettingsConfigProvider _configProvider;
 
   StreamSubscription<LogEntry>? _scriptLogSubscription;
 
@@ -46,6 +48,7 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
     this._interpolator,
     this._logWorker,
     this._processWorker,
+    this._configProvider,
   ) {
     initialized();
     _listenToScriptLogs();
@@ -86,7 +89,10 @@ abstract class _TerminalStore with Store, SessionManagerStoreMixin {
   @observable
   String commandInput = '';
 
-  static const int _maxConcurrentDevices = 100;
+  int get _maxConcurrentDevices {
+    final configured = _configProvider.maxConcurrentDevices;
+    return configured > 0 ? configured : 20;
+  }
 
   @observable
   ObservableList<String> commandHistory = ObservableList<String>();
