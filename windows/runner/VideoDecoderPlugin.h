@@ -36,7 +36,8 @@ class VideoDecoderPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar);
 
-  VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar);
+  VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar,
+                     std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel);
 
   virtual ~VideoDecoderPlugin();
 
@@ -79,6 +80,11 @@ class VideoDecoderPlugin : public flutter::Plugin {
       SwsContext* sws_context = nullptr;
       AVBufferRef* hw_device_ctx = nullptr;
 
+      int sws_width = 0;
+      int sws_height = 0;
+      int sws_format = -1;
+      std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel;
+
       std::atomic<bool> is_visible{false};
       std::atomic<bool> waiting_for_iframe{true};
       std::atomic<bool> needs_flush{false};
@@ -99,7 +105,9 @@ class VideoDecoderPlugin : public flutter::Plugin {
 
   class VideoSession {
    public:
-    VideoSession(flutter::TextureRegistrar* texture_registrar, const std::string& host, int port);
+    VideoSession(flutter::TextureRegistrar* texture_registrar,
+                 std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                 const std::string& host, int port);
     ~VideoSession();
 
     int64_t texture_id() const { return state_ ? state_->texture_id : -1; }
@@ -130,6 +138,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
   void StopAllDecoding();
 
   flutter::TextureRegistrar* texture_registrar_;
+  std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
   std::map<int64_t, std::unique_ptr<VideoSession>> sessions_;
   std::mutex sessions_mutex_;
 };

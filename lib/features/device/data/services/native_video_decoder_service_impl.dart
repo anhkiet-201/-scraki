@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 import 'package:scraki/core/di/injection.dart';
+import 'package:scraki/core/stores/session_manager_store.dart';
 import 'package:scraki/core/utils/logger.dart';
 import 'package:scraki/features/device/data/datasources/video_worker_manager.dart';
 import 'package:scraki/features/device/domain/services/i_video_decoder_service.dart';
@@ -17,6 +18,9 @@ class _DecoderSession {
   /// Unique identifier for the current video session.
   final String sessionId;
 
+  /// Set of session identifiers sharing this texture/stream URL.
+  final Set<String> sessionIds;
+
   /// Current reference count for this URL.
   /// Used to decide when to release Native resources.
   int refCount;
@@ -29,7 +33,8 @@ class _DecoderSession {
   /// Prevents immediate destruction of the decoder when switching between Views (Grid/Floating).
   Timer? stopTimer;
 
-  _DecoderSession(this.textureId, this.sessionId, {required this.refCount});
+  _DecoderSession(this.textureId, this.sessionId, {required this.refCount})
+      : sessionIds = {sessionId};
 }
 
 /// Implementation of [IVideoDecoderService] using Native Platform Channels.
@@ -49,6 +54,42 @@ class NativeVideoDecoderServiceImpl implements IVideoDecoderService {
   /// Active decoding sessions, mapping from URL to [_DecoderSession].
   final Map<String, _DecoderSession> _sessions = {};
 
+  NativeVideoDecoderServiceImpl() {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'onResolutionChanged') {
+      try {
+        final args = call.arguments as Map;
+        final textureId = args['textureId'] as int;
+        final width = args['width'] as int;
+        final height = args['height'] as int;
+
+        logger.i(
+          '[NativeVideoDecoderService] onResolutionChanged: textureId=$textureId, size=${width}x$height',
+        );
+
+        for (final session in _sessions.values) {
+          if (session.textureId == textureId) {
+            if (getIt.isRegistered<SessionManagerStore>()) {
+              final store = getIt<SessionManagerStore>();
+              for (final sId in session.sessionIds) {
+                store.updateSessionResolution(sId, width, height);
+              }
+            }
+          }
+        }
+      } catch (e, stack) {
+        logger.e(
+          '[NativeVideoDecoderService] Error handling onResolutionChanged',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+    }
+  }
+
   /// Starts a decoding session for a [url].
   ///
   /// If [url] is already being decoded by another session, it increments the `refCount`
@@ -61,6 +102,7 @@ class NativeVideoDecoderServiceImpl implements IVideoDecoderService {
       // 1. If session exists for this URL, reuse texture and increment refCount
       if (_sessions.containsKey(url)) {
         final session = _sessions[url]!;
+        session.sessionIds.add(sessionId);
         session.stopTimer?.cancel();
         session.stopTimer = null;
         session.refCount++;
@@ -195,5 +237,7 @@ class NativeVideoDecoderServiceImpl implements IVideoDecoderService {
   }
   
   @override
-  void initialize() {}
+  void initialize() {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
 }

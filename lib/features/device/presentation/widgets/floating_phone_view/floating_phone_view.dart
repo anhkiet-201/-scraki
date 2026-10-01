@@ -79,7 +79,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
 
     return Observer(
       builder: (_) {
-        final aspectRatio = sessionManagerStore.deviceAspectRatio;
+        final aspectRatio = sessionManagerStore.floatingAspectRatio;
         return Positioned(
           left: _store.position.dx,
           top: _store.position.dy,
@@ -148,7 +148,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                                     height: _store.height,
                                     child: PhoneView(
                                       serial: widget.serial,
-                                      fit: BoxFit.fill,
+                                      fit: BoxFit.contain,
                                       isFloating: true,
                                       onPosterDropped: (data) async {
                                         final file = await _toolBoxKey

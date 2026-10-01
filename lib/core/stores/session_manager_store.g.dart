@@ -17,6 +17,14 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
         () => super.deviceAspectRatio,
         name: '_SessionManagerStore.deviceAspectRatio',
       )).value;
+  Computed<double>? _$floatingAspectRatioComputed;
+
+  @override
+  double get floatingAspectRatio =>
+      (_$floatingAspectRatioComputed ??= Computed<double>(
+        () => super.floatingAspectRatio,
+        name: '_SessionManagerStore.floatingAspectRatio',
+      )).value;
   Computed<bool>? _$isFloatingVisibleComputed;
 
   @override
@@ -85,6 +93,18 @@ mixin _$SessionManagerStore on _SessionManagerStore, Store {
   );
 
   @override
+  void updateSessionResolution(String sessionId, int width, int height) {
+    final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
+      name: '_SessionManagerStore.updateSessionResolution',
+    );
+    try {
+      return super.updateSessionResolution(sessionId, width, height);
+    } finally {
+      _$_SessionManagerStoreActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void toggleFloating(String? serial) {
     final _$actionInfo = _$_SessionManagerStoreActionController.startAction(
       name: '_SessionManagerStore.toggleFloating',
@@ -141,6 +161,7 @@ activeSessions: ${activeSessions},
 floatingSerial: ${floatingSerial},
 activeTasks: ${activeTasks},
 deviceAspectRatio: ${deviceAspectRatio},
+floatingAspectRatio: ${floatingAspectRatio},
 isFloatingVisible: ${isFloatingVisible}
     ''';
   }

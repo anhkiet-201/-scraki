@@ -164,6 +164,12 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
 @property(nonatomic, strong) NSData *spsData;
 @property(nonatomic, strong) NSData *ppsData;
 
+// Resolution tracking and channel for Flutter callbacks
+@property(nonatomic, assign) size_t currentWidth;
+@property(nonatomic, assign) size_t currentHeight;
+@property(nonatomic, weak) FlutterMethodChannel *channel;
+@property(nonatomic, assign) std::atomic<bool> *isCleanedUpPtr;
+
 - (instancetype)initWithRegistry:(id<FlutterTextureRegistry>)registry;
 - (void)startWithHost:(NSString *)host
                  port:(int)port
@@ -185,9 +191,12 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
     _socketFd = -1;
     _decoderThread = nullptr;
     _isVisiblePtr = new std::atomic<bool>(true);
+    _isCleanedUpPtr = new std::atomic<bool>(false);
     _decompressionSession = NULL;
     _formatDescription = NULL;
     _codecType = VideoCodecUnknown;
+    _currentWidth = 0;
+    _currentHeight = 0;
   }
   return self;
 }
@@ -197,6 +206,7 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
   delete _isDecodingPtr;
   delete _pixelBufferMutex;
   delete _isVisiblePtr;
+  delete _isCleanedUpPtr;
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
@@ -217,6 +227,7 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
                result:(FlutterResult)result {
   _textureId = [_registry registerTexture:self];
   *_isDecodingPtr = true;
+  _isCleanedUpPtr->store(false);
   _decoderThread = new std::thread(
       [self, host, port]() { [self decoderThreadMain:host port:port]; });
   result(@(_textureId));
@@ -257,6 +268,9 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
 }
 
 - (void)cleanupDecoder {
+  if (_isCleanedUpPtr->exchange(true)) {
+    return;
+  }
   if (_decompressionSession) {
     VTDecompressionSessionInvalidate(_decompressionSession);
     CFRelease(_decompressionSession);
@@ -403,6 +417,12 @@ annexBToLengthPrefixed(const std::vector<uint8_t> &annexB, VideoCodecType codecT
     return;
   }
 
+  // If parameters are identical and session is already valid, do not recreate
+  if (_codecType == detected && [sps isEqualToData:_spsData] && [pps isEqualToData:_ppsData] &&
+      (!vps || [vps isEqualToData:_vpsData]) && _decompressionSession != NULL) {
+    return;
+  }
+
   _codecType = detected;
   _vpsData = vps;
   _spsData = sps;
@@ -511,6 +531,27 @@ static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
     return;
 
   CVPixelBufferRef pb = (CVPixelBufferRef)imageBuffer;
+  size_t w = CVPixelBufferGetWidth(pb);
+  size_t h = CVPixelBufferGetHeight(pb);
+
+  // Check if resolution changed
+  if (w > 0 && h > 0 && (w != decoder.currentWidth || h != decoder.currentHeight)) {
+    decoder.currentWidth = w;
+    decoder.currentHeight = h;
+    int64_t tid = decoder.textureId;
+    FlutterMethodChannel *ch = decoder.channel;
+    if (ch && tid != 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [ch invokeMethod:@"onResolutionChanged"
+               arguments:@{
+                 @"textureId": @(tid),
+                 @"width": @((int)w),
+                 @"height": @((int)h)
+               }];
+      });
+    }
+  }
+
   CVPixelBufferRetain(pb);
 
   {
@@ -533,31 +574,39 @@ static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
 // ---------------------------------------------------------------------------
 
 - (void)processFramePacket:(const std::vector<uint8_t> &)data {
-  if (!_decompressionSession || !_formatDescription)
-    return; // Config not received yet
-
   if (data.empty()) return;
+
+  // 1. Detect if this packet contains in-band parameter sets (SPS/PPS/VPS)
+  // regardless of whether it also has slice data.
+  auto nalUnits = parseNalUnits(data);
+  bool hasParamSets = false;
+  for (const auto &pair : nalUnits) {
+    uint8_t firstByte = pair.first;
+    if (_codecType == VideoCodecHEVC || _codecType == VideoCodecUnknown) {
+      uint8_t hevcType = (firstByte >> 1) & 0x3F;
+      if (hevcType == 32 || hevcType == 33 || hevcType == 34) {
+        hasParamSets = true;
+        break;
+      }
+    }
+    if (_codecType == VideoCodecH264 || _codecType == VideoCodecUnknown) {
+      uint8_t h264Type = firstByte & 0x1F;
+      if (h264Type == 7 || h264Type == 8) {
+        hasParamSets = true;
+        break;
+      }
+    }
+  }
+
+  if (hasParamSets) {
+    [self processConfigPacket:data];
+  }
+
+  if (!_decompressionSession || !_formatDescription)
+    return; // Config not ready yet
 
   std::vector<uint8_t> lpData = annexBToLengthPrefixed(data, _codecType);
   if (lpData.empty()) {
-    // If all NALs in this packet were parameter sets, update configuration
-    auto nalUnits = parseNalUnits(data);
-    for (const auto &pair : nalUnits) {
-      uint8_t firstByte = pair.first;
-      if (_codecType == VideoCodecHEVC) {
-        uint8_t hevcType = (firstByte >> 1) & 0x3F;
-        if (hevcType == 32 || hevcType == 33 || hevcType == 34) {
-          [self processConfigPacket:data];
-          break;
-        }
-      } else if (_codecType == VideoCodecH264) {
-        uint8_t h264Type = firstByte & 0x1F;
-        if (h264Type == 7 || h264Type == 8) {
-          [self processConfigPacket:data];
-          break;
-        }
-      }
-    }
     return;
   }
 
@@ -619,6 +668,7 @@ static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
 
 @interface VideoDecoderPlugin ()
 @property(nonatomic, strong) NSObject<FlutterPluginRegistrar> *registrar;
+@property(nonatomic, strong) FlutterMethodChannel *channel;
 @property(nonatomic, strong)
     NSMutableDictionary<NSNumber *, VideoDecoder *> *sessions;
 @end
@@ -630,15 +680,16 @@ static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
       methodChannelWithName:@"com.scraki.video_decoder"
             binaryMessenger:[registrar messenger]];
   VideoDecoderPlugin *instance =
-      [[VideoDecoderPlugin alloc] initWithRegistrar:registrar];
+      [[VideoDecoderPlugin alloc] initWithRegistrar:registrar channel:channel];
   [registrar addMethodCallDelegate:instance channel:channel];
 }
 
-- (instancetype)initWithRegistrar:
-    (NSObject<FlutterPluginRegistrar> *)registrar {
+- (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar
+                          channel:(FlutterMethodChannel *)channel {
   self = [super init];
   if (self) {
     _registrar = registrar;
+    _channel = channel;
     _sessions = [NSMutableDictionary dictionary];
   }
   return self;
@@ -671,6 +722,7 @@ static void vtOutputCallback(void *refCon, void *sourceFrameRefCon,
 
     VideoDecoder *decoder =
         [[VideoDecoder alloc] initWithRegistry:[_registrar textures]];
+    decoder.channel = _channel;
     [decoder startWithHost:host
                       port:port
                     result:^(id textureId) {

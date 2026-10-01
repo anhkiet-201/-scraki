@@ -224,8 +224,9 @@ static bool IsKeyframe(const uint8_t* data, size_t size) {
     return false;
 }
 
-VideoDecoderPlugin::VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar)
-    : texture_registrar_(texture_registrar) {
+VideoDecoderPlugin::VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar,
+                                       std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel)
+    : texture_registrar_(texture_registrar), channel_(channel) {
   LogTrace("Plugin Constructor - Initializing Winsock");
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -319,7 +320,7 @@ void VideoDecoderPlugin::StartDecoding(const std::string& url,
         std::string host = url_str.substr(0, colon_pos);
         int port = std::stoi(url_str.substr(colon_pos + 1));
 
-        auto session = std::make_unique<VideoSession>(texture_registrar_, host, port);
+        auto session = std::make_unique<VideoSession>(texture_registrar_, channel_, host, port);
         int64_t texture_id = session->texture_id();
         
         if (texture_id == -1) {
@@ -393,10 +394,13 @@ VideoDecoderPlugin::VideoSessionState::~VideoSessionState() {
 }
 
 // VideoSession Implementation
-VideoDecoderPlugin::VideoSession::VideoSession(flutter::TextureRegistrar* texture_registrar, const std::string& host, int port) {
+VideoDecoderPlugin::VideoSession::VideoSession(flutter::TextureRegistrar* texture_registrar,
+                                               std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                                               const std::string& host, int port) {
     int current_sessions = ++g_active_sessions;
     LogTrace("VideoSession Constructor [%d active] - Host: %s Port: %d", current_sessions, host.c_str(), port);
     state_ = std::make_shared<VideoSessionState>(texture_registrar);
+    state_->channel = channel;
 
     auto weak_state = std::weak_ptr<VideoSessionState>(state_);
 
@@ -846,18 +850,23 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
 void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSessionState> state, AVFrame* frame) {
     if (!state || !frame) return;
 
+    bool resolution_changed = false;
+    int cur_w = frame->width;
+    int cur_h = frame->height;
+
     // 1. Get a buffer from pool or create new one
     std::shared_ptr<VideoSessionState::RGBAFrame> back_buffer;
     {
         std::lock_guard<std::recursive_mutex> lock(state->pixel_buffer_mutex);
         if (!state->is_decoding || !state->is_alive || state->texture_id == -1) return;
 
-        if (state->width != frame->width || state->height != frame->height) {
+        if (state->width != cur_w || state->height != cur_h) {
             LogTrace("ProcessFrame [%lld] - Resolution change: %dx%d -> %dx%d", 
-                     state->texture_id, state->width, state->height, frame->width, frame->height);
+                     state->texture_id, state->width, state->height, cur_w, cur_h);
             state->buffer_pool.clear();
-            state->width = frame->width;
-            state->height = frame->height;
+            state->width = cur_w;
+            state->height = cur_h;
+            resolution_changed = true;
         }
 
         for (auto it = state->buffer_pool.begin(); it != state->buffer_pool.end(); ++it) {
@@ -870,7 +879,7 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
     }
 
     if (!back_buffer) {
-        back_buffer = std::make_shared<VideoSessionState::RGBAFrame>(frame->width, frame->height);
+        back_buffer = std::make_shared<VideoSessionState::RGBAFrame>(cur_w, cur_h);
     }
 
     // 2. Scale frame (No lock needed for pixel data - back_buffer is private here)
@@ -879,14 +888,20 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
         std::lock_guard<std::recursive_mutex> lock(state->pixel_buffer_mutex);
         if (!state->is_alive) return;
 
-        if (!state->sws_context || state->width != frame->width || state->height != frame->height) {
-            if (state->sws_context) sws_freeContext(state->sws_context);
+        if (!state->sws_context || state->sws_width != cur_w || state->sws_height != cur_h || state->sws_format != frame->format) {
+            if (state->sws_context) {
+                sws_freeContext(state->sws_context);
+                state->sws_context = nullptr;
+            }
             std::lock_guard<std::mutex> ffmpeg_lock(g_ffmpeg_init_mutex);
             state->sws_context = sws_getContext(
-                frame->width, frame->height, (AVPixelFormat)frame->format,
-                frame->width, frame->height, AV_PIX_FMT_RGBA,
+                cur_w, cur_h, (AVPixelFormat)frame->format,
+                cur_w, cur_h, AV_PIX_FMT_RGBA,
                 SWS_FAST_BILINEAR, NULL, NULL, NULL
             );
+            state->sws_width = cur_w;
+            state->sws_height = cur_h;
+            state->sws_format = frame->format;
         }
     }
 
@@ -898,7 +913,7 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
     if (!frame->data[0] || !dest[0]) return;
 
     // sws_scale runs UNLOCKED - this is where parallelism happens
-    int scaled_h = SwsScaleSafe(state->sws_context, frame->data, frame->linesize, 0, frame->height, dest, dest_linesize);
+    int scaled_h = SwsScaleSafe(state->sws_context, frame->data, frame->linesize, 0, cur_h, dest, dest_linesize);
     if (scaled_h <= 0) return;
 
     // 3. Swap to front and put old front back to pool
@@ -917,6 +932,15 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
         }
 
         state->texture_registrar->MarkTextureFrameAvailable(state->texture_id);
+
+        if (resolution_changed && state->channel && state->texture_id != -1) {
+            auto args = flutter::EncodableMap{
+                {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
+                {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
+                {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
+            };
+            state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+        }
     }
 }
 
@@ -925,11 +949,11 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
     auto* registrar = flutter::PluginRegistrarManager::GetInstance()
                         ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);
 
-    auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+    auto channel = std::make_shared<flutter::MethodChannel<flutter::EncodableValue>>(
         registrar->messenger(), "com.scraki.video_decoder",
         &flutter::StandardMethodCodec::GetInstance());
 
-    auto plugin = std::make_unique<VideoDecoderPlugin>(registrar->texture_registrar());
+    auto plugin = std::make_unique<VideoDecoderPlugin>(registrar->texture_registrar(), channel);
 
     channel->SetMethodCallHandler(
         [plugin_pointer = plugin.get()](const auto& call, auto result) {

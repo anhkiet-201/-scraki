@@ -49,10 +49,11 @@ mixin _$SettingsStore on _SettingsStore, Store {
   Computed<int>? _$maxConcurrentDevicesComputed;
 
   @override
-  int get maxConcurrentDevices => (_$maxConcurrentDevicesComputed ??=
-          Computed<int>(() => super.maxConcurrentDevices,
-              name: '_SettingsStore.maxConcurrentDevices'))
-      .value;
+  int get maxConcurrentDevices =>
+      (_$maxConcurrentDevicesComputed ??= Computed<int>(
+        () => super.maxConcurrentDevices,
+        name: '_SettingsStore.maxConcurrentDevices',
+      )).value;
 
   late final _$appVersionAtom = Atom(
     name: '_SettingsStore.appVersion',

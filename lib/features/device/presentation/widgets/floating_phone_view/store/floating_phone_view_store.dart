@@ -26,17 +26,39 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
 
   void _initializeStore() {
     // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình
-    final aspectRatio = sessionManagerStore.deviceAspectRatio;
-    final initialHeight = (320 / aspectRatio) + 40 + 12;
-    initializePositionAndSize(const Offset(100, 100), 320, initialHeight);
+    final aspectRatio = sessionManagerStore.floatingAspectRatio;
+    double initialWidth = 320;
+    double initialHeight = 600;
+    if (aspectRatio > 1.0) {
+      final maxW = !parentSize.isEmpty && parentSize.width > 200
+          ? (parentSize.width - 150).clamp(320.0, 800.0)
+          : 800.0;
+      initialWidth = (360.0 * aspectRatio).clamp(480.0, maxW);
+      initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+    } else {
+      initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+    }
+    initializePositionAndSize(const Offset(100, 100), initialWidth, initialHeight);
 
-    // Phản ứng với thay đổi tỷ lệ khung hình (ví dụ: khi session bắt đầu)
+    // Phản ứng với thay đổi tỷ lệ khung hình (ví dụ: khi xoay màn hình hoặc bắt đầu session)
     _aspectRatioDisposer ??= reaction(
-      (_) => sessionManagerStore.deviceAspectRatio,
+      (_) => sessionManagerStore.floatingAspectRatio,
       (ratio) {
         runInAction(() {
-          final newHeight = (width / ratio) + 40 + 12;
-          updateDimensions(width, newHeight);
+          double newWidth;
+          double newHeight;
+          if (ratio > 1.0) {
+            final maxW = !parentSize.isEmpty && parentSize.width > 200
+                ? (parentSize.width - 150).clamp(320.0, 800.0)
+                : 800.0;
+            final targetContentHeight = 360.0;
+            newWidth = (targetContentHeight * ratio).clamp(480.0, maxW);
+            newHeight = (newWidth / ratio) + 40 + 12;
+          } else {
+            newWidth = 320.0;
+            newHeight = (newWidth / ratio) + 40 + 12;
+          }
+          updateDimensions(newWidth, newHeight);
           updatePosition(getClampedPosition(position, parentSize));
         });
       },

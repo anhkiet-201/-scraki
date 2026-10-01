@@ -32,6 +32,17 @@ abstract class _SessionManagerStore with Store {
       ObservableMap<String, MirrorSession>();
 
 
+  @action
+  void updateSessionResolution(String sessionId, int width, int height) {
+    final current = activeSessions[sessionId];
+    if (current != null && (current.width != width || current.height != height)) {
+      activeSessions[sessionId] = current.copyWith(width: width, height: height);
+      logger.i(
+        '[SessionManagerStore] Resolution updated for $sessionId: ${width}x$height (Ratio: ${deviceAspectRatio.toStringAsFixed(2)})',
+      );
+    }
+  }
+
   Map<String, DeviceShell> get activeDeviceShells {
     return activeSessions.map((k,v) => MapEntry(k.replaceAll("_grid", "").replaceAll("_floating", ""),v.deviceShell));
   }
@@ -51,6 +62,19 @@ abstract class _SessionManagerStore with Store {
           (firstSession.height + UIConstants.gridNavigationBarHeight);
     }
     return fallbackRatio;
+  }
+
+  @computed
+  double get floatingAspectRatio {
+    if (floatingSerial != null) {
+      final s = activeSessions['${floatingSerial}_floating'] ??
+          activeSessions['${floatingSerial}_grid'];
+      if (s != null && s.width > 0 && s.height > 0) {
+        return s.width /
+            (s.height + UIConstants.floatingNavigationBarHeight);
+      }
+    }
+    return deviceAspectRatio;
   }
 
   // ═══════════════════════════════════════════════════════════════

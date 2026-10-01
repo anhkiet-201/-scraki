@@ -225,7 +225,7 @@ class _DeviceCardState extends State<DeviceCard>
                         child: PhoneView(
                           key: ValueKey('phone_view_${widget.device.serial}'),
                           serial: widget.device.serial,
-                          fit: BoxFit.fill,
+                          fit: BoxFit.contain,
                           focusNode: _cardFocusNode,
                         ),
                       ),

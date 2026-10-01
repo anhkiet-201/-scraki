@@ -238,7 +238,7 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
                 return NativeVideoDecoder(
                   key: Key('decoder_${widget.serial}'),
                   streamUrl: session.videoUrl,
-                  sessionId: widget.serial,
+                  sessionId: _store.sessionId,
                   nativeWidth: session.width,
                   nativeHeight: session.height,
                   service: session.decoderService,

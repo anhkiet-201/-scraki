@@ -20,4 +20,24 @@ class MirrorSession {
     required this.decoderService,
     required this.deviceShell,
   });
+
+  MirrorSession copyWith({
+    String? videoUrl,
+    int? width,
+    int? height,
+    int? port,
+    String? scid,
+    IVideoDecoderService? decoderService,
+    DeviceShell? deviceShell,
+  }) {
+    return MirrorSession(
+      videoUrl: videoUrl ?? this.videoUrl,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      port: port ?? this.port,
+      scid: scid ?? this.scid,
+      decoderService: decoderService ?? this.decoderService,
+      deviceShell: deviceShell ?? this.deviceShell,
+    );
+  }
 }
