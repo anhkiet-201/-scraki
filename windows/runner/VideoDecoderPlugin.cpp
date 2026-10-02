@@ -857,9 +857,9 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
                 state->height = cur_h;
                 state->buffer_pool.clear();
                 if (state->window_handle) {
-                    auto* data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
-                    if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(data))) {
-                        delete data;
+                    auto* res_data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
+                    if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(res_data))) {
+                        delete res_data;
                     }
                 }
             }
