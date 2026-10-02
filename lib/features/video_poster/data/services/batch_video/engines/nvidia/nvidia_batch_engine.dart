@@ -94,7 +94,7 @@ class NvidiaBatchEngine
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
     return NvidiaNvencOptions(
-      bitrate: '12M',
+      bitrate: '${plan.params.targetBitrateKbps}k',
       preset: 'p4',
       cq: '24',
       bFrames: plan.params.bFrames,

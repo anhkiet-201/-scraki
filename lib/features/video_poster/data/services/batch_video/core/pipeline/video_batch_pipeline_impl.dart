@@ -471,7 +471,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
     for (final src in List<String>.from(validVideos)..shuffle(random)) {
       final srcDur = videoDurations[src]!.toDouble();
       double currentTime = (srcDur > config.minSegmentDuration + 2)
-          ? random.nextDouble() * 2.0
+          ? random.nextDouble() * 2.5
           : 0.0;
       while (currentTime + config.minSegmentDuration <= srcDur) {
         double maxPossible = min(
@@ -482,15 +482,22 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         final segDur =
             config.minSegmentDuration +
             (random.nextDouble() * (maxPossible - config.minSegmentDuration));
-        pool.add(
-          SegmentRequest(
-            sourcePath: src,
-            startTime: currentTime,
-            duration: segDur,
-            hflip: random.nextDouble() < (isRetry ? 0.7 : 0.3),
-            hasAudio: videoHasAudio[src] ?? false,
-          ),
-        );
+        // Add random micro-jitter (0.05 - 0.20s) to disrupt exact keyframe alignment
+        final jitter = random.nextDouble() * 0.20;
+        final adjustedStart = min(srcDur - config.minSegmentDuration, currentTime + jitter);
+        final adjustedDuration = min(segDur, srcDur - adjustedStart);
+
+        if (adjustedDuration >= config.minSegmentDuration) {
+          pool.add(
+            SegmentRequest(
+              sourcePath: src,
+              startTime: double.parse(adjustedStart.toStringAsFixed(3)),
+              duration: double.parse(adjustedDuration.toStringAsFixed(3)),
+              hflip: random.nextDouble() < (isRetry ? 0.7 : 0.45),
+              hasAudio: videoHasAudio[src] ?? false,
+            ),
+          );
+        }
         currentTime += segDur;
       }
     }
@@ -521,18 +528,18 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       targetDuration:
           config.minFinalDuration +
           random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1),
-      pts: 0.99 + random.nextDouble() * 0.02,
-      brightness: _gaussian(random) * 0.015,
-      contrast: 1.0 + _gaussian(random) * 0.02,
-      gopSize: 48 + random.nextInt(144),
-      bFrames: [0, 2, 3][random.nextInt(3)],
+      pts: 0.97 + random.nextDouble() * 0.06, // 0.97 – 1.03
+      brightness: _gaussian(random) * 0.025,
+      contrast: 1.0 + _gaussian(random) * 0.035,
+      gopSize: 30 + [0, 18, 30, 60][random.nextInt(4)], // 30, 48, 60, 90
+      bFrames: [0, 1, 2][random.nextInt(3)],
       creationTime:
           '${DateTime.now().toUtc().toIso8601String().split('.').first}.000000Z',
       audioProfile: AudioSpoofProfile.random(random),
-      hueShift: _gaussian(random) * 2.0,
-      satFactor: 1.0 + _gaussian(random) * 0.03,
+      hueShift: _gaussian(random) * 3.0,
+      satFactor: 1.0 + _gaussian(random) * 0.045,
       vignetteAngle: pi / 120 + (_gaussian(random) + 1.0) / 2.0 * (pi / 80),
-      zoomVal: 1.02 + (random.nextDouble() * 0.02),
+      zoomVal: 1.03 + (random.nextDouble() * 0.05), // 1.03 – 1.08
       cropJitterX: 0.01 + random.nextDouble() * 0.02,
       cropJitterY: 0.01 + random.nextDouble() * 0.02,
       panStartX: random.nextDouble(),
@@ -540,15 +547,18 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       panEndX: random.nextDouble(),
       panEndY: random.nextDouble(),
       transitionDuration: 0.05 + random.nextDouble() * 0.05,
+      noiseIntensity: 3.0 + random.nextDouble() * 4.0, // 3.0 – 7.0 (Film grain against pHash)
+      microRotationAngle: (random.nextDouble() * 0.6) - 0.3, // -0.3° to +0.3°
+      targetBitrateKbps: 7500 + random.nextInt(5000), // 7500 – 12500 kbps
       lutFilePath: lutFilePath,
       gammaR: !config.generateColorFilter
-          ? 0.98 + random.nextDouble() * 0.04
+          ? 0.97 + random.nextDouble() * 0.06
           : null,
       gammaG: !config.generateColorFilter
-          ? 0.98 + random.nextDouble() * 0.04
+          ? 0.97 + random.nextDouble() * 0.06
           : null,
       gammaB: !config.generateColorFilter
-          ? 0.98 + random.nextDouble() * 0.04
+          ? 0.97 + random.nextDouble() * 0.06
           : null,
     );
 

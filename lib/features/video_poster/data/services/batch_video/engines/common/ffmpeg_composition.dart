@@ -11,7 +11,6 @@ import 'package:scraki/features/video_poster/data/services/batch_video/core/tool
 import 'package:scraki/features/video_poster/data/services/batch_video/engines/hardware/video_hardware_capability_resolver.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/batch_video_models.dart';
 import 'package:scraki/features/video_poster/data/services/batch_video/models/video_batch_execution_context.dart';
-import 'package:path/path.dart' as p;
 
 /// Base implementation of [Composition] using standard FFmpeg logic.
 ///
@@ -79,10 +78,6 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
   }
 
   /// Executes the FFmpeg process with the provided [args].
-  ///
-  /// This method automatically handles large filter scripts by writing them
-  /// to a temporary file and using `-filter_complex_script` to avoid
-  /// command-line length limitations.
   @override
   Future<ExecutionResult> execute(
     List<String> args,
@@ -93,28 +88,11 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     Duration? timeout,
   }) async {
     final List<String> finalArgs = ['-nostdin', ...args];
-    File? filterFile;
     Timer? watchdog;
     final Duration effectiveTimeout = timeout ?? const Duration(minutes: 10);
     final List<String> errorLogs = [];
 
     try {
-      final filterIdx = finalArgs.indexOf('-filter_complex');
-      if (filterIdx != -1 && finalArgs[filterIdx + 1].length > 1000) {
-        final filterContent = finalArgs[filterIdx + 1];
-        final tempDir = Directory.systemTemp;
-        filterFile = File(
-          p.join(
-            tempDir.path,
-            'ffmpeg_filter_${DateTime.now().millisecondsSinceEpoch}.txt',
-          ),
-        );
-        await filterFile.writeAsString(filterContent);
-
-        finalArgs[filterIdx] = '-filter_complex_script';
-        finalArgs[filterIdx + 1] = filterFile.path;
-      }
-
       final process = await Process.start(
         hardwareResolver.ffmpegBin,
         finalArgs,
@@ -226,11 +204,6 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       }
     } finally {
       watchdog?.cancel();
-      try {
-        if (filterFile != null && await filterFile.exists()) {
-          await filterFile.delete();
-        }
-      } catch (_) {}
     }
   }
 
@@ -310,7 +283,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     final jitterCrop =
         'crop=iw*(1-${params.cropJitterX}):ih*(1-${params.cropJitterY}):0:0';
 
-    // 2. Dynamic Pan (Ken Burns Effect)
+    // 2. Dynamic Pan (Ken Burns Effect) with sinusoidal micro-drift
     final cropW = (plan.targetWidth / params.zoomVal).round();
     final cropH = (plan.targetHeight / params.zoomVal).round();
     final maxOffX = plan.targetWidth - cropW;
@@ -321,20 +294,38 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     final sy = (params.panStartY * maxOffY).round();
     final ey = (params.panEndY * maxOffY).round();
 
-    final xExpr = '$sx+($ex-$sx)*t/${params.targetDuration}';
-    final yExpr = '$sy+($ey-$sy)*t/${params.targetDuration}';
+    final xExpr = '$sx+($ex-$sx)*t/${params.targetDuration}+2*sin(2*PI*t/4)';
+    final yExpr = '$sy+($ey-$sy)*t/${params.targetDuration}+2*cos(2*PI*t/4)';
     final dynamicPan = 'crop=$cropW:$cropH:$xExpr:$yExpr';
 
     final String sourceLabel =
         plan.segmentPaths.length > 1 ? '[v_concat]' : inputLabel;
 
+    final filterParts = <String>[
+      dynamicPan,
+      jitterCrop,
+      toolkit.scale(plan.targetWidth, plan.targetHeight),
+    ];
+
+    if (params.microRotationAngle != 0.0) {
+      filterParts.add(
+        toolkit.microRotate(
+          params.microRotationAngle,
+          ow: plan.targetWidth,
+          oh: plan.targetHeight,
+        ),
+      );
+    }
+
+    filterParts.add(toolkit.adjustSpeed(params.pts));
+
     // Reconstruction: sourceLabel -> [v_clean]
-    return '$sourceLabel setpts=N/30/TB,fps=30[v_clean];[v_clean]$dynamicPan,$jitterCrop,${toolkit.scale(plan.targetWidth, plan.targetHeight)},${toolkit.adjustSpeed(params.pts)}';
+    return '$sourceLabel setpts=N/30/TB,fps=30[v_clean];[v_clean]${filterParts.join(',')}';
   }
 
   /// Builds the color grading filter chain.
   ///
-  /// Combines equalizer (eq), hue, vignette, and optional 3D LUTs.
+  /// Combines equalizer (eq with multi-channel gamma), hue, vignette, film grain/noise, and optional 3D LUTs.
   @override
   String buildColorGradingChain(CompositionPlan plan) {
     final params = plan.params;
@@ -345,6 +336,9 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         brightness: params.brightness,
         contrast: params.contrast,
         saturation: params.satFactor,
+        gammaR: params.gammaR,
+        gammaG: params.gammaG,
+        gammaB: params.gammaB,
       ),
     );
 
@@ -353,6 +347,10 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
 
     if (params.lutFilePath != null) {
       filters.add(toolkit.lut3d(params.lutFilePath!));
+    }
+
+    if (params.noiseIntensity > 0) {
+      filters.add(toolkit.noise(params.noiseIntensity));
     }
 
     return filters.join(',');

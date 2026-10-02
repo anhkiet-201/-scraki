@@ -73,8 +73,20 @@ class BaseFfmpegToolkit implements VideoToolkit {
     double contrast = 1.0,
     double saturation = 1.0,
     double gamma = 1.0,
+    double? gammaR,
+    double? gammaG,
+    double? gammaB,
   }) {
-    return 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation:gamma=$gamma';
+    final List<String> parts = [
+      'brightness=${brightness.toStringAsFixed(4)}',
+      'contrast=${contrast.toStringAsFixed(4)}',
+      'saturation=${saturation.toStringAsFixed(4)}',
+      'gamma=${gamma.toStringAsFixed(4)}',
+    ];
+    if (gammaR != null) parts.add('gamma_r=${gammaR.toStringAsFixed(4)}');
+    if (gammaG != null) parts.add('gamma_g=${gammaG.toStringAsFixed(4)}');
+    if (gammaB != null) parts.add('gamma_b=${gammaB.toStringAsFixed(4)}');
+    return 'eq=${parts.join(':')}';
   }
 
   /// Flips the video horizontally.
@@ -119,4 +131,20 @@ class BaseFfmpegToolkit implements VideoToolkit {
   /// Applies a vignette effect (darkened corners).
   @override
   String vignette(double angle) => 'vignette=angle=$angle';
+
+  /// Applies subtle temporal film grain to randomize pixel-level DCT coefficients.
+  @override
+  String noise(double intensity) {
+    final int clamped = intensity.round().clamp(1, 100);
+    return 'noise=alls=$clamped:allf=t+u';
+  }
+
+  /// Applies sub-degree rotation to disrupt diagonal feature vectors.
+  @override
+  String microRotate(double angle, {int? ow, int? oh}) {
+    String res = 'rotate=($angle)*PI/180:c=black@0';
+    if (ow != null) res += ':ow=$ow';
+    if (oh != null) res += ':oh=$oh';
+    return res;
+  }
 }

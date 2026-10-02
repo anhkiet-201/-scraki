@@ -123,6 +123,12 @@ class CompositionParams {
   final double transitionDuration;
   /// Optional path to a 3D LUT file for professional color grading.
   final String? lutFilePath;
+  /// Intensity for temporal film grain / micro-noise filter (typically 3.0 to 7.0).
+  final double noiseIntensity;
+  /// Micro-rotation angle in degrees (typically -0.3 to +0.3) for diagonal edge disruption.
+  final double microRotationAngle;
+  /// Targeted video bitrate in kbps (e.g., 7500 to 12500 kbps) for bitstream diversification.
+  final int targetBitrateKbps;
   /// Gamma adjustment for Red channel.
   final double? gammaR;
   /// Gamma adjustment for Green channel.
@@ -150,6 +156,9 @@ class CompositionParams {
     required this.panEndX,
     required this.panEndY,
     required this.transitionDuration,
+    this.noiseIntensity = 4.0,
+    this.microRotationAngle = 0.0,
+    this.targetBitrateKbps = 10000,
     this.lutFilePath,
     this.gammaR,
     this.gammaG,

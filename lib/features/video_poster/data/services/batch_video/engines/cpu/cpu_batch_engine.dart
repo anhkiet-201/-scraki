@@ -88,7 +88,7 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
     return CpuLibx264Options(
       preset: 'medium',
-      crf: '21',
+      crf: '${20 + (plan.outputIndex % 3)}',
       bFrames: plan.params.bFrames,
     );
   }

@@ -27,8 +27,16 @@ abstract interface class VideoToolkit {
   /// Thao tác điều chỉnh tốc độ
   String adjustSpeed(double pts);
 
-  /// Điều chỉnh Brightness, Contrast, Saturation, Gamma
-  String eq({double brightness = 0.0, double contrast = 1.0, double saturation = 1.0, double gamma = 1.0});
+  /// Điều chỉnh Brightness, Contrast, Saturation, Gamma (hỗ trợ gamma đa kênh R, G, B)
+  String eq({
+    double brightness = 0.0,
+    double contrast = 1.0,
+    double saturation = 1.0,
+    double gamma = 1.0,
+    double? gammaR,
+    double? gammaG,
+    double? gammaB,
+  });
 
   /// Điều chỉnh Hue, Saturation
   String hue({double? hueShift, double? saturation});
@@ -41,4 +49,10 @@ abstract interface class VideoToolkit {
 
   /// Chồng lớp (Overlay) - Tự động chọn filter phù hợp phần cứng
   String overlay({String? x, String? y, String? enable, bool shortest = true});
+
+  /// Thêm nhiễu hạt điện ảnh / temporal film grain để bẻ gãy pHash và ma trận DCT
+  String noise(double intensity);
+
+  /// Thao tác vi xoay góc cực nhỏ (-0.3 đến +0.3 độ) làm lệch các đặc trưng đường chéo
+  String microRotate(double angle, {int? ow, int? oh});
 }

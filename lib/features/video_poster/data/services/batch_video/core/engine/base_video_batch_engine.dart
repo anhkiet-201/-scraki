@@ -227,6 +227,10 @@ abstract class BaseVideoBatchEngine<
       '-map', '[mixed_a]',
       '-shortest',
       '-r', '30', // Force 30fps final output
+      '-map_metadata', '-1', // Strip all source metadata
+      '-metadata:g', 'encoder=', // Clear FFmpeg Lavf signature
+      '-movflags', '+faststart',
+      '-avoid_negative_ts', 'make_zero',
       ...getEncoderArgs(plan).toArgs(),
       plan.finalOutputPath,
     ]);

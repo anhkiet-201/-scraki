@@ -85,37 +85,52 @@ class SegmentRequest {
 /// Contains subtle adjustments to pitch, equalizer bands, and delay to 
 /// "spoof" or uniquely identify the audio stream.
 class AudioSpoofProfile {
-  /// Pitch adjustment factor (typically near 1.0).
+  /// Pitch adjustment factor (widened to 0.965 - 1.035 for robust anti-fingerprinting).
   final double pitchFactor;
-  /// Bass gain in dB.
-  final double bassGain;
-  /// Mid-range gain in dB.
+  /// Sub-bass gain (60Hz) in dB (-3.0 to +3.0 dB).
+  final double subBassGain;
+  /// Low-mid gain (250Hz) in dB (-3.0 to +3.0 dB).
+  final double lowMidGain;
+  /// Mid-range gain (1000Hz) in dB (-2.5 to +2.5 dB).
   final double midGain;
-  /// Treble gain in dB.
+  /// High-mid gain (3500Hz) in dB (-3.0 to +3.0 dB).
+  final double highMidGain;
+  /// Treble gain (10000Hz) in dB (-3.0 to +3.0 dB).
   final double trebleGain;
   /// Targeted audio bitrate in kbps.
   final int audioBitrate;
   /// Small delay in milliseconds to shift the audio phase.
   final int delayMs;
+  /// Stereo spread multiplier for spatial phase decorrelation (1.05 to 1.13).
+  final double stereoSpread;
+
+  /// Backwards-compatibility alias for sub-bass.
+  double get bassGain => subBassGain;
 
   const AudioSpoofProfile({
     required this.pitchFactor,
-    required this.bassGain,
+    required this.subBassGain,
+    required this.lowMidGain,
     required this.midGain,
+    required this.highMidGain,
     required this.trebleGain,
     required this.audioBitrate,
     required this.delayMs,
+    this.stereoSpread = 1.08,
   });
 
   /// Creates a profile with random variations within safe ranges.
   factory AudioSpoofProfile.random(Random random) {
     return AudioSpoofProfile(
-      pitchFactor: 0.985 + random.nextDouble() * 0.03,
-      bassGain: (random.nextDouble() * 3.0) - 1.5,
-      midGain: (random.nextDouble() * 3.0) - 1.5,
-      trebleGain: (random.nextDouble() * 3.0) - 1.5,
+      pitchFactor: 0.965 + random.nextDouble() * 0.07, // 0.965 – 1.035 (±3.5%)
+      subBassGain: (random.nextDouble() * 6.0) - 3.0,
+      lowMidGain: (random.nextDouble() * 6.0) - 3.0,
+      midGain: (random.nextDouble() * 5.0) - 2.5,
+      highMidGain: (random.nextDouble() * 6.0) - 3.0,
+      trebleGain: (random.nextDouble() * 6.0) - 3.0,
       audioBitrate: [96, 112, 128, 160][random.nextInt(4)],
-      delayMs: 10 + random.nextInt(31), // 10–40ms
+      delayMs: 15 + random.nextInt(26), // 15–40ms
+      stereoSpread: 1.05 + random.nextDouble() * 0.08, // 1.05 - 1.13
     );
   }
 
@@ -124,14 +139,20 @@ class AudioSpoofProfile {
     final pitchStr = pitchFactor.toStringAsFixed(6);
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
     final volStr = volume.toStringAsFixed(3);
+    final spreadStr = stereoSpread.toStringAsFixed(2);
     return 'aresample=44100,'
         'atrim=start=0,'
+        'highpass=f=45,'
+        'lowpass=f=16000,'
         'asetrate=44100*$pitchStr,'
         'atempo=$totalTempo,'
-        'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
+        'equalizer=f=60:width_type=o:width=2:g=${subBassGain.toStringAsFixed(2)},'
+        'equalizer=f=250:width_type=o:width=2:g=${lowMidGain.toStringAsFixed(2)},'
         'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
-        'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
-        'adelay=$delayMs|$delayMs,'
+        'equalizer=f=3500:width_type=o:width=2:g=${highMidGain.toStringAsFixed(2)},'
+        'equalizer=f=10000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
+        'aecho=0.8:0.88:$delayMs:0.12,'
+        'extrastereo=m=$spreadStr,'
         'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
         'aresample=44100,aformat=channel_layouts=stereo';
@@ -142,14 +163,20 @@ class AudioSpoofProfile {
     final pitchStr = pitchFactor.toStringAsFixed(6);
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
     final volStr = volume.clamp(0.0, 1.0).toStringAsFixed(3);
+    final spreadStr = stereoSpread.toStringAsFixed(2);
     return 'aresample=44100,'
         'atrim=start=0,'
+        'highpass=f=45,'
+        'lowpass=f=16000,'
         'asetrate=44100*$pitchStr,'
         'atempo=$totalTempo,'
-        'equalizer=f=80:width_type=o:width=2:g=${bassGain.toStringAsFixed(2)},'
+        'equalizer=f=60:width_type=o:width=2:g=${subBassGain.toStringAsFixed(2)},'
+        'equalizer=f=250:width_type=o:width=2:g=${lowMidGain.toStringAsFixed(2)},'
         'equalizer=f=1000:width_type=o:width=2:g=${midGain.toStringAsFixed(2)},'
-        'equalizer=f=8000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
-        'adelay=$delayMs|$delayMs,'
+        'equalizer=f=3500:width_type=o:width=2:g=${highMidGain.toStringAsFixed(2)},'
+        'equalizer=f=10000:width_type=o:width=2:g=${trebleGain.toStringAsFixed(2)},'
+        'aecho=0.8:0.88:$delayMs:0.12,'
+        'extrastereo=m=$spreadStr,'
         'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
         'aresample=44100,aformat=channel_layouts=stereo';

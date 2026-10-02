@@ -83,6 +83,9 @@ class AppleBatchEngine
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
-    return VideoToolboxOptions(bitrate: '12M', bFrames: plan.params.bFrames);
+    return VideoToolboxOptions(
+      bitrate: '${plan.params.targetBitrateKbps}k',
+      bFrames: plan.params.bFrames,
+    );
   }
 }
