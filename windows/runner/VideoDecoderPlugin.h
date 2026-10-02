@@ -32,12 +32,21 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#define WM_VIDEO_RESOLUTION_CHANGED (WM_USER + 1024)
+
+struct VideoResolutionChangeData {
+  int64_t texture_id;
+  int width;
+  int height;
+};
+
 class VideoDecoderPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar);
 
   VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar,
-                     std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel);
+                     std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                     HWND window_handle);
 
   virtual ~VideoDecoderPlugin();
 
@@ -84,6 +93,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
       int sws_height = 0;
       int sws_format = -1;
       std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel;
+      HWND window_handle = nullptr;
 
       std::atomic<bool> is_visible{false};
       std::atomic<bool> waiting_for_iframe{true};
@@ -107,6 +117,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
    public:
     VideoSession(flutter::TextureRegistrar* texture_registrar,
                  std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                 HWND window_handle,
                  const std::string& host, int port);
     ~VideoSession();
 
@@ -139,6 +150,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
 
   flutter::TextureRegistrar* texture_registrar_;
   std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
+  HWND window_handle_ = nullptr;
   std::map<int64_t, std::unique_ptr<VideoSession>> sessions_;
   std::mutex sessions_mutex_;
 };

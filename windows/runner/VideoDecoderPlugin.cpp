@@ -225,8 +225,9 @@ static bool IsKeyframe(const uint8_t* data, size_t size) {
 }
 
 VideoDecoderPlugin::VideoDecoderPlugin(flutter::TextureRegistrar* texture_registrar,
-                                       std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel)
-    : texture_registrar_(texture_registrar), channel_(channel) {
+                                       std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                                       HWND window_handle)
+    : texture_registrar_(texture_registrar), channel_(channel), window_handle_(window_handle) {
   LogTrace("Plugin Constructor - Initializing Winsock");
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -320,7 +321,7 @@ void VideoDecoderPlugin::StartDecoding(const std::string& url,
         std::string host = url_str.substr(0, colon_pos);
         int port = std::stoi(url_str.substr(colon_pos + 1));
 
-        auto session = std::make_unique<VideoSession>(texture_registrar_, channel_, host, port);
+        auto session = std::make_unique<VideoSession>(texture_registrar_, channel_, window_handle_, host, port);
         int64_t texture_id = session->texture_id();
         
         if (texture_id == -1) {
@@ -396,11 +397,13 @@ VideoDecoderPlugin::VideoSessionState::~VideoSessionState() {
 // VideoSession Implementation
 VideoDecoderPlugin::VideoSession::VideoSession(flutter::TextureRegistrar* texture_registrar,
                                                std::shared_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel,
+                                               HWND window_handle,
                                                const std::string& host, int port) {
     int current_sessions = ++g_active_sessions;
     LogTrace("VideoSession Constructor [%d active] - Host: %s Port: %d", current_sessions, host.c_str(), port);
     state_ = std::make_shared<VideoSessionState>(texture_registrar);
     state_->channel = channel;
+    state_->window_handle = window_handle;
 
     auto weak_state = std::weak_ptr<VideoSessionState>(state_);
 
@@ -836,11 +839,29 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
         if (state->is_visible) {
             if (state->frame->format == AV_PIX_FMT_D3D11) {
                 if (av_hwframe_transfer_data(state->sw_frame, state->frame, 0) < 0) {
+                    LogTrace("av_hwframe_transfer_data failed on frame [%lld], requesting software fallback", state->texture_id);
+                    state->pending_hw_request = VideoSessionState::HWRequest::Downgrade;
                     continue;
                 }
                 ProcessFrame(state, state->sw_frame);
             } else {
                 ProcessFrame(state, state->frame);
+            }
+        } else {
+            // Even if invisible, update tracked dimensions and notify Flutter if resolution changed
+            int cur_w = state->frame->width;
+            int cur_h = state->frame->height;
+            if (cur_w > 0 && cur_h > 0 && (state->width != cur_w || state->height != cur_h)) {
+                std::lock_guard<std::recursive_mutex> lock(state->pixel_buffer_mutex);
+                state->width = cur_w;
+                state->height = cur_h;
+                state->buffer_pool.clear();
+                if (state->window_handle) {
+                    auto* data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
+                    if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(data))) {
+                        delete data;
+                    }
+                }
             }
         }
     }
@@ -933,13 +954,28 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
 
         state->texture_registrar->MarkTextureFrameAvailable(state->texture_id);
 
-        if (resolution_changed && state->channel && state->texture_id != -1) {
-            auto args = flutter::EncodableMap{
-                {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
-                {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
-                {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
-            };
-            state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+        if (resolution_changed && state->texture_id != -1) {
+            if (state->window_handle) {
+                auto* data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
+                if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(data))) {
+                    delete data;
+                    if (state->channel) {
+                        auto args = flutter::EncodableMap{
+                            {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
+                            {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
+                            {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
+                        };
+                        state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+                    }
+                }
+            } else if (state->channel) {
+                auto args = flutter::EncodableMap{
+                    {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
+                    {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
+                    {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
+                };
+                state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+            }
         }
     }
 }
@@ -949,11 +985,39 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
     auto* registrar = flutter::PluginRegistrarManager::GetInstance()
                         ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);
 
+    HWND window_handle = nullptr;
+    if (registrar->GetView()) {
+        window_handle = registrar->GetView()->GetNativeWindow();
+    }
+
     auto channel = std::make_shared<flutter::MethodChannel<flutter::EncodableValue>>(
         registrar->messenger(), "com.scraki.video_decoder",
         &flutter::StandardMethodCodec::GetInstance());
 
-    auto plugin = std::make_unique<VideoDecoderPlugin>(registrar->texture_registrar(), channel);
+    auto plugin = std::make_unique<VideoDecoderPlugin>(registrar->texture_registrar(), channel, window_handle);
+
+    // Register top level window proc delegate to handle WM_VIDEO_RESOLUTION_CHANGED on UI thread
+    std::weak_ptr<flutter::MethodChannel<flutter::EncodableValue>> weak_channel = channel;
+    registrar->RegisterTopLevelWindowProcDelegate(
+        [weak_channel](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> std::optional<LRESULT> {
+            if (message == WM_VIDEO_RESOLUTION_CHANGED) {
+                auto* data = reinterpret_cast<VideoResolutionChangeData*>(lparam);
+                if (data) {
+                    auto ch = weak_channel.lock();
+                    if (ch && data->texture_id != -1) {
+                        auto args = flutter::EncodableMap{
+                            {flutter::EncodableValue("textureId"), flutter::EncodableValue(data->texture_id)},
+                            {flutter::EncodableValue("width"), flutter::EncodableValue(data->width)},
+                            {flutter::EncodableValue("height"), flutter::EncodableValue(data->height)}
+                        };
+                        ch->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+                    }
+                    delete data;
+                }
+                return 0;
+            }
+            return std::nullopt;
+        });
 
     channel->SetMethodCallHandler(
         [plugin_pointer = plugin.get()](const auto& call, auto result) {

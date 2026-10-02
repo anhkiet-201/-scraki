@@ -104,6 +104,7 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
                   ),
               builder: (context, candidateData, rejectedData) {
                 return Stack(
+                  fit: StackFit.expand,
                   alignment: Alignment.center,
                   children: [
                     Positioned.fill(child: _buildContent(isFloating)),
@@ -182,72 +183,64 @@ class _PhoneViewState extends State<PhoneView> with AppAuthStoreMixin {
   }
 
   Widget _buildMirrorView(MirrorSession session) {
-    return FittedBox(
-      fit: widget.fit,
-      alignment: Alignment.center,
-      child: Focus(
-        focusNode: _focusNode,
-        onKeyEvent: widget.isFloating
-            ? (node, event) {
-                _store.handleKeyboardEvent(widget.serial, event);
-                return KeyEventResult.handled;
-              }
-            : null,
-        child: SizedBox(
-          width: session.width.toDouble(),
-          height:
-              session.height.toDouble() +
-              (_store.isFloating
-                  ? UIConstants.floatingNavigationBarHeight
-                  : UIConstants.gridNavigationBarHeight),
-          child: _buildVideoWithNavigation(session),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoWithNavigation(MirrorSession session) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: Listener(
-            onPointerDown: widget.isFloating
-                ? (e) => _handlePointer(e, 0, session)
-                : (e) => _handleDoubleTapOnly(e),
-            onPointerUp: widget.isFloating
-                ? (e) => _handlePointer(e, 1, session)
-                : null,
-            onPointerMove: widget.isFloating
-                ? (e) => _handlePointer(e, 2, session)
-                : null,
-            onPointerSignal: widget.isFloating
-                ? (event) {
-                    if (event is PointerScrollEvent) {
-                      _store.handleScrollEvent(
-                        widget.serial,
-                        event,
-                        session.width,
-                        session.height,
-                      );
+          child: FittedBox(
+            fit: widget.fit,
+            alignment: Alignment.center,
+            child: Focus(
+              focusNode: _focusNode,
+              onKeyEvent: widget.isFloating
+                  ? (node, event) {
+                      _store.handleKeyboardEvent(widget.serial, event);
+                      return KeyEventResult.handled;
                     }
-                  }
-                : null,
-            child: Observer(
-              builder: (context) {
-                return NativeVideoDecoder(
-                  key: Key('decoder_${widget.serial}'),
-                  streamUrl: session.videoUrl,
-                  sessionId: _store.sessionId,
-                  nativeWidth: session.width,
-                  nativeHeight: session.height,
-                  service: session.decoderService,
-                  fit: widget.fit,
-                  isVisible: _store.isVisible,
-                  onError: (error) =>
-                      _store.setDecoderError(widget.serial, error),
-                );
-              },
+                  : null,
+              child: SizedBox(
+                width: session.width.toDouble(),
+                height: session.height.toDouble(),
+                child: Listener(
+                  onPointerDown: widget.isFloating
+                      ? (e) => _handlePointer(e, 0, session)
+                      : (e) => _handleDoubleTapOnly(e),
+                  onPointerUp: widget.isFloating
+                      ? (e) => _handlePointer(e, 1, session)
+                      : null,
+                  onPointerMove: widget.isFloating
+                      ? (e) => _handlePointer(e, 2, session)
+                      : null,
+                  onPointerSignal: widget.isFloating
+                      ? (event) {
+                          if (event is PointerScrollEvent) {
+                            _store.handleScrollEvent(
+                              widget.serial,
+                              event,
+                              session.width,
+                              session.height,
+                            );
+                          }
+                        }
+                      : null,
+                  child: Observer(
+                    builder: (context) {
+                      return NativeVideoDecoder(
+                        key: Key('decoder_${_store.sessionId}'),
+                        streamUrl: session.videoUrl,
+                        sessionId: _store.sessionId,
+                        nativeWidth: session.width,
+                        nativeHeight: session.height,
+                        service: session.decoderService,
+                        fit: widget.fit,
+                        isVisible: _store.isVisible,
+                        onError: (error) =>
+                            _store.setDecoderError(widget.serial, error),
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         ),

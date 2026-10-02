@@ -119,6 +119,7 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           FloatingWindowHeader(
                             title: _deviceTitle,
@@ -134,47 +135,48 @@ class _FloatingPhoneViewState extends State<FloatingPhoneView>
                             },
                           ),
 
-                              // View Content
-                              Expanded(
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 2,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.transparent,
-                                  ),
-                                  child: SizedBox(
-                                    width: _store.width,
-                                    height: _store.height,
-                                    child: PhoneView(
-                                      serial: widget.serial,
-                                      fit: BoxFit.contain,
-                                      isFloating: true,
-                                      onPosterDropped: (data) async {
-                                        final file = await _toolBoxKey
-                                            .currentState
-                                            ?.capturePoster();
-                                        return file;
-                                      },
-                                    ),
-                                  ),
+                          // View Content
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              decoration: const BoxDecoration(
+                                color: Colors.transparent,
+                              ),
+                              child: SizedBox(
+                                width: _store.width,
+                                height: _store.height,
+                                child: PhoneView(
+                                  serial: widget.serial,
+                                  fit: BoxFit.contain,
+                                  isFloating: true,
+                                  onPosterDropped: (data) async {
+                                    final file = await _toolBoxKey
+                                        .currentState
+                                        ?.capturePoster();
+                                    return file;
+                                  },
                                 ),
                               ),
+                            ),
+                          ),
 
                           // 2. Resize Handle Component
                           FloatingResizeHandle(
                             onResizeUpdate: (details) {
                               runInAction(() {
+                                final safeRatio = aspectRatio > 0.1 ? aspectRatio : (9 / 16);
                                 final delta = details.delta.dx + details.delta.dy;
                                 double maxAllowedWidth = 1200.0;
                                 if (!widget.parentSize.isEmpty) {
                                   final maxWidthByX = widget.parentSize.width - _store.position.dx;
-                                  final maxHeightAvailable = widget.parentSize.height - _store.position.dy - 52;
-                                  final maxWidthByY = maxHeightAvailable * aspectRatio;
+                                  final maxHeightAvailable = widget.parentSize.height - _store.position.dy - 104;
+                                  final maxWidthByY = maxHeightAvailable * safeRatio;
                                   maxAllowedWidth = [maxWidthByX, maxWidthByY, 1200.0].reduce((a, b) => a < b ? a : b);
                                 }
                                 final newWidth = (_store.width + delta).clamp(240.0, maxAllowedWidth);
-                                final newHeight = (newWidth / aspectRatio) + 48 + 16;
+                                final newHeight = ((newWidth - 4.0) / safeRatio) + 104.0;
                                 _store.updateDimensions(newWidth, newHeight);
                                 _store.updatePosition(_store.getClampedPosition(_store.position, widget.parentSize));
                               });

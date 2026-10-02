@@ -58,8 +58,10 @@ abstract class _SessionManagerStore with Store {
     // Logic: Tỷ lệ = Chiều rộng / (Chiều cao + Chiều cao thanh điều hướng)
     final firstSession = activeSessions.values.first;
     if (firstSession.width > 0 && firstSession.height > 0) {
-      return firstSession.width /
-          (firstSession.height + UIConstants.gridNavigationBarHeight);
+      if (firstSession.width <= firstSession.height) {
+        return firstSession.width /
+            (firstSession.height + UIConstants.gridNavigationBarHeight);
+      }
     }
     return fallbackRatio;
   }
@@ -70,8 +72,7 @@ abstract class _SessionManagerStore with Store {
       final s = activeSessions['${floatingSerial}_floating'] ??
           activeSessions['${floatingSerial}_grid'];
       if (s != null && s.width > 0 && s.height > 0) {
-        return s.width /
-            (s.height + UIConstants.floatingNavigationBarHeight);
+        return s.width / s.height;
       }
     }
     return deviceAspectRatio;

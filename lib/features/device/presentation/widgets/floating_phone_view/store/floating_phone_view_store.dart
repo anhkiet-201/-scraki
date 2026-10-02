@@ -27,16 +27,21 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
   void _initializeStore() {
     // Khởi tạo vị trí và kích thước dựa trên tỷ lệ khung hình
     final aspectRatio = sessionManagerStore.floatingAspectRatio;
+    final safeRatio = aspectRatio > 0.1 ? aspectRatio : (9 / 16);
     double initialWidth = 320;
     double initialHeight = 600;
-    if (aspectRatio > 1.0) {
+    const double chromeHeight = 104.0; // Header 48px + Nav bar 40px + Resize handle 16px
+    const double chromeWidth = 4.0;    // Margins 4px
+
+    if (safeRatio > 1.0) {
       final maxW = !parentSize.isEmpty && parentSize.width > 200
           ? (parentSize.width - 150).clamp(320.0, 800.0)
           : 800.0;
-      initialWidth = (360.0 * aspectRatio).clamp(480.0, maxW);
-      initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+      const targetContentHeight = 360.0;
+      initialWidth = ((targetContentHeight * safeRatio) + chromeWidth).clamp(480.0, maxW);
+      initialHeight = ((initialWidth - chromeWidth) / safeRatio) + chromeHeight;
     } else {
-      initialHeight = (initialWidth / aspectRatio) + 40 + 12;
+      initialHeight = ((initialWidth - chromeWidth) / safeRatio) + chromeHeight;
     }
     initializePositionAndSize(const Offset(100, 100), initialWidth, initialHeight);
 
@@ -44,19 +49,22 @@ abstract class _FloatingPhoneViewStore with Store, SessionManagerStoreMixin {
     _aspectRatioDisposer ??= reaction(
       (_) => sessionManagerStore.floatingAspectRatio,
       (ratio) {
+        final safeRatio = ratio > 0.1 ? ratio : (9 / 16);
         runInAction(() {
           double newWidth;
           double newHeight;
-          if (ratio > 1.0) {
+          const double chromeH = 104.0; // Header 48px + Nav bar 40px + Resize handle 16px
+          const double chromeW = 4.0;
+          if (safeRatio > 1.0) {
             final maxW = !parentSize.isEmpty && parentSize.width > 200
                 ? (parentSize.width - 150).clamp(320.0, 800.0)
                 : 800.0;
-            final targetContentHeight = 360.0;
-            newWidth = (targetContentHeight * ratio).clamp(480.0, maxW);
-            newHeight = (newWidth / ratio) + 40 + 12;
+            const targetContentHeight = 360.0;
+            newWidth = ((targetContentHeight * safeRatio) + chromeW).clamp(480.0, maxW);
+            newHeight = ((newWidth - chromeW) / safeRatio) + chromeH;
           } else {
             newWidth = 320.0;
-            newHeight = (newWidth / ratio) + 40 + 12;
+            newHeight = ((newWidth - chromeW) / safeRatio) + chromeH;
           }
           updateDimensions(newWidth, newHeight);
           updatePosition(getClampedPosition(position, parentSize));

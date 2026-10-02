@@ -80,6 +80,9 @@ abstract class _PhoneViewStore with Store, SessionManagerStoreMixin {
 
   _PhoneViewStore(this.serial, this.isFloatingView) {
     sessionId = isFloatingView ? '${serial}_floating' : '${serial}_grid';
+    if (isFloatingView) {
+      _isVisible = true;
+    }
     initializing();
   }
 
