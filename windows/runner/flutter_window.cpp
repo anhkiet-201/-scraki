@@ -26,9 +26,9 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  SetChildContent(flutter_controller_->view()->GetNativeWindow());
   VideoDecoderPlugin::RegisterWithRegistrar(
       flutter_controller_->engine()->GetRegistrarForPlugin("VideoDecoderPlugin"));
-  SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();

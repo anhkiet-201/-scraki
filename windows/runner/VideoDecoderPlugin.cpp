@@ -587,15 +587,17 @@ bool VideoDecoderPlugin::VideoSession::InitializeDecoder(std::shared_ptr<VideoSe
     state->codec_context->flags |= AV_CODEC_FLAG_LOW_DELAY;
     state->codec_context->flags2 |= AV_CODEC_FLAG2_FAST;
     state->codec_context->thread_count = 1;
-    state->codec_context->get_format = get_hw_format_d3d11;
-
     // GPU Decoder (D3D11VA) Initialization with Session Limiter
     bool can_use_hw = false;
-    // [Smart Resource Management] ONLY use GPU for VISIBLE sessions
-    if (state->is_visible && g_hw_sessions_count < MAX_HW_SESSIONS) {
+    // [Smart Resource Management] ONLY use GPU for VISIBLE sessions if not forced to software
+    if (!state->force_software && state->is_visible && g_hw_sessions_count < MAX_HW_SESSIONS) {
         g_hw_sessions_count++;
         can_use_hw = true;
         state->using_hw = true;
+    }
+
+    if (can_use_hw) {
+        state->codec_context->get_format = get_hw_format_d3d11;
     }
 
     AVBufferRef* global_hw_ctx = can_use_hw ? GetGlobalHWContext() : nullptr;
@@ -838,15 +840,24 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
         // If it's a hardware frame, transfer it to CPU for rendering (PixelBuffer path)
         if (state->is_visible) {
             if (state->frame->format == AV_PIX_FMT_D3D11) {
+                av_frame_unref(state->sw_frame);
                 if (av_hwframe_transfer_data(state->sw_frame, state->frame, 0) < 0) {
-                    LogTrace("av_hwframe_transfer_data failed on frame [%lld], requesting software fallback", state->texture_id);
+                    LogTrace("av_hwframe_transfer_data failed on frame [%lld], triggering software fallback", state->texture_id);
+                    state->force_software = true;
                     state->pending_hw_request = VideoSessionState::HWRequest::Downgrade;
-                    continue;
+                    av_frame_unref(state->frame);
+                    break;
+                }
+                if (state->sw_frame->width <= 0 || state->sw_frame->height <= 0) {
+                    state->sw_frame->width = state->frame->width;
+                    state->sw_frame->height = state->frame->height;
                 }
                 ProcessFrame(state, state->sw_frame);
+                av_frame_unref(state->sw_frame);
             } else {
                 ProcessFrame(state, state->frame);
             }
+            av_frame_unref(state->frame);
         } else {
             // Even if invisible, update tracked dimensions and notify Flutter if resolution changed
             int cur_w = state->frame->width;
@@ -856,13 +867,36 @@ void VideoDecoderPlugin::VideoSession::DecodePacket(std::shared_ptr<VideoSession
                 state->width = cur_w;
                 state->height = cur_h;
                 state->buffer_pool.clear();
-                if (state->window_handle) {
+                state->front_buffer.reset();
+                state->last_front_buffer.reset();
+                HWND target_hwnd = state->window_handle;
+                if (target_hwnd) {
+                    HWND root = GetAncestor(target_hwnd, GA_ROOT);
+                    if (root) target_hwnd = root;
+                }
+                if (target_hwnd) {
                     auto* res_data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
-                    if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(res_data))) {
+                    if (!PostMessage(target_hwnd, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(res_data))) {
                         delete res_data;
+                        if (state->channel) {
+                            auto args = flutter::EncodableMap{
+                                {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
+                                {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
+                                {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
+                            };
+                            state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
+                        }
                     }
+                } else if (state->channel) {
+                    auto args = flutter::EncodableMap{
+                        {flutter::EncodableValue("textureId"), flutter::EncodableValue(state->texture_id)},
+                        {flutter::EncodableValue("width"), flutter::EncodableValue(cur_w)},
+                        {flutter::EncodableValue("height"), flutter::EncodableValue(cur_h)}
+                    };
+                    state->channel->InvokeMethod("onResolutionChanged", std::make_unique<flutter::EncodableValue>(args));
                 }
             }
+            av_frame_unref(state->frame);
         }
     }
     av_packet_unref(state->packet);
@@ -874,6 +908,7 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
     bool resolution_changed = false;
     int cur_w = frame->width;
     int cur_h = frame->height;
+    if (cur_w <= 0 || cur_h <= 0) return;
 
     // 1. Get a buffer from pool or create new one
     std::shared_ptr<VideoSessionState::RGBAFrame> back_buffer;
@@ -885,16 +920,22 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
             LogTrace("ProcessFrame [%lld] - Resolution change: %dx%d -> %dx%d", 
                      state->texture_id, state->width, state->height, cur_w, cur_h);
             state->buffer_pool.clear();
+            state->front_buffer.reset();
+            state->last_front_buffer.reset();
             state->width = cur_w;
             state->height = cur_h;
             resolution_changed = true;
         }
 
-        for (auto it = state->buffer_pool.begin(); it != state->buffer_pool.end(); ++it) {
-            if ((*it).use_count() == 1) {
+        for (auto it = state->buffer_pool.begin(); it != state->buffer_pool.end(); ) {
+            if ((*it)->width != cur_w || (*it)->height != cur_h) {
+                it = state->buffer_pool.erase(it);
+            } else if ((*it).use_count() == 1) {
                 back_buffer = *it;
-                state->buffer_pool.erase(it);
+                it = state->buffer_pool.erase(it);
                 break;
+            } else {
+                ++it;
             }
         }
     }
@@ -942,7 +983,9 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
         std::lock_guard<std::recursive_mutex> lock(state->pixel_buffer_mutex);
         if (!state->is_alive || state->texture_id == -1) return;
         
-        if (state->last_front_buffer) {
+        if (state->last_front_buffer && 
+            state->last_front_buffer->width == cur_w && 
+            state->last_front_buffer->height == cur_h) {
             state->buffer_pool.push_back(state->last_front_buffer);
         }
         state->last_front_buffer = state->front_buffer;
@@ -955,9 +998,14 @@ void VideoDecoderPlugin::VideoSession::ProcessFrame(std::shared_ptr<VideoSession
         state->texture_registrar->MarkTextureFrameAvailable(state->texture_id);
 
         if (resolution_changed && state->texture_id != -1) {
-            if (state->window_handle) {
+            HWND target_hwnd = state->window_handle;
+            if (target_hwnd) {
+                HWND root = GetAncestor(target_hwnd, GA_ROOT);
+                if (root) target_hwnd = root;
+            }
+            if (target_hwnd) {
                 auto* data = new VideoResolutionChangeData{state->texture_id, cur_w, cur_h};
-                if (!PostMessage(state->window_handle, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(data))) {
+                if (!PostMessage(target_hwnd, WM_VIDEO_RESOLUTION_CHANGED, 0, reinterpret_cast<LPARAM>(data))) {
                     delete data;
                     if (state->channel) {
                         auto args = flutter::EncodableMap{
@@ -987,7 +1035,11 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
 
     HWND window_handle = nullptr;
     if (registrar->GetView()) {
-        window_handle = registrar->GetView()->GetNativeWindow();
+        HWND child_window = registrar->GetView()->GetNativeWindow();
+        window_handle = GetAncestor(child_window, GA_ROOT);
+        if (!window_handle) {
+            window_handle = child_window;
+        }
     }
 
     auto channel = std::make_shared<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -1005,6 +1057,7 @@ void VideoDecoderPlugin::RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef 
                 if (data) {
                     auto ch = weak_channel.lock();
                     if (ch && data->texture_id != -1) {
+                        LogTrace("Win32 UI Thread: WM_VIDEO_RESOLUTION_CHANGED [%lld] %dx%d", data->texture_id, data->width, data->height);
                         auto args = flutter::EncodableMap{
                             {flutter::EncodableValue("textureId"), flutter::EncodableValue(data->texture_id)},
                             {flutter::EncodableValue("width"), flutter::EncodableValue(data->width)},

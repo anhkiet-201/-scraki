@@ -70,12 +70,19 @@ class NativeVideoDecoderServiceImpl implements IVideoDecoderService {
           '[NativeVideoDecoderService] onResolutionChanged: textureId=$textureId, size=${width}x$height',
         );
 
-        for (final session in _sessions.values) {
-          if (session.textureId == textureId) {
-            if (getIt.isRegistered<SessionManagerStore>()) {
-              final store = getIt<SessionManagerStore>();
+        if (getIt.isRegistered<SessionManagerStore>()) {
+          final store = getIt<SessionManagerStore>();
+          for (final entry in _sessions.entries) {
+            final url = entry.key;
+            final session = entry.value;
+            if (session.textureId == textureId) {
               for (final sId in session.sessionIds) {
                 store.updateSessionResolution(sId, width, height);
+              }
+              for (final sEntry in store.activeSessions.entries) {
+                if (sEntry.value.videoUrl == url) {
+                  store.updateSessionResolution(sEntry.key, width, height);
+                }
               }
             }
           }

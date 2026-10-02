@@ -101,6 +101,7 @@ class VideoDecoderPlugin : public flutter::Plugin {
       std::atomic<int64_t> last_visible_time{0};
       std::atomic<bool> is_bg_decoding_active{false};
       std::atomic<bool> using_hw{false};
+      std::atomic<bool> force_software{false};
       
       enum class HWRequest { None, Upgrade, Downgrade };
       std::atomic<HWRequest> pending_hw_request{HWRequest::None};
