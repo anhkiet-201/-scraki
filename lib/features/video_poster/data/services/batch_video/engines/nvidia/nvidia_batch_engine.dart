@@ -102,6 +102,7 @@ class NvidiaBatchEngine
       preset: 'p2',
       cq: '24',
       bFrames: plan.params.bFrames,
+      audioBitrate: '${plan.params.audioProfile.audioBitrate}k',
     );
   }
 }

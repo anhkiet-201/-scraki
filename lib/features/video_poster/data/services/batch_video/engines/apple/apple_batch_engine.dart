@@ -90,6 +90,7 @@ class AppleBatchEngine
     return VideoToolboxOptions(
       bitrate: '${plan.params.targetBitrateKbps}k',
       bFrames: plan.params.bFrames,
+      audioBitrate: '${plan.params.audioProfile.audioBitrate}k',
     );
   }
 }

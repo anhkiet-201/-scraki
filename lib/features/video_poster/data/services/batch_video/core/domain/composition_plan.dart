@@ -135,6 +135,12 @@ class CompositionParams {
   final double? gammaG;
   /// Gamma adjustment for Blue channel.
   final double? gammaB;
+  /// Subtle output FPS jitter (e.g., 29.94 to 30.06) to avoid identical frame-rate clustering.
+  final double outputFps;
+  /// Container timescale (e.g., 30000, 60000, 90000).
+  final int timescale;
+  /// Subtle unsharp luma amount (0.0 to 0.4) to diversify high-frequency DCT coefficients.
+  final double unsharpAmount;
 
   CompositionParams({
     required this.targetDuration,
@@ -163,5 +169,8 @@ class CompositionParams {
     this.gammaR,
     this.gammaG,
     this.gammaB,
+    this.outputFps = 30.0,
+    this.timescale = 30000,
+    this.unsharpAmount = 0.0,
   });
 }

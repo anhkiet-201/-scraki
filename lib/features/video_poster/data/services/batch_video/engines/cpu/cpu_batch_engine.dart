@@ -96,23 +96,27 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
+    final audioBitrate = '${plan.params.audioProfile.audioBitrate}k';
     if (gpuInfo.encoder == 'h264_qsv') {
       return QsvOptions(
         bitrate: '${plan.params.targetBitrateKbps}k',
         preset: 'veryfast',
         bFrames: plan.params.bFrames,
+        audioBitrate: audioBitrate,
       );
     }
     if (gpuInfo.encoder == 'h264_amf') {
       return AmfOptions(
         bitrate: '${plan.params.targetBitrateKbps}k',
         quality: 'speed',
+        audioBitrate: audioBitrate,
       );
     }
     return CpuLibx264Options(
       preset: 'veryfast',
       crf: '${20 + (plan.outputIndex % 3)}',
       bFrames: plan.params.bFrames,
+      audioBitrate: audioBitrate,
     );
   }
 }

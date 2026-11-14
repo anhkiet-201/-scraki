@@ -16,6 +16,8 @@ class VideoToolboxOptions extends EncoderOptions {
   final int? profile;
   /// Optional number of B-frames.
   final int? bFrames;
+  /// Target audio bitrate (e.g., '128k').
+  final String audioBitrate;
 
   VideoToolboxOptions({
     this.codec = 'h264_videotoolbox',
@@ -23,6 +25,7 @@ class VideoToolboxOptions extends EncoderOptions {
     this.realtime = false,
     this.profile,
     this.bFrames,
+    this.audioBitrate = '128k',
   });
 
   @override
@@ -34,7 +37,7 @@ class VideoToolboxOptions extends EncoderOptions {
       if (profile != null) ...['-profile:v', profile.toString()],
       if (bFrames != null) ...['-bf', bFrames.toString()],
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', audioBitrate,
     ];
   }
 }
@@ -53,6 +56,8 @@ class NvidiaNvencOptions extends EncoderOptions {
   final String cq;
   /// Number of B-frames.
   final int bFrames;
+  /// Target audio bitrate.
+  final String audioBitrate;
 
   NvidiaNvencOptions({
     this.codec = 'h264_nvenc',
@@ -61,6 +66,7 @@ class NvidiaNvencOptions extends EncoderOptions {
     this.rc = 'vbr',
     this.cq = '24',
     this.bFrames = 2,
+    this.audioBitrate = '128k',
   });
 
   @override
@@ -74,7 +80,7 @@ class NvidiaNvencOptions extends EncoderOptions {
       '-bf', bFrames.toString(),
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', audioBitrate,
     ];
   }
 }
@@ -84,11 +90,13 @@ class QsvOptions extends EncoderOptions {
   final String bitrate;
   final String preset;
   final int? bFrames;
+  final String audioBitrate;
 
   QsvOptions({
     required this.bitrate,
     this.preset = 'veryfast',
     this.bFrames,
+    this.audioBitrate = '128k',
   });
 
   @override
@@ -100,7 +108,7 @@ class QsvOptions extends EncoderOptions {
       if (bFrames != null) ...['-bf', bFrames.toString()],
       '-pix_fmt', 'nv12',
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', audioBitrate,
     ];
   }
 }
@@ -109,10 +117,12 @@ class QsvOptions extends EncoderOptions {
 class AmfOptions extends EncoderOptions {
   final String bitrate;
   final String quality;
+  final String audioBitrate;
 
   AmfOptions({
     required this.bitrate,
     this.quality = 'speed',
+    this.audioBitrate = '128k',
   });
 
   @override
@@ -123,7 +133,7 @@ class AmfOptions extends EncoderOptions {
       '-b:v', bitrate,
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', audioBitrate,
     ];
   }
 }
@@ -136,11 +146,14 @@ class CpuLibx264Options extends EncoderOptions {
   final String crf;
   /// Number of B-frames.
   final int bFrames;
+  /// Target audio bitrate.
+  final String audioBitrate;
 
   CpuLibx264Options({
     this.preset = 'veryfast',
     this.crf = '23',
     this.bFrames = 2,
+    this.audioBitrate = '128k',
   });
 
   @override
@@ -152,7 +165,7 @@ class CpuLibx264Options extends EncoderOptions {
       '-bf', bFrames.toString(),
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
-      '-b:a', '128k',
+      '-b:a', audioBitrate,
     ];
   }
 }

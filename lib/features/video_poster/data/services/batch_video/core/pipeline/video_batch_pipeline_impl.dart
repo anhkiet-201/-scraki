@@ -579,15 +579,18 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       microRotationAngle: (random.nextDouble() * 0.6) - 0.3, // -0.3° to +0.3°
       targetBitrateKbps: 7500 + random.nextInt(5000), // 7500 – 12500 kbps
       lutFilePath: lutFilePath,
-      gammaR: !config.generateColorFilter
-          ? 0.97 + random.nextDouble() * 0.06
-          : null,
-      gammaG: !config.generateColorFilter
-          ? 0.97 + random.nextDouble() * 0.06
-          : null,
-      gammaB: !config.generateColorFilter
-          ? 0.97 + random.nextDouble() * 0.06
-          : null,
+      gammaR: config.generateColorFilter
+          ? 0.985 + random.nextDouble() * 0.03
+          : 0.97 + random.nextDouble() * 0.06,
+      gammaG: config.generateColorFilter
+          ? 0.985 + random.nextDouble() * 0.03
+          : 0.97 + random.nextDouble() * 0.06,
+      gammaB: config.generateColorFilter
+          ? 0.985 + random.nextDouble() * 0.03
+          : 0.97 + random.nextDouble() * 0.06,
+      outputFps: 29.94 + random.nextDouble() * 0.12, // 29.94 – 30.06 fps
+      timescale: [30000, 60000, 90000][random.nextInt(3)],
+      unsharpAmount: 0.15 + random.nextDouble() * 0.20, // 0.15 – 0.35
     );
 
     if (!ctx.videoPlans.containsKey(index)) {

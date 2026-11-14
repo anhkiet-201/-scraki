@@ -243,8 +243,9 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     // Ambient Audio
     if (plan.hasAmbientAudio) {
       mixInputs++;
+      final sampleRate = params.audioProfile.sampleRate;
       sb.write(
-        '[$currentIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=44100,aformat=channel_layouts=stereo[ambient_a];',
+        '[$currentIdx:a]volume=${(plan.hasCustomAudio ? 0.25 : 0.05).toStringAsFixed(3)},aresample=$sampleRate,aformat=channel_layouts=stereo[ambient_a];',
       );
       currentIdx++;
       mixLabels += '[ambient_a]';
@@ -253,6 +254,13 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     if (mixInputs > 1) {
       sb.write(
         '${mixLabels}amix=inputs=$mixInputs:duration=first:dropout_transition=0,aresample=async=1:first_pts=0,apad[mixed_a]',
+      );
+    } else if (!plan.hasAmbientAudio) {
+      // Subtle pink-like room-tone floor (-52dB) to diversify clean-track acoustic fingerprints
+      final sampleRate = params.audioProfile.sampleRate;
+      sb.write(
+        'anoisesrc=color=pink:amplitude=0.0025:r=$sampleRate:d=${params.targetDuration}[room_n];'
+        '[orig_a][room_n]amix=inputs=2:duration=first:dropout_transition=0,aresample=async=1:first_pts=0,apad[mixed_a]',
       );
     } else {
       sb.write('[orig_a]aresample=async=1:first_pts=0,apad[mixed_a]');
@@ -355,6 +363,12 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
 
     if (params.noiseIntensity > 0) {
       filters.add(toolkit.noise(params.noiseIntensity));
+    }
+
+    if (params.unsharpAmount > 0) {
+      filters.add(
+        'unsharp=3:3:${params.unsharpAmount.toStringAsFixed(2)}:3:3:0.0',
+      );
     }
 
     return filters.join(',');
@@ -464,10 +478,13 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
           '[$textInputIdx:v]${toolkit.scale(0, 0, iwScale: tScale)},format=rgba,${toolkit.rotate(tRotate)},colorchannelmixer=aa=$tOpacity$label;',
         );
 
+        final int period = 12 + random.nextInt(13); // 12 - 24 frames
+        final double phase = (random.nextDouble() * 6.28).toDouble();
+        final String phaseStr = phase.toStringAsFixed(2);
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
           '$lastLabel$label'
-          '${toolkit.overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', eofAction: 'repeat', shortest: false)}$nextLabel;',
+          '${toolkit.overlay(x: '$tJX+1.0*sin(2*PI*n/$period+$phaseStr)', y: '$tJY+1.0*cos(2*PI*n/$period+$phaseStr)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', eofAction: 'repeat', shortest: false)}$nextLabel;',
         );
         lastLabel = nextLabel;
       } else {

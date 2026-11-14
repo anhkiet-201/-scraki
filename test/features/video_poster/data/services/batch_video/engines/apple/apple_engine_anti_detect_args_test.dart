@@ -277,6 +277,82 @@ void main() {
       final movIdx = executedArgs.indexOf('-movflags');
       expect(executedArgs[movIdx + 1], '+faststart');
     });
+
+    test('renderVideo wires gopSize, creationTime, timescale, outputFps, audioBitrate, unsharp, and room-tone noise', () async {
+      final executedArgs = <String>[];
+      final mockComposition = MockCapturingComposition(
+        hardwareResolver: MockHardwareResolver(),
+        toolkit: AppleToolkit(),
+        onExecute: (args) => executedArgs.addAll(args),
+      );
+
+      final testEngine = TestVideoBatchEngine(
+        hardwareResolver: MockHardwareResolver(),
+        metadataAnalyzer: MockMetadataAnalyzer(),
+        customComposition: mockComposition,
+      );
+
+      final plan = CompositionPlan(
+        outputIndex: 0,
+        segmentPaths: ['/tmp/seg1.mp4'],
+        segmentDurations: [10.0],
+        outputDir: '/tmp/out',
+        tempDir: '/tmp/temp',
+        config: const BatchVideoConfig(),
+        params: CompositionParams(
+          targetDuration: 20,
+          pts: 1.0,
+          brightness: 0.0,
+          contrast: 1.0,
+          gopSize: 60,
+          bFrames: 1,
+          creationTime: '2026-11-14T06:00:00.000000Z',
+          audioProfile: const AudioSpoofProfile(
+            pitchFactor: 1.01,
+            subBassGain: 0,
+            lowMidGain: 0,
+            midGain: 0,
+            highMidGain: 0,
+            trebleGain: 0,
+            audioBitrate: 160,
+            delayMs: 20,
+            sampleRate: 48000,
+          ),
+          hueShift: 0.0,
+          satFactor: 1.0,
+          vignetteAngle: 0.1,
+          zoomVal: 1.04,
+          cropJitterX: 0.01,
+          cropJitterY: 0.01,
+          panStartX: 0.1,
+          panStartY: 0.1,
+          panEndX: 0.8,
+          panEndY: 0.8,
+          transitionDuration: 0.05,
+          outputFps: 29.97,
+          timescale: 60000,
+          unsharpAmount: 0.25,
+        ),
+        textOverlayPaths: [],
+        hasCustomAudio: false,
+        hasAmbientAudio: false,
+      );
+
+      await testEngine.renderVideo(
+        plan: plan,
+        context: VideoBatchExecutionContext(),
+      );
+
+      expect(executedArgs[executedArgs.indexOf('-g') + 1], '60');
+      expect(executedArgs[executedArgs.indexOf('-video_track_timescale') + 1], '60000');
+      expect(executedArgs[executedArgs.indexOf('-r') + 1], '29.97');
+      expect(executedArgs[executedArgs.indexOf('-b:a') + 1], '160k');
+      expect(executedArgs[executedArgs.indexOf('-metadata') + 1], 'creation_time=2026-11-14T06:00:00.000000Z');
+
+      final filterComplex = executedArgs[executedArgs.indexOf('-filter_complex') + 1];
+      expect(filterComplex, contains('unsharp=3:3:0.25:3:3:0.0'));
+      expect(filterComplex, contains('anoisesrc=color=pink:amplitude=0.0025:r=48000:d=20'));
+    });
   });
 }
 

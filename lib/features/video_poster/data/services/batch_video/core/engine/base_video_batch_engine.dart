@@ -256,8 +256,11 @@ abstract class BaseVideoBatchEngine<
       '-map', '[video_out]',
       '-map', '[mixed_a]',
       '-shortest',
-      '-r', '30', // Force 30fps final output
+      '-r', plan.params.outputFps.toStringAsFixed(2),
+      '-g', plan.params.gopSize.toString(),
+      '-video_track_timescale', plan.params.timescale.toString(),
       '-map_metadata', '-1', // Strip all source metadata
+      '-metadata', 'creation_time=${plan.params.creationTime}',
       '-metadata:g', 'encoder=', // Clear FFmpeg Lavf signature
       '-movflags', '+faststart',
       '-avoid_negative_ts', 'make_zero',

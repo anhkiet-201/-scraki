@@ -103,6 +103,8 @@ class AudioSpoofProfile {
   final int delayMs;
   /// Stereo spread multiplier for spatial phase decorrelation (1.05 to 1.13).
   final double stereoSpread;
+  /// Target audio sample rate (44100 or 48000 Hz) to diversify container/acoustic fingerprint.
+  final int sampleRate;
 
   /// Backwards-compatibility alias for sub-bass.
   double get bassGain => subBassGain;
@@ -117,6 +119,7 @@ class AudioSpoofProfile {
     required this.audioBitrate,
     required this.delayMs,
     this.stereoSpread = 1.08,
+    this.sampleRate = 44100,
   });
 
   /// Creates a profile with random variations within safe ranges.
@@ -131,6 +134,7 @@ class AudioSpoofProfile {
       audioBitrate: [96, 112, 128, 160][random.nextInt(4)],
       delayMs: 15 + random.nextInt(26), // 15–40ms
       stereoSpread: 1.05 + random.nextDouble() * 0.08, // 1.05 - 1.13
+      sampleRate: [44100, 48000][random.nextInt(2)],
     );
   }
 
@@ -140,11 +144,11 @@ class AudioSpoofProfile {
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
     final volStr = volume.toStringAsFixed(3);
     final spreadStr = stereoSpread.toStringAsFixed(2);
-    return 'aresample=44100,'
+    return 'aresample=$sampleRate,'
         'atrim=start=0,'
         'highpass=f=45,'
         'lowpass=f=16000,'
-        'asetrate=44100*$pitchStr,'
+        'asetrate=$sampleRate*$pitchStr,'
         'atempo=$totalTempo,'
         'equalizer=f=60:width_type=o:width=2:g=${subBassGain.toStringAsFixed(2)},'
         'equalizer=f=250:width_type=o:width=2:g=${lowMidGain.toStringAsFixed(2)},'
@@ -155,7 +159,7 @@ class AudioSpoofProfile {
         'extrastereo=m=$spreadStr,'
         'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
-        'aresample=44100,aformat=channel_layouts=stereo';
+        'aresample=$sampleRate,aformat=channel_layouts=stereo';
   }
 
   /// Builds an FFmpeg audio filter chain for the original video audio.
@@ -164,11 +168,11 @@ class AudioSpoofProfile {
     final totalTempo = (1.0 / (pitchFactor * pts)).clamp(0.5, 2.0).toStringAsFixed(6);
     final volStr = volume.clamp(0.0, 1.0).toStringAsFixed(3);
     final spreadStr = stereoSpread.toStringAsFixed(2);
-    return 'aresample=44100,'
+    return 'aresample=$sampleRate,'
         'atrim=start=0,'
         'highpass=f=45,'
         'lowpass=f=16000,'
-        'asetrate=44100*$pitchStr,'
+        'asetrate=$sampleRate*$pitchStr,'
         'atempo=$totalTempo,'
         'equalizer=f=60:width_type=o:width=2:g=${subBassGain.toStringAsFixed(2)},'
         'equalizer=f=250:width_type=o:width=2:g=${lowMidGain.toStringAsFixed(2)},'
@@ -179,7 +183,7 @@ class AudioSpoofProfile {
         'extrastereo=m=$spreadStr,'
         'volume=$volStr,'
         'asetpts=PTS-STARTPTS,'
-        'aresample=44100,aformat=channel_layouts=stereo';
+        'aresample=$sampleRate,aformat=channel_layouts=stereo';
   }
 }
 
