@@ -304,7 +304,11 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
     final filterParts = <String>[
       dynamicPan,
       jitterCrop,
-      toolkit.scale(plan.targetWidth, plan.targetHeight),
+      toolkit.scale(
+        plan.targetWidth,
+        plan.targetHeight,
+        expression: '${plan.targetWidth}:${plan.targetHeight}:flags=bilinear',
+      ),
     ];
 
     if (params.microRotationAngle != 0.0) {
@@ -431,7 +435,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
       final String nextLabel = '[v_ov${overlayIdx++}]';
       sb.write(
         '$lastLabel$scaleLabel'
-        '${toolkit.overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})')}$nextLabel;',
+        '${toolkit.overlay(x: '${targetX + jX}', y: '${targetY + jY}', enable: 'between(t,${imgConfig.startTime},${imgConfig.endTime ?? 99999})', eofAction: imgConfig.isGif ? null : 'repeat', shortest: imgConfig.isGif)}$nextLabel;',
       );
       lastLabel = nextLabel;
     }
@@ -463,7 +467,7 @@ class BaseFfmpegComposition<T extends VideoToolkit> implements Composition<T> {
         final nextLabel = '[v_ov${overlayIdx++}]';
         sb.write(
           '$lastLabel$label'
-          '${toolkit.overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})')}$nextLabel;',
+          '${toolkit.overlay(x: '$tJX+1.0*sin(2*PI*n/15)', y: '$tJY+1.0*cos(2*PI*n/15)', enable: 'between(t,${overlayCfg.startTime},${overlayCfg.endTime ?? 99999})', eofAction: 'repeat', shortest: false)}$nextLabel;',
         );
         lastLabel = nextLabel;
       } else {

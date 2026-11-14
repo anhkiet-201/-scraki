@@ -362,25 +362,46 @@ class _VideoOverlayItemState extends State<VideoOverlayItem>
   }
 
   Widget _buildTextField() {
+    final effectiveBg = widget.backgroundColor ?? const Color(0xFF0F172A);
+    final isDarkBg = effectiveBg.computeLuminance() < 0.45;
+    final cursorColor = isDarkBg ? Colors.white : const Color(0xFF0F172A);
+    final selectionColor = isDarkBg
+        ? const Color(0xFF38BDF8).withValues(alpha: 0.40)
+        : const Color(0xFF6366F1).withValues(alpha: 0.28);
+    final handleColor =
+        isDarkBg ? const Color(0xFF38BDF8) : const Color(0xFF4F46E5);
+
     return IntrinsicWidth(
-      child: TextField(
-        controller: _store.controller,
-        focusNode: _store.focusNode,
-        autofocus: true,
-        style: _getTextStyle(),
-        maxLines: null,
-        textAlign: widget.textAlign,
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding: widget.backgroundColor != null
-              ? const EdgeInsets.symmetric(horizontal: 16)
-              : EdgeInsets.zero,
-          border: InputBorder.none,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          textSelectionTheme: TextSelectionThemeData(
+            cursorColor: cursorColor,
+            selectionColor: selectionColor,
+            selectionHandleColor: handleColor,
+          ),
         ),
-        onSubmitted: (_) {
-          _store.setEditing(false);
-          _store.onTextChange(_store.type, _store.controller.text);
-        },
+        child: TextField(
+          controller: _store.controller,
+          focusNode: _store.focusNode,
+          autofocus: true,
+          cursorColor: cursorColor,
+          cursorWidth: 2.5,
+          cursorRadius: const Radius.circular(2),
+          style: _getTextStyle(),
+          maxLines: null,
+          textAlign: widget.textAlign,
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: widget.backgroundColor != null
+                ? const EdgeInsets.symmetric(horizontal: 16)
+                : EdgeInsets.zero,
+            border: InputBorder.none,
+          ),
+          onSubmitted: (_) {
+            _store.setEditing(false);
+            _store.onTextChange(_store.type, _store.controller.text);
+          },
+        ),
       ),
     );
   }

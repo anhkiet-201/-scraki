@@ -53,7 +53,7 @@ class PlaygroundSlideStrip extends StatelessWidget {
                     scrollController: scrollController,
                     buildDefaultDragHandles: false,
                     itemCount: store.slides.length,
-                    onReorder: store.reorderSlides,
+                    onReorderItem: store.reorderSlides,
                     proxyDecorator: (child, index, animation) {
                       return AnimatedBuilder(
                         animation: animation,

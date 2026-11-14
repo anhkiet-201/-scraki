@@ -111,11 +111,18 @@ class BaseFfmpegToolkit implements VideoToolkit {
 
   /// Overlays one stream on top of another.
   @override
-  String overlay({String? x, String? y, String? enable, bool shortest = true}) {
+  String overlay({
+    String? x,
+    String? y,
+    String? enable,
+    String? eofAction,
+    bool shortest = true,
+  }) {
     final List<String> parts = [];
     if (x != null) parts.add("x='$x'");
     if (y != null) parts.add("y='$y'");
     if (enable != null) parts.add('enable=\'$enable\'');
+    if (eofAction != null) parts.add('eof_action=$eofAction');
     if (shortest) parts.add('shortest=1');
     return 'overlay=${parts.join(':')}';
   }

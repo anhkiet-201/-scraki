@@ -48,7 +48,13 @@ abstract interface class VideoToolkit {
   String lut3d(String lutFilePath);
 
   /// Chồng lớp (Overlay) - Tự động chọn filter phù hợp phần cứng
-  String overlay({String? x, String? y, String? enable, bool shortest = true});
+  String overlay({
+    String? x,
+    String? y,
+    String? enable,
+    String? eofAction,
+    bool shortest = true,
+  });
 
   /// Thêm nhiễu hạt điện ảnh / temporal film grain để bẻ gãy pHash và ma trận DCT
   String noise(double intensity);

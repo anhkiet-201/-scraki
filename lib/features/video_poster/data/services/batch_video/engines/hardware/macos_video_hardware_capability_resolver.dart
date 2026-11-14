@@ -34,8 +34,8 @@ class MacOSVideoHardwareCapabilityResolver implements VideoHardwareCapabilityRes
       outputFormat: null,
       hasZscale: hasZscale,
       hasCudaFilters: false,
-      preferredPixFmt: 'yuv420p',
-      maxConcurrentEncodes: Platform.numberOfProcessors.clamp(2, 8),
+      preferredPixFmt: 'nv12',
+      maxConcurrentEncodes: (Platform.numberOfProcessors ~/ 2).clamp(2, 4),
     );
 
     

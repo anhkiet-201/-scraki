@@ -16,6 +16,9 @@ abstract class VideoBatchPipeline {
   /// Luồng sự kiện log/progress
   Stream<String> get events;
 
+  /// Thư mục đầu ra sau khi được khởi tạo
+  String? get outputDir;
+
   /// Hủy bỏ quá trình
   void cancel();
 

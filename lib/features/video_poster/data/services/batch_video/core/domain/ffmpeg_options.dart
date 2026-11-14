@@ -20,7 +20,7 @@ class VideoToolboxOptions extends EncoderOptions {
   VideoToolboxOptions({
     this.codec = 'h264_videotoolbox',
     required this.bitrate,
-    this.realtime = true,
+    this.realtime = false,
     this.profile,
     this.bFrames,
   });
@@ -72,6 +72,55 @@ class NvidiaNvencOptions extends EncoderOptions {
       '-cq', cq,
       '-b:v', bitrate,
       '-bf', bFrames.toString(),
+      '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+    ];
+  }
+}
+
+/// Encoder options for Intel Quick Sync Video (QSV) hardware acceleration.
+class QsvOptions extends EncoderOptions {
+  final String bitrate;
+  final String preset;
+  final int? bFrames;
+
+  QsvOptions({
+    required this.bitrate,
+    this.preset = 'veryfast',
+    this.bFrames,
+  });
+
+  @override
+  List<String> toArgs() {
+    return [
+      '-c:v', 'h264_qsv',
+      '-preset', preset,
+      '-b:v', bitrate,
+      if (bFrames != null) ...['-bf', bFrames.toString()],
+      '-pix_fmt', 'nv12',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+    ];
+  }
+}
+
+/// Encoder options for AMD Advanced Media Framework (AMF) hardware acceleration.
+class AmfOptions extends EncoderOptions {
+  final String bitrate;
+  final String quality;
+
+  AmfOptions({
+    required this.bitrate,
+    this.quality = 'speed',
+  });
+
+  @override
+  List<String> toArgs() {
+    return [
+      '-c:v', 'h264_amf',
+      '-quality', quality,
+      '-b:v', bitrate,
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',

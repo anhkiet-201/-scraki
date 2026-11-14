@@ -33,31 +33,41 @@ class ModernTextField extends StatelessWidget {
           style: const TextStyle(fontSize: 11, color: Colors.white38),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          onChanged: (_) => onChanged(),
-          style: const TextStyle(fontSize: 13),
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 16, color: Colors.white24),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.02),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+        Theme(
+          data: Theme.of(context).copyWith(
+            textSelectionTheme: TextSelectionThemeData(
+              cursorColor: const Color(0xFF818CF8),
+              selectionColor: const Color(0xFF818CF8).withValues(alpha: 0.35),
+              selectionHandleColor: const Color(0xFF818CF8),
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.white10),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.white10),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF6366F1)),
+          ),
+          child: TextField(
+            controller: controller,
+            onChanged: (_) => onChanged(),
+            cursorColor: const Color(0xFF818CF8),
+            style: const TextStyle(fontSize: 13),
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, size: 16, color: Colors.white24),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.02),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.white10),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.white10),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF6366F1)),
+              ),
             ),
           ),
         ),

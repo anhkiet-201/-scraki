@@ -23,8 +23,12 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
     final cached = _cachedGpuInfo;
     if (cached != null) return cached;
     
-    final filters = await _getAvailableFilters();
-    final encoders = await _getAvailableEncoders();
+    final results = await Future.wait([
+      _getAvailableFilters(),
+      _getAvailableEncoders(),
+    ]);
+    final filters = results[0];
+    final encoders = results[1];
     
     final hasZscale = filters.contains('zscale');
     final hasCudaFilters = filters.contains('scale_cuda') && filters.contains('hwupload_cuda');
@@ -34,24 +38,23 @@ class WindowsVideoHardwareCapabilityResolver implements VideoHardwareCapabilityR
         name: 'NVIDIA NVENC',
         encoder: 'h264_nvenc',
         hwaccel: 'cuda',
-        scaleFilter: hasCudaFilters ? 'scale_cuda' : 'scale',
-        outputFormat: hasCudaFilters ? 'cuda' : null,
+        scaleFilter: 'scale',
+        outputFormat: null,
         hasZscale: hasZscale,
         hasCudaFilters: hasCudaFilters,
         preferredPixFmt: 'nv12',
-        maxConcurrentEncodes: hasCudaFilters ? 10 : 6,
+        maxConcurrentEncodes: 4,
       );
     } else if (encoders.contains('h264_qsv')) {
-      final hasQsvFilters = filters.contains('vpp_qsv');
       _cachedGpuInfo = (
         name: 'Intel QSV',
         encoder: 'h264_qsv',
         hwaccel: 'qsv',
-        scaleFilter: hasQsvFilters ? 'vpp_qsv' : 'scale',
-        outputFormat: hasQsvFilters ? 'qsv' : null,
+        scaleFilter: 'scale',
+        outputFormat: null,
         hasZscale: hasZscale,
         hasCudaFilters: false,
-        preferredPixFmt: 'yuv420p',
+        preferredPixFmt: 'nv12',
         maxConcurrentEncodes: 3,
       );
     } else if (encoders.contains('h264_amf')) {

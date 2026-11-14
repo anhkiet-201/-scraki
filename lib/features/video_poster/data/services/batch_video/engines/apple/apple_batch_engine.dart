@@ -68,14 +68,18 @@ class AppleBatchEngine
       if (img.localPath != null) {
         inputs.addInput(
           img.localPath!,
-          extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
+          extraArgs: img.isGif ? ['-ignore_loop', '0'] : [],
         );
       }
     }
 
     // 5. Text Overlays (PNGs)
-    for (final path in plan.textOverlayPaths) {
-      inputs.addInput(path, extraArgs: ['-loop', '1']);
+    for (var i = 0; i < plan.textOverlayPaths.length; i++) {
+      final isAnimated = plan.config.textOverlays[i].isAnimated;
+      inputs.addInput(
+        plan.textOverlayPaths[i],
+        extraArgs: isAnimated ? ['-loop', '1'] : [],
+      );
     }
 
     return inputs;

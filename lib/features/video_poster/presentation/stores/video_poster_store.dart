@@ -189,20 +189,33 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void removeSlide(int index) {
-    if (slides.length <= 1) return; // Must have at least one slide
-    
+    if (slides.length <= 1 || index < 0 || index >= slides.length) return;
+
+    // Save current slide's edits before modifying slides list
+    final currentSlide = slides[currentSlideIndex];
+    slides[currentSlideIndex] = currentSlide.copyWith(
+      texts: customTexts.toList(),
+      images: customImages.toList(),
+    );
+
     slides.removeAt(index);
     _updateSlideNames();
+
+    if (index < currentSlideIndex) {
+      currentSlideIndex -= 1;
+    }
     if (currentSlideIndex >= slides.length) {
       currentSlideIndex = slides.length - 1;
     }
-    
+
     // Reload state for current index
     final current = slides[currentSlideIndex];
     customTexts.clear();
     customTexts.addAll(current.texts);
     customImages.clear();
     customImages.addAll(current.images);
+    selectedCustomTextId = null;
+    selectedCustomImageId = null;
   }
 
   @action
@@ -213,18 +226,19 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void reorderSlides(int oldIndex, int newIndex) {
-    if (slides.isEmpty) return;
+    if (slides.isEmpty || oldIndex < 0 || oldIndex >= slides.length) return;
 
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
-
-    // Ensure valid currentSlideIndex before access
+    // Save current slide's edits before reordering
     final safeCurrentIndex = currentSlideIndex.clamp(0, slides.length - 1);
+    slides[safeCurrentIndex] = slides[safeCurrentIndex].copyWith(
+      texts: customTexts.toList(),
+      images: customImages.toList(),
+    );
     final selectedSlideId = slides[safeCurrentIndex].id;
 
     final item = slides.removeAt(oldIndex);
-    slides.insert(newIndex, item);
+    final targetIndex = newIndex.clamp(0, slides.length);
+    slides.insert(targetIndex, item);
     _updateSlideNames();
 
     // Update currentSlideIndex so it still points to the same slide content
@@ -283,22 +297,24 @@ abstract class _VideoPosterStore with Store {
       }
 
       final completer = Completer<ui.Image>();
-      provider
-          .resolve(const ImageConfiguration())
-          .addListener(
-            ImageStreamListener(
-              (info, _) {
-                if (!completer.isCompleted) completer.complete(info.image);
-              },
-              onError: (e, s) {
-                if (!completer.isCompleted) completer.completeError(e);
-              },
-            ),
-          );
+      final stream = provider.resolve(const ImageConfiguration());
+      late final ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (info, _) {
+          stream.removeListener(listener);
+          if (!completer.isCompleted) completer.complete(info.image);
+        },
+        onError: (e, s) {
+          stream.removeListener(listener);
+          if (!completer.isCompleted) completer.completeError(e);
+        },
+      );
+      stream.addListener(listener);
 
       final image = await completer.future;
       final w = image.width.toDouble();
       final h = image.height.toDouble();
+      if (w <= 0 || h <= 0) return;
       final ratio = w / h;
 
       double finalW, finalH;
@@ -752,6 +768,9 @@ abstract class _VideoPosterStore with Store {
 
   VideoBatchPipeline? _batchService;
   StreamSubscription<String>? _batchSub;
+  Future<void>? _activeBatchTask;
+  int _batchRunId = 0;
+  bool _isStartingBatch = false;
 
   @action
   void setBatchOutputCount(int count) {
@@ -760,9 +779,40 @@ abstract class _VideoPosterStore with Store {
 
   @action
   Future<void> createBatchVideos() async {
-    if (sourceVideoPaths.isEmpty || isBatchCreating) return;
+    if (sourceVideoPaths.isEmpty || isBatchCreating || _isStartingBatch) return;
 
-    _batchService = inject<VideoBatchPipeline>();
+    _isStartingBatch = true;
+    final runId = ++_batchRunId;
+    batchLogs.clear();
+    _progressLineIndices.clear();
+    batchOutputDir = null;
+
+    try {
+      if (_activeBatchTask != null) {
+        batchLogs.add('⏳ Đang đợi tiến trình trước dừng hẳn...');
+        try {
+          await _activeBatchTask;
+        } catch (_) {}
+      }
+      if (runId != _batchRunId) return;
+    } finally {
+      _isStartingBatch = false;
+    }
+
+    final future = _executeBatchVideos(runId);
+    _activeBatchTask = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_activeBatchTask, future)) {
+        _activeBatchTask = null;
+      }
+    }
+  }
+
+  Future<void> _executeBatchVideos(int runId) async {
+    final batchService = inject<VideoBatchPipeline>();
+    _batchService = batchService;
 
     // Fix: Tạm thời tắt isPreviewMode và dừng video để khi chụp PNG UI
     // không bị dính logic render text theo thời gian thực (giúp hiển thị tất cả text).
@@ -772,9 +822,8 @@ abstract class _VideoPosterStore with Store {
     // 1. Process text overlays: group static texts, isolate animated ones
     final timedOverlays = <TimedOverlay>[];
     if (customTexts.isNotEmpty) {
+      final originalTexts = List<CustomTextOverlay>.from(customTexts);
       try {
-        final originalTexts = List<CustomTextOverlay>.from(customTexts);
-        
         // Static texts can be grouped by timing
         final staticGroupedDocs = <String, List<CustomTextOverlay>>{};
         // Animated texts are handled individually
@@ -810,12 +859,11 @@ abstract class _VideoPosterStore with Store {
               animationInDuration: animInfo?.animationInDuration ?? 0.1,
               animationOutType: animInfo?.animationOutType.name ?? 'none',
               animationOutDuration: animInfo?.animationOutDuration ?? 0.1,
-              // We capture full screen PNGs (1080x1920 at 1.5x),
-              // Logical size is 720x1280.
-              x: 0.5, 
+              // Logical canvas size is 720x900 (4:5) or 720x1280 (9:16).
+              x: 0.5,
               y: 0.5,
               width: 720,
-              height: 1280,
+              height: is4x5Ratio ? 900 : 1280,
             ),
           );
         }
@@ -829,23 +877,20 @@ abstract class _VideoPosterStore with Store {
         for (final text in animatedTexts) {
           await captureGroup([text], animInfo: text);
         }
-
-        // Restore original texts for UI
+      } catch (e) {
+        runInAction(() => batchLogs.add('❌ Lỗi capture text: $e'));
+        return;
+      } finally {
+        // Always restore original texts for UI
         runInAction(() {
           customTexts.clear();
           customTexts.addAll(originalTexts);
         });
-      } catch (e) {
-        batchLogs.add('❌ Lỗi capture text: $e');
-        return;
       }
     }
 
     // 2. Now it's safe to switch UI to full-screen batch mode
     isBatchCreating = true;
-    batchLogs.clear();
-    _progressLineIndices.clear();
-    batchOutputDir = null;
 
     if (customTexts.isNotEmpty) {
       batchLogs.add('🖼️ Đã chụp Text Overlay thành công.');
@@ -880,26 +925,41 @@ abstract class _VideoPosterStore with Store {
 
     try {
       await _batchSub?.cancel();
-      _batchSub = _batchService!.events.listen((line) {
-        runInAction(() => _handleLogUpdate(line));
+      _batchSub = batchService.events.listen((line) {
+        if (runId == _batchRunId) {
+          runInAction(() => _handleLogUpdate(line));
+        }
       });
 
-      await _batchService?.plan(
+      await batchService.plan(
         sourceVideoPaths: List<String>.from(sourceVideoPaths),
         config: config,
       );
 
-      await _batchService?.executeCutSegments();
-      if (_batchService == null) return;
-      
-      await _batchService?.executeRender();
+      if (runId != _batchRunId || _batchService == null) return;
+      await batchService.executeCutSegments();
+      if (runId == _batchRunId) {
+        runInAction(() => batchOutputDir = batchService.outputDir);
+      }
+
+      if (runId != _batchRunId || _batchService == null) return;
+      await batchService.executeRender();
 
     } catch (e) {
-      _batchService?.cancel();
-      runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+      batchService.cancel();
+      if (runId == _batchRunId) {
+        runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+      }
     } finally {
-      await _batchService?.cleanup();
-      runInAction(() => isBatchCreating = false);
+      await batchService.cleanup();
+      if (runId == _batchRunId) {
+        runInAction(() {
+          if (identical(_batchService, batchService)) {
+            _batchService = null;
+          }
+          isBatchCreating = false;
+        });
+      }
     }
   }
 
@@ -949,6 +1009,7 @@ abstract class _VideoPosterStore with Store {
 
   @action
   void cancelBatchVideos() {
+    _batchRunId++;
     _batchService?.cancel();
     _imagePosterService?.cancel();
     _batchSub?.cancel();
@@ -956,6 +1017,7 @@ abstract class _VideoPosterStore with Store {
     _batchService = null;
     _imagePosterService = null;
     isBatchCreating = false;
+    isExportingImages = false;
     batchLogs.add('🛑 Đã dừng.');
   }
 
@@ -968,16 +1030,43 @@ abstract class _VideoPosterStore with Store {
 
   @action
   Future<void> exportImagePosters() async {
-    if (sourceVideoPaths.isEmpty || isExportingImages) return;
+    if (sourceVideoPaths.isEmpty || isExportingImages || _isStartingBatch) return;
 
+    _isStartingBatch = true;
+    final runId = ++_batchRunId;
     // Save current slide state before exporting
     selectSlide(currentSlideIndex);
-
-    isExportingImages = true;
-    isBatchCreating = true; // Use common flags for UI
     batchLogs.clear();
     batchOutputDir = null;
-    _imagePosterService = ImagePosterService();
+
+    try {
+      if (_activeBatchTask != null) {
+        batchLogs.add('⏳ Đang đợi tiến trình trước dừng hẳn...');
+        try {
+          await _activeBatchTask;
+        } catch (_) {}
+      }
+      if (runId != _batchRunId) return;
+    } finally {
+      _isStartingBatch = false;
+    }
+
+    final future = _executeExportImagePosters(runId);
+    _activeBatchTask = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_activeBatchTask, future)) {
+        _activeBatchTask = null;
+      }
+    }
+  }
+
+  Future<void> _executeExportImagePosters(int runId) async {
+    isExportingImages = true;
+    isBatchCreating = true; // Use common flags for UI
+    final imagePosterService = ImagePosterService();
+    _imagePosterService = imagePosterService;
 
     try {
       batchLogs.add('📸 Đang chuẩn bị dữ liệu slides...');
@@ -1035,24 +1124,36 @@ abstract class _VideoPosterStore with Store {
         facebookSubtype: facebookSubtype,
       );
 
-      final stream = _imagePosterService!.generateImagePosters(
+      final stream = imagePosterService.generateImagePosters(
         sourceVideoPaths: sourceVideoPaths.toList(),
         config: config,
         slideOverlayBytes: overlayBytesMap,
-        onOutputDir: (dir) => runInAction(() => batchOutputDir = dir),
+        onOutputDir: (dir) {
+          if (runId == _batchRunId) {
+            runInAction(() => batchOutputDir = dir);
+          }
+        },
       );
 
       await for (final log in stream) {
+        if (runId != _batchRunId) break;
         runInAction(() => _handleLogUpdate(log));
       }
 
     } catch (e) {
-      runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+      if (runId == _batchRunId) {
+        runInAction(() => batchLogs.add('❌ Lỗi: $e'));
+      }
     } finally {
-      runInAction(() {
-        isExportingImages = false;
-        isBatchCreating = false;
-      });
+      if (runId == _batchRunId) {
+        runInAction(() {
+          if (identical(_imagePosterService, imagePosterService)) {
+            _imagePosterService = null;
+          }
+          isExportingImages = false;
+          isBatchCreating = false;
+        });
+      }
     }
   }
 
@@ -1156,6 +1257,7 @@ abstract class _VideoPosterStore with Store {
 
   // Stream subscriptions (private)
   StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<Duration>? _musicDurationSub;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<double>? _rateSub;
   Timer? _playbackTimer;
@@ -1240,7 +1342,7 @@ abstract class _VideoPosterStore with Store {
       runInAction(() => realDuration = d);
     });
 
-    musicPlayer.stream.duration.listen((Duration d) {
+    _musicDurationSub = musicPlayer.stream.duration.listen((Duration d) {
       runInAction(() => musicDuration = d);
     });
 
@@ -1327,6 +1429,7 @@ abstract class _VideoPosterStore with Store {
     cancelBatchVideos();
     _favoritesSubscription?.cancel();
     _durationSub?.cancel();
+    _musicDurationSub?.cancel();
     _playingSub?.cancel();
     _rateSub?.cancel();
     player.dispose();
@@ -1339,11 +1442,19 @@ abstract class _VideoPosterStore with Store {
     sourceVideoPaths.clear();
     customTexts.clear();
     customImages.clear();
+    slides.clear();
+    currentSlideIndex = 0;
+    addSlide();
+    selectedCustomTextId = null;
+    selectedCustomImageId = null;
     customAudioPath = null;
     currentVideoIndex = 0;
     player.stop();
     musicPlayer.stop();
     position = Duration.zero;
+    _positionAtLastSeek = Duration.zero;
+    _stopwatch.stop();
+    _stopwatch.reset();
 
     // Clear batch output data
     batchLogs.clear();
@@ -1380,13 +1491,14 @@ abstract class _VideoPosterStore with Store {
 
   @action
   Future<Uint8List> capturePreviewAsPng({bool hideImages = true}) async {
+    final previousTextSelection = selectedCustomTextId;
+    final previousImageSelection = selectedCustomImageId;
+    ui.Image? image;
     try {
       if (previewKey.currentContext == null) {
         throw 'Please add at least one text or video element before exporting.';
       }
 
-      final previousTextSelection = selectedCustomTextId;
-      final previousImageSelection = selectedCustomImageId;
       selectCustomText(null);
       selectCustomImage(null);
       isHidingImagesForCapture = hideImages;
@@ -1401,18 +1513,19 @@ abstract class _VideoPosterStore with Store {
 
       final logicalWidth = renderObject.size.width;
       final pixelRatio = 1080.0 / logicalWidth;
-      final image = await renderObject.toImage(pixelRatio: pixelRatio);
+      image = await renderObject.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-      isHidingImagesForCapture = false;
-      if (previousTextSelection != null) selectCustomText(previousTextSelection);
-      if (previousImageSelection != null) selectCustomImage(previousImageSelection);
 
       if (byteData == null) throw 'Failed to encode overlay image.';
       return byteData.buffer.asUint8List();
     } catch (e) {
       debugPrint('Error capturing preview: $e');
       rethrow;
+    } finally {
+      image?.dispose();
+      isHidingImagesForCapture = false;
+      if (previousTextSelection != null) selectCustomText(previousTextSelection);
+      if (previousImageSelection != null) selectCustomImage(previousImageSelection);
     }
   }
 

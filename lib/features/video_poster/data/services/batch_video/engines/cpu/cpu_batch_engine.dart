@@ -41,6 +41,12 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
 
   @override
   EncoderOptions getSegmentEncoderArgs(SegmentRequest request) {
+    if (gpuInfo.encoder == 'h264_qsv') {
+      return QsvOptions(bitrate: '12M', preset: 'veryfast');
+    }
+    if (gpuInfo.encoder == 'h264_amf') {
+      return AmfOptions(bitrate: '12M', quality: 'speed');
+    }
     return CpuLibx264Options(preset: 'ultrafast', crf: '20');
   }
 
@@ -71,14 +77,18 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
       if (localPath != null) {
         inputs.addInput(
           localPath,
-          extraArgs: img.isGif ? ['-ignore_loop', '0'] : ['-loop', '1'],
+          extraArgs: img.isGif ? ['-ignore_loop', '0'] : [],
         );
       }
     }
 
     // 5. Text Overlays (PNGs)
-    for (final path in plan.textOverlayPaths) {
-      inputs.addInput(path, extraArgs: ['-loop', '1']);
+    for (var i = 0; i < plan.textOverlayPaths.length; i++) {
+      final isAnimated = plan.config.textOverlays[i].isAnimated;
+      inputs.addInput(
+        plan.textOverlayPaths[i],
+        extraArgs: isAnimated ? ['-loop', '1'] : [],
+      );
     }
 
     return inputs;
@@ -86,8 +96,21 @@ class CpuBatchEngine extends BaseVideoBatchEngine<CpuComposition, CpuToolkit> {
 
   @override
   EncoderOptions getEncoderArgs(CompositionPlan plan) {
+    if (gpuInfo.encoder == 'h264_qsv') {
+      return QsvOptions(
+        bitrate: '${plan.params.targetBitrateKbps}k',
+        preset: 'veryfast',
+        bFrames: plan.params.bFrames,
+      );
+    }
+    if (gpuInfo.encoder == 'h264_amf') {
+      return AmfOptions(
+        bitrate: '${plan.params.targetBitrateKbps}k',
+        quality: 'speed',
+      );
+    }
     return CpuLibx264Options(
-      preset: 'medium',
+      preset: 'veryfast',
       crf: '${20 + (plan.outputIndex % 3)}',
       bFrames: plan.params.bFrames,
     );

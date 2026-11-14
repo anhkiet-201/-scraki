@@ -33,6 +33,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
   late PipelineContext _context;
   bool _isContextInitialized = false;
+  bool _hasPreparedDirs = false;
   bool _isProcessing = false;
 
   final _eventController = StreamController<String>.broadcast();
@@ -46,6 +47,10 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   @override
   Stream<String> get events => _eventController.stream;
 
+  @override
+  String? get outputDir =>
+      (_isContextInitialized && _hasPreparedDirs) ? _context.outputDir : null;
+
   /// Starts the planning phase of the pipeline.
   /// 
   /// Initializes context, resolves hardware capabilities, probes video metadata,
@@ -57,63 +62,78 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   }) async {
     if (_isProcessing) return;
     _isProcessing = true;
+    _hasPreparedDirs = false;
 
     _context = PipelineContext(config: config);
     _isContextInitialized = true;
     _eventController.add('Đang khởi tạo cấu hình mẻ render...');
 
     final ctx = _context;
-    
-    await _hardwareResolver.resolve();
-    ctx.engine = VideoBatchEngineFactory.createEngine(
-      _hardwareResolver,
-      _metadataAnalyzer,
-    );
-    await ctx.engine.initialize();
 
-    ctx.gpuInfo = _hardwareResolver.gpuInfo!;
-    _eventController.add(
-      'Phần cứng xử lý: ${ctx.gpuInfo.name} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}',
-    );
+    try {
+      await _hardwareResolver.resolve();
+      ctx.engine = VideoBatchEngineFactory.createEngine(
+        _hardwareResolver,
+        _metadataAnalyzer,
+      );
+      await ctx.engine.initialize();
 
-    _eventController.add('Đang kiểm tra metadata video nguồn...');
-    final probeResults = await Future.wait(
-      sourceVideoPaths.map((path) => _metadataAnalyzer.probeSourceVideo(path)),
-    );
+      ctx.gpuInfo = _hardwareResolver.gpuInfo!;
+      _eventController.add(
+        'Phần cứng xử lý: ${ctx.gpuInfo.name} | Luồng: ${ctx.gpuInfo.maxConcurrentEncodes}',
+      );
 
-    for (int i = 0; i < sourceVideoPaths.length; i++) {
-      if (_context.cancelled) return;
-      final path = sourceVideoPaths[i];
-      final duration = probeResults[i].duration;
-      if (duration >= config.minVideoDuration) {
-        _context.validSourceVideos.add(path);
-        _context.videoDurations[path] = duration;
-        _context.videoHasAudio[path] = probeResults[i].hasAudio;
+      _eventController.add('Đang kiểm tra metadata video nguồn...');
+      final probeResults = await Future.wait(
+        sourceVideoPaths.map((path) => _metadataAnalyzer.probeSourceVideo(path)),
+      );
+
+      for (int i = 0; i < sourceVideoPaths.length; i++) {
+        if (_context.cancelled) {
+          _isProcessing = false;
+          return;
+        }
+        final path = sourceVideoPaths[i];
+        final duration = probeResults[i].duration;
+        if (duration >= config.minVideoDuration) {
+          _context.validSourceVideos.add(path);
+          _context.videoDurations[path] = duration;
+          _context.videoHasAudio[path] = probeResults[i].hasAudio;
+        }
       }
-    }
 
-    if (_context.validSourceVideos.isEmpty) {
-      _eventController.add('❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!');
+      if (_context.validSourceVideos.isEmpty) {
+        _eventController.add('❌ Không tìm thấy video hợp lệ thỏa mãn yêu cầu thời lượng!');
+        _context.cancel();
+        _isProcessing = false;
+        return;
+      }
+
+      if (config.generateAmbientAudio && config.outputOption != BatchVideoOutputOption.tiktokAutocutSet) {
+        _eventController.add('Đang tải tài nguyên âm thanh...');
+        try {
+          final paths = await _ambientAudioProvider.fetchRandomAmbientAudios(
+            config.outputCount,
+            config.ambientTags,
+            onLog: (msg) => _eventController.add(msg),
+          );
+          _context.tempAmbientAudioPaths.addAll(paths);
+        } catch (e) {
+          _eventController.add('⚠️ Lỗi tải ambient audio: $e');
+        }
+      }
+
+      if (_context.cancelled) {
+        _isProcessing = false;
+        return;
+      }
+
+      _eventController.add('Đang lập bản vẽ cắt ghép video...');
+      _generatePlanning(config);
+    } catch (_) {
       _isProcessing = false;
-      return;
+      rethrow;
     }
-
-    if (config.generateAmbientAudio && config.outputOption != BatchVideoOutputOption.tiktokAutocutSet) {
-      _eventController.add('Đang tải tài nguyên âm thanh...');
-      try {
-        final paths = await _ambientAudioProvider.fetchRandomAmbientAudios(
-          config.outputCount,
-          config.ambientTags,
-          onLog: (msg) => _eventController.add(msg),
-        );
-        _context.tempAmbientAudioPaths.addAll(paths);
-      } catch (e) {
-        _eventController.add('⚠️ Lỗi tải ambient audio: $e');
-      }
-    }
-
-    _eventController.add('Đang lập bản vẽ cắt ghép video...');
-    _generatePlanning(config);
   }
 
   /// Prepares the output directory for the final generated videos.
@@ -180,6 +200,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
         while (activeTasks.length >= maxConcurrent) {
           await Future.any(List.from(activeTasks));
         }
+        if (ctx.cancelled) break;
         
         final req = plan[s];
         final String sIdxStr = (s + 1).toString().padLeft(2, '0');
@@ -194,7 +215,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
               timeout: const Duration(minutes: 5),
             )
             .then((result) {
-              if (_context != ctx) return;
+              if (_context != ctx || ctx.cancelled) return;
               if (result.success) {
                 completed++;
                 final pct = (completed / totalSegments * 100).toStringAsFixed(0);
@@ -208,7 +229,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
                 }
               }
             }).catchError((Object error) {
-              if (_context != ctx) return;
+              if (_context != ctx || ctx.cancelled) return;
               failed++;
               _eventController.add('❌ Lỗi ngoại lệ khi cắt segment ${req.id}: $error');
               if (failed > 5) cancel();
@@ -236,6 +257,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       p.join(Directory.systemTemp.path, 'scraki_segments_$timestamp'),
     );
     await ctx.tempDir.create(recursive: true);
+    _hasPreparedDirs = true;
 
     if (ctx.config.outputOption == BatchVideoOutputOption.tiktokAutocutSet) {
       return _executeDirectCutForAutocutSet(ctx);
@@ -254,6 +276,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       while (activeTasks.length >= maxConcurrent) {
         await Future.any(List.from(activeTasks));
       }
+      if (ctx.cancelled) break;
 
       final outputPath = p.join(ctx.tempDir.path, '${req.id}.mp4');
       ctx.segmentFileMap[req] = outputPath;
@@ -267,7 +290,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             timeout: const Duration(minutes: 5),
           )
           .then((result) {
-            if (_context != ctx) return;
+            if (_context != ctx || ctx.cancelled) return;
             if (result.success) {
               completed++;
               final pct = (completed / ctx.allUniqueSegments.length * 100).toStringAsFixed(0);
@@ -281,7 +304,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
               }
             }
           }).catchError((Object error) {
-            if (_context != ctx) return;
+            if (_context != ctx || ctx.cancelled) return;
             failed++;
             _eventController.add('❌ Lỗi ngoại lệ khi cắt segment ${req.id}: $error');
             if (failed > 5) cancel();
@@ -315,8 +338,10 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
       while (activeTasks.length >= maxConcurrent) {
         await Future.any(List.from(activeTasks));
       }
+      if (ctx.cancelled) break;
       
       final plan = await _generateCompositionPlan(ctx, i);
+      if (ctx.cancelled) break;
 
       if (ctx.config.outputOption == BatchVideoOutputOption.tiktokAutocutSet) {
         _eventController.add('_PROGRESS_VID$i: ✅ Hoàn tất bộ Autocut $i');
@@ -331,7 +356,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             context: ctx.executionContext,
             timeout: const Duration(minutes: 15),
             onProgress: (pct) {
-              if (_context != ctx) return;
+              if (_context != ctx || ctx.cancelled) return;
               final progress = (pct * 100).toStringAsFixed(0);
               _eventController.add(
                 '_PROGRESS_VID$i: [$i/${ctx.config.outputCount}] Đang xử lý: $progress%',
@@ -339,7 +364,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             },
           )
           .then((result) {
-            if (_context != ctx) return;
+            if (_context != ctx || ctx.cancelled) return;
             if (result.success) {
               _eventController.add('_PROGRESS_VID$i: ✅ Kết xuất thành công video $i');
             } else {
@@ -347,7 +372,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
               _eventController.add('_PROGRESS_VID$i: ❌ Lỗi kết xuất video $i');
             }
           }).catchError((Object error) {
-            if (_context != ctx) return;
+            if (_context != ctx || ctx.cancelled) return;
             _eventController.add('❌ Lỗi tiến trình render video $i: $error');
           }).whenComplete(() {
             activeTasks.remove(task);
@@ -376,7 +401,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
   /// Cleans up any resources or temporary files created during the pipeline execution.
   @override
   Future<void> cleanup() async {
-    if (_isContextInitialized) {
+    if (_isContextInitialized && _hasPreparedDirs) {
       try {
         if (await _context.tempDir.exists()) {
           await _context.tempDir.delete(recursive: true);
@@ -403,11 +428,13 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
 
     if (globalSegmentPool.isEmpty) return;
 
+    final minFinal = min(config.minFinalDuration, config.maxFinalDuration);
+    final maxFinal = max(config.minFinalDuration, config.maxFinalDuration);
+
     int poolIndex = 0;
     for (int i = 1; i <= config.outputCount; i++) {
       final targetDuration =
-          config.minFinalDuration +
-          random.nextInt(config.maxFinalDuration - config.minFinalDuration + 1);
+          minFinal + random.nextInt(maxFinal - minFinal + 1);
       final selected = <SegmentRequest>[];
       double totalDuration = 0.0;
       String lastVideoPath = '';
@@ -423,6 +450,7 @@ class VideoBatchPipelineImpl implements VideoBatchPipeline {
             isRetry: true,
           );
           poolIndex = 0;
+          if (globalSegmentPool.isEmpty) break;
         }
 
         int foundIndex = -1;

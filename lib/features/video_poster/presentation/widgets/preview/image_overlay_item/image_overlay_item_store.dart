@@ -96,11 +96,10 @@ abstract class _ImageOverlayItemStore with Store {
     final cosA = math.cos(angle);
     final sinA = math.sin(angle);
 
-    // 1. Chuyển delta từ Global (màn hình) về Local (không gian ảnh đã xoay)
-    // dx_local = dx_g * cos + dy_g * sin
-    // dy_local = -dx_g * sin + dy_g * cos
-    final dxLocal = details.delta.dx * cosA + details.delta.dy * sinA;
-    final dyLocal = -details.delta.dx * sinA + details.delta.dy * cosA;
+    // 1. Handle GestureDetector nằm bên trong Transform.rotate nên details.delta
+    // đã ở sẵn hệ tọa độ Local của ảnh đã xoay.
+    final dxLocal = details.delta.dx;
+    final dyLocal = details.delta.dy;
 
     double newWidth = width;
     double newHeight = height;
@@ -142,10 +141,16 @@ abstract class _ImageOverlayItemStore with Store {
 
   @action
   void handleDrag(DragUpdateDetails details, double rotation) {
-    // Di chuyển toàn bộ vật thể: delta của chuột và (x, y) đều cùng không gian cha
-    // Không cần xoay delta ở đây.
-    final newX = (x + details.delta.dx / constraints.maxWidth).clamp(0.0, 1.0);
-    final newY = (y + details.delta.dy / constraints.maxHeight).clamp(0.0, 1.0);
+    // GestureDetector nằm bên trong Transform.rotate nên details.delta ở hệ tọa độ
+    // đã xoay. Xoay ngược lại theo +angle để đưa về không gian cha (x, y).
+    final angle = rotation * (math.pi / 180);
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+    final dxParent = details.delta.dx * cosA - details.delta.dy * sinA;
+    final dyParent = details.delta.dx * sinA + details.delta.dy * cosA;
+
+    final newX = (x + dxParent / constraints.maxWidth).clamp(0.0, 1.0);
+    final newY = (y + dyParent / constraints.maxHeight).clamp(0.0, 1.0);
 
     updatePosition(newX, newY);
     onPositionUpdate(id, newX, newY);

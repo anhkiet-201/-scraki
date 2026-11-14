@@ -30,8 +30,23 @@ abstract class BaseVideoBatchEngine<
   final C composition;
   final VideoMetadataAnalyzer _metadataAnalyzer;
 
+  static const GpuInfo _fallbackGpuInfo = (
+    name: 'cpu',
+    encoder: 'libx264',
+    hwaccel: null,
+    scaleFilter: 'scale',
+    outputFormat: null,
+    hasZscale: false,
+    hasCudaFilters: false,
+    preferredPixFmt: 'yuv420p',
+    maxConcurrentEncodes: 2,
+  );
+
+  GpuInfo? _gpuInfo;
+
   /// Cached hardware information.
-  late GpuInfo gpuInfo;
+  GpuInfo get gpuInfo => _gpuInfo ?? hardwareResolver.gpuInfo ?? _fallbackGpuInfo;
+  set gpuInfo(GpuInfo value) => _gpuInfo = value;
 
   BaseVideoBatchEngine({
     required this.hardwareResolver,
@@ -79,6 +94,7 @@ abstract class BaseVideoBatchEngine<
     final List<String> args = [
       '-hide_banner',
       '-y',
+      ..._threadBudgetArgs(),
       ...inputs.toArgs(),
       '-t',
       request.duration.toStringAsFixed(3),
@@ -91,6 +107,21 @@ abstract class BaseVideoBatchEngine<
     args.add(outputPath);
 
     return composition.execute(args, context, onLog: onLog, timeout: timeout);
+  }
+
+  /// Budgets per-process FFmpeg threads based on [gpuInfo.maxConcurrentEncodes]
+  /// to prevent CPU thread oversubscription across concurrent encodes.
+  List<String> _threadBudgetArgs() {
+    final concurrent = gpuInfo.maxConcurrentEncodes.clamp(1, 16);
+    final threadsPerProcess = (Platform.numberOfProcessors / concurrent).floor().clamp(1, 4);
+    return [
+      '-threads',
+      threadsPerProcess.toString(),
+      '-filter_threads',
+      threadsPerProcess.toString(),
+      '-filter_complex_threads',
+      threadsPerProcess.toString(),
+    ];
   }
 
   /// Appends hardware acceleration flags to the input arguments.
@@ -159,8 +190,6 @@ abstract class BaseVideoBatchEngine<
       '-color_primaries',
       'bt709',
       ...getSegmentEncoderArgs(request).toArgs(),
-      '-movflags',
-      '+faststart',
       '-video_track_timescale',
       '30000',
       '-g',
@@ -183,6 +212,7 @@ abstract class BaseVideoBatchEngine<
     final List<String> args = [
       '-hide_banner',
       '-y',
+      ..._threadBudgetArgs(),
       '-fflags',
       '+genpts+igndts',
       ...getCompositionInputArgs(plan).toArgs(),

@@ -54,6 +54,11 @@ class _VideoPosterPlaygroundPageState extends State<VideoPosterPlaygroundPage> {
           surface: Colors.white,
           onSurface: Color(0xFF0F172A),
         ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: const Color(0xFF4F46E5),
+          selectionColor: const Color(0xFF6366F1).withValues(alpha: 0.25),
+          selectionHandleColor: const Color(0xFF4F46E5),
+        ),
         dividerColor: Colors.transparent,
       ),
       child: CallbackShortcuts(
